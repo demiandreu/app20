@@ -1,12 +1,10 @@
-const express = require("express");
 require("dotenv").config();
+const express = require("express");
 const { Pool } = require("pg");
 const app = express();
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production"
-    ? { rejectUnauthorized: false }
-    : false,
+  ssl: { rejectUnauthorized: false }, // чтобы Render работал и локально
 });
 const PORT = process.env.PORT || 3000;
 
@@ -344,19 +342,20 @@ async function initDb() {
       id SERIAL PRIMARY KEY,
       apartment_id TEXT NOT NULL,
       booking_token TEXT NOT NULL,
-      full_name TEXT,
-      email TEXT,
-      phone TEXT,
-      arrival_date DATE,
-      arrival_time TIME,
-      departure_date DATE,
-      departure_time TIME,
-      created_at TIMESTAMP DEFAULT NOW()
-    )
+      full_name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      arrival_date DATE NOT NULL,
+      arrival_time TIME NOT NULL,
+      departure_date DATE NOT NULL,
+      departure_time TIME NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
   `);
 
-  console.log("PostgreSQL connected, table ready");
+  console.log("✅ DB ready: checkins table ok");
 }
+initDb().catch((e) => console.error("❌ DB error:", e.message));
 
 initDb().catch(console.error);
 
