@@ -155,6 +155,27 @@ app.get("/", (req, res) => {
       <a href="/booking/apt1/ABC123" class="btn-primary">Открыть пример брони</a>
     </p>
   `;
+  await pool.query(
+  `
+  INSERT INTO checkins (
+    apartment_id, booking_token, full_name, email, phone,
+    arrival_date, arrival_time, departure_date, departure_time
+  )
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+  `,
+  [
+    aptId,
+    token,
+    req.body.fullName,
+    req.body.email,
+    req.body.phone,
+    req.body.arrivalDate,
+    req.body.arrivalTime,
+    req.body.departureDate,
+    req.body.departureTime,
+  ]
+);
+
   res.send(renderPage("RCS Guest Portal", html));
 });
 
