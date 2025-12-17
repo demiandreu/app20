@@ -1,9 +1,14 @@
 {
-  "name": "app20",
+  "name": "rcs-checkin-api",
   "version": "1.0.0",
+  "description": "RCS Check-in API",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
   }
 }
+
 
