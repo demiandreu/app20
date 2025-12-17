@@ -145,39 +145,8 @@ function renderPage(title, innerHtml) {
 </html>`;
 }
 
-// ----- Главная -----
-app.get("/", (req, res) => {
-  const html = `
-    <h1>RCS Guest Portal</h1>
-    <p>Тестовая главная страница портала гостей.</p>
-    <p class="muted">Ниже пример ссылки для апартамента <strong>apt1</strong> и брони <strong>ABC123</strong>.</p>
-    <p>
-      <a href="/booking/apt1/ABC123" class="btn-primary">Открыть пример брони</a>
-    </p>
-  `;
-  await pool.query(
-  `
-  INSERT INTO checkins (
-    apartment_id, booking_token, full_name, email, phone,
-    arrival_date, arrival_time, departure_date, departure_time
-  )
-  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-  `,
-  [
-    aptId,
-    token,
-    req.body.fullName,
-    req.body.email,
-    req.body.phone,
-    req.body.arrivalDate,
-    req.body.arrivalTime,
-    req.body.departureDate,
-    req.body.departureTime,
-  ]
-);
 
-  res.send(renderPage("RCS Guest Portal", html));
-});
+
 
 // ----- Страница брони -----
 app.get("/booking/:aptId/:token", (req, res) => {
@@ -286,77 +255,88 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
   };
 
   console.log("Received check-in data:", guestData);
-  await pool.query(
-  `
-  INSERT INTO checkins (
-    apartment_id,
-    booking_token,
-    full_name,
-    email,
-    phone,
-    arrival_date,
-    arrival_time,
-    departure_date,
-    departure_time
-  ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-  `,
-  [
-    aptId,
-    token,
-    guestData.fullName,
-    guestData.email,
-    guestData.phone,
-    guestData.arrivalDate,
-    guestData.arrivalTime,
-    guestData.departureDate,
-    guestData.departureTime,
-  ]
-);
 
+  try {
+    await pool.query(
+      `
+      INSERT INTO checkins (
+        apartment_id,
+        booking_token,
+        full_name,
+        email,
+        phone,
+        arrival_date,
+        arrival_time,
+        departure_date,
+        departure_time
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      `,
+      [
+        aptId,
+        token,
+        guestData.fullName,
+        guestData.email,
+        guestData.phone,
+        guestData.arrivalDate,
+        guestData.arrivalTime,
+        guestData.departureDate,
+        guestData.departureTime,
+      ]
+    );
 
-  // проверки времени
-  const warnings = [];
-  if (req.body.arrivalTime) {
-    const arrivalHour = parseInt(req.body.arrivalTime.split(":")[0], 10);
-    if (!Number.isNaN(arrivalHour) && arrivalHour < 17) {
-      warnings.push("El check-in es a partir de las 17:00. Si desea llegar antes, por favor contacte con nosotros.");
+    // проверки времени
+    const warnings = [];
+    if (req.body.arrivalTime) {
+      const arrivalHour = parseInt(req.body.arrivalTime.split(":")[0], 10);
+      if (!Number.isNaN(arrivalHour) && arrivalHour < 17) {
+        warnings.push(
+          "El check-in es a partir de las 17:00. Si desea llegar antes, por favor contacte con nosotros."
+        );
+      }
     }
+    if (req.body.departureTime) {
+      const departureHour = parseInt(req.body.departureTime.split(":")[0], 10);
+      if (!Number.isNaN(departureHour) && departureHour > 11) {
+        warnings.push(
+          "El check-out es hasta las 11:00. Si necesita salir más tarde, por favor contacte con nosotros."
+        );
+      }
+    }
+
+    const parteeUrl = PARTEE_LINKS[aptId];
+
+    const warningHtml =
+      warnings.length > 0
+        ? `<div class="warnings">
+             ${warnings.map((w) => `<p>${w}</p>`).join("")}
+           </div>`
+        : "";
+
+    const html = `
+      <h1>¡Gracias!</h1>
+
+      ${warningHtml}
+
+      <p>Hemos recibido sus datos de check-in para la reserva <strong>${token}</strong> en <strong>${aptId}</strong>.</p>
+
+      ${
+        parteeUrl
+          ? `<p>Para completar el registro oficial de viajeros, por favor continúe aquí:</p>
+             <p><a href="${parteeUrl}" class="btn-success">Completar registro en Partee</a></p>`
+          : `<p style="color:#f97316;">No se ha configurado un enlace de Partee para este apartamento (${aptId}).</p>`
+      }
+
+      <p class="muted" style="margin-top:16px;">Puede cerrar esta página después de completar el proceso.</p>
+    `;
+
+    res.send(renderPage("Check-in completado", html));
+  } catch (e) {
+    console.error("DB insert error:", e);
+    res.status(500).send("❌ DB error while saving check-in");
   }
-  if (req.body.departureTime) {
-    const departureHour = parseInt(req.body.departureTime.split(":")[0], 10);
-    if (!Number.isNaN(departureHour) && departureHour > 11) {
-      warnings.push("El check-out es hasta las 11:00. Si necesita salir más tarde, por favor contacte con nosotros.");
-    }
-  }
-
-  const parteeUrl = PARTEE_LINKS[aptId];
-
-  const warningHtml =
-    warnings.length > 0
-      ? `<div class="warnings">
-           ${warnings.map((w) => `<p>${w}</p>`).join("")}
-         </div>`
-      : "";
-
-  const html = `
-    <h1>¡Gracias!</h1>
-
-    ${warningHtml}
-
-    <p>Hemos recibido sus datos de check-in para la reserva <strong>${token}</strong> en <strong>${aptId}</strong>.</p>
-
-    ${
-      parteeUrl
-        ? `<p>Para completar el registro oficial de viajeros, por favor continúe aquí:</p>
-           <p><a href="${parteeUrl}" class="btn-success">Completar registro en Partee</a></p>`
-        : `<p style="color:#f97316;">No se ha configurado un enlace de Partee para este apartamento (${aptId}).</p>`
-    }
-
-    <p class="muted" style="margin-top:16px;">Puede cerrar esta página después de completar el proceso.</p>
-  `;
-
-  res.send(renderPage("Check-in completado", html));
 });
+
+
 async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS checkins (
