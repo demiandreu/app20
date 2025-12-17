@@ -357,8 +357,6 @@ async function initDb() {
 }
 initDb().catch((e) => console.error("❌ DB error:", e.message));
 
-initDb().catch(console.error);
-
 // ----- Запуск сервера -----
 app.listen(PORT, () => {
   console.log(`RCS Guest Portal running at http://localhost:${PORT}`);
