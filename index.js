@@ -216,6 +216,11 @@ app.get("/checkin/:aptId/:token", (req, res) => {
   <option value="20:00">20:00</option>
   <option value="21:00">21:00</option>
   <option value="22:00">22:00</option>
+  <option value="23:00">22:00</option>
+  <option value="00:00">22:00</option>
+  <option value="01:00">22:00</option>
+  <option value="02:00">22:00</option>
+  <option value="03:00">22:00</option>
 </select>
         </div>
       </div>
@@ -382,6 +387,7 @@ async function initDb() {
     process.exit(1);
   }
 })();
+
 
 
 
