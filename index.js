@@ -7,6 +7,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("running"));
 
 if (!process.env.DATABASE_URL) {
   console.error("❌ DATABASE_URL is missing in env");
@@ -364,3 +365,4 @@ async function initDb() {
     process.exit(1);
   }
 })();
+
