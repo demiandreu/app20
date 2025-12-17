@@ -1,6 +1,13 @@
 const express = require("express");
-
+require("dotenv").config();
+const { Pool } = require("pg");
 const app = express();
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === "production"
+    ? { rejectUnauthorized: false }
+    : false,
+});
 const PORT = process.env.PORT || 3000;
 
 
@@ -244,7 +251,7 @@ app.get("/checkin/:aptId/:token", (req, res) => {
 });
 
 // ----- Обработка формы check-in -----
-app.post("/checkin/:aptId/:token", (req, res) => {
+app.post("/checkin/:aptId/:token", async (req, res) => {
   const { aptId, token } = req.params;
 
   const guestData = {
@@ -260,6 +267,33 @@ app.post("/checkin/:aptId/:token", (req, res) => {
   };
 
   console.log("Received check-in data:", guestData);
+  await pool.query(
+  `
+  INSERT INTO checkins (
+    apartment_id,
+    booking_token,
+    full_name,
+    email,
+    phone,
+    arrival_date,
+    arrival_time,
+    departure_date,
+    departure_time
+  ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+  `,
+  [
+    aptId,
+    token,
+    guestData.fullName,
+    guestData.email,
+    guestData.phone,
+    guestData.arrivalDate,
+    guestData.arrivalTime,
+    guestData.departureDate,
+    guestData.departureTime,
+  ]
+);
+
 
   // проверки времени
   const warnings = [];
@@ -304,6 +338,27 @@ app.post("/checkin/:aptId/:token", (req, res) => {
 
   res.send(renderPage("Check-in completado", html));
 });
+async function initDb() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS checkins (
+      id SERIAL PRIMARY KEY,
+      apartment_id TEXT NOT NULL,
+      booking_token TEXT NOT NULL,
+      full_name TEXT,
+      email TEXT,
+      phone TEXT,
+      arrival_date DATE,
+      arrival_time TIME,
+      departure_date DATE,
+      departure_time TIME,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+
+  console.log("PostgreSQL connected, table ready");
+}
+
+initDb().catch(console.error);
 
 // ----- Запуск сервера -----
 app.listen(PORT, () => {
