@@ -1,15 +1,14 @@
 require("dotenv").config();
 const express = require("express");
 const { Pool } = require("pg");
+
 const app = express();
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }, // чтобы Render работал и локально
+  ssl: { rejectUnauthorized: false }, // для Render и локально
 });
+
 const PORT = process.env.PORT || 3000;
-console.log("ENV DATABASE_URL starts with:", (process.env.DATABASE_URL || "").slice(0, 30));
-
-
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -17,7 +16,6 @@ app.use(express.json());
 // ----- Partee ссылки для апартаментов -----
 const PARTEE_LINKS = {
   // ВСТАВЬ СВОИ ССЫЛКИ
-  // Пример:
   apt1: "https://u.partee.es/3636642/Cd78OQqWOB63wMJLFmB0JzdLL",
   // apt2: "https://u.partee.es/XXXXXXX/XXXXXXXXXXXX",
   // ...
@@ -33,9 +31,7 @@ function renderPage(title, innerHtml) {
   <title>${title}</title>
   <style>
     :root { color-scheme: dark; }
-
     * { box-sizing: border-box; }
-
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background:#020617;
@@ -57,24 +53,10 @@ function renderPage(title, innerHtml) {
       padding:20px 18px 22px;
       box-shadow:0 18px 40px rgba(0,0,0,0.55);
     }
-    h1 {
-      margin:0 0 8px;
-      font-size:20px;
-    }
-    h2 {
-      margin:0 0 6px;
-      font-size:16px;
-    }
-    p {
-      margin:0 0 10px;
-      font-size:14px;
-      color:#9ca3af;
-    }
-    label {
-      font-size:13px;
-      display:block;
-      margin-bottom:4px;
-    }
+    h1 { margin:0 0 8px; font-size:20px; }
+    h2 { margin:0 0 6px; font-size:16px; }
+    p { margin:0 0 10px; font-size:14px; color:#9ca3af; }
+    label { font-size:13px; display:block; margin-bottom:4px; }
     input, select {
       width:100%;
       padding:8px 10px;
@@ -84,19 +66,10 @@ function renderPage(title, innerHtml) {
       color:#e5e7eb;
       font-size:14px;
     }
-    input:focus, select:focus {
-      outline:none;
-      border-color:#2563eb;
-    }
-    .row {
-      display:flex;
-      gap:8px;
-    }
+    input:focus, select:focus { outline:none; border-color:#2563eb; }
+    .row { display:flex; gap:8px; }
     .row > div { flex:1; }
-
-    .btn-primary,
-    .btn-success,
-    .btn-link {
+    .btn-primary, .btn-success, .btn-link {
       display:inline-block;
       border-radius:999px;
       padding:9px 18px;
@@ -108,13 +81,8 @@ function renderPage(title, innerHtml) {
     }
     .btn-primary { background:#2563eb; color:#fff; }
     .btn-success { background:#22c55e; color:#fff; }
-    .btn-link {
-      background:transparent;
-      color:#9ca3af;
-      padding:0;
-    }
+    .btn-link { background:transparent; color:#9ca3af; padding:0; }
     .muted { font-size:12px; color:#6b7280; }
-
     .warnings {
       background:#7f1d1d;
       border-radius:12px;
@@ -124,11 +92,7 @@ function renderPage(title, innerHtml) {
       font-size:13px;
       text-align:left;
     }
-    .warnings p {
-      margin:4px 0;
-      color:#fecaca;
-    }
-
+    .warnings p { margin:4px 0; color:#fecaca; }
     @media (min-width: 640px) {
       body { align-items:center; }
       .page { padding:24px; }
@@ -147,8 +111,18 @@ function renderPage(title, innerHtml) {
 </html>`;
 }
 
-
-
+// ----- Главная -----
+app.get("/", (req, res) => {
+  const html = `
+    <h1>RCS Guest Portal</h1>
+    <p>Тестовая главная страница портала гостей.</p>
+    <p class="muted">Ниже пример ссылки для апартамента <strong>apt1</strong> и брони <strong>ABC123</strong>.</p>
+    <p>
+      <a href="/booking/apt1/ABC123" class="btn-primary">Открыть пример брони</a>
+    </p>
+  `;
+  res.send(renderPage("RCS Guest Portal", html));
+});
 
 // ----- Страница брони -----
 app.get("/booking/:aptId/:token", (req, res) => {
@@ -244,75 +218,52 @@ app.get("/checkin/:aptId/:token", (req, res) => {
 app.post("/checkin/:aptId/:token", async (req, res) => {
   const { aptId, token } = req.params;
 
-  const guestData = {
-    apartmentId: aptId,
-    bookingToken: token,
-    fullName: req.body.fullName,
-    email: req.body.email,
-    phone: req.body.phone,
-    arrivalDate: req.body.arrivalDate,
-    arrivalTime: req.body.arrivalTime,
-    departureDate: req.body.departureDate,
-    departureTime: req.body.departureTime,
-  };
+  console.log("Received check-in data:", { aptId, token, body: req.body });
 
-  console.log("Received check-in data:", guestData);
+  // Предупреждения по времени
+  const warnings = [];
+  if (req.body.arrivalTime) {
+    const arrivalHour = parseInt(req.body.arrivalTime.split(":")[0], 10);
+    if (!isNaN(arrivalHour) && arrivalHour < 17) {
+      warnings.push("El check-in es a partir de las 17:00. Si desea llegar antes, por favor contacte con nosotros.");
+    }
+  }
+  if (req.body.departureTime) {
+    const departureHour = parseInt(req.body.departureTime.split(":")[0], 10);
+    if (!isNaN(departureHour) && departureHour > 11) {
+      warnings.push("El check-out es hasta las 11:00. Si necesita salir más tarde, por favor contacte con nosotros.");
+    }
+  }
+
+  const parteeUrl = PARTEE_LINKS[aptId];
+
+  const warningHtml = warnings.length > 0
+    ? `<div class="warnings">
+         ${warnings.map((w) => `<p>${w}</p>`).join("")}
+       </div>`
+    : "";
 
   try {
     await pool.query(
       `
       INSERT INTO checkins (
-        apartment_id,
-        booking_token,
-        full_name,
-        email,
-        phone,
-        arrival_date,
-        arrival_time,
-        departure_date,
-        departure_time
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+        apartment_id, booking_token, full_name, email, phone,
+        arrival_date, arrival_time, departure_date, departure_time
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       `,
       [
         aptId,
         token,
-        guestData.fullName,
-        guestData.email,
-        guestData.phone,
-        guestData.arrivalDate,
-        guestData.arrivalTime,
-        guestData.departureDate,
-        guestData.departureTime,
+        req.body.fullName,
+        req.body.email,
+        req.body.phone,
+        req.body.arrivalDate,
+        req.body.arrivalTime,
+        req.body.departureDate,
+        req.body.departureTime,
       ]
     );
-
-    // проверки времени
-    const warnings = [];
-    if (req.body.arrivalTime) {
-      const arrivalHour = parseInt(req.body.arrivalTime.split(":")[0], 10);
-      if (!Number.isNaN(arrivalHour) && arrivalHour < 17) {
-        warnings.push(
-          "El check-in es a partir de las 17:00. Si desea llegar antes, por favor contacte con nosotros."
-        );
-      }
-    }
-    if (req.body.departureTime) {
-      const departureHour = parseInt(req.body.departureTime.split(":")[0], 10);
-      if (!Number.isNaN(departureHour) && departureHour > 11) {
-        warnings.push(
-          "El check-out es hasta las 11:00. Si necesita salir más tarde, por favor contacte con nosotros."
-        );
-      }
-    }
-
-    const parteeUrl = PARTEE_LINKS[aptId];
-
-    const warningHtml =
-      warnings.length > 0
-        ? `<div class="warnings">
-             ${warnings.map((w) => `<p>${w}</p>`).join("")}
-           </div>`
-        : "";
 
     const html = `
       <h1>¡Gracias!</h1>
@@ -329,36 +280,45 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
       }
 
       <p class="muted" style="margin-top:16px;">Puede cerrar esta página después de completar el proceso.</p>
+      <p><a href="/" class="btn-link">← Volver a la página principal</a></p>
     `;
 
     res.send(renderPage("Check-in completado", html));
   } catch (e) {
     console.error("DB insert error:", e);
-    res.status(500).send("❌ DB error while saving check-in");
+    res.status(500).send(renderPage("Error", `
+      <h1>❌ Error</h1>
+      <p>No se pudo guardar la información. Por favor, inténtelo de nuevo más tarde.</p>
+      <p><a href="/checkin/${aptId}/${token}" class="btn-primary">Volver al formulario</a></p>
+    `));
   }
 });
 
-
+// ----- Инициализация БД -----
 async function initDb() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS checkins (
-      id SERIAL PRIMARY KEY,
-      apartment_id TEXT NOT NULL,
-      booking_token TEXT NOT NULL,
-      full_name TEXT NOT NULL,
-      email TEXT NOT NULL,
-      phone TEXT NOT NULL,
-      arrival_date DATE NOT NULL,
-      arrival_time TIME NOT NULL,
-      departure_date DATE NOT NULL,
-      departure_time TIME NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
-
-  console.log("✅ DB ready: checkins table ok");
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS checkins (
+        id SERIAL PRIMARY KEY,
+        apartment_id TEXT NOT NULL,
+        booking_token TEXT NOT NULL,
+        full_name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        arrival_date DATE NOT NULL,
+        arrival_time TIME NOT NULL,
+        departure_date DATE NOT NULL,
+        departure_time TIME NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+    console.log("✅ DB ready: checkins table ok");
+  } catch (e) {
+    console.error("❌ DB init error:", e.message);
+  }
 }
-initDb().catch((e) => console.error("❌ DB error:", e.message));
+
+initDb();
 
 // ----- Запуск сервера -----
 app.listen(PORT, () => {
