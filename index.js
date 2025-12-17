@@ -206,7 +206,7 @@ app.get("/checkin/:aptId/:token", (req, res) => {
         </div>
         <div>
           <label>Arrival time</label>
-          <input type="time" name="arrivalTime" required />
+          <input type="time" name="arrivalTime" step="3600" required />
         </div>
       </div>
 
@@ -217,7 +217,7 @@ app.get("/checkin/:aptId/:token", (req, res) => {
         </div>
         <div>
           <label>Departure time</label>
-          <input type="time" name="departureTime" required />
+          <input type="time" name="departureTime" step="3600" required />
         </div>
       </div>
 
@@ -365,4 +365,5 @@ async function initDb() {
     process.exit(1);
   }
 })();
+
 
