@@ -7,6 +7,8 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }, // чтобы Render работал и локально
 });
 const PORT = process.env.PORT || 3000;
+console.log("ENV DATABASE_URL starts with:", (process.env.DATABASE_URL || "").slice(0, 30));
+
 
 
 app.use(express.urlencoded({ extended: true }));
