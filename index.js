@@ -122,8 +122,26 @@ async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+// --- lock fields ---
+await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_code TEXT;`);
+await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_visible BOOLEAN NOT NULL DEFAULT FALSE;`);
 
-  // --- lock fields ---
+// --- clean status ---
+await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS clean_ok BOOLEAN NOT NULL DEFAULT FALSE;`);
+
+// --- Beds24 fields for admin columns ---
+await pool.query(`
+  ALTER TABLE checkins
+    ADD COLUMN IF NOT EXISTS beds24_booking_id BIGINT,
+    ADD COLUMN IF NOT EXISTS beds24_room_id TEXT,
+    ADD COLUMN IF NOT EXISTS apartment_name TEXT,
+    ADD COLUMN IF NOT EXISTS booking_id TEXT,
+    ADD COLUMN IF NOT EXISTS beds24_raw JSONB;
+`);
+
+await pool.query(`CREATE INDEX IF NOT EXISTS idx_checkins_booking_id ON checkins(booking_id);`);
+  
+  /* dima // --- lock fields ---
  await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_code TEXT;`);
    await pool.query( `ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_visible BOOLEAN NOT NULL DEFAULT FALSE;`);
   await pool.query (`
@@ -135,7 +153,7 @@ ALTER TABLE checkins
   // --- clean status ---
   await pool.query(
     `ALTER TABLE checkins ADD COLUMN IF NOT EXISTS clean_ok BOOLEAN NOT NULL DEFAULT FALSE;`
-  );
+  ); */ 
 // ===================== MIGRATION: Beds24 support =====================
   console.log("✅ DB ready: checkins table ok (+ lock_code, lock_visible, clean_ok)");
 }
@@ -805,6 +823,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
