@@ -535,7 +535,7 @@ app.get("/admin/checkins", async (req, res) => {
                       `;
                     })
                     .join("")
-                : `<tr><td colspan="9" class="muted">No records</td></tr>`
+                : `<tr><td colspan="8" class="muted">No records</td></tr>`
             }
           </tbody>
         </table>
@@ -546,24 +546,6 @@ app.get("/admin/checkins", async (req, res) => {
   } catch (e) {
     console.error("Admin list error:", e);
     res.status(500).send("❌ Cannot load checkins");
-  }
-});
-
-// ADMIN: save lock code
-app.post("/admin/checkins/:id/lock", async (req, res) => {
-  try {
-    const id = parseInt(req.params.id, 10);
-    const lockCode = String(req.body.lock_code || "").trim() || null;
-
-    await pool.query(
-      `UPDATE checkins SET lock_code = $1 WHERE id = $2`,
-      [lockCode, id]
-    );
-
-    res.redirect("/admin/checkins");
-  } catch (e) {
-    console.error("Lock save error:", e);
-    res.status(500).send("❌ Cannot save lock code");
   }
 });
 app.post("/admin/checkins/:id/visibility", async (req, res) => {
@@ -602,6 +584,7 @@ app.post("/admin/checkins/:id/toggle", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
