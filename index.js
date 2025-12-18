@@ -593,14 +593,22 @@ FROM checkins
         <table>
           <thead>
             <tr>
-              <th>Clean</th>
-              <th>Apt</th>
-              <th>Name</th>
-              <th>Phone</th>
-              <th>Arrive</th>
-              <th>Depart</th>
-              <th>Lock code</th>
-              <th>Visible</th>
+             <th>Clean</th>
+<th>Beds24 Booking</th>
+<th>Apartment</th>
+<th>Apt ID</th>
+<th>Name</th>
+<th>Phone</th>
+<th>Arrive</th>
+<th>Depart</th>
+<td>
+  <a class="btn-small btn-ghost" href="/guest/${r.apartment_id}/${r.booking_token}" target="_blank">
+    Open
+  </a>
+</td>
+<th>Guest</th>
+<th>Lock code</th>
+<th>Visible</th>
             </tr>
           </thead>
 
@@ -622,11 +630,11 @@ FROM checkins
                             </form>
                           </td>
 
-                          <td>${r.apartment_id}</td>
-                          <td>${r.full_name}</td>
-                          <td>${r.phone}</td>
-                          <td>${arrive}</td>
-                          <td>${depart}</td>
+                        <td>${r.booking_id ?? ""}</td>
+<td>${r.apartment_name ?? ""}</td>
+<td>${r.apartment_id}</td>
+<td>${r.full_name}</td>
+<td>${r.phone}</td>
 
                           <td>
                             <form method="POST" action="/admin/checkins/${r.id}/lock" class="lock-form">
@@ -689,7 +697,7 @@ app.post("/admin/checkins/:id/lock", async (req, res) => {
       lockCode || null,
       id,
     ]);
-    res.redirect("/admin/checkins");
+res.redirect(req.get("referer") || "/admin/checkins");
   } catch (e) {
     console.error("Lock code update error:", e);
     res.status(500).send("❌ Cannot update lock code");
@@ -736,6 +744,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
