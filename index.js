@@ -127,6 +127,34 @@ function renderPage(title, innerHtml) {
       .page { padding: 24px; }
       .card { padding: 24px 22px 24px; }
     }
+    .lock-form{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.lock-input{
+  width:120px;
+  min-width:120px;
+  padding:10px 12px;
+  border-radius:12px;
+  border:1px solid #d1d5db;
+  font-size:16px;       /* ✅ важно: на iPhone убирает auto-zoom и делает читабельно */
+  letter-spacing:0.12em; /* ✅ код легче читать */
+}
+.btn-small{
+  border-radius:999px;
+  padding:10px 12px;
+  font-weight:700;
+  border:none;
+  cursor:pointer;
+  background:#2563eb;
+  color:#fff;
+}
+.btn-ghost{
+  background:#eef2ff;
+  color:#1e40af;
+}
   </style>
 </head>
 <body>
@@ -148,6 +176,31 @@ function hourOptions(selected = "") {
   }
   return out;
 }
+app.post("/admin/checkins/:id/lock", async (req, res) => {
+  const id = Number(req.params.id);
+
+  // ✅ иногда body может быть массивом — берём последнее значение
+  const raw = req.body.lock_code;
+  const last = Array.isArray(raw) ? raw[raw.length - 1] : raw;
+
+  // clear кнопка
+  let lockCode = String(last ?? "").trim();
+  if (req.body.clear === "1") lockCode = "";
+
+  // ✅ оставляем только цифры и максимум 6 (или 4 — как хочешь)
+  lockCode = lockCode.replace(/\D/g, "").slice(0, 6);
+
+  try {
+    await pool.query(
+      `UPDATE checkins SET lock_code = $1 WHERE id = $2`,
+      [lockCode || null, id]
+    );
+    res.redirect("/admin/checkins");
+  } catch (e) {
+    console.error("Lock code update error:", e);
+    res.status(500).send("❌ Cannot update lock code");
+  }
+});
 
 function ymd(d) {
   // Date -> YYYY-MM-DD
@@ -455,7 +508,22 @@ app.get("/admin/checkins", async (req, res) => {
                           <td>${r.phone}</td>
                           <td>${arrive}</td>
                           <td>${depart}</td>
-                          <td>${r.lock_code ?? "—"}</td>
+                          <td>
+  <form method="POST" action="/admin/checkins/${r.id}/lock" class="lock-form">
+    <input
+      class="lock-input"
+      name="lock_code"
+      value="${r.lock_code ?? ""}"
+      inputmode="numeric"
+      pattern="\\d{4}"
+      maxlength="4"
+      placeholder="1234"
+      autocomplete="one-time-code"
+    />
+    <button class="btn-small" type="submit">Save</button>
+    <button class="btn-small btn-ghost" type="submit" name="clear" value="1">Clear</button>
+  </form>
+</td>
                           <td>${vis}</td>
                           <td>
                             <form method="POST" action="/admin/checkins/${r.id}/lock" style="display:flex;gap:8px;align-items:center;">
@@ -527,3 +595,4 @@ app.post("/admin/checkins/:id/toggle", async (req, res) => {
     process.exit(1);
   }
 })();
+
