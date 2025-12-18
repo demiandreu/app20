@@ -6,6 +6,22 @@ const { Pool } = require("pg");
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+// ======================
+// Beds24 Webhook (receiver)
+// ======================
+app.post("/webhooks/beds24", (req, res) => {
+  const secret = String(req.query.key || "");
+
+  if (secret !== String(process.env.BEDS24_SECRET || "")) {
+    console.log("❌ Beds24 webhook: invalid secret");
+    return res.status(401).send("Unauthorized");
+  }
+
+  console.log("✅ Beds24 webhook received");
+  console.log(JSON.stringify(req.body, null, 2));
+
+  return res.status(200).send("OK");
+});
 
 const PORT = process.env.PORT || 3000;
 
@@ -742,6 +758,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
