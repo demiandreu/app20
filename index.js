@@ -24,8 +24,9 @@ const pool = new Pool({
   ssl: isLocalDb ? false : { rejectUnauthorized: false },
 });
 
+// ===================== DB INIT / MIGRATIONS =====================
 async function initDb() {
-  // 1) Base table
+  // --- base table ---
   await pool.query(`
     CREATE TABLE IF NOT EXISTS checkins (
       id SERIAL PRIMARY KEY,
@@ -42,21 +43,16 @@ async function initDb() {
     );
   `);
 
-  // 2) Migrations (add columns if missing)
-  await pool.query(`
-    ALTER TABLE checkins
-    ADD COLUMN IF NOT EXISTS lock_code TEXT;
-  `);
+  // --- lock fields ---
+  await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_code TEXT;`);
+  await pool.query(
+    `ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_visible BOOLEAN NOT NULL DEFAULT FALSE;`
+  );
 
-  await pool.query(`
-    ALTER TABLE checkins
-    ADD COLUMN IF NOT EXISTS lock_visible BOOLEAN NOT NULL DEFAULT FALSE;
-  `);
-
-  await pool.query(`
-    ALTER TABLE checkins
-    ADD COLUMN IF NOT EXISTS clean_ok BOOLEAN NOT NULL DEFAULT FALSE;
-  `);
+  // --- clean status ---
+  await pool.query(
+    `ALTER TABLE checkins ADD COLUMN IF NOT EXISTS clean_ok BOOLEAN NOT NULL DEFAULT FALSE;`
+  );
 
   console.log("✅ DB ready: checkins table ok (+ lock_code, lock_visible, clean_ok)");
 }
@@ -74,6 +70,7 @@ function ymd(d) {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
+
 // ===================== BLOCK: DATE HELPERS (TIMEZONE) =====================
 // Render usually runs in UTC. For Spain apartments we use Europe/Madrid.
 function ymdInTz(date = new Date(), timeZone = "Europe/Madrid") {
@@ -84,10 +81,10 @@ function ymdInTz(date = new Date(), timeZone = "Europe/Madrid") {
     day: "2-digit",
   }).formatToParts(date);
 
-  const yyyy = parts.find(p => p.type === "year").value;
-  const mm = parts.find(p => p.type === "month").value;
-  const dd = parts.find(p => p.type === "day").value;
-  return `${yyyy}-${mm}-${dd}`; // YYYY-MM-DD
+  const yyyy = parts.find((p) => p.type === "year").value;
+  const mm = parts.find((p) => p.type === "month").value;
+  const dd = parts.find((p) => p.type === "day").value;
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 function hourOptions(selected = "") {
@@ -100,6 +97,7 @@ function hourOptions(selected = "") {
   return out;
 }
 
+// ===================== BLOCK: HTML LAYOUT =====================
 function renderPage(title, innerHtml) {
   return `<!doctype html>
 <html lang="en">
@@ -110,7 +108,6 @@ function renderPage(title, innerHtml) {
   <style>
     :root { color-scheme: light; }
     * { box-sizing: border-box; }
-
     body{
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background:#f6f7fb;
@@ -130,9 +127,9 @@ function renderPage(title, innerHtml) {
       border:1px solid #e5e7eb;
     }
     h1{ margin:0 0 8px; font-size:22px; }
+    h2{ margin:0 0 8px; font-size:16px; }
     p{ margin:0 0 10px; font-size:14px; color:#4b5563; }
     .muted{ font-size:12px; color:#6b7280; }
-
     label{ font-size:13px; display:block; margin-bottom:4px; color:#374151; }
     input, select{
       width:100%;
@@ -148,10 +145,8 @@ function renderPage(title, innerHtml) {
       border-color:#2563eb;
       box-shadow:0 0 0 4px rgba(37,99,235,0.12);
     }
-
     .row{ display:flex; gap:10px; }
     .row > div{ flex:1; }
-
     .btn-primary, .btn-success, .btn-link, .btn{
       display:inline-block;
       border-radius:999px;
@@ -222,6 +217,8 @@ function renderPage(title, innerHtml) {
       border-radius:999px;
       font-weight:800;
       font-size:12px;
+      border:none;
+      cursor:pointer;
     }
     .pill-yes{ background:#dcfce7; color:#166534; }
     .pill-no{ background:#fee2e2; color:#991b1b; }
@@ -239,8 +236,8 @@ function renderPage(title, innerHtml) {
       padding:10px 12px;
       border-radius:12px;
       border:1px solid #d1d5db;
-      font-size:16px;          /* ✅ iPhone: нормальный ввод без автозума */
-      letter-spacing:0.14em;   /* ✅ код легче читать */
+      font-size:16px;          /* ✅ iPhone: без автозума */
+      letter-spacing:0.14em;   /* ✅ легче читать */
     }
     .btn-small{
       border-radius:999px;
@@ -274,6 +271,8 @@ function renderPage(title, innerHtml) {
 }
 
 // ===================== GUEST ROUTES =====================
+
+// --- Home ---
 app.get("/", (req, res) => {
   const html = `
     <h1>RCS Guest Portal</h1>
@@ -284,6 +283,7 @@ app.get("/", (req, res) => {
   res.send(renderPage("Home", html));
 });
 
+// --- Booking page ---
 app.get("/booking/:aptId/:token", (req, res) => {
   const { aptId, token } = req.params;
   const html = `
@@ -295,9 +295,9 @@ app.get("/booking/:aptId/:token", (req, res) => {
   res.send(renderPage(`Booking ${token}`, html));
 });
 
+// --- Check-in form ---
 app.get("/checkin/:aptId/:token", (req, res) => {
   const { aptId, token } = req.params;
-
   const now = new Date();
   const today = ymd(now);
   const tmr = new Date(now);
@@ -359,6 +359,7 @@ app.get("/checkin/:aptId/:token", (req, res) => {
   res.send(renderPage("Check-in", html));
 });
 
+// --- Check-in submit -> DB ---
 app.post("/checkin/:aptId/:token", async (req, res) => {
   const { aptId, token } = req.params;
 
@@ -384,262 +385,14 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
       ]
     );
 
-    const warnings = [];
-
-    const arrivalHour = parseInt(String(req.body.arrivalTime || "").split(":")[0], 10);
-    if (!Number.isNaN(arrivalHour) && arrivalHour < 17) {
-      warnings.push("Check-in is from 17:00. If you need earlier arrival, please contact us.");
-    }
-
-    const departureHour = parseInt(String(req.body.departureTime || "").split(":")[0], 10);
-    if (!Number.isNaN(departureHour) && departureHour > 11) {
-      warnings.push("Check-out is until 11:00. If you need later departure, please contact us.");
-    }
-
-    const parteeUrl = PARTEE_LINKS[aptId];
-
-    const warningHtml =
-      warnings.length > 0
-        ? `<div class="warnings">${warnings.map((w) => `<p>${w}</p>`).join("")}</div>`
-        : "";
-
-    const html = `
-      <h1>Thank you!</h1>
-      ${warningHtml}
-      <p>We received your check-in data for <strong>${token}</strong> • <strong>${aptId}</strong>.</p>
-      ${
-        parteeUrl
-          ? `<p>Continue registration here:</p>
-             <p><a class="btn-success" href="${parteeUrl}">Open Partee</a></p>`
-          : `<p style="color:#f97316;">No Partee link configured for this apartment (${aptId}).</p>`
-      }
-      <p class="muted">You can close this page.</p>
-      <p><a class="btn-link" href="/">← Back</a></p>
-    `;
-
-// ===================== BLOCK: AFTER CHECKIN -> REDIRECT TO DASHBOARD =====================
-return res.redirect(`/guest/${aptId}/${token}`);
-    
+    // ===================== BLOCK: AFTER CHECKIN -> REDIRECT TO DASHBOARD =====================
+    return res.redirect(`/guest/${aptId}/${token}`);
   } catch (e) {
     console.error("DB insert error:", e);
     res.status(500).send("❌ DB error while saving check-in");
   }
 });
 
-// ===================== ADMIN ROUTES =====================
-
-// LIST + FILTER
-app.get("/admin/checkins", async (req, res) => {
-  try {
-    const { from, to, days } = req.query;
-
-    const today = new Date();
-    const todayStr = ymd(today);
-
-    let fromDate = from || "";
-    let toDate = to || "";
-
-    if (days && !from && !to) {
-      const n = Math.max(0, parseInt(days, 10) || 0);
-      const t2 = new Date(today);
-      t2.setDate(today.getDate() + n);
-      fromDate = todayStr;
-      toDate = ymd(t2);
-    }
-
-    const where = [];
-    const params = [];
-
-    if (fromDate) { params.push(fromDate); where.push(`arrival_date >= $${params.length}`); }
-    if (toDate)   { params.push(toDate);   where.push(`arrival_date <= $${params.length}`); }
-
-    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
-
-    const { rows } = await pool.query(
-      `
-      SELECT
-        id,
-        apartment_id,
-        full_name,
-        phone,
-        arrival_date,
-        arrival_time,
-        departure_date,
-        departure_time,
-        lock_code,
-        lock_visible
-      FROM checkins
-      ${whereSql}
-      ORDER BY arrival_date ASC, arrival_time ASC, id DESC
-      LIMIT 300
-      `,
-      params
-    );
-
-    const toolbar = `
-      <h1>Admin • Check-ins</h1>
-      <p class="muted">Filter by arrival date</p>
-
-      <form class="toolbar" method="GET" action="/admin/checkins">
-        <div>
-          <label>From</label>
-          <input type="date" name="from" value="${fromDate || ""}">
-        </div>
-        <div>
-          <label>To</label>
-          <input type="date" name="to" value="${toDate || ""}">
-        </div>
-        <div>
-          <label>Quick</label>
-          <select name="days">
-            <option value="">—</option>
-            ${[0,1,3,5,7,14,30].map(n => `
-              <option value="${n}" ${String(days||"") === String(n) ? "selected" : ""}>Today + ${n}</option>
-            `).join("")}
-          </select>
-        </div>
-
-        <button class="btn" type="submit">Show</button>
-        <a class="btn-link" href="/admin/checkins">Reset</a>
-        <a class="btn-link" href="/">Back</a>
-      </form>
-    `;
-
-    const table = `
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Clean</th>
-              <th>Apt</th>
-              <th>Name</th>
-              <th>Phone</th>
-              <th>Arrive</th>
-              <th>Depart</th>
-              <th>Lock code</th>
-              <th>Visible</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${
-              rows.length
-                ? rows.map(r => {
-                    const arrive = `${String(r.arrival_date).slice(0,10)} ${String(r.arrival_time).slice(0,5)}`;
-                    const depart = `${String(r.departure_date).slice(0,10)} ${String(r.departure_time).slice(0,5)}`;
-
-                    return `
-                      <tr>
-                        <td>
-  <form method="POST" action="/admin/checkins/${r.id}/clean">
-    <button type="submit" class="pill ${r.clean_ok ? "pill-yes" : "pill-no"}">
-      ${r.clean_ok ? "✅ CLEAN" : "❌ NOT CLEAN"}
-    </button>
-  </form>
-</td>
-                        <td>${r.apartment_id}</td>
-                        <td>${r.full_name}</td>
-                        <td>${r.phone}</td>
-                        <td>${arrive}</td>
-                        <td>${depart}</td>
-
-                        <td>
-                          <form method="POST" action="/admin/checkins/${r.id}/lock" class="lock-form">
-                            <input
-                              class="lock-input"
-                              name="lock_code"
-                              value="${r.lock_code ?? ""}"
-                              inputmode="numeric"
-                              pattern="\\d{4}"
-                              maxlength="4"
-                              placeholder="1234"
-                            />
-                            <button class="btn-small" type="submit">Save</button>
-                            <button class="btn-small btn-ghost" type="submit" name="clear" value="1">Clear</button>
-                          </form>
-                        </td>
-
-                        <td>
-                          <form method="POST" action="/admin/checkins/${r.id}/visibility" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                            <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "🔓 YES" : "🔒 NO"}</span>
-                            <button class="btn-small ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
-                              ${r.lock_visible ? "Hide" : "Show"}
-                            </button>
-                          </form>
-                        </td>
-                      </tr>
-                    `;
-                  }).join("")
-                : `<tr><td colspan="8" class="muted">No records</td></tr>`
-            }
-          </tbody>
-        </table>
-      </div>
-    `;
-
-    res.send(renderPage("Admin • Check-ins", toolbar + table));
-  } catch (e) {
-    console.error("Admin list error:", e);
-    res.status(500).send("❌ Cannot load checkins");
-  }
-});
-
-// SAVE lock code (заменяет старый код, не дописывает)
-app.post("/admin/checkins/:id/lock", async (req, res) => {
-  const id = Number(req.params.id);
-
-  // иногда body может стать массивом — берём последнее значение
-  const raw = req.body.lock_code;
-  const last = Array.isArray(raw) ? raw[raw.length - 1] : raw;
-
-  let lockCode = String(last ?? "").trim();
-  if (req.body.clear === "1") lockCode = "";
-
-  // только цифры и максимум 4
-  lockCode = lockCode.replace(/\D/g, "").slice(0, 4);
-
-  try {
-    await pool.query(
-      `UPDATE checkins SET lock_code = $1 WHERE id = $2`,
-      [lockCode || null, id]
-    );
-    res.redirect("/admin/checkins");
-  } catch (e) {
-    console.error("Lock code update error:", e);
-    res.status(500).send("❌ Cannot update lock code");
-  }
-});
-
-// SET visibility
-app.post("/admin/checkins/:id/visibility", async (req, res) => {
-  const id = Number(req.params.id);
-  const makeVisible = String(req.body.makeVisible) === "1";
-
-  try {
-    await pool.query(
-      `UPDATE checkins SET lock_visible = $1 WHERE id = $2`,
-      [makeVisible, id]
-    );
-    res.redirect("/admin/checkins");
-  } catch (e) {
-    console.error("Visibility update error:", e);
-    res.status(500).send("❌ Cannot update visibility");
-  }
-});
-// ===================== CLEAN TOGGLE =====================
-app.post("/admin/checkins/:id/clean", async (req, res) => {
-  const id = Number(req.params.id);
-
-  try {
-    await pool.query(
-      `UPDATE checkins SET clean_ok = NOT clean_ok WHERE id = $1`,
-      [id]
-    );
-    res.redirect("/admin/checkins");
-  } catch (e) {
-    console.error("Clean toggle error:", e);
-    res.status(500).send("❌ Cannot toggle clean status");
-  }
-});
 // ===================== BLOCK: GUEST DASHBOARD =====================
 // Guest opens: /guest/:aptId/:token
 // We show last submitted record for this booking token.
@@ -727,6 +480,231 @@ app.get("/guest/:aptId/:token", async (req, res) => {
   }
 });
 
+// ===================== ADMIN ROUTES =====================
+
+// --- LIST + FILTER ---
+app.get("/admin/checkins", async (req, res) => {
+  try {
+    const { from, to, days } = req.query;
+
+    const today = new Date();
+    const todayStr = ymd(today);
+
+    let fromDate = from || "";
+    let toDate = to || "";
+
+    if (days && !from && !to) {
+      const n = Math.max(0, parseInt(days, 10) || 0);
+      const t2 = new Date(today);
+      t2.setDate(today.getDate() + n);
+      fromDate = todayStr;
+      toDate = ymd(t2);
+    }
+
+    const where = [];
+    const params = [];
+    if (fromDate) {
+      params.push(fromDate);
+      where.push(`arrival_date >= $${params.length}`);
+    }
+    if (toDate) {
+      params.push(toDate);
+      where.push(`arrival_date <= $${params.length}`);
+    }
+    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+    const { rows } = await pool.query(
+      `
+      SELECT
+        id,
+        apartment_id,
+        full_name,
+        phone,
+        arrival_date,
+        arrival_time,
+        departure_date,
+        departure_time,
+        lock_code,
+        lock_visible,
+        clean_ok
+      FROM checkins
+      ${whereSql}
+      ORDER BY arrival_date ASC, arrival_time ASC, id DESC
+      LIMIT 300
+      `,
+      params
+    );
+
+    const toolbar = `
+      <h1>Admin • Check-ins</h1>
+      <p class="muted">Filter by arrival date</p>
+
+      <form class="toolbar" method="GET" action="/admin/checkins">
+        <div>
+          <label>From</label>
+          <input type="date" name="from" value="${fromDate || ""}">
+        </div>
+        <div>
+          <label>To</label>
+          <input type="date" name="to" value="${toDate || ""}">
+        </div>
+        <div>
+          <label>Quick</label>
+          <select name="days">
+            <option value="">—</option>
+            ${[0, 1, 3, 5, 7, 14, 30]
+              .map(
+                (n) =>
+                  `<option value="${n}" ${String(days || "") === String(n) ? "selected" : ""}>Today + ${n}</option>`
+              )
+              .join("")}
+          </select>
+        </div>
+
+        <button class="btn" type="submit">Show</button>
+        <a class="btn-link" href="/admin/checkins">Reset</a>
+        <a class="btn-link" href="/">Back</a>
+      </form>
+    `;
+
+    const table = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Clean</th>
+              <th>Apt</th>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Arrive</th>
+              <th>Depart</th>
+              <th>Lock code</th>
+              <th>Visible</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            ${
+              rows.length
+                ? rows
+                    .map((r) => {
+                      const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time).slice(0, 5)}`;
+                      const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time).slice(0, 5)}`;
+
+                      return `
+                        <tr>
+                          <td>
+                            <form method="POST" action="/admin/checkins/${r.id}/clean">
+                              <button type="submit" class="pill ${r.clean_ok ? "pill-yes" : "pill-no"}">
+                                ${r.clean_ok ? "✅ CLEAN" : "❌ NOT CLEAN"}
+                              </button>
+                            </form>
+                          </td>
+
+                          <td>${r.apartment_id}</td>
+                          <td>${r.full_name}</td>
+                          <td>${r.phone}</td>
+                          <td>${arrive}</td>
+                          <td>${depart}</td>
+
+                          <td>
+                            <form method="POST" action="/admin/checkins/${r.id}/lock" class="lock-form">
+                              <input
+                                class="lock-input"
+                                name="lock_code"
+                                value="${r.lock_code ?? ""}"
+                                inputmode="numeric"
+                                pattern="\\d{4}"
+                                maxlength="4"
+                                placeholder="1234"
+                              />
+                              <button class="btn-small" type="submit">Save</button>
+                              <button class="btn-small btn-ghost" type="submit" name="clear" value="1">Clear</button>
+                            </form>
+                          </td>
+
+                          <td>
+                            <form method="POST" action="/admin/checkins/${r.id}/visibility" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                              <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "🔓 YES" : "🔒 NO"}</span>
+                              <button class="btn-small ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
+                                ${r.lock_visible ? "Hide" : "Show"}
+                              </button>
+                            </form>
+                          </td>
+                        </tr>
+                      `;
+                    })
+                    .join("")
+                : `<tr><td colspan="8" class="muted">No records</td></tr>`
+            }
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    res.send(renderPage("Admin • Check-ins", toolbar + table));
+  } catch (e) {
+    console.error("Admin list error:", e);
+    res.status(500).send("❌ Cannot load checkins");
+  }
+});
+
+// ===================== ADMIN: LOCK CODE SAVE (REPLACE, NOT APPEND) =====================
+app.post("/admin/checkins/:id/lock", async (req, res) => {
+  const id = Number(req.params.id);
+
+  // ✅ sometimes body can become array; take last
+  const raw = req.body.lock_code;
+  const last = Array.isArray(raw) ? raw[raw.length - 1] : raw;
+
+  let lockCode = String(last ?? "").trim();
+  if (req.body.clear === "1") lockCode = "";
+
+  // ✅ digits only + max 4
+  lockCode = lockCode.replace(/\D/g, "").slice(0, 4);
+
+  try {
+    await pool.query(`UPDATE checkins SET lock_code = $1 WHERE id = $2`, [
+      lockCode || null,
+      id,
+    ]);
+    res.redirect("/admin/checkins");
+  } catch (e) {
+    console.error("Lock code update error:", e);
+    res.status(500).send("❌ Cannot update lock code");
+  }
+});
+
+// ===================== ADMIN: SET VISIBILITY =====================
+app.post("/admin/checkins/:id/visibility", async (req, res) => {
+  const id = Number(req.params.id);
+  const makeVisible = String(req.body.makeVisible) === "1";
+
+  try {
+    await pool.query(`UPDATE checkins SET lock_visible = $1 WHERE id = $2`, [
+      makeVisible,
+      id,
+    ]);
+    res.redirect("/admin/checkins");
+  } catch (e) {
+    console.error("Visibility update error:", e);
+    res.status(500).send("❌ Cannot update visibility");
+  }
+});
+
+// ===================== ADMIN: CLEAN TOGGLE =====================
+app.post("/admin/checkins/:id/clean", async (req, res) => {
+  const id = Number(req.params.id);
+
+  try {
+    await pool.query(`UPDATE checkins SET clean_ok = NOT clean_ok WHERE id = $1`, [id]);
+    res.redirect("/admin/checkins");
+  } catch (e) {
+    console.error("Clean toggle error:", e);
+    res.status(500).send("❌ Cannot toggle clean status");
+  }
+});
+
 // ===================== START =====================
 (async () => {
   try {
@@ -737,6 +715,3 @@ app.get("/guest/:aptId/:token", async (req, res) => {
     process.exit(1);
   }
 })();
-
-
-
