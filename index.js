@@ -534,19 +534,21 @@ app.get("/admin/checkins", async (req, res) => {
     const { rows } = await pool.query(
       `
       SELECT
-        id,
-        apartment_id,
-        booking_token,
-        full_name,
-        phone,
-        arrival_date,
-        arrival_time,
-        departure_date,
-        departure_time,
-        lock_code,
-        lock_visible,
-        clean_ok
-      FROM checkins
+  id,
+  booking_id,
+  apartment_name,
+  apartment_id,
+  booking_token,
+  full_name,
+  phone,
+  arrival_date,
+  arrival_time,
+  departure_date,
+  departure_time,
+  lock_code,
+  lock_visible,
+  clean_ok
+FROM checkins
       ${whereSql}
       ORDER BY arrival_date ASC, arrival_time ASC, id DESC
       LIMIT 300
@@ -734,5 +736,6 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
