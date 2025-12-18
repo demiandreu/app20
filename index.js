@@ -518,19 +518,11 @@ app.get("/admin/checkins", async (req, res) => {
       maxlength="4"
       placeholder="1234"
     />
-    <button class="btn-small" type="submit">Save</button>
+  >  <button class="btn-small" type="submit">Save</button>
     <button class="btn-small btn-ghost" type="submit" name="clear" value="1">Clear</button>
   </form>
-</td>
-                          <td>
-  <form method="POST" action="/admin/checkins/${r.id}/visibility" style="display:flex; gap:8px; align-items:center;">
-    <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "YES" : "NO"}</span>
-    <button class="btn-small ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
-      ${r.lock_visible ? "Hide" : "Show"}
-    </button>
-  </form>
-</td>
-                          <td>
+</td
+                         
                             <form method="POST" action="/admin/checkins/${r.id}/lock" style="display:flex;gap:8px;align-items:center;">
                               <input class="mini" name="lock_code" placeholder="Code" value="${r.lock_code ?? ""}" />
                               <button class="btn btn-small" type="submit">Save</button>
@@ -610,5 +602,6 @@ app.post("/admin/checkins/:id/toggle", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
