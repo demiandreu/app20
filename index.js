@@ -587,7 +587,7 @@ FROM checkins
         <a class="btn-link" href="/">Back</a>
       </form>
     `;
-
+const returnTo = req.originalUrl;
     const table = `
       <div class="table-wrap">
         <table>
@@ -746,6 +746,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
