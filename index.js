@@ -1,3 +1,68 @@
+function renderAdminPage(title, innerHtml) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${title}</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:#020617;
+      color:#e5e7eb;
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+    }
+    .page {
+      width:100%;
+      max-width:1200px;   /* ✅ шире для ПК */
+      padding:16px;
+    }
+    .card {
+      background:#020617;
+      border-radius:18px;
+      padding:20px 18px 22px;
+      box-shadow:0 18px 40px rgba(0,0,0,0.55);
+    }
+    h1 { margin:0 0 8px; font-size:20px; }
+    p { margin:0 0 10px; font-size:14px; color:#9ca3af; }
+    .muted { font-size:12px; color:#6b7280; }
+    .toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:end; margin:12px 0 14px; }
+    label { font-size:12px; color:#9ca3af; display:block; margin-bottom:4px; }
+    input, select {
+      padding:8px 10px; border-radius:10px; border:1px solid #1f2937;
+      background:#020617; color:#e5e7eb; font-size:14px;
+    }
+    .btn { border-radius:999px; padding:9px 16px; font-weight:600; border:none; cursor:pointer; background:#2563eb; color:#fff; }
+    .btn-link { background:transparent; color:#9ca3af; text-decoration:none; font-weight:600; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th { text-align:left; padding:10px 8px; border-bottom:1px solid #1f2937; color:#9ca3af; position:sticky; top:0; background:#020617; }
+    td { padding:10px 8px; border-bottom:1px solid #0f172a; white-space:nowrap; }
+
+    /* ✅ на телефоне таблица нормально скроллится */
+    .table-wrap { overflow:auto; border:1px solid #0f172a; border-radius:12px; }
+
+    @media (min-width: 640px) {
+      body { align-items:flex-start; }
+      .page { padding:24px; }
+      h1 { font-size:22px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      ${innerHtml}
+    </div>
+  </div>
+</body>
+</html>`;
+}
 function hourOptions(selected = "") {
   let out = "";
   for (let h = 0; h < 24; h++) {
@@ -19,56 +84,110 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 app.get("/admin/checkins", async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT id, apartment_id, booking_token, full_name, phone,
+    // ✅ фильтры:
+    // /admin/checkins?from=2025-12-18&to=2025-12-25
+    // /admin/checkins?days=5  (покажет заезды от сегодня до сегодня+5)
+    const { from, to, days } = req.query;
+
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+
+    let fromDate = from || "";
+    let toDate = to || "";
+
+    if (days && !from && !to) {
+      const n = Math.max(0, parseInt(days, 10) || 0);
+      const t2 = new Date(today);
+      t2.setDate(today.getDate() + n);
+      const y2 = t2.getFullYear();
+      const m2 = String(t2.getMonth() + 1).padStart(2, "0");
+      const d2 = String(t2.getDate()).padStart(2, "0");
+      fromDate = todayStr;
+      toDate = `${y2}-${m2}-${d2}`;
+    }
+
+    // ✅ строим WHERE только если есть фильтр
+    const where = [];
+    const params = [];
+    if (fromDate) { params.push(fromDate); where.push(`arrival_date >= $${params.length}`); }
+    if (toDate) { params.push(toDate); where.push(`arrival_date <= $${params.length}`); }
+    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+    const result = await pool.query(
+      `
+      SELECT id, apartment_id, full_name, phone,
              arrival_date, arrival_time, departure_date, departure_time, created_at
       FROM checkins
-      ORDER BY created_at DESC
-      LIMIT 50
-    `);
+      ${whereSql}
+      ORDER BY arrival_date ASC, arrival_time ASC, created_at DESC
+      LIMIT 200
+      `,
+      params
+    );
 
     const rows = result.rows;
 
-    const html = `
+    const toolbar = `
       <h1>Admin • Check-ins</h1>
-      <p class="muted">Последние 50 записей</p>
+      <p class="muted">Фильтр по дате заезда (arrival_date)</p>
 
-      <div style="overflow:auto; margin-top:12px;">
-        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+      <form class="toolbar" method="GET" action="/admin/checkins">
+        <div>
+          <label>From (arrival)</label>
+          <input type="date" name="from" value="${fromDate || ""}">
+        </div>
+        <div>
+          <label>To (arrival)</label>
+          <input type="date" name="to" value="${toDate || ""}">
+        </div>
+        <div>
+          <label>Quick (days ahead)</label>
+          <select name="days">
+            <option value="">—</option>
+            ${[0,1,3,5,7,14,30].map(n => `<option value="${n}" ${String(days||"")===String(n) ? "selected":""}>Today + ${n}</option>`).join("")}
+          </select>
+        </div>
+        <button class="btn" type="submit">Show</button>
+        <a class="btn-link" href="/admin/checkins">Reset</a>
+        <a class="btn-link" href="/">Back</a>
+      </form>
+    `;
+
+    const table = `
+      <div class="table-wrap">
+        <table>
           <thead>
             <tr>
-              ${["id","apt","token","name","phone","arrive","depart","created"].map(h => `
-                <th style="text-align:left; padding:8px; border-bottom:1px solid #1f2937; color:#9ca3af;">${h}</th>
-              `).join("")}
+              <th>ID</th>
+              <th>Apt</th>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Arrive</th>
+              <th>Depart</th>
+              <th>Created</th>
             </tr>
           </thead>
           <tbody>
             ${rows.map(r => `
               <tr>
-                <td style="padding:8px; border-bottom:1px solid #0f172a;">${r.id}</td>
-                <td style="padding:8px; border-bottom:1px solid #0f172a;">${r.apartment_id}</td>
-                <td style="padding:8px; border-bottom:1px solid #0f172a;">${r.booking_token}</td>
-                <td style="padding:8px; border-bottom:1px solid #0f172a;">${r.full_name}</td>
-                <td style="padding:8px; border-bottom:1px solid #0f172a;">${r.phone}</td>
-                <td style="padding:8px; border-bottom:1px solid #0f172a;">
-                  ${r.arrival_date?.toISOString?.().slice(0,10) || r.arrival_date} ${String(r.arrival_time).slice(0,5)}
-                </td>
-                <td style="padding:8px; border-bottom:1px solid #0f172a;">
-                  ${r.departure_date?.toISOString?.().slice(0,10) || r.departure_date} ${String(r.departure_time).slice(0,5)}
-                </td>
-                <td style="padding:8px; border-bottom:1px solid #0f172a;">${String(r.created_at)}</td>
+                <td>${r.id}</td>
+                <td>${r.apartment_id}</td>
+                <td>${r.full_name}</td>
+                <td>${r.phone}</td>
+                <td>${String(r.arrival_date).slice(0,10)} ${String(r.arrival_time).slice(0,5)}</td>
+                <td>${String(r.departure_date).slice(0,10)} ${String(r.departure_time).slice(0,5)}</td>
+                <td>${String(r.created_at)}</td>
               </tr>
             `).join("")}
           </tbody>
         </table>
       </div>
-
-      <p style="margin-top:16px;">
-        <a href="/" class="btn-link">← Back</a>
-      </p>
     `;
 
-    res.send(renderPage("Admin • Check-ins", html));
+    res.send(renderAdminPage("Admin • Check-ins", toolbar + table));
   } catch (e) {
     console.error("Admin list error:", e);
     res.status(500).send("❌ Cannot load checkins");
@@ -436,6 +555,7 @@ async function initDb() {
     process.exit(1);
   }
 })();
+
 
 
 
