@@ -70,7 +70,7 @@ const departureTime = booking.departure?.time;
   
   try {
 
- await pool.query( `
+ await pool.query( 
   INSERT INTO checkins (
     apartment_id,
     booking_token,
@@ -134,7 +134,7 @@ const departureTime = booking.departure?.time;
       EXCLUDED.beds24_raw,
       checkins.beds24_raw
     )
-  `,
+  ,
   [
     String(beds24RoomId || booking?.roomId || ""), // apartment_id
     String(booking?.id || ""),                     // booking_token
@@ -936,6 +936,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
