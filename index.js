@@ -45,37 +45,40 @@ const phone =
   console.log("✅ Booking received:", booking.id);
 
   try {
-    await pool.query(
-      `
-      INSERT INTO checkins (
-        apartment_id,
-  booking_token,
-  beds24_booking_id,
-  beds24_room_id,
-  apartment_name,
-  full_name,
-  email,
-  phone,
-  arrival_date,
-  arrival_time,
-  departure_date,
-  departure_time
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-      ON CONFLICT DO NOTHING
-      `,
-      [
-        String(booking.roomId),          // временно roomId
-        String(booking.id),              // booking_token
-        fullName,
-        email,
-        phone,
-        booking.arrival,
-        booking.arrivalTime || "15:00",
-        booking.departure,
-        "11:00"
-      ]
-    );
-
+ await pool.query(
+  `
+  INSERT INTO checkins (
+    apartment_id,
+    booking_token,
+    beds24_booking_id,
+    beds24_room_id,
+    apartment_name,
+    full_name,
+    email,
+    phone,
+    arrival_date,
+    arrival_time,
+    departure_date,
+    departure_time
+  )
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+  ON CONFLICT DO NOTHING
+  `,
+  [
+    String(booking.roomId),
+    String(booking.id),
+    booking.id,
+    booking.roomId,
+    apartmentName,
+    fullName,
+    email,
+    phone,
+    arrivalDate,
+    arrivalTime,
+    departureDate,
+    departureTime
+  ]
+);
     console.log("✅ Booking saved:", booking.id);
     res.status(200).send("OK");
   } catch (err) {
@@ -804,6 +807,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
