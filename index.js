@@ -21,21 +21,7 @@ app.post("/webhooks/beds24", async (req, res) => {
 console.log("📦 Beds24 payload keys:", Object.keys(payload || {}));
   const booking = payload.booking || payload; // на всякий случай
   // --- dates / ids from Beds24 ---
-const arrivalDate = booking?.arrival?.date || booking?.arrivalDate || null;
-const departureDate =
-  booking?.departure?.date ||
-  booking?.departureDate ||
-  booking?.checkout?.date ||
-  null;
 
-const arrivalTime = booking?.arrival?.time || null;
-const departureTime = booking?.departure?.time || null;
-
-const beds24BookingId = booking?.id || booking?.bookingId || null;
-const beds24RoomId = booking?.roomId || booking?.room_id || booking?.room?.id || null;
-const apartmentName = booking?.roomName || booking?.apartmentName || booking?.room?.name || null;
-
-// сырое тело вебхука (в БД как jsonb)
 const beds24Raw = payload;
   const guest = payload.guest || booking.guest || booking.guestData || {};
 
@@ -948,6 +934,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
