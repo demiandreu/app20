@@ -580,7 +580,7 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 app.get("/admin/checkins", async (req, res) => {
   try {
     const { from, to, quick: quickRaw } = req.query;
-   // dima const quick = quickRaw || "today";
+    const quick = quickRaw || "today";
     const tz = "Europe/Madrid";
 
 const today = ymdInTz(new Date(), tz);
@@ -830,6 +830,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
