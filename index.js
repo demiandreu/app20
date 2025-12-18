@@ -255,7 +255,6 @@ app.get("/admin/checkins", async (req, res) => {
     </tbody>
   </table>
 </div>
-    `;
 
     res.send(renderAdminPage("Admin • Check-ins", toolbar + table));
   } catch (e) {
@@ -649,6 +648,7 @@ async function initDb() {
     process.exit(1);
   }
 })();
+
 
 
 
