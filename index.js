@@ -489,7 +489,6 @@ app.get("/admin/checkins", async (req, res) => {
               <th>Depart</th>
               <th>Lock code</th>
               <th>Visible</th>
-              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -508,7 +507,7 @@ app.get("/admin/checkins", async (req, res) => {
                           <td>${r.phone}</td>
                           <td>${arrive}</td>
                           <td>${depart}</td>
-                          <td>
+                         <td>
   <form method="POST" action="/admin/checkins/${r.id}/lock" class="lock-form">
     <input
       class="lock-input"
@@ -518,13 +517,19 @@ app.get("/admin/checkins", async (req, res) => {
       pattern="\\d{4}"
       maxlength="4"
       placeholder="1234"
-      autocomplete="one-time-code"
     />
     <button class="btn-small" type="submit">Save</button>
     <button class="btn-small btn-ghost" type="submit" name="clear" value="1">Clear</button>
   </form>
 </td>
-                          <td>${vis}</td>
+                          <td>
+  <form method="POST" action="/admin/checkins/${r.id}/visibility" style="display:flex; gap:8px; align-items:center;">
+    <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "YES" : "NO"}</span>
+    <button class="btn-small ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
+      ${r.lock_visible ? "Hide" : "Show"}
+    </button>
+  </form>
+</td>
                           <td>
                             <form method="POST" action="/admin/checkins/${r.id}/lock" style="display:flex;gap:8px;align-items:center;">
                               <input class="mini" name="lock_code" placeholder="Code" value="${r.lock_code ?? ""}" />
@@ -569,7 +574,17 @@ app.post("/admin/checkins/:id/lock", async (req, res) => {
     res.status(500).send("❌ Cannot save lock code");
   }
 });
-
+app.post("/admin/checkins/:id/visibility", async (req, res) => {
+  const id = Number(req.params.id);
+  const makeVisible = String(req.body.makeVisible) === "1";
+  try {
+    await pool.query(`UPDATE checkins SET lock_visible = $1 WHERE id = $2`, [makeVisible, id]);
+    res.redirect("/admin/checkins");
+  } catch (e) {
+    console.error("Visibility update error:", e);
+    res.status(500).send("❌ Cannot update visibility");
+  }
+});
 // ADMIN: toggle visibility
 app.post("/admin/checkins/:id/toggle", async (req, res) => {
   try {
@@ -595,4 +610,5 @@ app.post("/admin/checkins/:id/toggle", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
