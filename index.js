@@ -39,6 +39,11 @@ async function initDb() {
       departure_time TIME NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    // --- CLEAN status (is apartment cleaned?) ---
+await pool.query(`
+  ALTER TABLE checkins
+  ADD COLUMN IF NOT EXISTS clean_ok BOOLEAN NOT NULL DEFAULT FALSE;
+`);
   `);
 
   // миграции под замок
@@ -497,7 +502,7 @@ app.get("/admin/checkins", async (req, res) => {
         <table>
           <thead>
             <tr>
-              <th>ID</th>
+              <th>Clean</th>
               <th>Apt</th>
               <th>Name</th>
               <th>Phone</th>
@@ -516,7 +521,13 @@ app.get("/admin/checkins", async (req, res) => {
 
                     return `
                       <tr>
-                        <td>${r.id}</td>
+                        <td>
+  <form method="POST" action="/admin/checkins/${r.id}/clean">
+    <button type="submit" class="pill ${r.clean_ok ? "pill-yes" : "pill-no"}">
+      ${r.clean_ok ? "✅ CLEAN" : "❌ NOT CLEAN"}
+    </button>
+  </form>
+</td>
                         <td>${r.apartment_id}</td>
                         <td>${r.full_name}</td>
                         <td>${r.phone}</td>
@@ -604,6 +615,21 @@ app.post("/admin/checkins/:id/visibility", async (req, res) => {
   } catch (e) {
     console.error("Visibility update error:", e);
     res.status(500).send("❌ Cannot update visibility");
+  }
+});
+// ===================== CLEAN TOGGLE =====================
+app.post("/admin/checkins/:id/clean", async (req, res) => {
+  const id = Number(req.params.id);
+
+  try {
+    await pool.query(
+      `UPDATE checkins SET clean_ok = NOT clean_ok WHERE id = $1`,
+      [id]
+    );
+    res.redirect("/admin/checkins");
+  } catch (e) {
+    console.error("Clean toggle error:", e);
+    res.status(500).send("❌ Cannot toggle clean status");
   }
 });
 // ===================== BLOCK: GUEST DASHBOARD =====================
@@ -703,4 +729,5 @@ app.get("/guest/:aptId/:token", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
