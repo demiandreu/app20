@@ -1,5 +1,4 @@
 require("dotenv").config();
-
 const express = require("express");
 const { Pool } = require("pg");
 
@@ -31,6 +30,25 @@ const PARTEE_LINKS = {
 };
 
 // ----- Helpers -----
+function ymd(d) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function hourOptions(selected = "") {
+  let out = "";
+  for (let h = 0; h < 24; h++) {
+    const hh = String(h).padStart(2, "0");
+    const value = `${hh}:00`;
+    out += `<option value="${value}" ${
+      value === selected ? "selected" : ""
+    }>${hh}:00</option>`;
+  }
+  return out;
+}
+
 function renderPage(title, innerHtml) {
   return `<!doctype html>
 <html lang="en">
@@ -62,6 +80,7 @@ function renderPage(title, innerHtml) {
     h1 { margin: 0 0 8px; font-size: 22px; }
     p { margin: 0 0 10px; font-size: 14px; color: #4b5563; }
     label { font-size: 13px; display: block; margin-bottom: 4px; color:#374151; }
+
     input, select {
       width: 100%;
       padding: 10px 12px;
@@ -76,8 +95,10 @@ function renderPage(title, innerHtml) {
       border-color: #2563eb;
       box-shadow: 0 0 0 4px rgba(37,99,235,0.12);
     }
+
     .row { display: flex; gap: 10px; }
     .row > div { flex: 1; }
+
     .btn-primary, .btn-success, .btn-link, .btn {
       display: inline-block;
       border-radius: 999px;
@@ -115,46 +136,48 @@ function renderPage(title, innerHtml) {
     .table-wrap{overflow:auto;border:1px solid #e5e7eb;border-radius:12px;background:#fff;}
     table{width:100%;border-collapse:collapse;font-size:14px;}
     th{position:sticky;top:0;background:#f9fafb;text-align:left;padding:10px;border-bottom:1px solid #e5e7eb;white-space:nowrap;color:#374151;}
-    td{padding:10px;border-bottom:1px solid #f1f5f9;white-space:nowrap;}
+    td{padding:10px;border-bottom:1px solid #f1f5f9;white-space:nowrap;vertical-align:middle;}
     tr:hover td{background:#f9fafb;}
+
     .pill {display:inline-block;padding:6px 10px;border-radius:999px;font-weight:800;font-size:12px;}
     .pill-yes {background:#dcfce7;color:#166534;}
     .pill-no {background:#fee2e2;color:#991b1b;}
-    .mini {padding:8px 12px;border-radius:12px;border:1px solid #d1d5db;background:#fff;}
-    .btn-small {padding:8px 12px;}
+
+    /* lock code controls */
+    .lock-form{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .lock-input{
+      width:150px;
+      min-width:150px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid #d1d5db;
+      font-size:16px;          /* ✅ важно для мобилки */
+      letter-spacing:0.12em;   /* ✅ легче читать */
+    }
+    .btn-small{
+      border-radius:999px;
+      padding:10px 12px;
+      font-weight:700;
+      border:none;
+      cursor:pointer;
+      background:#2563eb;
+      color:#fff;
+    }
+    .btn-ghost{
+      background:#eef2ff;
+      color:#1e40af;
+    }
+
     @media (min-width: 640px) {
       body { align-items: center; }
       .page { padding: 24px; }
       .card { padding: 24px 22px 24px; }
     }
-    .lock-form{
-  display:flex;
-  gap:8px;
-  align-items:center;
-  flex-wrap:wrap;
-}
-.lock-input{
-  width:120px;
-  min-width:120px;
-  padding:10px 12px;
-  border-radius:12px;
-  border:1px solid #d1d5db;
-  font-size:16px;       /* ✅ важно: на iPhone убирает auto-zoom и делает читабельно */
-  letter-spacing:0.12em; /* ✅ код легче читать */
-}
-.btn-small{
-  border-radius:999px;
-  padding:10px 12px;
-  font-weight:700;
-  border:none;
-  cursor:pointer;
-  background:#2563eb;
-  color:#fff;
-}
-.btn-ghost{
-  background:#eef2ff;
-  color:#1e40af;
-}
   </style>
 </head>
 <body>
@@ -167,52 +190,8 @@ function renderPage(title, innerHtml) {
 </html>`;
 }
 
-function hourOptions(selected = "") {
-  let out = "";
-  for (let h = 0; h < 24; h++) {
-    const hh = String(h).padStart(2, "0");
-    const value = `${hh}:00`;
-    out += `<option value="${value}" ${value === selected ? "selected" : ""}>${hh}:00</option>`;
-  }
-  return out;
-}
-app.post("/admin/checkins/:id/lock", async (req, res) => {
-  const id = Number(req.params.id);
-
-  // ✅ иногда body может быть массивом — берём последнее значение
-  const raw = req.body.lock_code;
-  const last = Array.isArray(raw) ? raw[raw.length - 1] : raw;
-
-  // clear кнопка
-  let lockCode = String(last ?? "").trim();
-  if (req.body.clear === "1") lockCode = "";
-
-  // ✅ оставляем только цифры и максимум 6 (или 4 — как хочешь)
-  lockCode = lockCode.replace(/\D/g, "").slice(0, 6);
-
-  try {
-    await pool.query(
-      `UPDATE checkins SET lock_code = $1 WHERE id = $2`,
-      [lockCode || null, id]
-    );
-    res.redirect("/admin/checkins");
-  } catch (e) {
-    console.error("Lock code update error:", e);
-    res.status(500).send("❌ Cannot update lock code");
-  }
-});
-
-function ymd(d) {
-  // Date -> YYYY-MM-DD
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
 // ----- DB init / migrate -----
 async function initDb() {
-  // 1) базовая таблица
   await pool.query(`
     CREATE TABLE IF NOT EXISTS checkins (
       id SERIAL PRIMARY KEY,
@@ -229,7 +208,6 @@ async function initDb() {
     );
   `);
 
-  // 2) миграция под lock code
   await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_code TEXT;`);
   await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_visible BOOLEAN NOT NULL DEFAULT FALSE;`);
 
@@ -242,7 +220,7 @@ async function initDb() {
 app.get("/", (req, res) => {
   const html = `
     <h1>RCS Guest Portal</h1>
-    <p class="muted">Пример входа:</p>
+    <p class="muted">Example entry:</p>
     <p><a class="btn-primary" href="/booking/apt1/TESTTOKEN123">Open booking example</a></p>
     <p class="muted">Admin: <a class="btn-link" href="/admin/checkins">/admin/checkins</a></p>
   `;
@@ -264,7 +242,6 @@ app.get("/booking/:aptId/:token", (req, res) => {
 // Check-in form
 app.get("/checkin/:aptId/:token", (req, res) => {
   const { aptId, token } = req.params;
-
   const now = new Date();
   const today = ymd(now);
   const tmr = new Date(now);
@@ -355,11 +332,11 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
     const warnings = [];
     const arrivalHour = parseInt(String(req.body.arrivalTime || "").split(":")[0], 10);
     if (!Number.isNaN(arrivalHour) && arrivalHour < 17) {
-      warnings.push("El check-in es a partir de las 17:00. Si desea llegar antes, por favor contacte con nosotros.");
+      warnings.push("Check-in is from 17:00. If you need earlier arrival, please contact us.");
     }
     const departureHour = parseInt(String(req.body.departureTime || "").split(":")[0], 10);
     if (!Number.isNaN(departureHour) && departureHour > 11) {
-      warnings.push("El check-out es hasta las 11:00. Si necesita salir más tarde, por favor contacte con nosotros.");
+      warnings.push("Check-out is until 11:00. If you need later check-out, please contact us.");
     }
 
     const parteeUrl = PARTEE_LINKS[aptId];
@@ -369,7 +346,7 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
         : "";
 
     const html = `
-      <h1>¡Gracias!</h1>
+      <h1>Thank you!</h1>
       ${warningHtml}
       <p>Check-in data received for <strong>${token}</strong> • <strong>${aptId}</strong>.</p>
       ${
@@ -410,31 +387,15 @@ app.get("/admin/checkins", async (req, res) => {
 
     const where = [];
     const params = [];
-
-    if (fromDate) {
-      params.push(fromDate);
-      where.push(`arrival_date >= $${params.length}`);
-    }
-    if (toDate) {
-      params.push(toDate);
-      where.push(`arrival_date <= $${params.length}`);
-    }
-
+    if (fromDate) { params.push(fromDate); where.push(`arrival_date >= $${params.length}`); }
+    if (toDate) { params.push(toDate); where.push(`arrival_date <= $${params.length}`); }
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
     const { rows } = await pool.query(
       `
-      SELECT
-        id,
-        apartment_id,
-        full_name,
-        phone,
-        arrival_date,
-        arrival_time,
-        departure_date,
-        departure_time,
-        lock_code,
-        lock_visible
+      SELECT id, apartment_id, full_name, phone,
+             arrival_date, arrival_time, departure_date, departure_time,
+             lock_code, lock_visible
       FROM checkins
       ${whereSql}
       ORDER BY arrival_date ASC, arrival_time ASC, id DESC
@@ -461,12 +422,7 @@ app.get("/admin/checkins", async (req, res) => {
           <select name="days">
             <option value="">—</option>
             ${[0, 1, 3, 5, 7, 14, 30]
-              .map(
-                (n) =>
-                  `<option value="${n}" ${
-                    String(days || "") === String(n) ? "selected" : ""
-                  }>Today + ${n}</option>`
-              )
+              .map((n) => `<option value="${n}" ${String(days || "") === String(n) ? "selected" : ""}>Today + ${n}</option>`)
               .join("")}
           </select>
         </div>
@@ -498,7 +454,7 @@ app.get("/admin/checkins", async (req, res) => {
                     .map((r) => {
                       const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time).slice(0, 5)}`;
                       const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time).slice(0, 5)}`;
-                      const vis = r.lock_visible ? `<span class="pill pill-yes">🔓 YES</span>` : `<span class="pill pill-no">🔒 NO</span>`;
+
                       return `
                         <tr>
                           <td>${r.id}</td>
@@ -507,28 +463,31 @@ app.get("/admin/checkins", async (req, res) => {
                           <td>${r.phone}</td>
                           <td>${arrive}</td>
                           <td>${depart}</td>
-                         <td>
-  <form method="POST" action="/admin/checkins/${r.id}/lock" class="lock-form">
-    <input
-      class="lock-input"
-      name="lock_code"
-      value="${r.lock_code ?? ""}"
-      inputmode="numeric"
-      pattern="\\d{4}"
-      maxlength="4"
-      placeholder="1234"
-    />
-  >  <button class="btn-small" type="submit">Save</button>
-    <button class="btn-small btn-ghost" type="submit" name="clear" value="1">Clear</button>
-  </form>
-</td
-                         
-                            <form method="POST" action="/admin/checkins/${r.id}/lock" style="display:flex;gap:8px;align-items:center;">
-                              <input class="mini" name="lock_code" placeholder="Code" value="${r.lock_code ?? ""}" />
-                              <button class="btn btn-small" type="submit">Save</button>
+
+                          <td>
+                            <form method="POST" action="/admin/checkins/${r.id}/lock" class="lock-form">
+                              <input
+                                class="lock-input"
+                                name="lock_code"
+                                value="${r.lock_code ?? ""}"
+                                inputmode="numeric"
+                                pattern="\\d{4}"
+                                maxlength="4"
+                                placeholder="1234"
+                              />
+                              <button class="btn-small" type="submit">Save</button>
+                              <button class="btn-small btn-ghost" type="submit" name="clear" value="1">Clear</button>
                             </form>
-                            <form method="POST" action="/admin/checkins/${r.id}/toggle" style="margin-top:8px;">
-                              <button class="btn btn-small" type="submit">${r.lock_visible ? "Hide" : "Show"}</button>
+                          </td>
+
+                          <td>
+                            <form method="POST" action="/admin/checkins/${r.id}/visibility" style="display:flex; gap:8px; align-items:center;">
+                              <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">
+                                ${r.lock_visible ? "🔓 YES" : "🔒 NO"}
+                              </span>
+                              <button class="btn-small ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
+                                ${r.lock_visible ? "Hide" : "Show"}
+                              </button>
                             </form>
                           </td>
                         </tr>
@@ -548,21 +507,46 @@ app.get("/admin/checkins", async (req, res) => {
     res.status(500).send("❌ Cannot load checkins");
   }
 });
+
+// ADMIN: save lock code (mobile-safe: handles array & sanitizes)
+app.post("/admin/checkins/:id/lock", async (req, res) => {
+  const id = Number(req.params.id);
+
+  const raw = req.body.lock_code;
+  const last = Array.isArray(raw) ? raw[raw.length - 1] : raw;
+
+  let lockCode = String(last ?? "").trim();
+  if (req.body.clear === "1") lockCode = "";
+
+  // keep digits only, max 4
+  lockCode = lockCode.replace(/\D/g, "").slice(0, 4);
+
+  try {
+    await pool.query(`UPDATE checkins SET lock_code = $1 WHERE id = $2`, [
+      lockCode || null,
+      id,
+    ]);
+    res.redirect("/admin/checkins");
+  } catch (e) {
+    console.error("Lock code update error:", e);
+    res.status(500).send("❌ Cannot update lock code");
+  }
+});
+
+// ADMIN: set visibility explicitly (Show/Hide)
 app.post("/admin/checkins/:id/visibility", async (req, res) => {
   const id = Number(req.params.id);
   const makeVisible = String(req.body.makeVisible) === "1";
+
   try {
-    await pool.query(`UPDATE checkins SET lock_visible = $1 WHERE id = $2`, [makeVisible, id]);
+    await pool.query(`UPDATE checkins SET lock_visible = $1 WHERE id = $2`, [
+      makeVisible,
+      id,
+    ]);
     res.redirect("/admin/checkins");
   } catch (e) {
     console.error("Visibility update error:", e);
     res.status(500).send("❌ Cannot update visibility");
-  }
-});
-    res.redirect("/admin/checkins");
-  } catch (e) {
-    console.error("Toggle error:", e);
-    res.status(500).send("❌ Cannot toggle");
   }
 });
 
@@ -576,8 +560,3 @@ app.post("/admin/checkins/:id/visibility", async (req, res) => {
     process.exit(1);
   }
 })();
-
-
-
-
-
