@@ -43,7 +43,12 @@ const phone =
   }
 
   console.log("✅ Booking received:", booking.id);
-
+  
+const arrivalDate = booking.arrival?.date;
+const arrivalTime = booking.arrival?.time;
+const departureDate = booking.departure?.date;
+const departureTime = booking.departure?.time;
+  
   try {
  await pool.query(
   `
@@ -826,6 +831,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
