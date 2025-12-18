@@ -571,7 +571,8 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 // --- LIST + FILTER ---
 app.get("/admin/checkins", async (req, res) => {
   try {
-    const { from, to, quick } = req.query;
+    const { from, to, quick: quickRaw } = req.query;
+    const quick = quickRaw || "today";
     const tz = "Europe/Madrid";
 
 const today = ymdInTz(new Date(), tz);
@@ -649,7 +650,6 @@ FROM checkins
         <div>
           <label>Quick</label>
 <select name="quick">
-  <option value="">—</option>
   <option value="yesterday" ${quick==="yesterday"?"selected":""}>Yesterday</option>
   <option value="today" ${quick==="today"?"selected":""}>Today</option>
   <option value="tomorrow" ${quick==="tomorrow"?"selected":""}>Tomorrow</option>
@@ -823,6 +823,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
