@@ -220,7 +220,6 @@ app.get("/admin/checkins", async (req, res) => {
               <th>Phone</th>
               <th>Arrive</th>
               <th>Depart</th>
-              <th>Created</th>
             </tr>
           </thead>
           <tbody>
@@ -232,7 +231,6 @@ app.get("/admin/checkins", async (req, res) => {
                 <td>${r.phone}</td>
                 <td>${String(r.arrival_date).slice(0,10)} ${String(r.arrival_time).slice(0,5)}</td>
                 <td>${String(r.departure_date).slice(0,10)} ${String(r.departure_time).slice(0,5)}</td>
-                <td>${String(r.created_at)}</td>
               </tr>
             `).join("")}
           </tbody>
@@ -632,6 +630,7 @@ async function initDb() {
     process.exit(1);
   }
 })();
+
 
 
 
