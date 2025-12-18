@@ -17,6 +17,63 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
+app.get("/admin/checkins", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, apartment_id, booking_token, full_name, phone,
+             arrival_date, arrival_time, departure_date, departure_time, created_at
+      FROM checkins
+      ORDER BY created_at DESC
+      LIMIT 50
+    `);
+
+    const rows = result.rows;
+
+    const html = `
+      <h1>Admin • Check-ins</h1>
+      <p class="muted">Последние 50 записей</p>
+
+      <div style="overflow:auto; margin-top:12px;">
+        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+          <thead>
+            <tr>
+              ${["id","apt","token","name","phone","arrive","depart","created"].map(h => `
+                <th style="text-align:left; padding:8px; border-bottom:1px solid #1f2937; color:#9ca3af;">${h}</th>
+              `).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td style="padding:8px; border-bottom:1px solid #0f172a;">${r.id}</td>
+                <td style="padding:8px; border-bottom:1px solid #0f172a;">${r.apartment_id}</td>
+                <td style="padding:8px; border-bottom:1px solid #0f172a;">${r.booking_token}</td>
+                <td style="padding:8px; border-bottom:1px solid #0f172a;">${r.full_name}</td>
+                <td style="padding:8px; border-bottom:1px solid #0f172a;">${r.phone}</td>
+                <td style="padding:8px; border-bottom:1px solid #0f172a;">
+                  ${r.arrival_date?.toISOString?.().slice(0,10) || r.arrival_date} ${String(r.arrival_time).slice(0,5)}
+                </td>
+                <td style="padding:8px; border-bottom:1px solid #0f172a;">
+                  ${r.departure_date?.toISOString?.().slice(0,10) || r.departure_date} ${String(r.departure_time).slice(0,5)}
+                </td>
+                <td style="padding:8px; border-bottom:1px solid #0f172a;">${String(r.created_at)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+
+      <p style="margin-top:16px;">
+        <a href="/" class="btn-link">← Back</a>
+      </p>
+    `;
+
+    res.send(renderPage("Admin • Check-ins", html));
+  } catch (e) {
+    console.error("Admin list error:", e);
+    res.status(500).send("❌ Cannot load checkins");
+  }
+});
 app.listen(PORT, () => console.log("running"));
 
 if (!process.env.DATABASE_URL) {
@@ -379,6 +436,7 @@ async function initDb() {
     process.exit(1);
   }
 })();
+
 
 
 
