@@ -559,14 +559,6 @@ app.post("/admin/checkins/:id/visibility", async (req, res) => {
     res.status(500).send("❌ Cannot update visibility");
   }
 });
-// ADMIN: toggle visibility
-app.post("/admin/checkins/:id/toggle", async (req, res) => {
-  try {
-    const id = parseInt(req.params.id, 10);
-    await pool.query(
-      `UPDATE checkins SET lock_visible = NOT lock_visible WHERE id = $1`,
-      [id]
-    );
     res.redirect("/admin/checkins");
   } catch (e) {
     console.error("Toggle error:", e);
@@ -584,6 +576,7 @@ app.post("/admin/checkins/:id/toggle", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
