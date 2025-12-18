@@ -518,6 +518,7 @@ app.get("/admin/checkins", async (req, res) => {
       SELECT
         id,
         apartment_id,
+        booking_token,
         full_name,
         phone,
         arrival_date,
@@ -715,3 +716,4 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
