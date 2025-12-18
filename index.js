@@ -11,7 +11,7 @@ app.use(express.json());
 // ======================
 app.post("/webhooks/beds24", async (req, res) => {
   const secret = String(req.query.key || "");
-  if (secret !== String(process.env.BEDS24_WEBHOOK_KEY)) {
+  if (secret !== String(process.env.BEDS24_SECRET)) {
     console.log("❌ Beds24 webhook: invalid secret");
     return res.status(401).send("Unauthorized");
   }
@@ -798,6 +798,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
