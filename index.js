@@ -449,6 +449,11 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
   const { aptId, token } = req.params;
 
   try {
+     // 👉 НОРМАЛИЗАЦИЯ ДАННЫХ (ОБЯЗАТЕЛЬНО)
+    const arrivalDate   = req.body.arrivalDate;
+    const arrivalTime   = req.body.arrivalTime || "16:00";
+    const departureDate = req.body.departureDate;
+    const departureTime = req.body.departureTime || "11:00";
     await pool.query(
       `
       INSERT INTO checkins (
@@ -821,6 +826,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
