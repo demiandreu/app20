@@ -580,7 +580,7 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 app.get("/admin/checkins", async (req, res) => {
   try {
     const { from, to, quick: quickRaw } = req.query;
-    const quick = quickRaw || "today";
+   // dima const quick = quickRaw || "today";
     const tz = "Europe/Madrid";
 
 const today = ymdInTz(new Date(), tz);
@@ -589,20 +589,19 @@ const yesterday = ymdInTz(new Date(Date.now() - 86400000), tz);
 
 let fromDate = from;
 let toDate = to;
+const useQuick = !!quick && !fromDate && !toDate;
 
-if (quick === "yesterday") {
-  fromDate = yesterday;
-  toDate = yesterday;
-}
-
-if (quick === "today") {
-  fromDate = today;
-  toDate = today;
-}
-
-if (quick === "tomorrow") {
-  fromDate = tomorrow;
-  toDate = tomorrow;
+if (useQuick) {
+  if (quick === "yesterday") {
+    fromDate = yesterday;
+    toDate = yesterday;
+  } else if (quick === "today") {
+    fromDate = today;
+    toDate = today;
+  } else if (quick === "tomorrow") {
+    fromDate = tomorrow;
+    toDate = tomorrow;
+  }
 }
 
     const where = [];
@@ -831,6 +830,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
