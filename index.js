@@ -59,7 +59,7 @@ const departureDate = booking.departure?.date;
 const departureTime = booking.departure?.time;
   
   try {
- await pool.query(
+ /* await pool.query(
   `
   INSERT INTO checkins (
     apartment_id,
@@ -76,7 +76,46 @@ const departureTime = booking.departure?.time;
   )
   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
   ON CONFLICT DO NOTHING
-  `,
+  `, */
+    await pool.query(
+  `INSERT INTO checkins (
+     booking_token,
+     full_name, email, phone,
+     arrival_date, arrival_time,
+     departure_date, departure_time,
+     beds24_booking_id, beds24_room_id,
+     apartment_name,
+     beds24_raw
+   )
+   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb)
+   ON CONFLICT (booking_token)
+   DO UPDATE SET
+     full_name = EXCLUDED.full_name,
+     email = EXCLUDED.email,
+     phone = EXCLUDED.phone,
+     arrival_date = COALESCE(EXCLUDED.arrival_date, checkins.arrival_date),
+     arrival_time = COALESCE(EXCLUDED.arrival_time, checkins.arrival_time),
+     departure_date = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
+     departure_time = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
+     beds24_booking_id = COALESCE(EXCLUDED.beds24_booking_id, checkins.beds24_booking_id),
+     beds24_room_id = COALESCE(EXCLUDED.beds24_room_id, checkins.beds24_room_id),
+     apartment_name = COALESCE(EXCLUDED.apartment_name, checkins.apartment_name),
+     beds24_raw = EXCLUDED.beds24_raw`,
+  [
+    String(booking.id),     // booking_token (у тебя он уже где-то берётся)
+    fullname,
+    email,
+    phone,
+    arrivalDate,
+    arrivalTime,
+    departureDate,
+    departureTime,
+    beds24BookingId,
+    beds24RoomId,
+    apartmentName,
+    JSON.stringify(payload)
+  ]
+);
   [
     String(booking.roomId),
     String(booking.id),
@@ -839,6 +878,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
