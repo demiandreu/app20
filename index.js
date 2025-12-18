@@ -196,86 +196,71 @@ function renderPage(title, innerHtml) {
     }
     .warnings p{ margin:4px 0; color:#9a3412; }
 
-    /* ================= admin styles ================ */
-    .toolbar{
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-      align-items:end;
-      margin:12px 0 14px;
-    }
-    .table-wrap{
-      overflow:auto;
-      border:1px solid #e5e7eb;
-      border-radius:12px;
-      background:#fff;
-    }
-    table{ width:100%; border-collapse:collapse; font-size:14px; }
-    th{
-      position:sticky;
-      top:0;
-      background:#f9fafb;
-      text-align:left;
-      padding:10px;
-      border-bottom:1px solid #e5e7eb;
-      white-space:nowrap;
-      color:#374151;
-    }
-    td{
-      padding:10px;
-      border-bottom:1px solid #f1f5f9;
-      white-space:nowrap;
-      vertical-align:middle;
-    }
-    tr:hover td{ background:#f9fafb; }
+   table-wrap{
+  overflow:auto;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  background:#fff;
+}
 
-    .pill{
-      display:inline-block;
-      padding:6px 10px;
-      border-radius:999px;
-      font-weight:800;
-      font-size:12px;
-      border:none;
-      cursor:pointer;
-    }
-    .pill-yes{ background:#dcfce7; color:#166534; }
-    .pill-no{ background:#fee2e2; color:#991b1b; }
+/* компактнее таблица */
+table{ width:100%; border-collapse:collapse; font-size:12px; }
+th{
+  position:sticky;
+  top:0;
+  background:#f9fafb;
+  text-align:left;
+  padding:6px 8px;            /* было 10px */
+  border-bottom:1px solid #e5e7eb;
+  white-space:nowrap;
+  color:#374151;
+  font-size:12px;
+}
+td{
+  padding:6px 8px;            /* было 10px */
+  border-bottom:1px solid #f1f5f9;
+  white-space:nowrap;
+  vertical-align:middle;
+}
+tr:hover td{ background:#f9fafb; }
 
-    /* lock editor (важно для мобилки) */
-    .lock-form{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      flex-wrap:wrap;
-    }
-    .lock-input{
-      width:150px;
-      min-width:150px;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid #d1d5db;
-      font-size:16px;          /* ✅ iPhone: без автозума */
-      letter-spacing:0.14em;   /* ✅ легче читать */
-    }
-    .btn-small{
-      border-radius:999px;
-      padding:10px 12px;
-      font-weight:700;
-      border:none;
-      cursor:pointer;
-      background:#2563eb;
-      color:#fff;
-    }
-    .btn-ghost{
-      background:#eef2ff;
-      color:#1e40af;
-    }
+/* компактнее статус-пилюли */
+.pill{
+  display:inline-block;
+  padding:4px 8px;            /* было 6px 10px */
+  border-radius:999px;
+  font-weight:800;
+  font-size:11px;             /* было 12px */
+  line-height:1;
+}
+.pill-yes{ background:#dcfce7; color:#166534; }
+.pill-no{ background:#fee2e2; color:#991b1b; }
 
-    @media (min-width: 640px){
-      body{ align-items:center; }
-      .page{ padding:24px; }
-      .card{ padding:24px 22px 24px; }
-    }
+/* компактнее формы/кнопки */
+.lock-form{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+
+.lock-input{
+  width:110px;                /* было 150px */
+  min-width:110px;
+  padding:8px 10px;           /* было 10px 12px */
+  border-radius:10px;
+  border:1px solid #d1d5db;
+  font-size:14px;             /* было 16px */
+  letter-spacing:0.12em;
+}
+
+.btn-small{
+  border-radius:999px;
+  padding:7px 10px;           /* было 10px 12px */
+  font-weight:700;
+  border:none;
+  cursor:pointer;
+  background:#2563eb;
+  color:#fff;
+  font-size:12px;
+  line-height:1;
+}
+.btn-ghost{ background:#eef2ff; color:#1e40af; }
   </style>
 </head>
 <body>
@@ -746,6 +731,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
