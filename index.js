@@ -17,7 +17,9 @@ app.post("/webhooks/beds24", async (req, res) => {
   }
 
   const payload = req.body;
-  const booking = payload.booking;
+  // debug: сохраним сырой webhook в БД (и/или залогируем)
+console.log("📦 Beds24 payload keys:", Object.keys(payload || {}));
+  const booking = payload.booking || payload; // на всякий случай
   const guest = payload.guest || booking.guest || booking.guestData || {};
 
 const fullName =
@@ -45,6 +47,13 @@ const phone =
   console.log("✅ Booking received:", booking.id);
   
 const arrivalDate = booking.arrival?.date;
+const departureDate = booking.departure?.date || booking.departureDate || booking.checkout?.date || null;
+const arrivalTime = booking.arrival?.time || null;
+const departureTime = booking.departure?.time || null;
+
+const beds24BookingId = booking.id || booking.bookingId || null;
+const beds24RoomId = booking.roomId || booking.room_id || booking.room?.id || null;
+const apartmentName = booking.roomName || booking.apartmentName || booking.room?.name || null;
 const arrivalTime = booking.arrival?.time;
 const departureDate = booking.departure?.date;
 const departureTime = booking.departure?.time;
@@ -830,6 +839,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
