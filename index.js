@@ -601,11 +601,6 @@ FROM checkins
 <th>Phone</th>
 <th>Arrive</th>
 <th>Depart</th>
-<td>
-  <a class="btn-small btn-ghost" href="/guest/${r.apartment_id}/${r.booking_token}" target="_blank">
-    Open
-  </a>
-</td>
 <th>Guest</th>
 <th>Lock code</th>
 <th>Visible</th>
@@ -635,6 +630,13 @@ FROM checkins
 <td>${r.apartment_id}</td>
 <td>${r.full_name}</td>
 <td>${r.phone}</td>
+<td>${arrive}</td>
+<td>${depart}</td>
+<td>
+  <a class="btn-small btn-ghost" href="/guest/${r.apartment_id}/${r.booking_token}" target="_blank">
+    Open
+  </a>
+</td>
 
                           <td>
                             <form method="POST" action="/admin/checkins/${r.id}/lock" class="lock-form">
@@ -744,6 +746,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
