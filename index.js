@@ -60,7 +60,18 @@ await pool.query(`
   ALTER TABLE checkins
   ADD COLUMN IF NOT EXISTS booking_id TEXT;
 `);
+// ||-------------------- DB MIGRATION: BEDS24 FIELDS --------------------||
+await pool.query(`
+  ALTER TABLE checkins
+    ADD COLUMN IF NOT EXISTS booking_id TEXT,
+    ADD COLUMN IF NOT EXISTS apartment_name TEXT,
+    ADD COLUMN IF NOT EXISTS beds24_raw JSONB;
+`);
 
+await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_checkins_booking_id ON checkins(booking_id);
+`);
+// ||------------------ END DB MIGRATION: BEDS24 FIELDS ------------------||
 // Human readable apartment name (from Beds24)
 await pool.query(`
   ALTER TABLE checkins
@@ -731,6 +742,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
