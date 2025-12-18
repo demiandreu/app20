@@ -25,6 +25,7 @@ const pool = new Pool({
 });
 
 async function initDb() {
+  // 1) Base table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS checkins (
       id SERIAL PRIMARY KEY,
@@ -39,18 +40,25 @@ async function initDb() {
       departure_time TIME NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-    // --- CLEAN status (is apartment cleaned?) ---
-await pool.query(`
-  ALTER TABLE checkins
-  ADD COLUMN IF NOT EXISTS clean_ok BOOLEAN NOT NULL DEFAULT FALSE;
-`);
   `);
 
-  // миграции под замок
-  await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_code TEXT;`);
-  await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_visible BOOLEAN NOT NULL DEFAULT FALSE;`);
+  // 2) Migrations (add columns if missing)
+  await pool.query(`
+    ALTER TABLE checkins
+    ADD COLUMN IF NOT EXISTS lock_code TEXT;
+  `);
 
-  console.log("✅ DB ready: checkins table ok (+ lock_code, lock_visible)");
+  await pool.query(`
+    ALTER TABLE checkins
+    ADD COLUMN IF NOT EXISTS lock_visible BOOLEAN NOT NULL DEFAULT FALSE;
+  `);
+
+  await pool.query(`
+    ALTER TABLE checkins
+    ADD COLUMN IF NOT EXISTS clean_ok BOOLEAN NOT NULL DEFAULT FALSE;
+  `);
+
+  console.log("✅ DB ready: checkins table ok (+ lock_code, lock_visible, clean_ok)");
 }
 
 // ===================== APP SETTINGS / DATA =====================
@@ -729,5 +737,6 @@ app.get("/guest/:aptId/:token", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
