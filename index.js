@@ -572,7 +572,30 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 // --- LIST + FILTER ---
 app.get("/admin/checkins", async (req, res) => {
   try {
-    const { from, to, days } = req.query;
+    const { from, to, quick } = req.query;
+    const tz = "Europe/Madrid";
+
+const today = ymdInTz(new Date(), tz);
+const tomorrow = ymdInTz(new Date(Date.now() + 86400000), tz);
+const yesterday = ymdInTz(new Date(Date.now() - 86400000), tz);
+
+let fromDate = from;
+let toDate = to;
+
+if (quick === "yesterday") {
+  fromDate = yesterday;
+  toDate = yesterday;
+}
+
+if (quick === "today") {
+  fromDate = today;
+  toDate = today;
+}
+
+if (quick === "tomorrow") {
+  fromDate = tomorrow;
+  toDate = tomorrow;
+}
 
     const today = new Date();
     const todayStr = ymd(today);
@@ -640,15 +663,12 @@ FROM checkins
         </div>
         <div>
           <label>Quick</label>
-          <select name="days">
-            <option value="">—</option>
-            ${[0, 1, 3, 5, 7, 14, 30]
-              .map(
-                (n) =>
-                  `<option value="${n}" ${String(days || "") === String(n) ? "selected" : ""}>Today + ${n}</option>`
-              )
-              .join("")}
-          </select>
+<select name="quick">
+  <option value="">—</option>
+  <option value="yesterday" ${quick==="yesterday"?"selected":""}>Yesterday</option>
+  <option value="today" ${quick==="today"?"selected":""}>Today</option>
+  <option value="tomorrow" ${quick==="tomorrow"?"selected":""}>Tomorrow</option>
+</select>
         </div>
 
         <button class="btn" type="submit">Show</button>
@@ -818,6 +838,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
