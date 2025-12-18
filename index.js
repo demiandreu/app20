@@ -259,6 +259,7 @@ function renderPage(title, innerHtml) {
       text-decoration:none;
       border:none;
       cursor:pointer;
+      margin: 10px;
     }
     .btn-primary{ background:#2563eb; color:#fff; }
     .btn-success{ background:#16a34a; color:#fff; }
@@ -657,7 +658,7 @@ FROM checkins
 </select>
         </div>
 
-        <button class="btn" padding:10px type="submit">Show</button>
+        <button class="btn" type="submit">Show</button>
         <a class="btn-link" href="/admin/checkins">Reset</a>
         <a class="btn-link" href="/">Back</a>
       </form>
@@ -824,6 +825,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
