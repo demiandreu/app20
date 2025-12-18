@@ -769,7 +769,8 @@ app.post("/admin/checkins/:id/lock", async (req, res) => {
       lockCode || null,
       id,
     ]);
-res.redirect(req.get("referer") || "/admin/checkins");
+    const back = req.body.returnTo || req.get("referer") || "/admin/checkins";
+res.redirect(back);
   } catch (e) {
     console.error("Lock code update error:", e);
     res.status(500).send("❌ Cannot update lock code");
@@ -786,7 +787,8 @@ app.post("/admin/checkins/:id/visibility", async (req, res) => {
       makeVisible,
       id,
     ]);
-    res.redirect("/admin/checkins");
+   const back = req.body.returnTo || req.get("referer") || "/admin/checkins";
+res.redirect(back);
   } catch (e) {
     console.error("Visibility update error:", e);
     res.status(500).send("❌ Cannot update visibility");
@@ -799,7 +801,8 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
 
   try {
     await pool.query(`UPDATE checkins SET clean_ok = NOT clean_ok WHERE id = $1`, [id]);
-    res.redirect("/admin/checkins");
+   const back = req.body.returnTo || req.get("referer") || "/admin/checkins";
+res.redirect(back);
   } catch (e) {
     console.error("Clean toggle error:", e);
     res.status(500).send("❌ Cannot toggle clean status");
@@ -816,6 +819,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
