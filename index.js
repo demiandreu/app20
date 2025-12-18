@@ -1,3 +1,4 @@
+// ===================== CONFIG =====================
 require("dotenv").config();
 const express = require("express");
 const { Pool } = require("pg");
@@ -8,7 +9,7 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-// --- DB ---
+// ===================== DB =====================
 if (!process.env.DATABASE_URL) {
   console.error("❌ DATABASE_URL is missing in env");
   process.exit(1);
@@ -23,174 +24,6 @@ const pool = new Pool({
   ssl: isLocalDb ? false : { rejectUnauthorized: false },
 });
 
-// ----- Partee links -----
-const PARTEE_LINKS = {
-  apt1: "https://u.partee.es/3636642/Cd78OQqWOB63wMJLFmB0JzdLL",
-  // apt2: "...",
-};
-
-// ----- Helpers -----
-function ymd(d) {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function hourOptions(selected = "") {
-  let out = "";
-  for (let h = 0; h < 24; h++) {
-    const hh = String(h).padStart(2, "0");
-    const value = `${hh}:00`;
-    out += `<option value="${value}" ${
-      value === selected ? "selected" : ""
-    }>${hh}:00</option>`;
-  }
-  return out;
-}
-
-function renderPage(title, innerHtml) {
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${title}</title>
-  <style>
-    :root { color-scheme: light; }
-    * { box-sizing: border-box; }
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f6f7fb;
-      color: #111827;
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-    }
-    .page { width: 100%; max-width: 1100px; padding: 16px; }
-    .card {
-      background: #fff;
-      border-radius: 18px;
-      padding: 20px 18px 22px;
-      box-shadow: 0 10px 28px rgba(17,24,39,0.08);
-      border: 1px solid #e5e7eb;
-    }
-    h1 { margin: 0 0 8px; font-size: 22px; }
-    p { margin: 0 0 10px; font-size: 14px; color: #4b5563; }
-    label { font-size: 13px; display: block; margin-bottom: 4px; color:#374151; }
-
-    input, select {
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid #d1d5db;
-      background: #fff;
-      color: #111827;
-      font-size: 14px;
-    }
-    input:focus, select:focus {
-      outline: none;
-      border-color: #2563eb;
-      box-shadow: 0 0 0 4px rgba(37,99,235,0.12);
-    }
-
-    .row { display: flex; gap: 10px; }
-    .row > div { flex: 1; }
-
-    .btn-primary, .btn-success, .btn-link, .btn {
-      display: inline-block;
-      border-radius: 999px;
-      padding: 10px 18px;
-      font-weight: 700;
-      font-size: 14px;
-      text-decoration: none;
-      border: none;
-      cursor: pointer;
-    }
-    .btn-primary { background: #2563eb; color: #fff; }
-    .btn-success { background: #16a34a; color: #fff; }
-    .btn-link {
-      background: transparent;
-      color: #2563eb;
-      padding: 0;
-      font-weight: 600;
-    }
-    .muted { font-size: 12px; color: #6b7280; }
-
-    .warnings {
-      background: #fff7ed;
-      border: 1px solid #fed7aa;
-      border-radius: 12px;
-      padding: 10px 12px;
-      margin-bottom: 12px;
-      color: #9a3412;
-      font-size: 13px;
-      text-align: left;
-    }
-    .warnings p { margin: 4px 0; color: #9a3412; }
-
-    /* admin table */
-    .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin:12px 0 14px;}
-    .table-wrap{overflow:auto;border:1px solid #e5e7eb;border-radius:12px;background:#fff;}
-    table{width:100%;border-collapse:collapse;font-size:14px;}
-    th{position:sticky;top:0;background:#f9fafb;text-align:left;padding:10px;border-bottom:1px solid #e5e7eb;white-space:nowrap;color:#374151;}
-    td{padding:10px;border-bottom:1px solid #f1f5f9;white-space:nowrap;vertical-align:middle;}
-    tr:hover td{background:#f9fafb;}
-
-    .pill {display:inline-block;padding:6px 10px;border-radius:999px;font-weight:800;font-size:12px;}
-    .pill-yes {background:#dcfce7;color:#166534;}
-    .pill-no {background:#fee2e2;color:#991b1b;}
-
-    /* lock code controls */
-    .lock-form{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      flex-wrap:wrap;
-    }
-    .lock-input{
-      width:150px;
-      min-width:150px;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid #d1d5db;
-      font-size:16px;          /* ✅ важно для мобилки */
-      letter-spacing:0.12em;   /* ✅ легче читать */
-    }
-    .btn-small{
-      border-radius:999px;
-      padding:10px 12px;
-      font-weight:700;
-      border:none;
-      cursor:pointer;
-      background:#2563eb;
-      color:#fff;
-    }
-    .btn-ghost{
-      background:#eef2ff;
-      color:#1e40af;
-    }
-
-    @media (min-width: 640px) {
-      body { align-items: center; }
-      .page { padding: 24px; }
-      .card { padding: 24px 22px 24px; }
-    }
-  </style>
-</head>
-<body>
-  <div class="page">
-    <div class="card">
-      ${innerHtml}
-    </div>
-  </div>
-</body>
-</html>`;
-}
-
-// ----- DB init / migrate -----
 async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS checkins (
@@ -208,15 +41,211 @@ async function initDb() {
     );
   `);
 
+  // миграции под замок
   await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_code TEXT;`);
   await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_visible BOOLEAN NOT NULL DEFAULT FALSE;`);
 
   console.log("✅ DB ready: checkins table ok (+ lock_code, lock_visible)");
 }
 
-// ===================== ROUTES =====================
+// ===================== APP SETTINGS / DATA =====================
+const PARTEE_LINKS = {
+  apt1: "https://u.partee.es/3636642/Cd78OQqWOB63wMJLFmB0JzdLL",
+  // apt2: "...",
+};
 
-// Home
+// ===================== HELPERS =====================
+function ymd(d) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function hourOptions(selected = "") {
+  let out = "";
+  for (let h = 0; h < 24; h++) {
+    const hh = String(h).padStart(2, "0");
+    const value = `${hh}:00`;
+    out += `<option value="${value}" ${value === selected ? "selected" : ""}>${hh}:00</option>`;
+  }
+  return out;
+}
+
+function renderPage(title, innerHtml) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${title}</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+
+    body{
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:#f6f7fb;
+      color:#111827;
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+    }
+    .page{ width:100%; max-width:1100px; padding:16px; }
+    .card{
+      background:#fff;
+      border-radius:18px;
+      padding:20px 18px 22px;
+      box-shadow:0 10px 28px rgba(17,24,39,0.08);
+      border:1px solid #e5e7eb;
+    }
+    h1{ margin:0 0 8px; font-size:22px; }
+    p{ margin:0 0 10px; font-size:14px; color:#4b5563; }
+    .muted{ font-size:12px; color:#6b7280; }
+
+    label{ font-size:13px; display:block; margin-bottom:4px; color:#374151; }
+    input, select{
+      width:100%;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid #d1d5db;
+      background:#fff;
+      color:#111827;
+      font-size:14px;
+    }
+    input:focus, select:focus{
+      outline:none;
+      border-color:#2563eb;
+      box-shadow:0 0 0 4px rgba(37,99,235,0.12);
+    }
+
+    .row{ display:flex; gap:10px; }
+    .row > div{ flex:1; }
+
+    .btn-primary, .btn-success, .btn-link, .btn{
+      display:inline-block;
+      border-radius:999px;
+      padding:10px 18px;
+      font-weight:700;
+      font-size:14px;
+      text-decoration:none;
+      border:none;
+      cursor:pointer;
+    }
+    .btn-primary{ background:#2563eb; color:#fff; }
+    .btn-success{ background:#16a34a; color:#fff; }
+    .btn-link{
+      background:transparent;
+      color:#2563eb;
+      padding:0;
+      font-weight:600;
+    }
+
+    .warnings{
+      background:#fff7ed;
+      border:1px solid #fed7aa;
+      border-radius:12px;
+      padding:10px 12px;
+      margin-bottom:12px;
+      color:#9a3412;
+      font-size:13px;
+      text-align:left;
+    }
+    .warnings p{ margin:4px 0; color:#9a3412; }
+
+    /* ================= admin styles ================ */
+    .toolbar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:end;
+      margin:12px 0 14px;
+    }
+    .table-wrap{
+      overflow:auto;
+      border:1px solid #e5e7eb;
+      border-radius:12px;
+      background:#fff;
+    }
+    table{ width:100%; border-collapse:collapse; font-size:14px; }
+    th{
+      position:sticky;
+      top:0;
+      background:#f9fafb;
+      text-align:left;
+      padding:10px;
+      border-bottom:1px solid #e5e7eb;
+      white-space:nowrap;
+      color:#374151;
+    }
+    td{
+      padding:10px;
+      border-bottom:1px solid #f1f5f9;
+      white-space:nowrap;
+      vertical-align:middle;
+    }
+    tr:hover td{ background:#f9fafb; }
+
+    .pill{
+      display:inline-block;
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:800;
+      font-size:12px;
+    }
+    .pill-yes{ background:#dcfce7; color:#166534; }
+    .pill-no{ background:#fee2e2; color:#991b1b; }
+
+    /* lock editor (важно для мобилки) */
+    .lock-form{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .lock-input{
+      width:150px;
+      min-width:150px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid #d1d5db;
+      font-size:16px;          /* ✅ iPhone: нормальный ввод без автозума */
+      letter-spacing:0.14em;   /* ✅ код легче читать */
+    }
+    .btn-small{
+      border-radius:999px;
+      padding:10px 12px;
+      font-weight:700;
+      border:none;
+      cursor:pointer;
+      background:#2563eb;
+      color:#fff;
+    }
+    .btn-ghost{
+      background:#eef2ff;
+      color:#1e40af;
+    }
+
+    @media (min-width: 640px){
+      body{ align-items:center; }
+      .page{ padding:24px; }
+      .card{ padding:24px 22px 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      ${innerHtml}
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+// ===================== GUEST ROUTES =====================
 app.get("/", (req, res) => {
   const html = `
     <h1>RCS Guest Portal</h1>
@@ -227,7 +256,6 @@ app.get("/", (req, res) => {
   res.send(renderPage("Home", html));
 });
 
-// Booking page
 app.get("/booking/:aptId/:token", (req, res) => {
   const { aptId, token } = req.params;
   const html = `
@@ -239,9 +267,9 @@ app.get("/booking/:aptId/:token", (req, res) => {
   res.send(renderPage(`Booking ${token}`, html));
 });
 
-// Check-in form
 app.get("/checkin/:aptId/:token", (req, res) => {
   const { aptId, token } = req.params;
+
   const now = new Date();
   const today = ymd(now);
   const tmr = new Date(now);
@@ -303,7 +331,6 @@ app.get("/checkin/:aptId/:token", (req, res) => {
   res.send(renderPage("Check-in", html));
 });
 
-// Check-in submit -> DB
 app.post("/checkin/:aptId/:token", async (req, res) => {
   const { aptId, token } = req.params;
 
@@ -330,16 +357,19 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
     );
 
     const warnings = [];
+
     const arrivalHour = parseInt(String(req.body.arrivalTime || "").split(":")[0], 10);
     if (!Number.isNaN(arrivalHour) && arrivalHour < 17) {
       warnings.push("Check-in is from 17:00. If you need earlier arrival, please contact us.");
     }
+
     const departureHour = parseInt(String(req.body.departureTime || "").split(":")[0], 10);
     if (!Number.isNaN(departureHour) && departureHour > 11) {
-      warnings.push("Check-out is until 11:00. If you need later check-out, please contact us.");
+      warnings.push("Check-out is until 11:00. If you need later departure, please contact us.");
     }
 
     const parteeUrl = PARTEE_LINKS[aptId];
+
     const warningHtml =
       warnings.length > 0
         ? `<div class="warnings">${warnings.map((w) => `<p>${w}</p>`).join("")}</div>`
@@ -348,12 +378,12 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
     const html = `
       <h1>Thank you!</h1>
       ${warningHtml}
-      <p>Check-in data received for <strong>${token}</strong> • <strong>${aptId}</strong>.</p>
+      <p>We received your check-in data for <strong>${token}</strong> • <strong>${aptId}</strong>.</p>
       ${
         parteeUrl
           ? `<p>Continue registration here:</p>
              <p><a class="btn-success" href="${parteeUrl}">Open Partee</a></p>`
-          : `<p style="color:#f97316;">No Partee link for this apartment (${aptId}).</p>`
+          : `<p style="color:#f97316;">No Partee link configured for this apartment (${aptId}).</p>`
       }
       <p class="muted">You can close this page.</p>
       <p><a class="btn-link" href="/">← Back</a></p>
@@ -366,7 +396,9 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
   }
 });
 
-// ADMIN: list + filter
+// ===================== ADMIN ROUTES =====================
+
+// LIST + FILTER
 app.get("/admin/checkins", async (req, res) => {
   try {
     const { from, to, days } = req.query;
@@ -387,15 +419,25 @@ app.get("/admin/checkins", async (req, res) => {
 
     const where = [];
     const params = [];
+
     if (fromDate) { params.push(fromDate); where.push(`arrival_date >= $${params.length}`); }
-    if (toDate) { params.push(toDate); where.push(`arrival_date <= $${params.length}`); }
+    if (toDate)   { params.push(toDate);   where.push(`arrival_date <= $${params.length}`); }
+
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
     const { rows } = await pool.query(
       `
-      SELECT id, apartment_id, full_name, phone,
-             arrival_date, arrival_time, departure_date, departure_time,
-             lock_code, lock_visible
+      SELECT
+        id,
+        apartment_id,
+        full_name,
+        phone,
+        arrival_date,
+        arrival_time,
+        departure_date,
+        departure_time,
+        lock_code,
+        lock_visible
       FROM checkins
       ${whereSql}
       ORDER BY arrival_date ASC, arrival_time ASC, id DESC
@@ -421,11 +463,12 @@ app.get("/admin/checkins", async (req, res) => {
           <label>Quick</label>
           <select name="days">
             <option value="">—</option>
-            ${[0, 1, 3, 5, 7, 14, 30]
-              .map((n) => `<option value="${n}" ${String(days || "") === String(n) ? "selected" : ""}>Today + ${n}</option>`)
-              .join("")}
+            ${[0,1,3,5,7,14,30].map(n => `
+              <option value="${n}" ${String(days||"") === String(n) ? "selected" : ""}>Today + ${n}</option>
+            `).join("")}
           </select>
         </div>
+
         <button class="btn" type="submit">Show</button>
         <a class="btn-link" href="/admin/checkins">Reset</a>
         <a class="btn-link" href="/">Back</a>
@@ -450,50 +493,46 @@ app.get("/admin/checkins", async (req, res) => {
           <tbody>
             ${
               rows.length
-                ? rows
-                    .map((r) => {
-                      const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time).slice(0, 5)}`;
-                      const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time).slice(0, 5)}`;
+                ? rows.map(r => {
+                    const arrive = `${String(r.arrival_date).slice(0,10)} ${String(r.arrival_time).slice(0,5)}`;
+                    const depart = `${String(r.departure_date).slice(0,10)} ${String(r.departure_time).slice(0,5)}`;
 
-                      return `
-                        <tr>
-                          <td>${r.id}</td>
-                          <td>${r.apartment_id}</td>
-                          <td>${r.full_name}</td>
-                          <td>${r.phone}</td>
-                          <td>${arrive}</td>
-                          <td>${depart}</td>
+                    return `
+                      <tr>
+                        <td>${r.id}</td>
+                        <td>${r.apartment_id}</td>
+                        <td>${r.full_name}</td>
+                        <td>${r.phone}</td>
+                        <td>${arrive}</td>
+                        <td>${depart}</td>
 
-                          <td>
-                            <form method="POST" action="/admin/checkins/${r.id}/lock" class="lock-form">
-                              <input
-                                class="lock-input"
-                                name="lock_code"
-                                value="${r.lock_code ?? ""}"
-                                inputmode="numeric"
-                                pattern="\\d{4}"
-                                maxlength="4"
-                                placeholder="1234"
-                              />
-                              <button class="btn-small" type="submit">Save</button>
-                              <button class="btn-small btn-ghost" type="submit" name="clear" value="1">Clear</button>
-                            </form>
-                          </td>
+                        <td>
+                          <form method="POST" action="/admin/checkins/${r.id}/lock" class="lock-form">
+                            <input
+                              class="lock-input"
+                              name="lock_code"
+                              value="${r.lock_code ?? ""}"
+                              inputmode="numeric"
+                              pattern="\\d{4}"
+                              maxlength="4"
+                              placeholder="1234"
+                            />
+                            <button class="btn-small" type="submit">Save</button>
+                            <button class="btn-small btn-ghost" type="submit" name="clear" value="1">Clear</button>
+                          </form>
+                        </td>
 
-                          <td>
-                            <form method="POST" action="/admin/checkins/${r.id}/visibility" style="display:flex; gap:8px; align-items:center;">
-                              <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">
-                                ${r.lock_visible ? "🔓 YES" : "🔒 NO"}
-                              </span>
-                              <button class="btn-small ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
-                                ${r.lock_visible ? "Hide" : "Show"}
-                              </button>
-                            </form>
-                          </td>
-                        </tr>
-                      `;
-                    })
-                    .join("")
+                        <td>
+                          <form method="POST" action="/admin/checkins/${r.id}/visibility" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                            <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "🔓 YES" : "🔒 NO"}</span>
+                            <button class="btn-small ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
+                              ${r.lock_visible ? "Hide" : "Show"}
+                            </button>
+                          </form>
+                        </td>
+                      </tr>
+                    `;
+                  }).join("")
                 : `<tr><td colspan="8" class="muted">No records</td></tr>`
             }
           </tbody>
@@ -508,24 +547,25 @@ app.get("/admin/checkins", async (req, res) => {
   }
 });
 
-// ADMIN: save lock code (mobile-safe: handles array & sanitizes)
+// SAVE lock code (заменяет старый код, не дописывает)
 app.post("/admin/checkins/:id/lock", async (req, res) => {
   const id = Number(req.params.id);
 
+  // иногда body может стать массивом — берём последнее значение
   const raw = req.body.lock_code;
   const last = Array.isArray(raw) ? raw[raw.length - 1] : raw;
 
   let lockCode = String(last ?? "").trim();
   if (req.body.clear === "1") lockCode = "";
 
-  // keep digits only, max 4
+  // только цифры и максимум 4
   lockCode = lockCode.replace(/\D/g, "").slice(0, 4);
 
   try {
-    await pool.query(`UPDATE checkins SET lock_code = $1 WHERE id = $2`, [
-      lockCode || null,
-      id,
-    ]);
+    await pool.query(
+      `UPDATE checkins SET lock_code = $1 WHERE id = $2`,
+      [lockCode || null, id]
+    );
     res.redirect("/admin/checkins");
   } catch (e) {
     console.error("Lock code update error:", e);
@@ -533,16 +573,16 @@ app.post("/admin/checkins/:id/lock", async (req, res) => {
   }
 });
 
-// ADMIN: set visibility explicitly (Show/Hide)
+// SET visibility
 app.post("/admin/checkins/:id/visibility", async (req, res) => {
   const id = Number(req.params.id);
   const makeVisible = String(req.body.makeVisible) === "1";
 
   try {
-    await pool.query(`UPDATE checkins SET lock_visible = $1 WHERE id = $2`, [
-      makeVisible,
-      id,
-    ]);
+    await pool.query(
+      `UPDATE checkins SET lock_visible = $1 WHERE id = $2`,
+      [makeVisible, id]
+    );
     res.redirect("/admin/checkins");
   } catch (e) {
     console.error("Visibility update error:", e);
