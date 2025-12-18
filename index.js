@@ -5,54 +5,107 @@ function renderAdminPage(title, innerHtml) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${title}</title>
-  <style>
-    :root { color-scheme: dark; }
-    * { box-sizing: border-box; }
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:#020617;
-      color:#e5e7eb;
-      margin:0;
-      min-height:100vh;
-      display:flex;
-      justify-content:center;
-      align-items:flex-start;
-    }
-    .page {
-      width:100%;
-      max-width:1200px;   /* ✅ шире для ПК */
-      padding:16px;
-    }
-    .card {
-      background:#020617;
-      border-radius:18px;
-      padding:20px 18px 22px;
-      box-shadow:0 18px 40px rgba(0,0,0,0.55);
-    }
-    h1 { margin:0 0 8px; font-size:20px; }
-    p { margin:0 0 10px; font-size:14px; color:#9ca3af; }
-    .muted { font-size:12px; color:#6b7280; }
-    .toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:end; margin:12px 0 14px; }
-    label { font-size:12px; color:#9ca3af; display:block; margin-bottom:4px; }
-    input, select {
-      padding:8px 10px; border-radius:10px; border:1px solid #1f2937;
-      background:#020617; color:#e5e7eb; font-size:14px;
-    }
-    .btn { border-radius:999px; padding:9px 16px; font-weight:600; border:none; cursor:pointer; background:#2563eb; color:#fff; }
-    .btn-link { background:transparent; color:#9ca3af; text-decoration:none; font-weight:600; }
-    table { width:100%; border-collapse:collapse; font-size:13px; }
-    th { text-align:left; padding:10px 8px; border-bottom:1px solid #1f2937; color:#9ca3af; position:sticky; top:0; background:#020617; }
-    td { padding:10px 8px; border-bottom:1px solid #0f172a; white-space:nowrap; }
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
 
-    /* ✅ на телефоне таблица нормально скроллится */
-    .table-wrap { overflow:auto; border:1px solid #0f172a; border-radius:12px; }
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background:#f6f7fb;
+    color:#111827;
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+  }
 
-    @media (min-width: 640px) {
-      body { align-items:flex-start; }
-      .page { padding:24px; }
-      h1 { font-size:22px; }
-    }
-  </style>
+  .page{
+    width:100%;
+    max-width:1200px; /* ПК */
+    padding:16px;
+  }
+
+  .card{
+    background:#ffffff;
+    border-radius:18px;
+    padding:20px 18px 22px;
+    border:1px solid #e5e7eb;
+    box-shadow:0 10px 28px rgba(17,24,39,0.08);
+  }
+
+  h1{ margin:0 0 8px; font-size:22px; }
+  p{ margin:0 0 10px; font-size:14px; color:#4b5563; }
+  .muted{ font-size:12px; color:#6b7280; }
+
+  .toolbar{
+    display:flex; flex-wrap:wrap; gap:10px; align-items:end;
+    margin:12px 0 14px;
+  }
+
+  label{ font-size:12px; color:#374151; display:block; margin-bottom:4px; }
+
+  input, select{
+    padding:10px 12px;
+    border-radius:12px;
+    border:1px solid #d1d5db;
+    background:#ffffff;
+    color:#111827;
+    font-size:14px;
+  }
+  input:focus, select:focus{
+    outline:none;
+    border-color:#2563eb;
+    box-shadow:0 0 0 4px rgba(37,99,235,0.12);
+  }
+
+  .btn{
+    border-radius:999px;
+    padding:10px 16px;
+    font-weight:700;
+    border:none;
+    cursor:pointer;
+    background:#2563eb;
+    color:#fff;
+  }
+
+  .btn-link{
+    background:transparent;
+    color:#2563eb;
+    text-decoration:none;
+    font-weight:700;
+  }
+
+  .table-wrap{
+    overflow:auto;
+    border:1px solid #e5e7eb;
+    border-radius:12px;
+    background:#ffffff;
+  }
+
+  table{ width:100%; border-collapse:collapse; font-size:14px; }
+  th{
+    text-align:left;
+    padding:10px 10px;
+    border-bottom:1px solid #e5e7eb;
+    color:#374151;
+    position:sticky;
+    top:0;
+    background:#f9fafb;
+    white-space:nowrap;
+  }
+  td{
+    padding:10px 10px;
+    border-bottom:1px solid #f1f5f9;
+    white-space:nowrap;
+    color:#111827;
+  }
+  tr:hover td{ background:#f9fafb; }
+
+  @media (min-width: 640px){
+    .page{ padding:24px; }
+  }
+</style>
 </head>
 <body>
   <div class="page">
@@ -579,6 +632,7 @@ async function initDb() {
     process.exit(1);
   }
 })();
+
 
 
 
