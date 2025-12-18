@@ -49,15 +49,18 @@ const phone =
       `
       INSERT INTO checkins (
         apartment_id,
-        booking_token,
-        full_name,
-        email,
-        phone,
-        arrival_date,
-        arrival_time,
-        departure_date,
-        departure_time
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+  booking_token,
+  beds24_booking_id,
+  beds24_room_id,
+  apartment_name,
+  full_name,
+  email,
+  phone,
+  arrival_date,
+  arrival_time,
+  departure_date,
+  departure_time
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
       ON CONFLICT DO NOTHING
       `,
       [
@@ -122,7 +125,12 @@ async function initDb() {
   await pool.query(
     `ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_visible BOOLEAN NOT NULL DEFAULT FALSE;`
   );
-
+  await pool.query(
+ALTER TABLE checkins
+  ADD COLUMN IF NOT EXISTS beds24_booking_id BIGINT,
+  ADD COLUMN IF NOT EXISTS beds24_room_id TEXT,
+  ADD COLUMN IF NOT EXISTS apartment_name TEXT;
+   );
   // --- clean status ---
   await pool.query(
     `ALTER TABLE checkins ADD COLUMN IF NOT EXISTS clean_ok BOOLEAN NOT NULL DEFAULT FALSE;`
@@ -614,19 +622,19 @@ if (quick === "tomorrow") {
       `
       SELECT
   id,
-  booking_id,
-  apartment_name,
-  apartment_id,
-  booking_token,
-  full_name,
-  phone,
-  arrival_date,
-  arrival_time,
-  departure_date,
-  departure_time,
-  lock_code,
-  lock_visible,
-  clean_ok
+    beds24_booking_id,
+    apartment_name,
+    apartment_id,
+    booking_token,
+    full_name,
+    phone,
+    arrival_date,
+    arrival_time,
+    departure_date,
+    departure_time,
+    lock_code,
+    lock_visible,
+    clean_ok
 FROM checkins
       ${whereSql}
       ORDER BY arrival_date ASC, arrival_time ASC, id DESC
@@ -825,6 +833,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
