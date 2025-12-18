@@ -233,78 +233,102 @@ function renderPage(title, innerHtml) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${title}</title>
   <style>
-    :root { color-scheme: dark; }
-    * { box-sizing: border-box; }
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
 
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:#020617;
-      color:#e5e7eb;
-      margin:0;
-      min-height:100vh;
-      display:flex;
-      justify-content:center;
-      align-items:flex-start;
-    }
-    .page { width:100%; max-width:480px; padding:16px; }
-    .card {
-      background:#020617;
-      border-radius:18px;
-      padding:20px 18px 22px;
-      box-shadow:0 18px 40px rgba(0,0,0,0.55);
-    }
-    h1 { margin:0 0 8px; font-size:20px; }
-    p { margin:0 0 10px; font-size:14px; color:#9ca3af; }
-    label { font-size:13px; display:block; margin-bottom:4px; }
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f6f7fb;
+    color: #111827;
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
 
-    input, select {
-      width:100%;
-      padding:8px 10px;
-      border-radius:10px;
-      border:1px solid #1f2937;
-      background:#020617;
-      color:#e5e7eb;
-      font-size:14px;
-    }
-    input:focus, select:focus { outline:none; border-color:#2563eb; }
+  .page { width: 100%; max-width: 1100px; padding: 16px; }
 
-    .row { display:flex; gap:8px; }
-    .row > div { flex:1; }
+  .card {
+    background: #ffffff;
+    border-radius: 18px;
+    padding: 20px 18px 22px;
+    box-shadow: 0 10px 28px rgba(17, 24, 39, 0.08);
+    border: 1px solid #e5e7eb;
+  }
 
-    .btn-primary, .btn-success, .btn-link {
-      display:inline-block;
-      border-radius:999px;
-      padding:9px 18px;
-      font-weight:600;
-      font-size:14px;
-      text-decoration:none;
-      border:none;
-      cursor:pointer;
-    }
-    .btn-primary { background:#2563eb; color:#fff; }
-    .btn-success { background:#22c55e; color:#fff; }
-    .btn-link { background:transparent; color:#9ca3af; padding:0; }
+  h1 { margin: 0 0 8px; font-size: 22px; }
+  p { margin: 0 0 10px; font-size: 14px; color: #4b5563; }
 
-    .muted { font-size:12px; color:#6b7280; }
+  label { font-size: 13px; display: block; margin-bottom: 4px; color:#374151; }
 
-    .warnings {
-      background:#7f1d1d;
-      border-radius:12px;
-      padding:10px 12px;
-      margin-bottom:12px;
-      color:#fecaca;
-      font-size:13px;
-      text-align:left;
-    }
-    .warnings p { margin:4px 0; color:#fecaca; }
+  input, select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #111827;
+    font-size: 14px;
+  }
 
-    @media (min-width: 640px) {
-      body { align-items:center; }
-      .page { padding:24px; }
-      .card { padding:24px 22px 24px; }
-      h1 { font-size:22px; }
-    }
-  </style>
+  input:focus, select:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+  }
+
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+
+  .btn-primary, .btn-success, .btn-link {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 10px 18px;
+    font-weight: 700;
+    font-size: 14px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-success { background: #16a34a; color: #fff; }
+
+  .btn-link {
+    background: transparent;
+    color: #2563eb;
+    padding: 0;
+    font-weight: 600;
+  }
+
+  .muted { font-size: 12px; color: #6b7280; }
+
+  .warnings {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+    color: #9a3412;
+    font-size: 13px;
+    text-align: left;
+  }
+
+  .warnings p { margin: 4px 0; color: #9a3412; }
+
+  /* таблицы (для админки) — если у тебя есть <table> */
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th, td { padding: 10px 10px; border-bottom: 1px solid #e5e7eb; text-align: left; font-size: 14px; }
+  th { color:#374151; font-weight: 700; background: #f9fafb; }
+  tr:hover td { background: #f9fafb; }
+
+  @media (min-width: 640px) {
+    body { align-items: center; }
+    .page { padding: 24px; }
+    .card { padding: 24px 22px 24px; }
+  }
+</style>
 </head>
 <body>
   <div class="page">
