@@ -124,16 +124,14 @@ async function initDb() {
   `);
 
   // --- lock fields ---
-  await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_code TEXT;`);
-  await pool.query(
-    `ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_visible BOOLEAN NOT NULL DEFAULT FALSE;`
-  );
-  await pool.query(
+ await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_code TEXT;`);
+   await pool.query( `ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_visible BOOLEAN NOT NULL DEFAULT FALSE;`);
+  await pool.query (`
 ALTER TABLE checkins
   ADD COLUMN IF NOT EXISTS beds24_booking_id BIGINT,
   ADD COLUMN IF NOT EXISTS beds24_room_id TEXT,
   ADD COLUMN IF NOT EXISTS apartment_name TEXT;
-   );
+   `);
   // --- clean status ---
   await pool.query(
     `ALTER TABLE checkins ADD COLUMN IF NOT EXISTS clean_ok BOOLEAN NOT NULL DEFAULT FALSE;`
@@ -807,6 +805,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
