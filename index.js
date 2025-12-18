@@ -61,6 +61,21 @@ function ymd(d) {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
+// ===================== BLOCK: DATE HELPERS (TIMEZONE) =====================
+// Render usually runs in UTC. For Spain apartments we use Europe/Madrid.
+function ymdInTz(date = new Date(), timeZone = "Europe/Madrid") {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const yyyy = parts.find(p => p.type === "year").value;
+  const mm = parts.find(p => p.type === "month").value;
+  const dd = parts.find(p => p.type === "day").value;
+  return `${yyyy}-${mm}-${dd}`; // YYYY-MM-DD
+}
 
 function hourOptions(selected = "") {
   let out = "";
@@ -389,7 +404,9 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
       <p><a class="btn-link" href="/">← Back</a></p>
     `;
 
-    res.send(renderPage("Done", html));
+// ===================== BLOCK: AFTER CHECKIN -> REDIRECT TO DASHBOARD =====================
+return res.redirect(`/guest/${aptId}/${token}`);
+    
   } catch (e) {
     console.error("DB insert error:", e);
     res.status(500).send("❌ DB error while saving check-in");
@@ -589,6 +606,92 @@ app.post("/admin/checkins/:id/visibility", async (req, res) => {
     res.status(500).send("❌ Cannot update visibility");
   }
 });
+// ===================== BLOCK: GUEST DASHBOARD =====================
+// Guest opens: /guest/:aptId/:token
+// We show last submitted record for this booking token.
+app.get("/guest/:aptId/:token", async (req, res) => {
+  const { aptId, token } = req.params;
+
+  try {
+    const { rows } = await pool.query(
+      `
+      SELECT
+        id, apartment_id, booking_token,
+        full_name, email, phone,
+        arrival_date, arrival_time,
+        departure_date, departure_time,
+        lock_code, lock_visible
+      FROM checkins
+      WHERE apartment_id = $1 AND booking_token = $2
+      ORDER BY id DESC
+      LIMIT 1
+      `,
+      [aptId, token]
+    );
+
+    if (!rows.length) {
+      const html = `
+        <h1>Guest Dashboard</h1>
+        <p class="muted">No check-in record found for this booking.</p>
+        <p><a class="btn-link" href="/">← Back</a></p>
+      `;
+      return res.send(renderPage("Guest Dashboard", html));
+    }
+
+    const r = rows[0];
+
+    // Spain date for "today"
+    const todayES = ymdInTz(new Date(), "Europe/Madrid");
+
+    // show code only when:
+    // 1) admin enabled lock_visible
+    // 2) today >= arrival_date
+    const arrivalYmd = String(r.arrival_date).slice(0, 10);
+    const canShowCode = Boolean(r.lock_visible) && todayES >= arrivalYmd && r.lock_code;
+
+    const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time).slice(0, 5)}`;
+    const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time).slice(0, 5)}`;
+
+    const codeBlock = canShowCode
+      ? `
+        <div style="margin-top:14px; padding:14px; border:1px solid #bbf7d0; background:#f0fdf4; border-radius:14px;">
+          <h2 style="margin:0 0 6px; font-size:16px;">Key box code</h2>
+          <p class="muted" style="margin-bottom:10px;">Keep it private.</p>
+          <div style="font-size:28px; font-weight:900; letter-spacing:0.18em;">${String(r.lock_code)}</div>
+        </div>
+      `
+      : `
+        <div style="margin-top:14px; padding:14px; border:1px solid #e5e7eb; background:#f9fafb; border-radius:14px;">
+          <h2 style="margin:0 0 6px; font-size:16px;">Key box code</h2>
+          <p class="muted" style="margin:0;">
+            The code will appear here on the arrival day after all steps are completed.
+          </p>
+        </div>
+      `;
+
+    const html = `
+      <h1>Guest Dashboard</h1>
+      <p class="muted">Booking: <strong>${token}</strong> • Apartment: <strong>${aptId}</strong></p>
+
+      <div style="margin-top:12px; padding:14px; border:1px solid #e5e7eb; background:#fff; border-radius:14px;">
+        <h2 style="margin:0 0 10px; font-size:16px;">Your stay</h2>
+        <p style="margin:0 0 6px;"><strong>Arrival:</strong> ${arrive}</p>
+        <p style="margin:0;"><strong>Departure:</strong> ${depart}</p>
+      </div>
+
+      ${codeBlock}
+
+      <p style="margin-top:16px;">
+        <a class="btn-link" href="/">← Back</a>
+      </p>
+    `;
+
+    res.send(renderPage("Guest Dashboard", html));
+  } catch (e) {
+    console.error("Guest dashboard error:", e);
+    res.status(500).send("❌ Cannot load guest dashboard");
+  }
+});
 
 // ===================== START =====================
 (async () => {
@@ -600,3 +703,4 @@ app.post("/admin/checkins/:id/visibility", async (req, res) => {
     process.exit(1);
   }
 })();
+
