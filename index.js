@@ -70,23 +70,90 @@ const departureTime = booking.departure?.time;
   
   try {
 
- ON CONFLICT (booking_token)
+ await pool.query( `
+  INSERT INTO checkins (
+    apartment_id,
+    booking_token,
+    beds24_booking_id,
+    beds24_room_id,
+    apartment_name,
+    full_name,
+    email,
+    phone,
+    arrival_date,
+    arrival_time,
+    departure_date,
+    departure_time,
+    beds24_raw
+  )
+  VALUES (
+    $1, $2, $3, $4, $5,
+    $6, $7, $8,
+    $9, $10, $11, $12,
+    $13::jsonb
+  )
+  ON CONFLICT (booking_token)
   DO UPDATE SET
-    apartment_id     = EXCLUDED.apartment_id,
-    beds24_booking_id= COALESCE(EXCLUDED.beds24_booking_id, checkins.beds24_booking_id),
-    beds24_room_id   = COALESCE(EXCLUDED.beds24_room_id, checkins.beds24_room_id),
-    apartment_name   = COALESCE(EXCLUDED.apartment_name, checkins.apartment_name),
+    apartment_id = EXCLUDED.apartment_id,
 
-    full_name        = EXCLUDED.full_name,
-    email            = EXCLUDED.email,
-    phone            = EXCLUDED.phone,
+    beds24_booking_id = COALESCE(
+      EXCLUDED.beds24_booking_id,
+      checkins.beds24_booking_id
+    ),
+    beds24_room_id = COALESCE(
+      EXCLUDED.beds24_room_id,
+      checkins.beds24_room_id
+    ),
+    apartment_name = COALESCE(
+      EXCLUDED.apartment_name,
+      checkins.apartment_name
+    ),
 
-    arrival_date     = COALESCE(EXCLUDED.arrival_date, checkins.arrival_date),
-    arrival_time     = COALESCE(EXCLUDED.arrival_time, checkins.arrival_time),
-    departure_date   = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
-    departure_time   = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
+    full_name = EXCLUDED.full_name,
+    email     = EXCLUDED.email,
+    phone     = EXCLUDED.phone,
 
-    beds24_raw       = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)  -- ← убрана запятая!
+    arrival_date = COALESCE(
+      EXCLUDED.arrival_date,
+      checkins.arrival_date
+    ),
+    arrival_time = COALESCE(
+      EXCLUDED.arrival_time,
+      checkins.arrival_time
+    ),
+    departure_date = COALESCE(
+      EXCLUDED.departure_date,
+      checkins.departure_date
+    ),
+    departure_time = COALESCE(
+      EXCLUDED.departure_time,
+      checkins.departure_time
+    ),
+
+    beds24_raw = COALESCE(
+      EXCLUDED.beds24_raw,
+      checkins.beds24_raw
+    )
+  `,
+  [
+    String(beds24RoomId || booking?.roomId || ""), // apartment_id
+    String(booking?.id || ""),                     // booking_token
+    beds24BookingId,                               // beds24_booking_id
+    String(beds24RoomId || ""),                    // beds24_room_id
+    apartmentName,                                 // apartment_name
+
+    fullName,
+    email,
+    phone,
+
+    arrivalDate,
+    arrivalTime,
+    departureDate,
+    departureTime,
+
+    JSON.stringify(beds24Raw)                      // jsonb
+  ]
+);
 
     
   /* await pool.query(
@@ -869,6 +936,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
