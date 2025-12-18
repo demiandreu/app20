@@ -53,7 +53,25 @@ async function initDb() {
   await pool.query(
     `ALTER TABLE checkins ADD COLUMN IF NOT EXISTS clean_ok BOOLEAN NOT NULL DEFAULT FALSE;`
   );
+// ===================== MIGRATION: Beds24 support =====================
 
+// Beds24 booking id
+await pool.query(`
+  ALTER TABLE checkins
+  ADD COLUMN IF NOT EXISTS booking_id TEXT;
+`);
+
+// Human readable apartment name (from Beds24)
+await pool.query(`
+  ALTER TABLE checkins
+  ADD COLUMN IF NOT EXISTS apartment_name TEXT;
+`);
+
+// Index for fast lookup by booking_id
+await pool.query(`
+  CREATE INDEX IF NOT EXISTS idx_checkins_booking_id
+  ON checkins (booking_id);
+`);
   console.log("✅ DB ready: checkins table ok (+ lock_code, lock_visible, clean_ok)");
 }
 
@@ -716,4 +734,5 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
