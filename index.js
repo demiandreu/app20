@@ -1,3 +1,19 @@
+const { rows } = await pool.query(`
+  SELECT
+    id,
+    apartment_id,
+    full_name,
+    phone,
+    arrival_date,
+    arrival_time,
+    departure_date,
+    departure_time,
+    lock_code,
+    lock_visible
+  FROM checkins
+  WHERE ...
+  ORDER BY arrival_date, arrival_time
+`);
 function renderAdminPage(title, innerHtml) {
   return `<!doctype html>
 <html lang="en">
@@ -209,33 +225,36 @@ app.get("/admin/checkins", async (req, res) => {
       </form>
     `;
 
-    const table = `
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Apt</th>
-              <th>Name</th>
-              <th>Phone</th>
-              <th>Arrive</th>
-              <th>Depart</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.map(r => `
-              <tr>
-                <td>${r.id}</td>
-                <td>${r.apartment_id}</td>
-                <td>${r.full_name}</td>
-                <td>${r.phone}</td>
-                <td>${String(r.arrival_date).slice(0,10)} ${String(r.arrival_time).slice(0,5)}</td>
-                <td>${String(r.departure_date).slice(0,10)} ${String(r.departure_time).slice(0,5)}</td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
-      </div>
+    <div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Apt</th>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Arrive</th>
+        <th>Depart</th>
+        <th>Lock code</th>
+        <th>Visible</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows.map(r => `
+        <tr>
+          <td>${r.id}</td>
+          <td>${r.apartment_id}</td>
+          <td>${r.full_name}</td>
+          <td>${r.phone}</td>
+          <td>${String(r.arrival_date).slice(0,10)} ${String(r.arrival_time).slice(0,5)}</td>
+          <td>${String(r.departure_date).slice(0,10)} ${String(r.departure_time).slice(0,5)}</td>
+          <td>${r.lock_code ?? "—"}</td>
+          <td>${r.lock_visible ? "🔓 yes" : "🔒 no"}</td>
+        </tr>
+      `).join("")}
+    </tbody>
+  </table>
+</div>
     `;
 
     res.send(renderAdminPage("Admin • Check-ins", toolbar + table));
@@ -630,6 +649,7 @@ async function initDb() {
     process.exit(1);
   }
 })();
+
 
 
 
