@@ -18,6 +18,24 @@ app.post("/webhooks/beds24", async (req, res) => {
 
   const payload = req.body;
   const booking = payload.booking;
+  const guest = payload.guest || booking.guest || booking.guestData || {};
+
+const fullName =
+  guest.name ||
+  [guest.firstName, guest.lastName].filter(Boolean).join(" ") ||
+  guest.fullName ||
+  "Beds24 Guest";
+
+const email =
+  guest.email ||
+  guest.emailAddress ||
+  "unknown@beds24";
+
+const phone =
+  guest.phone ||
+  guest.mobile ||
+  guest.phoneNumber ||
+  "";
 
   if (!booking || !booking.id) {
     console.log("ℹ️ Beds24 webhook: no booking object, ignored");
@@ -45,9 +63,9 @@ app.post("/webhooks/beds24", async (req, res) => {
       [
         String(booking.roomId),          // временно roomId
         String(booking.id),              // booking_token
-        "Beds24 Guest",                  // пока нет имени
-        "unknown@beds24",                // позже добавим
-        "",
+        fullName,
+        email,
+        phone,
         booking.arrival,
         booking.arrivalTime || "15:00",
         booking.departure,
@@ -798,6 +816,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
