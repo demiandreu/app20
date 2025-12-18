@@ -9,18 +9,58 @@ app.use(express.json());
 // ======================
 // Beds24 Webhook (receiver)
 // ======================
-app.post("/webhooks/beds24", (req, res) => {
+app.post("/webhooks/beds24", async (req, res) => {
   const secret = String(req.query.key || "");
-
-  if (secret !== String(process.env.BEDS24_SECRET || "")) {
+  if (secret !== String(process.env.BEDS24_WEBHOOK_KEY)) {
     console.log("❌ Beds24 webhook: invalid secret");
     return res.status(401).send("Unauthorized");
   }
 
-  console.log("✅ Beds24 webhook received");
-  console.log(JSON.stringify(req.body, null, 2));
+  const payload = req.body;
+  const booking = payload.booking;
 
-  return res.status(200).send("OK");
+  if (!booking || !booking.id) {
+    console.log("ℹ️ Beds24 webhook: no booking object, ignored");
+    return res.status(200).send("Ignored");
+  }
+
+  console.log("✅ Booking received:", booking.id);
+
+  try {
+    await pool.query(
+      `
+      INSERT INTO checkins (
+        apartment_id,
+        booking_token,
+        full_name,
+        email,
+        phone,
+        arrival_date,
+        arrival_time,
+        departure_date,
+        departure_time
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      ON CONFLICT DO NOTHING
+      `,
+      [
+        String(booking.roomId),          // временно roomId
+        String(booking.id),              // booking_token
+        "Beds24 Guest",                  // пока нет имени
+        "unknown@beds24",                // позже добавим
+        "",
+        booking.arrival,
+        booking.arrivalTime || "15:00",
+        booking.departure,
+        "11:00"
+      ]
+    );
+
+    console.log("✅ Booking saved:", booking.id);
+    res.status(200).send("OK");
+  } catch (err) {
+    console.error("❌ DB insert error:", err);
+    res.status(500).send("DB error");
+  }
 });
 
 const PORT = process.env.PORT || 3000;
@@ -758,6 +798,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
