@@ -52,7 +52,6 @@ const phone =
     booking_token,
     beds24_booking_id,
     beds24_room_id,
-    apartment_name,
     full_name,
     email,
     phone,
@@ -61,7 +60,7 @@ const phone =
     departure_date,
     departure_time
   )
-  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
   ON CONFLICT DO NOTHING
   `,
   [
@@ -69,7 +68,6 @@ const phone =
     String(booking.id),
     booking.id,
     booking.roomId,
-    apartmentName,
     fullName,
     email,
     phone,
@@ -823,6 +821,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
