@@ -522,8 +522,7 @@ app.get("/guest/:aptId/:token", async (req, res) => {
     // 1) admin enabled lock_visible
     // 2) today >= arrival_date
     const arrivalYmd = String(r.arrival_date).slice(0, 10);
-    const canShowCode = Boolean(r.lock_visible) && todayES >= arrivalYmd && r.lock_code;
-
+    const canShowCode = Boolean(r.lock_visible) && r.lock_code;
     const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time).slice(0, 5)}`;
     const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time).slice(0, 5)}`;
 
@@ -819,6 +818,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
