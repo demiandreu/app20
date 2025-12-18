@@ -63,14 +63,27 @@ const phone =
 
   console.log("✅ Booking received:", booking.id);
   
-const arrivalDate = booking.arrival?.date;
-const arrivalTime = booking.arrival?.time;
-const departureDate = booking.departure?.date;
-const departureTime = booking.departure?.time;
+const arrivalDate =
+  booking?.arrival?.date ||
+  booking?.arrivalDate ||
+  booking?.checkin?.date ||
+  booking?.checkinDate ||
+  null;
+
+const departureDate =
+  booking?.departure?.date ||
+  booking?.departureDate ||
+  booking?.checkout?.date ||
+  booking?.checkoutDate ||
+  null;
+
+const arrivalTime = booking?.arrival?.time || booking?.arrivalTime || null;
+const departureTime = booking?.departure?.time || booking?.departureTime || null;
   
   try {
 
- await pool.query( 
+ await pool.query(
+  `
   INSERT INTO checkins (
     apartment_id,
     booking_token,
@@ -134,7 +147,7 @@ const departureTime = booking.departure?.time;
       EXCLUDED.beds24_raw,
       checkins.beds24_raw
     )
-  ,
+  `,
   [
     String(beds24RoomId || booking?.roomId || ""), // apartment_id
     String(booking?.id || ""),                     // booking_token
@@ -154,7 +167,6 @@ const departureTime = booking.departure?.time;
     JSON.stringify(beds24Raw)                      // jsonb
   ]
 );
-
     
   /* await pool.query(
   `
@@ -936,6 +948,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
