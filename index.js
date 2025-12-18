@@ -70,25 +70,7 @@ const departureTime = booking.departure?.time;
   
   try {
 
-await pool.query(
-  `
-  INSERT INTO checkins (
-    apartment_id,
-    booking_token,
-    beds24_booking_id,
-    beds24_room_id,
-    apartment_name,
-    full_name,
-    email,
-    phone,
-    arrival_date,
-    arrival_time,
-    departure_date,
-    departure_time,
-    beds24_raw
-  )
-  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13::jsonb)
-  ON CONFLICT (booking_token)
+ ON CONFLICT (booking_token)
   DO UPDATE SET
     apartment_id     = EXCLUDED.apartment_id,
     beds24_booking_id= COALESCE(EXCLUDED.beds24_booking_id, checkins.beds24_booking_id),
@@ -104,27 +86,7 @@ await pool.query(
     departure_date   = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
     departure_time   = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
 
-    beds24_raw       = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
-  `,
-  [
-    String(beds24RoomId || booking?.roomId || ""),     // apartment_id (у тебя так было)
-    String(booking?.id || ""),                         // booking_token
-    beds24BookingId,                                   // beds24_booking_id
-    String(beds24RoomId || ""),                        // beds24_room_id
-    apartmentName,                                     // apartment_name
-
-    fullName,
-    email,
-    phone,
-
-    arrivalDate,
-    arrivalTime,
-    departureDate,
-    departureTime,
-
-    JSON.stringify(beds24Raw)                          // jsonb
-  ]
-);
+    beds24_raw       = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)  -- ← убрана запятая!
 
     
   /* await pool.query(
@@ -907,6 +869,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
