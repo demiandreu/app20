@@ -597,20 +597,6 @@ if (quick === "tomorrow") {
   toDate = tomorrow;
 }
 
-    const today = new Date();
-    const todayStr = ymd(today);
-
-    let fromDate = from || "";
-    let toDate = to || "";
-
-    if (days && !from && !to) {
-      const n = Math.max(0, parseInt(days, 10) || 0);
-      const t2 = new Date(today);
-      t2.setDate(today.getDate() + n);
-      fromDate = todayStr;
-      toDate = ymd(t2);
-    }
-
     const where = [];
     const params = [];
     if (fromDate) {
@@ -838,6 +824,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
