@@ -11,33 +11,7 @@ app.use(express.json());
 // Admin: list checkins
 // GET /admin/checkins?from=YYYY-MM-DD&to=YYYY-MM-DD&quick=TEXT&include_cancelled=1
 // ======================
-app.get("/admin/checkins", (req, res) => {
-  res.send(`
-    <!doctype html>
-    <html>
-      <head>
-        <meta charset="utf-8"/>
-        <title>Admin Check-ins</title>
-      </head>
-      <body>
-        <h1>Admin check-ins</h1>
-        <pre id="out">Loading...</pre>
-
-        <script>
-          fetch('/api/admin/checkins')
-            .then(r => r.json())
-            .then(d => {
-              document.getElementById('out').textContent =
-                JSON.stringify(d, null, 2);
-            });
-        </script>
-      </body>
-    </html>
-  `);
-});
-
-
-app.get("/api/admin/checkins", async (req, res) => {
+app.get("/admin/checkins", async (req, res) => {
   try {
     const from = String(req.query.from || "").trim();
     const to = String(req.query.to || "").trim();
@@ -273,6 +247,14 @@ app.post("/webhooks/beds24", async (req, res) => {
   } catch (err) {
     console.error("❌ Beds24 webhook error:", err);
     return res.status(500).send("Webhook error");
+  }
+});
+    
+    console.log("✅ Booking saved:", booking.id);
+    res.status(200).send("OK");
+  } catch (err) {
+    console.error("❌ DB insert error:", err);
+    res.status(500).send("DB error");
   }
 });
 
@@ -1180,13 +1162,6 @@ res.redirect(back);
     process.exit(1);
   }
 })();
-
-
-
-
-
-
-
 
 
 
