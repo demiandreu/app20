@@ -6,7 +6,81 @@ const { Pool } = require("pg");
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+// ======================
+// Admin: list checkins
+// GET /admin/checkins?from=YYYY-MM-DD&to=YYYY-MM-DD&quick=TEXT&include_cancelled=1
+// ======================
+app.get("/admin/checkins", async (req, res) => {
+  try {
+    const from = String(req.query.from || "").trim();   // "2025-12-23"
+    const to = String(req.query.to || "").trim();       // "2025-12-24"
+    const quick = String(req.query.quick || "").trim(); // поиск
+    const includeCancelled = String(req.query.include_cancelled || "") === "1";
 
+    const where = [];
+    const params = [];
+
+    // 1) по умолчанию НЕ показываем отменённые
+    if (!includeCancelled) {
+      where.push(`(cancelled IS DISTINCT FROM true)`);
+    }
+
+    // 2) фильтр по датам (по arrival_date)
+    if (from) {
+      params.push(from);
+      where.push(`arrival_date >= $${params.length}`);
+    }
+    if (to) {
+      params.push(to);
+      where.push(`arrival_date <= $${params.length}`);
+    }
+
+    // 3) быстрый поиск по имени/телефону/апартаменту/booking_token/beds24_booking_id
+    if (quick) {
+      params.push(`%${quick}%`);
+      const p = `$${params.length}`;
+      where.push(`
+        (
+          COALESCE(apartment_name,'') ILIKE ${p}
+          OR COALESCE(full_name,'') ILIKE ${p}
+          OR COALESCE(phone,'') ILIKE ${p}
+          OR COALESCE(booking_token,'') ILIKE ${p}
+          OR COALESCE(beds24_booking_id::text,'') ILIKE ${p}
+        )
+      `);
+    }
+
+    const sql = `
+      SELECT
+        id,
+        apartment_id,
+        apartment_name,
+        full_name,
+        phone,
+        arrival_date,
+        arrival_time,
+        departure_date,
+        departure_time,
+        booking_token,
+        beds24_booking_id,
+        cancelled,
+        cancelled_at,
+        lock_code,
+        lock_visible,
+        clean_ok
+      FROM checkins
+      ${where.length ? "WHERE " + where.join(" AND ") : ""}
+      ORDER BY arrival_date ASC, id DESC
+      LIMIT 500;
+    `;
+
+    const { rows } = await pool.query(sql, params);
+    return res.status(200).json({ ok: true, rows });
+  } catch (err) {
+    console.error("❌ Admin checkins error:", err);
+    return res.status(500).json({ ok: false, error: "admin checkins error" });
+  }
+});
 // ======================
 // Beds24 Webhook (receiver)
 // ======================
@@ -1070,6 +1144,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
