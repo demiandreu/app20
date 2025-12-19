@@ -314,6 +314,14 @@ function renderPage(title, innerHtml) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${title}</title>
   <style>
+  .clean-pill{
+  width: 42px;
+  min-width: 42px;
+  padding: 8px 0;
+  text-align: center;
+  font-size: 18px;
+  line-height: 1;
+}
   th.sticky-col,
 td.sticky-col {
   position: sticky;
@@ -960,6 +968,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
