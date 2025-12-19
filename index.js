@@ -92,56 +92,47 @@ function ymd(d) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// ===================== TWILIO WHATSAPP INBOUND (LISTO -> LINK) =====================
+// ===================== TWILIO WHATSAPP INBOUND (LISTO -> ACK) =====================
 app.post("/webhooks/twilio/whatsapp", async (req, res) => {
   try {
     const from = String(req.body.From || ""); // "whatsapp:+34..."
-    const body = String(req.body.Body || "").trim();
-
+    const body = String(req.body.Body || "");
     console.log("📩 Twilio WhatsApp inbound:", { from, body });
 
-    const phone = from.replace("whatsapp:", "").trim(); // "+34..."
-    const text = body.toUpperCase();
+    // нормализация текста
+    const text = body.trim().toLowerCase();
 
-    if (text !== "LISTO") {
+    // пока реагируем только на "listo"
+    if (text !== "listo") {
       return res.status(200).send("OK");
     }
 
-    // Берём последнюю запись по телефону
-    const { rows } = await pool.query(
-      `
-      SELECT apartment_id, booking_token
-      FROM checkins
-      WHERE phone = $1
-      ORDER BY id DESC
-      LIMIT 1
-      `,
-      [phone]
-    );
-
-    if (!rows.length) {
-      await sendWhatsApp(
-        from,
-        `Gracias ✅\n\nAún no veo tu reserva en el sistema. Si acabas de reservar, espera unos minutos y vuelve a enviar “LISTO”.`
-      );
+    // ответ тестовый (пока без ссылки/логики)
+    if (!twilioClient) {
+      console.log("ℹ️ twilioClient is null (missing creds), cannot reply");
       return res.status(200).send("OK");
     }
 
-    const r = rows[0];
-    const base = (process.env.PUBLIC_BASE_URL || "https://rcs-checkin-api.onrender.com").replace(/\/$/, "");
-    const link = `${base}/guest/${encodeURIComponent(String(r.apartment_id))}/${encodeURIComponent(String(r.booking_token))}`;
+    const fromNumber = process.env.TWILIO_WHATSAPP_FROM || "";
+    if (!fromNumber) {
+      console.log("ℹ️ TWILIO_WHATSAPP_FROM missing, cannot reply");
+      return res.status(200).send("OK");
+    }
 
-    await sendWhatsApp(
-      from,
-      `Perfecto ✅\n\nAquí tienes tu portal de huésped:\n${link}\n\nEl código de la caja se mostrará el día de llegada cuando el anfitrión lo active.`
-    );
+    await twilioClient.messages.create({
+      from: fromNumber,      // должен быть "whatsapp:+1937..."
+      to: from,              // ответим тому же отправителю
+      body: "Perfecto ✅ Hemos recibido tu mensaje. En breve te envío el enlace al portal.",
+    });
 
+    console.log("✅ Replied to WhatsApp:", from);
     return res.status(200).send("OK");
   } catch (e) {
-    console.error("❌ Twilio inbound error:", e);
+    console.error("❌ Twilio inbound handler error:", e);
     return res.status(200).send("OK");
   }
 });
+
 
 
 // ===================== TWILIO CLIENT =====================
@@ -506,14 +497,14 @@ app.post("/webhooks/beds24", async (req, res) => {
     // ===================== TWILIO WHATSAPP INBOUND (TEST) =====================
 // Twilio будет присылать form-urlencoded: From, Body, etc.
 // У тебя уже есть app.use(express.urlencoded({ extended: true })) ✅
-app.post("/webhooks/twilio/whatsapp", (req, res) => {
-  const from = String(req.body.From || "");
-  const body = String(req.body.Body || "");
-  console.log("📩 Twilio WhatsApp inbound:", { from, body });
+  //app.post("/webhooks/twilio/whatsapp", (req, res) => {
+   // const from = String(req.body.From || "");
+   // const body = String(req.body.Body || "");
+   // console.log("📩 Twilio WhatsApp inbound:", { from, body });
 
   // Пока просто отвечаем 200, без логики
-  return res.status(200).send("OK");
-});
+  //  return res.status(200).send("OK");
+  //});
 
     
 
@@ -1153,6 +1144,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
