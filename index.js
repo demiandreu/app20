@@ -331,37 +331,32 @@ function renderPage(title, innerHtml) {
   cursor: pointer;
   white-space: nowrap;
 }
-  .clean-pill {
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-  box-shadow: none;
-  padding: 0;
-}
-.clean-pill {
-  border-radius: 10px;
-}
-  .clean-pill{
-  width: 42px;
-  min-width: 42px;
-  padding: 8px 0;
-  text-align: center;
-  font-size: 18px;
-  line-height: 1;
-  border: none;
-  box-shadow: none;
-}
-.pill-yes.clean-pill {
-  color: #1a7f37; /* приятный зелёный */
-  font-weight: bold;
-}
+ /* Clean button — same style as other small buttons */
+.clean-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
 
-.pill-no.clean-pill {
-  color: transparent; /* ничего не показываем */
+  height:30px;
+  min-width:44px;
+  padding:0 10px;
+
+  border:0;
+  outline:0;
+  box-shadow:none;
+  appearance:none;
+
+  border-radius:10px;
+  background:#f2f2f2;
+
+  font-size:14px;
+  line-height:1;
+  cursor:pointer;
+}
+.clean-btn:focus{ outline:none; }
+
+.clean-btn.pill-yes{ color:#1a7f37; }
+.clean-btn.pill-no{ color:#b42318; }
 }
   th.sticky-col,
 td.sticky-col {
@@ -1053,6 +1048,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
