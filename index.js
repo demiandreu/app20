@@ -326,6 +326,16 @@ function renderPage(title, innerHtml) {
       justify-content:center;
       align-items:flex-start;
     }
+    .table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  min-width: 1100px; /* важно для mobile */
+  border-collapse: collapse;
+}
     .page{ width:100%; max-width:1100px; padding:16px; }
     .card{
       background:#fff;
@@ -933,6 +943,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
