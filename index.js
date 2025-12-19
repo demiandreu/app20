@@ -11,7 +11,9 @@ app.use(express.json());
 // Admin: list checkins
 // GET /admin/checkins?from=YYYY-MM-DD&to=YYYY-MM-DD&quick=TEXT&include_cancelled=1
 // ======================
-
+app.get("/api/admin/checkins", async (req, res) => {
+  return res.json({ ok: true });
+});
 app.get("/admin/checkins", (req, res) => {
   res.send(`
     <!doctype html>
@@ -1181,6 +1183,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
