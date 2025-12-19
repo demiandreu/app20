@@ -27,6 +27,9 @@ const fullName =
   guest.name ||
   [guest.firstName, guest.lastName].filter(Boolean).join(" ") ||
   guest.fullName ||
+  booking.guestName ||
+  booking.name ||
+  [booking.firstName, booking.lastName].filter(Boolean).join(" ") ||
   "Beds24 Guest";
 
 const email =
@@ -1104,6 +1107,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
