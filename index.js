@@ -135,14 +135,8 @@ const departureTime = booking?.departure?.time || booking?.departureTime || null
       EXCLUDED.arrival_time,
       checkins.arrival_time
     ),
-    departure_date = COALESCE(
-      EXCLUDED.departure_date,
-      checkins.departure_date
-    ),
-    departure_time = COALESCE(
-      EXCLUDED.departure_time,
-      checkins.departure_time
-    ),
+    departure_date = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
+departure_time = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
 
     beds24_raw = COALESCE(
       EXCLUDED.beds24_raw,
@@ -1110,6 +1104,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
