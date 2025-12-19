@@ -53,25 +53,29 @@ const phone =
 
   console.log("✅ Booking received:", booking.id);
   // ===== обработка отмены брони =====
-if (
-  booking?.status === "cancelled" ||
-  booking?.state === "cancelled"
-) {
-  console.log("Booking cancelled:", booking.id);
+const isCancelled =
+  booking?.cancelled === true ||
+  booking?.isCancelled === true ||
+  String(booking?.status || "").toLowerCase() === "cancelled" ||
+  String(booking?.state || "").toLowerCase() === "cancelled" ||
+  String(booking?.bookingStatus || "").toLowerCase() === "cancelled";
+
+if (isCancelled) {
+  console.log("❌ Booking cancelled, marking in DB:", booking.id);
 
   await pool.query(
     `
     UPDATE checkins
     SET cancelled = true,
         cancelled_at = NOW()
-    WHERE beds24_booking_id = $1
-       OR booking_token = $2
+    WHERE booking_token = $1
+       OR beds24_booking_id = $1
     `,
-    [
-      booking.id?.toString() || null,
-      booking.bookingId?.toString() || null
-    ]
+    [String(booking.id)]
   );
+
+  return res.status(200).send("Cancelled");
+}
 
   return res.status(200).send("Cancelled booking processed");
 }
@@ -1130,6 +1134,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
