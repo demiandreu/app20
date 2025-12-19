@@ -92,11 +92,17 @@ function ymd(d) {
   return `${yyyy}-${mm}-${dd}`;
 }
 // ===================== TWILIO CLIENT =====================
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || "";
 
+const twilioClient =
+  TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN
+    ? twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+    : null;
+
+if (!twilioClient) {
+  console.log("ℹ️ Twilio not configured yet (missing TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN)");
+}
 
 // Render usually runs in UTC. For Spain apartments we use Europe/Madrid.
 function ymdInTz(date = new Date(), timeZone = "Europe/Madrid") {
@@ -1055,6 +1061,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
