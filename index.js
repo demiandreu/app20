@@ -64,15 +64,13 @@ if (isCancelled) {
   console.log("❌ Booking cancelled, marking in DB:", booking.id);
 
   await pool.query(
-    `
-    UPDATE checkins
-    SET cancelled = true,
-        cancelled_at = NOW()
-    WHERE booking_token = $1
-       OR beds24_booking_id = $1
-    `,
-    [String(booking.id)]
-  );
+  `UPDATE checkins
+   SET cancelled = true,
+       cancelled_at = NOW()
+   WHERE booking_token = $1
+      OR beds24_booking_id = $1`,
+  [String(booking.id)]
+);
 
   return res.status(200).send("Cancelled");
 }
@@ -1134,6 +1132,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
