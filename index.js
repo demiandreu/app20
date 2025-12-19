@@ -769,7 +769,6 @@ FROM checkins
 
         <button class="btn" type="submit">Show</button>
         <a class="btn-link" href="/admin/checkins">Reset</a>
-        <a class="btn-link" href="/">Back</a>
       </form>
     `;
 const returnTo = req.originalUrl;
@@ -934,6 +933,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
