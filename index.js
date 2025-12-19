@@ -48,7 +48,13 @@ const phone =
   }
 
   console.log("✅ Booking received:", booking.id);
-  
+  console.log("CANCEL FIELDS:", {
+  status: booking?.status,
+  state: booking?.state,
+  cancelled: booking?.cancelled,
+  isCancelled: booking?.isCancelled,
+  bookingStatus: booking?.bookingStatus
+});
 const arrivalDate =
   booking?.arrival?.date ||
   booking?.arrivalDate ||
@@ -1111,6 +1117,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
