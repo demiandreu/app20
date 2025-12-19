@@ -825,9 +825,14 @@ const returnTo = req.originalUrl;
                         <tr>
                           <td class="sticky-col">
                             <form method="POST" action="/admin/checkins/${r.id}/clean">
-                              <button type="submit" class="pill ${r.clean_ok ? "pill-yes" : "pill-no"}">
-                                ${r.clean_ok ? "✅ CLEAN" : "❌ NOT CLEAN"}
-                              </button>
+                             <button
+  type="submit"
+  class="pill clean-pill ${r.clean_ok ? "pill-yes" : "pill-no"}"
+  title="${r.clean_ok ? "Clean" : "Not clean"}"
+  aria-label="${r.clean_ok ? "Clean" : "Not clean"}"
+>
+  🧹
+</button>
                             </form>
                           </td>
 
@@ -955,6 +960,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
