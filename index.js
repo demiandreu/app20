@@ -18,10 +18,8 @@ app.post("/webhooks/beds24", async (req, res) => {
 
   const payload = req.body;
   // debug: сохраним сырой webhook в БД (и/или залогируем)
-console.log("📦 Beds24 payload keys:", Object.keys(payload || {}));
   const booking = payload.booking || payload; // на всякий случай
   // --- dates / ids from Beds24 ---
-console.log("BEDS24 BOOKING JSON:", JSON.stringify(booking, null, 2));
 const beds24Raw = payload;
   const guest = payload.guest || booking.guest || booking.guestData || {};
 
@@ -48,13 +46,6 @@ const phone =
   }
 
   console.log("✅ Booking received:", booking.id);
-  console.log("CANCEL FIELDS:", {
-  status: booking?.status,
-  state: booking?.state,
-  cancelled: booking?.cancelled,
-  isCancelled: booking?.isCancelled,
-  bookingStatus: booking?.bookingStatus
-});
 const arrivalDate =
   booking?.arrival?.date ??
   booking?.arrivalDate ??
@@ -1119,6 +1110,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
