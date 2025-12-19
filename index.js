@@ -1,3 +1,8 @@
+// =====================================================
+// RCS Guest Portal — Stable organized single-file version
+// (same logic, only reorganized and labeled)
+// =====================================================
+
 // ===================== CONFIG =====================
 require("dotenv").config();
 const express = require("express");
@@ -7,9 +12,397 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// ======================
-// Beds24 Webhook (receiver)
-// ======================
+const PORT = process.env.PORT || 3000;
+
+// ===================== DB: ENV CHECK =====================
+if (!process.env.DATABASE_URL) {
+  console.error("❌ DATABASE_URL is missing in env");
+  process.exit(1);
+}
+
+const isLocalDb =
+  process.env.DATABASE_URL.includes("localhost") ||
+  process.env.DATABASE_URL.includes("127.0.0.1");
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: isLocalDb ? false : { rejectUnauthorized: false },
+});
+
+// ===================== DB INIT / MIGRATIONS =====================
+async function initDb() {
+  // --- base table ---
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS checkins (
+      id SERIAL PRIMARY KEY,
+      apartment_id TEXT NOT NULL,
+      booking_token TEXT NOT NULL,
+      full_name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      phone TEXT NOT NULL,
+      arrival_date DATE NOT NULL,
+      arrival_time TIME NOT NULL,
+      departure_date DATE NOT NULL,
+      departure_time TIME NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  // --- lock fields ---
+  await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_code TEXT;`);
+  await pool.query(
+    `ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_visible BOOLEAN NOT NULL DEFAULT FALSE;`
+  );
+
+  // --- clean status ---
+  await pool.query(
+    `ALTER TABLE checkins ADD COLUMN IF NOT EXISTS clean_ok BOOLEAN NOT NULL DEFAULT FALSE;`
+  );
+
+  // --- Beds24 fields for admin columns ---
+  await pool.query(`
+    ALTER TABLE checkins
+      ADD COLUMN IF NOT EXISTS beds24_booking_id BIGINT,
+      ADD COLUMN IF NOT EXISTS beds24_room_id TEXT,
+      ADD COLUMN IF NOT EXISTS apartment_name TEXT,
+      ADD COLUMN IF NOT EXISTS booking_id TEXT,
+      ADD COLUMN IF NOT EXISTS beds24_raw JSONB;
+  `);
+
+  await pool.query(
+    `CREATE INDEX IF NOT EXISTS idx_checkins_booking_id ON checkins(booking_id);`
+  );
+
+  console.log("✅ DB ready: checkins table ok (+ lock_code, lock_visible, clean_ok)");
+}
+
+// ===================== APP SETTINGS / DATA =====================
+const PARTEE_LINKS = {
+  apt1: "https://u.partee.es/3636642/Cd78OQqWOB63wMJLFmB0JzdLL",
+  // apt2: "...",
+};
+
+// ===================== HELPERS =====================
+function ymd(d) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// Render usually runs in UTC. For Spain apartments we use Europe/Madrid.
+function ymdInTz(date = new Date(), timeZone = "Europe/Madrid") {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const yyyy = parts.find((p) => p.type === "year").value;
+  const mm = parts.find((p) => p.type === "month").value;
+  const dd = parts.find((p) => p.type === "day").value;
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function hourOptions(selected = "") {
+  let out = "";
+  for (let h = 0; h < 24; h++) {
+    const hh = String(h).padStart(2, "0");
+    const value = `${hh}:00`;
+    out += `<option value="${value}" ${value === selected ? "selected" : ""}>${hh}:00</option>`;
+  }
+  return out;
+}
+
+// ===================== HTML LAYOUT =====================
+function renderPage(title, innerHtml) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${title}</title>
+
+  <style>
+  /* === FORCE ONE-LINE CONTROLS IN TABLE === */
+  .lock-form{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-wrap:nowrap;
+    white-space:nowrap;
+  }
+
+  .lock-form .btn-small,
+  .lock-form .btn-small.btn-ghost,
+  .lock-form button{
+    white-space:nowrap;
+  }
+
+  td{
+    white-space:nowrap;
+    vertical-align:middle;
+  }
+
+  td form{ white-space:nowrap; }
+
+  th.sticky-col, td.sticky-col{
+    background: #fff;
+    z-index: 2;
+  }
+  thead th.sticky-col{
+    z-index: 3;
+  }
+
+  .table-wrap{
+    overflow-x: auto;
+    position: relative;
+  }
+  table{
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+
+  .btn-base {
+    height: 34px;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* Clean button — same style as other small buttons */
+  .clean-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    height:30px;
+    min-width:44px;
+    padding:0 10px;
+    border:0;
+    outline:0;
+    box-shadow:none;
+    appearance:none;
+    border-radius:10px;
+    background:#f2f2f2;
+    font-size:14px;
+    line-height:1;
+    cursor:pointer;
+  }
+  .clean-btn:focus{ outline:none; }
+  .clean-btn.pill-yes{ color:#1a7f37; }
+  .clean-btn.pill-no{ color:#b42318; }
+
+  th.sticky-col,
+  td.sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #fff;
+  }
+
+  thead th.sticky-col {
+    z-index: 3;
+  }
+
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body{
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background:#f6f7fb;
+    color:#111827;
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+  }
+
+  .table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 1100px;
+    border-collapse: collapse;
+  }
+
+  .page{ width:100%; max-width:1100px; padding:16px; }
+  .card{
+    background:#fff;
+    border-radius:18px;
+    padding:20px 18px 22px;
+    box-shadow:0 10px 28px rgba(17,24,39,0.08);
+    border:1px solid #e5e7eb;
+  }
+
+  h1{ margin:0 0 8px; font-size:22px; }
+  h2{ margin:0 0 8px; font-size:16px; }
+  p{ margin:0 0 10px; font-size:14px; color:#4b5563; }
+  .muted{ font-size:12px; color:#6b7280; }
+  label{ font-size:13px; display:block; margin-bottom:4px; color:#374151; }
+
+  input, select{
+    width:100%;
+    padding:10px 12px;
+    border-radius:12px;
+    border:1px solid #d1d5db;
+    background:#fff;
+    color:#111827;
+    font-size:14px;
+  }
+  input:focus, select:focus{
+    outline:none;
+    border-color:#2563eb;
+    box-shadow:0 0 0 4px rgba(37,99,235,0.12);
+  }
+
+  .row{ display:flex; gap:10px; }
+  .row > div{ flex:1; }
+
+  .btn-primary, .btn-success, .btn-link, .btn{
+    display:inline-block;
+    border-radius:999px;
+    padding:10px 18px;
+    font-weight:700;
+    font-size:14px;
+    text-decoration:none;
+    border:none;
+    cursor:pointer;
+    margin: 10px;
+  }
+  .btn-primary{ background:#2563eb; color:#fff; }
+  .btn-success{ background:#16a34a; color:#fff; }
+  .btn-link{
+    background:transparent;
+    color:#2563eb;
+    padding:0;
+    font-weight:600;
+  }
+
+  .warnings{
+    background:#fff7ed;
+    border:1px solid #fed7aa;
+    border-radius:12px;
+    padding:10px 12px;
+    margin-bottom:12px;
+    color:#9a3412;
+    font-size:13px;
+    text-align:left;
+  }
+  .warnings p{ margin:4px 0; color:#9a3412; }
+
+  /* компактнее таблица */
+  table{ width:100%; border-collapse:collapse; font-size:12px; }
+  th{
+    position:sticky;
+    top:0;
+    background:#f9fafb;
+    text-align:left;
+    padding:6px 8px;
+    border-bottom:1px solid #e5e7eb;
+    white-space:nowrap;
+    color:#374151;
+    font-size:12px;
+  }
+  td{
+    padding:6px 8px;
+    border-bottom:1px solid #f1f5f9;
+    white-space:nowrap;
+    vertical-align:middle;
+  }
+  tr:hover td{ background:#f9fafb; }
+
+  /* компактнее статус-пилюли */
+  .pill{
+    display:inline-block;
+    padding:4px 8px;
+    border-radius:999px;
+    font-weight:800;
+    font-size:11px;
+    line-height:1;
+  }
+  .pill-yes{ background:#dcfce7; color:#166534; }
+  .pill-no{ background:#fee2e2; color:#991b1b; }
+
+  /* компактнее формы/кнопки */
+  .lock-form{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+
+  .lock-input{
+    width:110px;
+    min-width:110px;
+    padding:8px 10px;
+    border-radius:10px;
+    border:1px solid #d1d5db;
+    font-size:14px;
+    letter-spacing:0.12em;
+  }
+
+  .btn-small{
+    border-radius:999px;
+    padding:7px 10px;
+    font-weight:700;
+    border:none;
+    cursor:pointer;
+    background:#2563eb;
+    color:#fff;
+    font-size:12px;
+    line-height:1;
+  }
+  .btn-ghost{ background:#eef2ff; color:#1e40af; }
+
+  /* === ONE LINE IN CELLS (LOCK + VISIBLE) === */
+  .lock-form,
+  .vis-form{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-wrap:nowrap !important;
+    white-space:nowrap;
+  }
+
+  .lock-form button,
+  .vis-form button,
+  .lock-form .btn-small,
+  .vis-form .btn-small{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    white-space:nowrap;
+  }
+
+  .lock-input{
+    width:72px;
+    min-width:72px;
+  }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="card">
+      ${innerHtml}
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+// =====================================================
+// ROUTES
+// =====================================================
+
+// ===================== Beds24 Webhook (receiver) =====================
 app.post("/webhooks/beds24", async (req, res) => {
   try {
     const secret = String(req.query.key || "");
@@ -39,10 +432,7 @@ app.post("/webhooks/beds24", async (req, res) => {
       [booking.firstName, booking.lastName].filter(Boolean).join(" ") ||
       "Beds24 Guest";
 
-    const email =
-      guest.email ||
-      guest.emailAddress ||
-      "unknown@beds24";
+    const email = guest.email || guest.emailAddress || "unknown@beds24";
 
     const phone =
       guest.phone ||
@@ -135,11 +525,11 @@ app.post("/webhooks/beds24", async (req, res) => {
         beds24_raw = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
       `,
       [
-        String(beds24RoomId || ""),     // apartment_id (your internal)
-        String(booking.id || ""),       // booking_token (unique per booking)
-        beds24BookingId,                // beds24_booking_id
-        String(beds24RoomId || ""),     // beds24_room_id
-        apartmentName,                  // apartment_name
+        String(beds24RoomId || ""), // apartment_id (your internal)
+        String(booking.id || ""),   // booking_token (unique per booking)
+        beds24BookingId,            // beds24_booking_id
+        String(beds24RoomId || ""), // beds24_room_id
+        apartmentName,              // apartment_name
         fullName,
         email,
         phone,
@@ -151,13 +541,6 @@ app.post("/webhooks/beds24", async (req, res) => {
       ]
     );
 
-  /*  return res.status(200).send("OK");
-  } catch (e) {
-    console.error("❌ Beds24 webhook error:", e);
-    return res.status(500).send("Webhook error");
-  }
-});*/
-    
     console.log("✅ Booking saved:", booking.id);
     res.status(200).send("OK");
   } catch (err) {
@@ -165,440 +548,6 @@ app.post("/webhooks/beds24", async (req, res) => {
     res.status(500).send("DB error");
   }
 });
-
-const PORT = process.env.PORT || 3000;
-
-// ===================== DB =====================
-if (!process.env.DATABASE_URL) {
-  console.error("❌ DATABASE_URL is missing in env");
-  process.exit(1);
-}
-
-const isLocalDb =
-  process.env.DATABASE_URL.includes("localhost") ||
-  process.env.DATABASE_URL.includes("127.0.0.1");
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: isLocalDb ? false : { rejectUnauthorized: false },
-});
-
-// ===================== DB INIT / MIGRATIONS =====================
-async function initDb() {
-  // --- base table ---
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS checkins (
-      id SERIAL PRIMARY KEY,
-      apartment_id TEXT NOT NULL,
-      booking_token TEXT NOT NULL,
-      full_name TEXT NOT NULL,
-      email TEXT NOT NULL,
-      phone TEXT NOT NULL,
-      arrival_date DATE NOT NULL,
-      arrival_time TIME NOT NULL,
-      departure_date DATE NOT NULL,
-      departure_time TIME NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    );
-  `);
-// --- lock fields ---
-await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_code TEXT;`);
-await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_visible BOOLEAN NOT NULL DEFAULT FALSE;`);
-
-// --- clean status ---
-await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS clean_ok BOOLEAN NOT NULL DEFAULT FALSE;`);
-
-// --- Beds24 fields for admin columns ---
-await pool.query(`
-  ALTER TABLE checkins
-    ADD COLUMN IF NOT EXISTS beds24_booking_id BIGINT,
-    ADD COLUMN IF NOT EXISTS beds24_room_id TEXT,
-    ADD COLUMN IF NOT EXISTS apartment_name TEXT,
-    ADD COLUMN IF NOT EXISTS booking_id TEXT,
-    ADD COLUMN IF NOT EXISTS beds24_raw JSONB;
-`);
-
-await pool.query(`CREATE INDEX IF NOT EXISTS idx_checkins_booking_id ON checkins(booking_id);`);
-  
-  /* dima // --- lock fields ---
- await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_code TEXT;`);
-   await pool.query( `ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_visible BOOLEAN NOT NULL DEFAULT FALSE;`);
-  await pool.query (`
-ALTER TABLE checkins
-  ADD COLUMN IF NOT EXISTS beds24_booking_id BIGINT,
-  ADD COLUMN IF NOT EXISTS beds24_room_id TEXT,
-  ADD COLUMN IF NOT EXISTS apartment_name TEXT;
-   `);
-  // --- clean status ---
-  await pool.query(
-    `ALTER TABLE checkins ADD COLUMN IF NOT EXISTS clean_ok BOOLEAN NOT NULL DEFAULT FALSE;`
-  ); */ 
-// ===================== MIGRATION: Beds24 support =====================
-  console.log("✅ DB ready: checkins table ok (+ lock_code, lock_visible, clean_ok)");
-}
-
-// ===================== APP SETTINGS / DATA =====================
-const PARTEE_LINKS = {
-  apt1: "https://u.partee.es/3636642/Cd78OQqWOB63wMJLFmB0JzdLL",
-  // apt2: "...",
-};
-
-// ===================== HELPERS =====================
-function ymd(d) {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-// ===================== BLOCK: DATE HELPERS (TIMEZONE) =====================
-// Render usually runs in UTC. For Spain apartments we use Europe/Madrid.
-function ymdInTz(date = new Date(), timeZone = "Europe/Madrid") {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-
-  const yyyy = parts.find((p) => p.type === "year").value;
-  const mm = parts.find((p) => p.type === "month").value;
-  const dd = parts.find((p) => p.type === "day").value;
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function hourOptions(selected = "") {
-  let out = "";
-  for (let h = 0; h < 24; h++) {
-    const hh = String(h).padStart(2, "0");
-    const value = `${hh}:00`;
-    out += `<option value="${value}" ${value === selected ? "selected" : ""}>${hh}:00</option>`;
-  }
-  return out;
-}
-
-// ===================== BLOCK: HTML LAYOUT =====================
-function renderPage(title, innerHtml) {
-  return `<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${title}</title>
-  
-  <style>
-  
-  /* === FORCE ONE-LINE CONTROLS IN TABLE === */
-.lock-form{
-  display:flex;
-  align-items:center;
-  gap:6px;
-  flex-wrap:nowrap;      /* ВАЖНО: запрет переноса */
-  white-space:nowrap;
-}
-
-.lock-form .btn-small,
-.lock-form .btn-small.btn-ghost,
-.lock-form button{
-  white-space:nowrap;
-}
-
-td{
-  white-space:nowrap;    /* чтобы в ячейках не было переносов */
-  vertical-align:middle;
-}
-
-/* если где-то есть flex в ячейке Visible — тоже фикс */
-td form{
-  white-space:nowrap;
-}
-  th.sticky-col, td.sticky-col{
-  background: #fff;
-  z-index: 2;
-}
-thead th.sticky-col{
-  z-index: 3;
-}
-  .table-wrap{
-  overflow-x: auto;
-  position: relative;
-}
-table{
-  border-collapse: separate;
-  border-spacing: 0;
-}
-  .btn-base {
-  height: 34px;
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 10px;
-  font-size: 13px;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: none;
-  cursor: pointer;
-  white-space: nowrap;
-}
- /* Clean button — same style as other small buttons */
-.clean-btn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-
-  height:30px;
-  min-width:44px;
-  padding:0 10px;
-
-  border:0;
-  outline:0;
-  box-shadow:none;
-  appearance:none;
-
-  border-radius:10px;
-  background:#f2f2f2;
-
-  font-size:14px;
-  line-height:1;
-  cursor:pointer;
-}
-.clean-btn:focus{ outline:none; }
-
-.clean-btn.pill-yes{ color:#1a7f37; }
-.clean-btn.pill-no{ color:#b42318; }
-}
-  th.sticky-col,
-td.sticky-col {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  background: #fff;
-}
-
-thead th.sticky-col {
-  z-index: 3; /* чтобы заголовок был поверх */
-}
-
-    :root { color-scheme: light; }
-    * { box-sizing: border-box; }
-    body{
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background:#f6f7fb;
-      color:#111827;
-      margin:0;
-      min-height:100vh;
-      display:flex;
-      justify-content:center;
-      align-items:flex-start;
-    }
-    .table-wrap {
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-table {
-  min-width: 1100px; /* важно для mobile */
-  border-collapse: collapse;
-}
-    .page{ width:100%; max-width:1100px; padding:16px; }
-    .card{
-      background:#fff;
-      border-radius:18px;
-      padding:20px 18px 22px;
-      box-shadow:0 10px 28px rgba(17,24,39,0.08);
-      border:1px solid #e5e7eb;
-    }
-    h1{ margin:0 0 8px; font-size:22px; }
-    h2{ margin:0 0 8px; font-size:16px; }
-    p{ margin:0 0 10px; font-size:14px; color:#4b5563; }
-    .muted{ font-size:12px; color:#6b7280; }
-    label{ font-size:13px; display:block; margin-bottom:4px; color:#374151; }
-    input, select{
-      width:100%;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid #d1d5db;
-      background:#fff;
-      color:#111827;
-      font-size:14px;
-    }
-    input:focus, select:focus{
-      outline:none;
-      border-color:#2563eb;
-      box-shadow:0 0 0 4px rgba(37,99,235,0.12);
-    }
-    .row{ display:flex; gap:10px; }
-    .row > div{ flex:1; }
-    .btn-primary, .btn-success, .btn-link, .btn{
-      display:inline-block;
-      border-radius:999px;
-      padding:10px 18px;
-      font-weight:700;
-      font-size:14px;
-      text-decoration:none;
-      border:none;
-      cursor:pointer;
-      margin: 10px;
-    }
-    .btn-primary{ background:#2563eb; color:#fff; }
-    .btn-success{ background:#16a34a; color:#fff; }
-    .btn-link{
-      background:transparent;
-      color:#2563eb;
-      padding:0;
-      font-weight:600;
-    }
-
-    .warnings{
-      background:#fff7ed;
-      border:1px solid #fed7aa;
-      border-radius:12px;
-      padding:10px 12px;
-      margin-bottom:12px;
-      color:#9a3412;
-      font-size:13px;
-      text-align:left;
-    }
-    .warnings p{ margin:4px 0; color:#9a3412; }
-
-   table-wrap{
-  overflow:auto;
-  border:1px solid #e5e7eb;
-  border-radius:12px;
-  background:#fff;
-}
-
-/* компактнее таблица */
-table{ width:100%; border-collapse:collapse; font-size:12px; }
-th{
-  position:sticky;
-  top:0;
-  background:#f9fafb;
-  text-align:left;
-  padding:6px 8px;            /* было 10px */
-  border-bottom:1px solid #e5e7eb;
-  white-space:nowrap;
-  color:#374151;
-  font-size:12px;
-}
-td{
-  padding:6px 8px;            /* было 10px */
-  border-bottom:1px solid #f1f5f9;
-  white-space:nowrap;
-  vertical-align:middle;
-}
-tr:hover td{ background:#f9fafb; }
-
-/* компактнее статус-пилюли */
-.pill{
-  display:inline-block;
-  padding:4px 8px;            /* было 6px 10px */
-  border-radius:999px;
-  font-weight:800;
-  font-size:11px;             /* было 12px */
-  line-height:1;
-}
-.pill-yes{ background:#dcfce7; color:#166534; }
-.pill-no{ background:#fee2e2; color:#991b1b; }
-
-/* компактнее формы/кнопки */
-.lock-form{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
-
-.lock-input{
-  width:110px;                /* было 150px */
-  min-width:110px;
-  padding:8px 10px;           /* было 10px 12px */
-  border-radius:10px;
-  border:1px solid #d1d5db;
-  font-size:14px;             /* было 16px */
-  letter-spacing:0.12em;
-}
-
-.btn-small{
-  border-radius:999px;
-  padding:7px 10px;           /* было 10px 12px */
-  font-weight:700;
-  border:none;
-  cursor:pointer;
-  background:#2563eb;
-  color:#fff;
-  font-size:12px;
-  line-height:1;
-}
-.btn-ghost{ background:#eef2ff; color:#1e40af; }
-/* === UNIFIED ACTION BUTTONS === */
-.btn-action {
-  min-width: 72px;
-  height: 32px;
-  padding: 0 12px;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  border-radius: 999px;
-  border: none;
-
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-}
-/* Clean pill uses the same sizing as other buttons */
-
-/* Colors */
-.pill-yes {
-  background: #d1fae5;   /* light green */
-  color: #065f46;        /* dark green */
-}
-
-.pill-no {
-  background: #fee2e2;   /* light red */
-  color: #991b1b;        /* dark red */
-}
-/* === ONE LINE IN CELLS (LOCK + VISIBLE) === */
-.lock-form,
-.vis-form{
-  display:flex;
-  align-items:center;
-  gap:6px;
-  flex-wrap:nowrap !important;
-  white-space:nowrap;
-}
-
-/* чтобы кнопки не становились “блоками” и не переносились */
-.lock-form button,
-.vis-form button,
-.lock-form .btn-small,
-.vis-form .btn-small{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  white-space:nowrap;
-}
-
-/* фикс ширины поля кода, чтобы хватало места кнопкам */
-.lock-input{
-  width:72px;
-  min-width:72px;
-}
-
-
-  </style>
-
-  
-</head>
-<body>
-  <div class="page">
-    <div class="card">
-      ${innerHtml}
-    </div>
-  </div>
-</body>
-</html>`;
-}
 
 // ===================== GUEST ROUTES =====================
 
@@ -694,11 +643,12 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
   const { aptId, token } = req.params;
 
   try {
-     // 👉 НОРМАЛИЗАЦИЯ ДАННЫХ (ОБЯЗАТЕЛЬНО)
-    const arrivalDate   = req.body.arrivalDate;
-    const arrivalTime   = req.body.arrivalTime || "16:00";
+    // 👉 НОРМАЛИЗАЦИЯ ДАННЫХ (ОБЯЗАТЕЛЬНО)
+    const arrivalDate = req.body.arrivalDate;
+    const arrivalTime = req.body.arrivalTime || "16:00";
     const departureDate = req.body.departureDate;
     const departureTime = req.body.departureTime || "11:00";
+
     await pool.query(
       `
       INSERT INTO checkins (
@@ -720,7 +670,7 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
       ]
     );
 
-    // ===================== BLOCK: AFTER CHECKIN -> REDIRECT TO DASHBOARD =====================
+    // AFTER CHECKIN -> REDIRECT TO DASHBOARD
     return res.redirect(`/guest/${aptId}/${token}`);
   } catch (e) {
     console.error("DB insert error:", e);
@@ -728,7 +678,7 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
   }
 });
 
-// ===================== BLOCK: GUEST DASHBOARD =====================
+// ===================== GUEST DASHBOARD =====================
 // Guest opens: /guest/:aptId/:token
 // We show last submitted record for this booking token.
 app.get("/guest/:aptId/:token", async (req, res) => {
@@ -767,9 +717,10 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 
     // show code only when:
     // 1) admin enabled lock_visible
-    // 2) today >= arrival_date
+    // 2) today >= arrival_date (NOTE: comment only; current behavior checks only visible+code)
     const arrivalYmd = String(r.arrival_date).slice(0, 10);
     const canShowCode = Boolean(r.lock_visible) && r.lock_code;
+
     const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time).slice(0, 5)}`;
     const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time).slice(0, 5)}`;
 
@@ -819,29 +770,35 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 // --- LIST + FILTER ---
 app.get("/admin/checkins", async (req, res) => {
   try {
-  const { from, to, quick: quickRaw } = req.query;
+    const { from, to, quick: quickRaw } = req.query;
 
-const tz = "Europe/Madrid";
-const today = ymdInTz(new Date(), tz);
-const tomorrow = ymdInTz(new Date(Date.now() + 86400000), tz);
-const yesterday = ymdInTz(new Date(Date.now() - 86400000), tz);
+    const tz = "Europe/Madrid";
+    const today = ymdInTz(new Date(), tz);
+    const tomorrow = ymdInTz(new Date(Date.now() + 86400000), tz);
+    const yesterday = ymdInTz(new Date(Date.now() - 86400000), tz);
 
-// quick выбран?
-const quick = (quickRaw === "yesterday" || quickRaw === "today" || quickRaw === "tomorrow") ? quickRaw : "";
+    // quick выбран?
+    const quick =
+      quickRaw === "yesterday" || quickRaw === "today" || quickRaw === "tomorrow"
+        ? quickRaw
+        : "";
 
-// ✅ Приоритет: если quick выбран — он главнее дат
-let fromDate = from;
-let toDate = to;
+    // ✅ Приоритет: если quick выбран — он главнее дат
+    let fromDate = from;
+    let toDate = to;
 
-if (quick) {
-  if (quick === "yesterday") {
-    fromDate = yesterday; toDate = yesterday;
-  } else if (quick === "today") {
-    fromDate = today; toDate = today;
-  } else if (quick === "tomorrow") {
-    fromDate = tomorrow; toDate = tomorrow;
-  }
-}
+    if (quick) {
+      if (quick === "yesterday") {
+        fromDate = yesterday;
+        toDate = yesterday;
+      } else if (quick === "today") {
+        fromDate = today;
+        toDate = today;
+      } else if (quick === "tomorrow") {
+        fromDate = tomorrow;
+        toDate = tomorrow;
+      }
+    }
 
     const where = [];
     const params = [];
@@ -858,21 +815,21 @@ if (quick) {
     const { rows } = await pool.query(
       `
       SELECT
-  id,
-    beds24_booking_id,
-    apartment_name,
-    apartment_id,
-    booking_token,
-    full_name,
-    phone,
-    arrival_date,
-    arrival_time,
-    departure_date,
-    departure_time,
-    lock_code,
-    lock_visible,
-    clean_ok
-FROM checkins
+        id,
+        beds24_booking_id,
+        apartment_name,
+        apartment_id,
+        booking_token,
+        full_name,
+        phone,
+        arrival_date,
+        arrival_time,
+        departure_date,
+        departure_time,
+        lock_code,
+        lock_visible,
+        clean_ok
+      FROM checkins
       ${whereSql}
       ORDER BY arrival_date ASC, arrival_time ASC, id DESC
       LIMIT 300
@@ -895,33 +852,33 @@ FROM checkins
         </div>
         <div>
           <label>Quick</label>
-<select name="quick">
-  <option value="" ${!quick ? "selected" : ""}>-</option>
-  <option value="yesterday" ${quick==="yesterday"?"selected":""}>Yesterday</option>
-  <option value="today" ${quick==="today"?"selected":""}>Today</option>
-  <option value="tomorrow" ${quick==="tomorrow"?"selected":""}>Tomorrow</option>
-</select>
+          <select name="quick">
+            <option value="" ${!quick ? "selected" : ""}>-</option>
+            <option value="yesterday" ${quick === "yesterday" ? "selected" : ""}>Yesterday</option>
+            <option value="today" ${quick === "today" ? "selected" : ""}>Today</option>
+            <option value="tomorrow" ${quick === "tomorrow" ? "selected" : ""}>Tomorrow</option>
+          </select>
         </div>
 
         <button class="btn-base" class="btn" type="submit">Show</button>
         <a class="btn-link" href="/admin/checkins">Reset</a>
       </form>
     `;
-const returnTo = req.originalUrl;
+
     const table = `
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-             <th class="sticky-col">Clean</th>
-<th>Apartment</th>
-<th>Name</th>
-<th>Phone</th>
-<th>Arrive</th>
-<th>Depart</th>
-<th>Guest</th>
-<th>Lock code</th>
-<th>Visible</th>
+              <th class="sticky-col">Clean</th>
+              <th>Apartment</th>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Arrive</th>
+              <th>Depart</th>
+              <th>Guest</th>
+              <th>Lock code</th>
+              <th>Visible</th>
             </tr>
           </thead>
 
@@ -937,27 +894,27 @@ const returnTo = req.originalUrl;
                         <tr>
                           <td class="sticky-col">
                             <form method="POST" action="/admin/checkins/${r.id}/clean">
-                            <button
-  type="submit"
-  class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}"
-  title="${r.clean_ok ? "Clean" : "Not clean"}"
->
-  ${r.clean_ok ? "✓" : ""}
-</button>
+                              <button
+                                type="submit"
+                                class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}"
+                                title="${r.clean_ok ? "Clean" : "Not clean"}"
+                              >
+                                ${r.clean_ok ? "✓" : ""}
+                              </button>
                             </form>
                           </td>
 
-              
-<td>${r.apartment_name ?? ""}</td>
-<td>${r.full_name}</td>
-<td>${r.phone}</td>
-<td>${arrive}</td>
-<td>${depart}</td>
-<td>
-  <a class="btn-small btn-ghost" href="/guest/${r.apartment_id}/${r.booking_token}" target="_blank">
-    Open
-  </a>
-</td>
+                          <td>${r.apartment_name ?? ""}</td>
+                          <td>${r.full_name}</td>
+                          <td>${r.phone}</td>
+                          <td>${arrive}</td>
+                          <td>${depart}</td>
+
+                          <td>
+                            <a class="btn-small btn-ghost" href="/guest/${r.apartment_id}/${r.booking_token}" target="_blank">
+                              Open
+                            </a>
+                          </td>
 
                           <td>
                             <form method="POST" action="/admin/checkins/${r.id}/lock" class="lock-form">
@@ -975,14 +932,14 @@ const returnTo = req.originalUrl;
                             </form>
                           </td>
 
-                         <td>
-  <form method="POST" action="/admin/checkins/${r.id}/visibility" class="vis-form">
-    <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "🔓 YES" : "🔒 NO"}</span>
-    <button class="btn-small ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
-      ${r.lock_visible ? "Hide" : "Show"}
-    </button>
-  </form>
-</td>
+                          <td>
+                            <form method="POST" action="/admin/checkins/${r.id}/visibility" class="vis-form">
+                              <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "🔓 YES" : "🔒 NO"}</span>
+                              <button class="btn-small ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
+                                ${r.lock_visible ? "Hide" : "Show"}
+                              </button>
+                            </form>
+                          </td>
                         </tr>
                       `;
                     })
@@ -1021,7 +978,7 @@ app.post("/admin/checkins/:id/lock", async (req, res) => {
       id,
     ]);
     const back = req.body.returnTo || req.get("referer") || "/admin/checkins";
-res.redirect(back);
+    res.redirect(back);
   } catch (e) {
     console.error("Lock code update error:", e);
     res.status(500).send("❌ Cannot update lock code");
@@ -1038,8 +995,8 @@ app.post("/admin/checkins/:id/visibility", async (req, res) => {
       makeVisible,
       id,
     ]);
-   const back = req.body.returnTo || req.get("referer") || "/admin/checkins";
-res.redirect(back);
+    const back = req.body.returnTo || req.get("referer") || "/admin/checkins";
+    res.redirect(back);
   } catch (e) {
     console.error("Visibility update error:", e);
     res.status(500).send("❌ Cannot update visibility");
@@ -1052,8 +1009,8 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
 
   try {
     await pool.query(`UPDATE checkins SET clean_ok = NOT clean_ok WHERE id = $1`, [id]);
-   const back = req.body.returnTo || req.get("referer") || "/admin/checkins";
-res.redirect(back);
+    const back = req.body.returnTo || req.get("referer") || "/admin/checkins";
+    res.redirect(back);
   } catch (e) {
     console.error("Clean toggle error:", e);
     res.status(500).send("❌ Cannot toggle clean status");
@@ -1070,82 +1027,3 @@ res.redirect(back);
     process.exit(1);
   }
 })();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
