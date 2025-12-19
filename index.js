@@ -7,6 +7,8 @@
 require("dotenv").config();
 const express = require("express");
 const { Pool } = require("pg");
+const twilio = require("twilio");
+
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
@@ -89,6 +91,12 @@ function ymd(d) {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
+// ===================== TWILIO CLIENT =====================
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
+
 
 // Render usually runs in UTC. For Spain apartments we use Europe/Madrid.
 function ymdInTz(date = new Date(), timeZone = "Europe/Madrid") {
@@ -1047,6 +1055,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
