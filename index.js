@@ -40,7 +40,7 @@ app.get("/admin/checkins", (req, res) => {
 });
 
 
-app.get("api/admin/checkins", async (req, res) => {
+app.get("/api/admin/checkins", async (req, res) => {
   try {
     const from = String(req.query.from || "").trim();
     const to = String(req.query.to || "").trim();
@@ -1183,6 +1183,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
