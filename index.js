@@ -8,82 +8,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 // ======================
-// Admin: list checkins
-// GET /admin/checkins?from=YYYY-MM-DD&to=YYYY-MM-DD&quick=TEXT&include_cancelled=1
-// ======================
-app.get("/admin/checkins", async (req, res) => {
-  try {
-    const from = String(req.query.from || "").trim();
-    const to = String(req.query.to || "").trim();
-    const quick = String(req.query.quick || "").trim();
-    const includeCancelled = String(req.query.include_cancelled || "") === "1";
-
-    const where = [];
-    const params = [];
-
-    // по умолчанию НЕ показываем отменённые
-    if (!includeCancelled) {
-      where.push("(cancelled IS DISTINCT FROM true)");
-    }
-
-    // фильтр по датам (arrival_date)
-    if (from) {
-      params.push(from);
-      where.push(`arrival_date >= $${params.length}`);
-    }
-    if (to) {
-      params.push(to);
-      where.push(`arrival_date <= $${params.length}`);
-    }
-
-    // быстрый поиск: апарт/имя/телефон/booking_token/beds24_booking_id
-    if (quick) {
-      params.push(`%${quick}%`);
-      const p = `$${params.length}`;
-      where.push(`
-        (
-          COALESCE(apartment_name,'') ILIKE ${p}
-          OR COALESCE(full_name,'') ILIKE ${p}
-          OR COALESCE(phone,'') ILIKE ${p}
-          OR COALESCE(booking_token,'') ILIKE ${p}
-          OR COALESCE(beds24_booking_id::text,'') ILIKE ${p}
-        )
-      `);
-    }
-
-    const sql = `
-      SELECT
-        id,
-        apartment_id,
-        apartment_name,
-        full_name,
-        phone,
-        arrival_date,
-        arrival_time,
-        departure_date,
-        departure_time,
-        booking_token,
-        beds24_booking_id,
-        cancelled,
-        cancelled_at,
-        lock_code,
-        lock_visible,
-        clean_ok
-      FROM checkins
-      ${where.length ? "WHERE " + where.join(" AND ") : ""}
-      ORDER BY arrival_date ASC, id DESC
-      LIMIT 500
-    `;
-
-    const { rows } = await pool.query(sql, params);
-    return res.json(rows);
-  } catch (err) {
-    console.error("❌ /admin/checkins error:", err);
-    return res.status(500).send("Server error");
-  }
-});
-
-// ======================
 // Beds24 Webhook (receiver)
 // ======================
 app.post("/webhooks/beds24", async (req, res) => {
@@ -95,39 +19,16 @@ app.post("/webhooks/beds24", async (req, res) => {
     }
 
     const payload = req.body || {};
-    const booking = payload.booking || payload;
+    const booking = payload.booking || payload; // fallback
+
     if (!booking || !booking.id) {
-      console.log("ℹ️ Beds24 webhook: no booking object, ignored");
+      console.log("ℹ️ Beds24 webhook: no booking.id, ignored");
       return res.status(200).send("Ignored");
     }
 
     console.log("✅ Booking received:", booking.id);
 
-    // --- detect cancelled ---
-    const isCancelled =
-      booking?.cancelled === true ||
-      booking?.isCancelled === true ||
-      String(booking?.status || "").toLowerCase() === "cancelled" ||
-      String(booking?.state || "").toLowerCase() === "cancelled" ||
-      String(booking?.bookingStatus || "").toLowerCase() === "cancelled";
-
-    // если отменено — помечаем в БД и выходим
-    if (isCancelled) {
-      console.log("❌ Booking cancelled -> mark in DB:", booking.id);
-      await pool.query(
-        `
-        UPDATE checkins
-        SET cancelled = true,
-            cancelled_at = NOW()
-        WHERE booking_token = $1
-           OR beds24_booking_id::text = $1
-        `,
-        [String(booking.id)]
-      );
-      return res.status(200).send("Cancelled");
-    }
-
-    // --- guest fields ---
+    // ---- guest fields ----
     const guest = payload.guest || booking.guest || booking.guestData || {};
     const fullName =
       guest.name ||
@@ -138,7 +39,11 @@ app.post("/webhooks/beds24", async (req, res) => {
       [booking.firstName, booking.lastName].filter(Boolean).join(" ") ||
       "Beds24 Guest";
 
-    const email = guest.email || guest.emailAddress || "unknown@beds24";
+    const email =
+      guest.email ||
+      guest.emailAddress ||
+      "unknown@beds24";
+
     const phone =
       guest.phone ||
       guest.mobile ||
@@ -148,7 +53,7 @@ app.post("/webhooks/beds24", async (req, res) => {
       booking.phoneNumber ||
       "";
 
-    // --- dates ---
+    // ---- dates (we keep DATE; time can be empty) ----
     const arrivalDate =
       booking?.arrival?.date ??
       booking?.arrivalDate ??
@@ -168,12 +73,16 @@ app.post("/webhooks/beds24", async (req, res) => {
     const arrivalTime = booking?.arrival?.time || booking?.arrivalTime || null;
     const departureTime = booking?.departure?.time || booking?.departureTime || null;
 
-    // --- room mapping ---
+    // ---- room / apartment name ----
     const ROOM_NAME_MAP = {
       "433806": "Argenta",
+      // "123456": "APT 2",
     };
 
-    const beds24RoomId = String(booking?.roomId ?? booking?.room?.id ?? booking?.unitId ?? "");
+    const beds24RoomId = String(
+      booking?.roomId ?? booking?.room?.id ?? booking?.unitId ?? ""
+    );
+
     const apartmentName =
       ROOM_NAME_MAP[beds24RoomId] ||
       booking?.roomName ||
@@ -183,8 +92,10 @@ app.post("/webhooks/beds24", async (req, res) => {
       booking?.unit?.name ||
       null;
 
+    const beds24BookingId = booking?.id ?? null;
     const beds24Raw = payload;
 
+    // ---- upsert ----
     await pool.query(
       `
       INSERT INTO checkins (
@@ -203,34 +114,32 @@ app.post("/webhooks/beds24", async (req, res) => {
         beds24_raw
       )
       VALUES (
-        $1,$2,$3,$4,$5,
-        $6,$7,$8,
-        $9,$10,$11,$12,
+        $1, $2, $3, $4, $5,
+        $6, $7, $8,
+        $9, $10, $11, $12,
         $13::jsonb
       )
       ON CONFLICT (booking_token)
       DO UPDATE SET
         apartment_id = EXCLUDED.apartment_id,
         beds24_booking_id = COALESCE(EXCLUDED.beds24_booking_id, checkins.beds24_booking_id),
-        beds24_room_id = COALESCE(EXCLUDED.beds24_room_id, checkins.beds24_room_id),
-        apartment_name = COALESCE(EXCLUDED.apartment_name, checkins.apartment_name),
+        beds24_room_id    = COALESCE(EXCLUDED.beds24_room_id,    checkins.beds24_room_id),
+        apartment_name    = COALESCE(EXCLUDED.apartment_name,    checkins.apartment_name),
         full_name = EXCLUDED.full_name,
-        email = EXCLUDED.email,
-        phone = EXCLUDED.phone,
-        arrival_date = COALESCE(EXCLUDED.arrival_date, checkins.arrival_date),
-        arrival_time = COALESCE(EXCLUDED.arrival_time, checkins.arrival_time),
+        email     = EXCLUDED.email,
+        phone     = EXCLUDED.phone,
+        arrival_date   = COALESCE(EXCLUDED.arrival_date,   checkins.arrival_date),
+        arrival_time   = COALESCE(EXCLUDED.arrival_time,   checkins.arrival_time),
         departure_date = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
         departure_time = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
-        beds24_raw = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw),
-        cancelled = false,
-        cancelled_at = NULL
+        beds24_raw = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
       `,
       [
-        String(beds24RoomId || ""),
-        String(booking.id || ""),
-        booking.id,
-        String(beds24RoomId || ""),
-        apartmentName,
+        String(beds24RoomId || ""),     // apartment_id (your internal)
+        String(booking.id || ""),       // booking_token (unique per booking)
+        beds24BookingId,                // beds24_booking_id
+        String(beds24RoomId || ""),     // beds24_room_id
+        apartmentName,                  // apartment_name
         fullName,
         email,
         phone,
@@ -242,14 +151,45 @@ app.post("/webhooks/beds24", async (req, res) => {
       ]
     );
 
-    console.log("✅ Booking saved:", booking.id);
     return res.status(200).send("OK");
-  } catch (err) {
-    console.error("❌ Beds24 webhook error:", err);
+  } catch (e) {
+    console.error("❌ Beds24 webhook error:", e);
     return res.status(500).send("Webhook error");
   }
 });
     
+  /* await pool.query(
+  `
+  INSERT INTO checkins (
+    apartment_id,
+    booking_token,
+    beds24_booking_id,
+    beds24_room_id,
+    full_name,
+    email,
+    phone,
+    arrival_date,
+    arrival_time,
+    departure_date,
+    departure_time
+  )
+  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+  ON CONFLICT DO NOTHING
+  `, 
+  [
+    String(booking.roomId),
+    String(booking.id),
+    booking.id,
+    booking.roomId,
+    fullName,
+    email,
+    phone,
+    arrivalDate,
+    arrivalTime,
+    departureDate,
+    departureTime
+  ]
+);*/
     console.log("✅ Booking saved:", booking.id);
     res.status(200).send("OK");
   } catch (err) {
@@ -1162,9 +1102,6 @@ res.redirect(back);
     process.exit(1);
   }
 })();
-
-
-
 
 
 
