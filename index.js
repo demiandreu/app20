@@ -249,14 +249,6 @@ app.post("/webhooks/beds24", async (req, res) => {
     return res.status(500).send("Webhook error");
   }
 });
-    
-    console.log("✅ Booking saved:", booking.id);
-    res.status(200).send("OK");
-  } catch (err) {
-    console.error("❌ DB insert error:", err);
-    res.status(500).send("DB error");
-  }
-});
 
 const PORT = process.env.PORT || 3000;
 
@@ -1162,6 +1154,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
