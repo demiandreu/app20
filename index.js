@@ -91,6 +91,15 @@ function ymd(d) {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
+
+// ===================== TWILIO WHATSAPP INBOUND (TEST) =====================
+app.post("/webhooks/twilio/whatsapp", (req, res) => {
+  const from = String(req.body.From || "");
+  const body = String(req.body.Body || "");
+  console.log("📩 Twilio WhatsApp inbound:", { from, body });
+  return res.status(200).send("OK");
+});
+
 // ===================== TWILIO CLIENT =====================
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || "";
@@ -1075,6 +1084,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
