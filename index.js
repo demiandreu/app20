@@ -11,6 +11,32 @@ app.use(express.json());
 // Admin: list checkins
 // GET /admin/checkins?from=YYYY-MM-DD&to=YYYY-MM-DD&quick=TEXT&include_cancelled=1
 // ======================
+
+app.get("/admin/checkins", (req, res) => {
+  res.send(`
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8"/>
+        <title>Admin Check-ins</title>
+      </head>
+      <body>
+        <h1>Admin check-ins</h1>
+        <pre id="out">Loading...</pre>
+
+        <script>
+          fetch('/api/admin/checkins')
+            .then(r => r.json())
+            .then(d => {
+              document.getElementById('out').textContent =
+                JSON.stringify(d, null, 2);
+            });
+        </script>
+      </body>
+    </html>
+  `);
+});
+
 app.get("/admin/checkins", (req, res) => {
   return res.redirect("/admin"); 
 });
@@ -1157,6 +1183,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
