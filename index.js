@@ -43,7 +43,7 @@ const phone =
   guest.phoneNumber ||
   booking.phone ||
   booking.mobile ||
-  booking.phone ||
+  booking.phoneNumber ||
   "";
 
   if (!booking || !booking.id) {
@@ -1107,6 +1107,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
