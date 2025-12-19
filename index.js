@@ -52,6 +52,29 @@ const phone =
   }
 
   console.log("✅ Booking received:", booking.id);
+  // ===== обработка отмены брони =====
+if (
+  booking?.status === "cancelled" ||
+  booking?.state === "cancelled"
+) {
+  console.log("Booking cancelled:", booking.id);
+
+  await pool.query(
+    `
+    UPDATE checkins
+    SET cancelled = true,
+        cancelled_at = NOW()
+    WHERE beds24_booking_id = $1
+       OR booking_token = $2
+    `,
+    [
+      booking.id?.toString() || null,
+      booking.bookingId?.toString() || null
+    ]
+  );
+
+  return res.status(200).send("Cancelled booking processed");
+}
 const arrivalDate =
   booking?.arrival?.date ??
   booking?.arrivalDate ??
@@ -1107,6 +1130,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
