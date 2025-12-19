@@ -65,6 +65,13 @@ const departureDate =
 
 const arrivalTime = booking?.arrival?.time || booking?.arrivalTime || null;
 const departureTime = booking?.departure?.time || booking?.departureTime || null;
+  const apartmentName =
+  booking?.roomName ||
+  booking?.unitName ||
+  booking?.apartmentName ||
+  booking?.room?.name ||
+  booking?.unit?.name ||
+  null;
   const beds24BookingId =
   booking?.id ||
   booking?.bookingId ||
@@ -1104,6 +1111,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
