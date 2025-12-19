@@ -315,7 +315,13 @@ function renderPage(title, innerHtml) {
   <title>${title}</title>
   
   <style>
-  
+  th.sticky-col, td.sticky-col{
+  background: #fff;
+  z-index: 2;
+}
+thead th.sticky-col{
+  z-index: 3;
+}
   .table-wrap{
   overflow-x: auto;
   position: relative;
@@ -1040,6 +1046,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
