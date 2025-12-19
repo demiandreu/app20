@@ -586,7 +586,37 @@ tr:hover td{ background:#f9fafb; }
   background: #fee2e2;   /* light red */
   color: #991b1b;        /* dark red */
 }
+/* === ONE LINE IN CELLS (LOCK + VISIBLE) === */
+.lock-form,
+.vis-form{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:nowrap !important;
+  white-space:nowrap;
+}
+
+/* чтобы кнопки не становились “блоками” и не переносились */
+.lock-form button,
+.vis-form button,
+.lock-form .btn-small,
+.vis-form .btn-small{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  white-space:nowrap;
+}
+
+/* фикс ширины поля кода, чтобы хватало места кнопкам */
+.lock-input{
+  width:72px;
+  min-width:72px;
+}
+
+
   </style>
+
+  
 </head>
 <body>
   <div class="page">
@@ -976,14 +1006,14 @@ const returnTo = req.originalUrl;
                             </form>
                           </td>
 
-                          <td>
-                            <form method="POST" action="/admin/checkins/${r.id}/visibility" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                              <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "🔓 YES" : "🔒 NO"}</span>
-                              <button class="btn-base" class="btn-small" ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
-                                ${r.lock_visible ? "Hide" : "Show"}
-                              </button>
-                            </form>
-                          </td>
+                         <td>
+  <form method="POST" action="/admin/checkins/${r.id}/visibility" class="vis-form">
+    <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "🔓 YES" : "🔒 NO"}</span>
+    <button class="btn-small ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
+      ${r.lock_visible ? "Hide" : "Show"}
+    </button>
+  </form>
+</td>
                         </tr>
                       `;
                     })
@@ -1071,6 +1101,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
