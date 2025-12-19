@@ -316,6 +316,14 @@ function renderPage(title, innerHtml) {
   
   <style>
   
+  .table-wrap{
+  overflow-x: auto;
+  position: relative;
+}
+table{
+  border-collapse: separate;
+  border-spacing: 0;
+}
   .btn-base {
   height: 34px;
   min-height: 34px;
@@ -1032,6 +1040,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
