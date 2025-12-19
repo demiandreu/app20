@@ -21,7 +21,7 @@ app.post("/webhooks/beds24", async (req, res) => {
 console.log("📦 Beds24 payload keys:", Object.keys(payload || {}));
   const booking = payload.booking || payload; // на всякий случай
   // --- dates / ids from Beds24 ---
-
+console.log("BEDS24 BOOKING JSON:", JSON.stringify(booking, null, 2));
 const beds24Raw = payload;
   const guest = payload.guest || booking.guest || booking.guestData || {};
 
@@ -1117,6 +1117,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
