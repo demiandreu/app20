@@ -65,7 +65,12 @@ const departureDate =
 
 const arrivalTime = booking?.arrival?.time || booking?.arrivalTime || null;
 const departureTime = booking?.departure?.time || booking?.departureTime || null;
-  
+  const beds24RoomId =
+  booking?.roomId ||
+  booking?.roomid ||
+  booking?.unitId ||
+  booking?.unit?.id ||
+  null;
   try {
 
  await pool.query(
@@ -1098,6 +1103,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
