@@ -770,8 +770,45 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 // --- LIST + FILTER ---
 app.get("/admin/checkins", async (req, res) => {
   try {
+    app.get("/admin/checkins", async (req, res) => {
+  try {
+    // --- read query ---
     const { from, to, quick: quickRaw } = req.query;
 
+    const tz = "Europe/Madrid";
+    const today = ymdInTz(new Date(), tz);
+    const tomorrow = ymdInTz(new Date(Date.now() + 86400000), tz);
+    const yesterday = ymdInTz(new Date(Date.now() - 86400000), tz);
+
+    // ✅ Default behavior:
+    // if user opens /admin/checkins with no filters, show "today"
+    const hasAnyFilter = Boolean(from || to || quickRaw);
+    const quickCandidate = hasAnyFilter ? quickRaw : "today";
+
+    // quick выбран?
+    const quick =
+      quickCandidate === "yesterday" ||
+      quickCandidate === "today" ||
+      quickCandidate === "tomorrow"
+        ? quickCandidate
+        : "";
+
+    // ✅ Приоритет: если quick выбран — он главнее дат
+    let fromDate = from;
+    let toDate = to;
+
+    if (quick) {
+      if (quick === "yesterday") {
+        fromDate = yesterday; toDate = yesterday;
+      } else if (quick === "today") {
+        fromDate = today; toDate = today;
+      } else if (quick === "tomorrow") {
+        fromDate = tomorrow; toDate = tomorrow;
+      }
+    }
+
+    // ... дальше код без изменений (where/params/query/render)
+    
     const tz = "Europe/Madrid";
     const today = ymdInTz(new Date(), tz);
     const tomorrow = ymdInTz(new Date(Date.now() + 86400000), tz);
@@ -1027,3 +1064,4 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
