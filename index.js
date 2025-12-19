@@ -52,7 +52,7 @@ const phone =
   }
 
   console.log("✅ Booking received:", booking.id);
-  // ===== обработка отмены брони =====
+// ===== обработка отмены брони =====
 const isCancelled =
   booking?.cancelled === true ||
   booking?.isCancelled === true ||
@@ -64,13 +64,19 @@ if (isCancelled) {
   console.log("❌ Booking cancelled, marking in DB:", booking.id);
 
   await pool.query(
-  `UPDATE checkins
-   SET cancelled = true,
-       cancelled_at = NOW()
-   WHERE booking_token = $1
-      OR beds24_booking_id = $1`,
-  [String(booking.id)]
-`);
+  `
+  UPDATE checkins
+  SET cancelled = true,
+      cancelled_at = NOW()
+  WHERE booking_token = $1
+     OR beds24_booking_id = $2
+  `,
+  [String(bookingToken), String(beds24BookingId)]
+);
+
+  return res.status(200).send("Cancelled");
+}
+
 
   return res.status(200).send("Cancelled");
 }
@@ -1132,6 +1138,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
