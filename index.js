@@ -6,7 +6,7 @@ const { Pool } = require("pg");
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-// ======================
+
 // ======================
 // Beds24 Webhook (receiver)
 // ======================
@@ -1102,6 +1102,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
