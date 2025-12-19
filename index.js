@@ -92,13 +92,57 @@ function ymd(d) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-// ===================== TWILIO WHATSAPP INBOUND (TEST) =====================
-app.post("/webhooks/twilio/whatsapp", (req, res) => {
-  const from = String(req.body.From || "");
-  const body = String(req.body.Body || "");
-  console.log("📩 Twilio WhatsApp inbound:", { from, body });
-  return res.status(200).send("OK");
+// ===================== TWILIO WHATSAPP INBOUND (LISTO -> LINK) =====================
+app.post("/webhooks/twilio/whatsapp", async (req, res) => {
+  try {
+    const from = String(req.body.From || ""); // "whatsapp:+34..."
+    const body = String(req.body.Body || "").trim();
+
+    console.log("📩 Twilio WhatsApp inbound:", { from, body });
+
+    const phone = from.replace("whatsapp:", "").trim(); // "+34..."
+    const text = body.toUpperCase();
+
+    if (text !== "LISTO") {
+      return res.status(200).send("OK");
+    }
+
+    // Берём последнюю запись по телефону
+    const { rows } = await pool.query(
+      `
+      SELECT apartment_id, booking_token
+      FROM checkins
+      WHERE phone = $1
+      ORDER BY id DESC
+      LIMIT 1
+      `,
+      [phone]
+    );
+
+    if (!rows.length) {
+      await sendWhatsApp(
+        from,
+        `Gracias ✅\n\nAún no veo tu reserva en el sistema. Si acabas de reservar, espera unos minutos y vuelve a enviar “LISTO”.`
+      );
+      return res.status(200).send("OK");
+    }
+
+    const r = rows[0];
+    const base = (process.env.PUBLIC_BASE_URL || "https://rcs-checkin-api.onrender.com").replace(/\/$/, "");
+    const link = `${base}/guest/${encodeURIComponent(String(r.apartment_id))}/${encodeURIComponent(String(r.booking_token))}`;
+
+    await sendWhatsApp(
+      from,
+      `Perfecto ✅\n\nAquí tienes tu portal de huésped:\n${link}\n\nEl código de la caja se mostrará el día de llegada cuando el anfitrión lo active.`
+    );
+
+    return res.status(200).send("OK");
+  } catch (e) {
+    console.error("❌ Twilio inbound error:", e);
+    return res.status(200).send("OK");
+  }
 });
+
 
 // ===================== TWILIO CLIENT =====================
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
@@ -112,6 +156,31 @@ const twilioClient =
 if (!twilioClient) {
   console.log("ℹ️ Twilio not configured yet (missing TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN)");
 }
+async function sendWhatsApp(toE164, text) {
+  if (!twilioClient) {
+    console.log("ℹ️ Twilio client is null. Skip send.");
+    return;
+  }
+
+  const from = process.env.TWILIO_WHATSAPP_FROM || "";
+  if (!from) {
+    console.log("ℹ️ TWILIO_WHATSAPP_FROM missing. Skip send.");
+    return;
+  }
+
+  const to = String(toE164).startsWith("whatsapp:")
+    ? String(toE164)
+    : `whatsapp:${String(toE164).trim()}`;
+
+  const msg = await twilioClient.messages.create({
+    from,
+    to,
+    body: text,
+  });
+
+  console.log("✅ WhatsApp sent:", msg.sid);
+}
+
 
 // Render usually runs in UTC. For Spain apartments we use Europe/Madrid.
 function ymdInTz(date = new Date(), timeZone = "Europe/Madrid") {
@@ -1084,6 +1153,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
