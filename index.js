@@ -11,7 +11,10 @@ app.use(express.json());
 // Admin: list checkins
 // GET /admin/checkins?from=YYYY-MM-DD&to=YYYY-MM-DD&quick=TEXT&include_cancelled=1
 // ======================
-app.get("/admin/checkins", async (req, res) => {
+app.get("/admin/checkins", (req, res) => {
+  return res.redirect("/admin"); 
+});
+app.get("api/admin/checkins", async (req, res) => {
   try {
     const from = String(req.query.from || "").trim();
     const to = String(req.query.to || "").trim();
@@ -1154,6 +1157,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
