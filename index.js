@@ -8,61 +8,145 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 // ======================
-// Admin: list checkins
-// GET /admin/checkins?from=YYYY-MM-DD&to=YYYY-MM-DD&quick=TEXT&include_cancelled=1
+// Admin page: /admin/checkins (HTML)
 // ======================
 app.get("/admin/checkins", (req, res) => {
-  res.send(`
-    <!doctype html>
-    <html>
-      <head>
-        <meta charset="utf-8"/>
-        <title>Admin Check-ins</title>
-      </head>
-      <body>
-        <h1>Admin check-ins</h1>
-        <pre id="out">Loading...</pre>
+  res.type("html").send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Admin Check-ins</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 16px; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+    input { padding:6px 8px; }
+    button { padding:6px 10px; cursor:pointer; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px; font-size: 14px; }
+    th { background: #f5f5f5; text-align:left; }
+    tr.cancelled { opacity: 0.45; }
+    .small { font-size:12px; color:#666; }
+  </style>
+</head>
+<body>
+  <h1>Admin check-ins</h1>
 
-        <script>
-          fetch('/api/admin/checkins')
-            .then(r => r.json())
-            .then(d => {
-              document.getElementById('out').textContent =
-                JSON.stringify(d, null, 2);
-            });
-        </script>
-      </body>
-    </html>
-  `);
+  <div class="row">
+    <label>From <input id="from" type="date"></label>
+    <label>To <input id="to" type="date"></label>
+    <label>Quick <input id="quick" type="text" placeholder="name / phone / token"></label>
+    <label><input id="includeCancelled" type="checkbox"> include cancelled</label>
+    <button id="btn">Load</button>
+    <span id="status" class="small"></span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Apartment</th>
+        <th>Name</th>
+        <th>Phone</th>
+        <th>Arrival</th>
+        <th>Departure</th>
+        <th>Token</th>
+        <th>Beds24 ID</th>
+        <th>Cancelled</th>
+        <th>Clean</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+<script>
+  function qs(id){ return document.getElementById(id); }
+
+  async function load() {
+    qs('status').textContent = 'Loading...';
+    const params = new URLSearchParams();
+    const from = qs('from').value;
+    const to = qs('to').value;
+    const quick = qs('quick').value.trim();
+    const includeCancelled = qs('includeCancelled').checked;
+
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    if (quick) params.set('quick', quick);
+    if (includeCancelled) params.set('include_cancelled', '1');
+
+    const url = '/api/admin/checkins?' + params.toString();
+
+    const r = await fetch(url);
+    if (!r.ok) {
+      qs('status').textContent = 'Error: ' + r.status;
+      return;
+    }
+    const data = await r.json();
+
+    const tbody = qs('tbody');
+    tbody.innerHTML = '';
+    for (const row of data) {
+      const tr = document.createElement('tr');
+      if (row.cancelled) tr.className = 'cancelled';
+
+      const arr = (row.arrival_date || '').slice(0,10) + ' ' + (row.arrival_time || '');
+      const dep = (row.departure_date || '').slice(0,10) + ' ' + (row.departure_time || '');
+
+      tr.innerHTML = \`
+        <td>\${row.id ?? ''}</td>
+        <td>\${row.apartment_name ?? row.apartment_id ?? ''}</td>
+        <td>\${row.full_name ?? ''}</td>
+        <td>\${row.phone ?? ''}</td>
+        <td>\${arr.trim()}</td>
+        <td>\${dep.trim()}</td>
+        <td>\${row.booking_token ?? ''}</td>
+        <td>\${row.beds24_booking_id ?? ''}</td>
+        <td>\${row.cancelled ? 'yes' : 'no'}</td>
+        <td>\${row.clean_ok ? '✅' : ''}</td>
+      \`;
+      tbody.appendChild(tr);
+    }
+
+    qs('status').textContent = 'Loaded: ' + data.length;
+  }
+
+  qs('btn').addEventListener('click', load);
+  // автозагрузка
+  load();
+</script>
+</body>
+</html>`);
 });
-
-
+// ======================
+// Admin API: list checkins (JSON)
+// GET /api/admin/checkins?from=YYYY-MM-DD&to=YYYY-MM-DD&quick=TEXT&include_cancelled=1
+// ======================
 app.get("/api/admin/checkins", async (req, res) => {
   try {
-    const from = String(req.query.from || "").trim();
-    const to = String(req.query.to || "").trim();
-    const quick = String(req.query.quick || "").trim();
+    const from = String(req.query.from || "").trim();   // "2025-12-23"
+    const to = String(req.query.to || "").trim();       // "2025-12-24"
+    const quick = String(req.query.quick || "").trim(); // поиск
     const includeCancelled = String(req.query.include_cancelled || "") === "1";
 
     const where = [];
     const params = [];
 
-    // по умолчанию НЕ показываем отменённые
+    // По умолчанию НЕ показываем отменённые
     if (!includeCancelled) {
       where.push("(cancelled IS DISTINCT FROM true)");
     }
 
-    // фильтр по датам (arrival_date)
+    // Фильтр по датам (arrival_date)
     if (from) {
       params.push(from);
-      where.push(`arrival_date >= $${params.length}`);
+      where.push(`arrival_date >= $${params.length}::date`);
     }
     if (to) {
       params.push(to);
-      where.push(`arrival_date <= $${params.length}`);
+      where.push(`arrival_date <= $${params.length}::date`);
     }
 
-    // быстрый поиск: апарт/имя/телефон/booking_token/beds24_booking_id
+    // Быстрый поиск
     if (quick) {
       params.push(`%${quick}%`);
       const p = `$${params.length}`;
@@ -97,15 +181,15 @@ app.get("/api/admin/checkins", async (req, res) => {
         clean_ok
       FROM checkins
       ${where.length ? "WHERE " + where.join(" AND ") : ""}
-      ORDER BY arrival_date ASC, id DESC
-      LIMIT 500
+      ORDER BY arrival_date DESC NULLS LAST, id DESC
+      LIMIT 300
     `;
 
     const { rows } = await pool.query(sql, params);
     return res.json(rows);
   } catch (err) {
-    console.error("❌ /admin/checkins error:", err);
-    return res.status(500).send("Server error");
+    console.error("❌ admin/checkins API error:", err);
+    return res.status(500).json({ error: "admin api error" });
   }
 });
 
@@ -1180,6 +1264,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
