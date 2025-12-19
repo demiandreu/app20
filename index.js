@@ -35,12 +35,13 @@ const email =
   "unknown@beds24";
 
 const phone =
-  guest?.mobile ||
-  guest?.phone ||
-  guest?.phoneNumber ||
-  booking?.phone ||
-  booking?.mobile ||
-  null;
+  guest.phone ||
+  guest.mobile ||
+  guest.phoneNumber ||
+  booking.phone ||
+  booking.mobile ||
+  booking.phone ||
+  "";
 
   if (!booking || !booking.id) {
     console.log("ℹ️ Beds24 webhook: no booking object, ignored");
@@ -1103,6 +1104,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
