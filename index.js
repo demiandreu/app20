@@ -151,45 +151,13 @@ app.post("/webhooks/beds24", async (req, res) => {
       ]
     );
 
-    return res.status(200).send("OK");
+  /*  return res.status(200).send("OK");
   } catch (e) {
     console.error("❌ Beds24 webhook error:", e);
     return res.status(500).send("Webhook error");
   }
-});
+});*/
     
-  /* await pool.query(
-  `
-  INSERT INTO checkins (
-    apartment_id,
-    booking_token,
-    beds24_booking_id,
-    beds24_room_id,
-    full_name,
-    email,
-    phone,
-    arrival_date,
-    arrival_time,
-    departure_date,
-    departure_time
-  )
-  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-  ON CONFLICT DO NOTHING
-  `, 
-  [
-    String(booking.roomId),
-    String(booking.id),
-    booking.id,
-    booking.roomId,
-    fullName,
-    email,
-    phone,
-    arrivalDate,
-    arrivalTime,
-    departureDate,
-    departureTime
-  ]
-);*/
     console.log("✅ Booking saved:", booking.id);
     res.status(200).send("OK");
   } catch (err) {
@@ -1102,6 +1070,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
