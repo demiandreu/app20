@@ -314,6 +314,18 @@ function renderPage(title, innerHtml) {
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${title}</title>
   <style>
+  th.sticky-col,
+td.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: #fff;
+}
+
+thead th.sticky-col {
+  z-index: 3; /* чтобы заголовок был поверх */
+}
+
     :root { color-scheme: light; }
     * { box-sizing: border-box; }
     body{
@@ -787,7 +799,7 @@ const returnTo = req.originalUrl;
         <table>
           <thead>
             <tr>
-             <th>Clean</th>
+             <th class="sticky-col">Clean</th>
 <th>Beds24 Booking</th>
 <th>Apartment</th>
 <th>Apt ID</th>
@@ -811,7 +823,7 @@ const returnTo = req.originalUrl;
 
                       return `
                         <tr>
-                          <td>
+                          <td class="sticky-col">
                             <form method="POST" action="/admin/checkins/${r.id}/clean">
                               <button type="submit" class="pill ${r.clean_ok ? "pill-yes" : "pill-no"}">
                                 ${r.clean_ok ? "✅ CLEAN" : "❌ NOT CLEAN"}
@@ -943,6 +955,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
