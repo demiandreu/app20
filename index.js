@@ -57,18 +57,18 @@ const phone =
 });
 const arrivalDate =
   booking?.arrival?.date ??
-  booking?.arrival ??
   booking?.arrivalDate ??
   booking?.checkin?.date ??
   booking?.checkinDate ??
+  booking?.arrival ??   // <-- ВАЖНО: строка "2025-12-21"
   null;
 
 const departureDate =
   booking?.departure?.date ??
-  booking?.departure ??
   booking?.departureDate ??
   booking?.checkout?.date ??
   booking?.checkoutDate ??
+  booking?.departure ?? // <-- ВАЖНО: строка "2025-12-22"
   null;
 
 const arrivalTime = booking?.arrival?.time || booking?.arrivalTime || null;
@@ -1119,6 +1119,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
