@@ -770,8 +770,7 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 // --- LIST + FILTER ---
 app.get("/admin/checkins", async (req, res) => {
   try {
-    app.get("/admin/checkins", async (req, res) => {
-  try {
+
     // --- read query ---
     const { from, to, quick: quickRaw } = req.query;
 
@@ -808,8 +807,7 @@ app.get("/admin/checkins", async (req, res) => {
     }
 
     // ... дальше код без изменений (where/params/query/render)
-    
-    const tz = "Europe/Madrid";
+
     const today = ymdInTz(new Date(), tz);
     const tomorrow = ymdInTz(new Date(Date.now() + 86400000), tz);
     const yesterday = ymdInTz(new Date(Date.now() - 86400000), tz);
@@ -1064,4 +1062,5 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
