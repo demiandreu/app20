@@ -942,7 +942,6 @@ const returnTo = req.originalUrl;
           <thead>
             <tr>
              <th class="sticky-col">Clean</th>
-<th>Beds24 Booking</th>
 <th>Apartment</th>
 <th>Apt ID</th>
 <th>Name</th>
@@ -977,7 +976,7 @@ const returnTo = req.originalUrl;
                             </form>
                           </td>
 
-                        <td>${r.booking_id ?? ""}</td>
+              
 <td>${r.apartment_name ?? ""}</td>
 <td>${r.apartment_id}</td>
 <td>${r.full_name}</td>
@@ -1101,6 +1100,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
