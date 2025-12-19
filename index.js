@@ -424,6 +424,20 @@ app.post("/webhooks/beds24", async (req, res) => {
       console.log("❌ Beds24 webhook: invalid secret");
       return res.status(401).send("Unauthorized");
     }
+    
+    // ===================== TWILIO WHATSAPP INBOUND (TEST) =====================
+// Twilio будет присылать form-urlencoded: From, Body, etc.
+// У тебя уже есть app.use(express.urlencoded({ extended: true })) ✅
+app.post("/webhooks/twilio/whatsapp", (req, res) => {
+  const from = String(req.body.From || "");
+  const body = String(req.body.Body || "");
+  console.log("📩 Twilio WhatsApp inbound:", { from, body });
+
+  // Пока просто отвечаем 200, без логики
+  return res.status(200).send("OK");
+});
+
+    
 
     const payload = req.body || {};
     const booking = payload.booking || payload; // fallback
@@ -1061,6 +1075,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
