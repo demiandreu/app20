@@ -65,6 +65,10 @@ const departureDate =
 
 const arrivalTime = booking?.arrival?.time || booking?.arrivalTime || null;
 const departureTime = booking?.departure?.time || booking?.departureTime || null;
+  const beds24BookingId =
+  booking?.id ||
+  booking?.bookingId ||
+  null;
   const beds24RoomId =
   booking?.roomId ||
   booking?.roomid ||
@@ -145,16 +149,13 @@ const departureTime = booking?.departure?.time || booking?.departureTime || null
     beds24BookingId,                               // beds24_booking_id
     String(beds24RoomId || ""),                    // beds24_room_id
     apartmentName,                                 // apartment_name
-
     fullName,
     email,
     phone,
-
     arrivalDate,
     arrivalTime,
     departureDate,
     departureTime,
-
     JSON.stringify(beds24Raw)                      // jsonb
   ]
 );
@@ -1103,6 +1104,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
