@@ -35,10 +35,12 @@ const email =
   "unknown@beds24";
 
 const phone =
-  guest.phone ||
-  guest.mobile ||
-  guest.phoneNumber ||
-  "";
+  guest?.mobile ||
+  guest?.phone ||
+  guest?.phoneNumber ||
+  booking?.phone ||
+  booking?.mobile ||
+  null;
 
   if (!booking || !booking.id) {
     console.log("ℹ️ Beds24 webhook: no booking object, ignored");
@@ -64,22 +66,18 @@ const departureDate =
 
 const arrivalTime = booking?.arrival?.time || booking?.arrivalTime || null;
 const departureTime = booking?.departure?.time || booking?.departureTime || null;
-  const apartmentName =
+  const ROOM_NAME_MAP = {
+  "433806": "Argenta",   // <-- сюда впишешь своё
+  // "123456": "APT 2 (название)",
+};
+const beds24RoomId = String(booking?.roomId ?? booking?.room?.id ?? booking?.unitId ?? "");
+const apartmentName =
+  ROOM_NAME_MAP[beds24RoomId] ||
   booking?.roomName ||
   booking?.unitName ||
   booking?.apartmentName ||
   booking?.room?.name ||
   booking?.unit?.name ||
-  null;
-  const beds24BookingId =
-  booking?.id ||
-  booking?.bookingId ||
-  null;
-  const beds24RoomId =
-  booking?.roomId ||
-  booking?.roomid ||
-  booking?.unitId ||
-  booking?.unit?.id ||
   null;
   try {
 
@@ -1104,6 +1102,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
