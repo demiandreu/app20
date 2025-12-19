@@ -313,7 +313,23 @@ function renderPage(title, innerHtml) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${title}</title>
+  
   <style>
+  
+  .clean-pill {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+.clean-pill {
+  border-radius: 10px;
+}
   .clean-pill{
   width: 42px;
   min-width: 42px;
@@ -978,6 +994,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
