@@ -615,7 +615,7 @@ app.get("/checkin/:aptId/:token", (req, res) => {
         </div>
       </div>
 
-      <button class="btn-base "type="submit" class="btn-primary">Submit</button>
+      <button class="btn-base" "type="submit" class="btn-primary">Submit</button>
     </form>
 
     <p style="margin-top:16px;"><a href="/booking/${aptId}/${token}" class="btn-link">← Back</a></p>
@@ -838,7 +838,7 @@ FROM checkins
 </select>
         </div>
 
-        <button class="btn-base class="btn" type="submit">Show</button>
+        <button class="btn-base" class="btn" type="submit">Show</button>
         <a class="btn-link" href="/admin/checkins">Reset</a>
       </form>
     `;
@@ -874,7 +874,7 @@ const returnTo = req.originalUrl;
                         <tr>
                           <td class="sticky-col">
                             <form method="POST" action="/admin/checkins/${r.id}/clean">
-                            <button class="btn-base
+                            <button class="btn-base"
   type="submit"
   class="pill clean-pill ${r.clean_ok ? "pill-yes" : "pill-no"}"
   title="${r.clean_ok ? "Clean" : "Not clean"}"
@@ -909,15 +909,15 @@ const returnTo = req.originalUrl;
                                 maxlength="4"
                                 placeholder="1234"
                               />
-                              <button class="btn-base class="btn-small" type="submit">Save</button>
-                              <button class="btn-base class="btn-small btn-ghost" type="submit" name="clear" value="1">Clear</button>
+                              <button class="btn-base" class="btn-small" type="submit">Save</button>
+                              <button class="btn-base" class="btn-small btn-ghost" type="submit" name="clear" value="1">Clear</button>
                             </form>
                           </td>
 
                           <td>
                             <form method="POST" action="/admin/checkins/${r.id}/visibility" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                               <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "🔓 YES" : "🔒 NO"}</span>
-                              <button class="btn-base class="btn-small ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
+                              <button class="btn-base" class="btn-small" ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
                                 ${r.lock_visible ? "Hide" : "Show"}
                               </button>
                             </form>
@@ -1009,6 +1009,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
