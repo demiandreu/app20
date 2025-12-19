@@ -770,17 +770,16 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 // --- LIST + FILTER ---
 app.get("/admin/checkins", async (req, res) => {
   try {
-
     // --- read query ---
     const { from, to, quick: quickRaw } = req.query;
 
+    // --- timezone helpers for Spain ---
     const tz = "Europe/Madrid";
     const today = ymdInTz(new Date(), tz);
     const tomorrow = ymdInTz(new Date(Date.now() + 86400000), tz);
     const yesterday = ymdInTz(new Date(Date.now() - 86400000), tz);
 
-    // ✅ Default behavior:
-    // if user opens /admin/checkins with no filters, show "today"
+    // ✅ Default: if opened without filters, show "today"
     const hasAnyFilter = Boolean(from || to || quickRaw);
     const quickCandidate = hasAnyFilter ? quickRaw : "today";
 
@@ -790,32 +789,6 @@ app.get("/admin/checkins", async (req, res) => {
       quickCandidate === "today" ||
       quickCandidate === "tomorrow"
         ? quickCandidate
-        : "";
-
-    // ✅ Приоритет: если quick выбран — он главнее дат
-    let fromDate = from;
-    let toDate = to;
-
-    if (quick) {
-      if (quick === "yesterday") {
-        fromDate = yesterday; toDate = yesterday;
-      } else if (quick === "today") {
-        fromDate = today; toDate = today;
-      } else if (quick === "tomorrow") {
-        fromDate = tomorrow; toDate = tomorrow;
-      }
-    }
-
-    // ... дальше код без изменений (where/params/query/render)
-
-    const today = ymdInTz(new Date(), tz);
-    const tomorrow = ymdInTz(new Date(Date.now() + 86400000), tz);
-    const yesterday = ymdInTz(new Date(Date.now() - 86400000), tz);
-
-    // quick выбран?
-    const quick =
-      quickRaw === "yesterday" || quickRaw === "today" || quickRaw === "tomorrow"
-        ? quickRaw
         : "";
 
     // ✅ Приоритет: если quick выбран — он главнее дат
@@ -835,8 +808,10 @@ app.get("/admin/checkins", async (req, res) => {
       }
     }
 
+    // --- build WHERE ---
     const where = [];
     const params = [];
+
     if (fromDate) {
       params.push(fromDate);
       where.push(`arrival_date >= $${params.length}`);
@@ -845,8 +820,10 @@ app.get("/admin/checkins", async (req, res) => {
       params.push(toDate);
       where.push(`arrival_date <= $${params.length}`);
     }
+
     const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
+    // --- query data ---
     const { rows } = await pool.query(
       `
       SELECT
@@ -872,6 +849,7 @@ app.get("/admin/checkins", async (req, res) => {
       params
     );
 
+    // --- UI ---
     const toolbar = `
       <h1>Admin • Check-ins</h1>
       <p class="muted">Filter by arrival date</p>
@@ -895,7 +873,7 @@ app.get("/admin/checkins", async (req, res) => {
           </select>
         </div>
 
-        <button class="btn-base" class="btn" type="submit">Show</button>
+        <button class="btn-base" type="submit">Show</button>
         <a class="btn-link" href="/admin/checkins">Reset</a>
       </form>
     `;
@@ -940,8 +918,8 @@ app.get("/admin/checkins", async (req, res) => {
                           </td>
 
                           <td>${r.apartment_name ?? ""}</td>
-                          <td>${r.full_name}</td>
-                          <td>${r.phone}</td>
+                          <td>${r.full_name ?? ""}</td>
+                          <td>${r.phone ?? ""}</td>
                           <td>${arrive}</td>
                           <td>${depart}</td>
 
@@ -962,8 +940,8 @@ app.get("/admin/checkins", async (req, res) => {
                                 maxlength="4"
                                 placeholder="1234"
                               />
-                              <button class="btn-base" class="btn-small" type="submit">Save</button>
-                              <button class="btn-base" class="btn-small btn-ghost" type="submit" name="clear" value="1">Clear</button>
+                              <button class="btn-base" type="submit">Save</button>
+                              <button class="btn-base btn-ghost" type="submit" name="clear" value="1">Clear</button>
                             </form>
                           </td>
 
@@ -979,7 +957,7 @@ app.get("/admin/checkins", async (req, res) => {
                       `;
                     })
                     .join("")
-                : `<tr><td colspan="8" class="muted">No records</td></tr>`
+                : `<tr><td colspan="9" class="muted">No records</td></tr>`
             }
           </tbody>
         </table>
@@ -992,6 +970,7 @@ app.get("/admin/checkins", async (req, res) => {
     res.status(500).send("❌ Cannot load checkins");
   }
 });
+
 
 // ===================== ADMIN: LOCK CODE SAVE (REPLACE, NOT APPEND) =====================
 app.post("/admin/checkins/:id/lock", async (req, res) => {
@@ -1062,5 +1041,6 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
