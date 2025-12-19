@@ -79,6 +79,7 @@ const apartmentName =
   booking?.room?.name ||
   booking?.unit?.name ||
   null;
+  const beds24BookingId = booking?.id ?? null;
   try {
 
  await pool.query(
@@ -1102,6 +1103,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
