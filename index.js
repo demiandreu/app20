@@ -851,6 +851,38 @@ app.get("/admin/checkins", async (req, res) => {
 
     // --- UI ---
     const toolbar = `
+  <h1>Admin • Check-ins</h1>
+  <p class="muted">Filter by arrival date</p>
+
+  <form class="toolbar" method="GET" action="/admin/checkins">
+    <div>
+      <label>From</label>
+      <input type="date" name="from" value="${fromDate || ""}">
+    </div>
+    <div>
+      <label>To</label>
+      <input type="date" name="to" value="${toDate || ""}">
+    </div>
+
+  <div>
+  <label>Quick</label>
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <a class="btn-base ${quick === "yesterday" ? "btn-ghost" : ""}" href="/admin/checkins?quick=yesterday">Yesterday</a>
+    <a class="btn-base ${quick === "today" ? "btn-ghost" : ""}" href="/admin/checkins?quick=today">Today</a>
+    <a class="btn-base ${quick === "tomorrow" ? "btn-ghost" : ""}" href="/admin/checkins?quick=tomorrow">Tomorrow</a>
+  </div>
+  </div>
+  <a class="btn-link" href="/admin/checkins">Reset</a>
+
+
+    <div style="display:flex; gap:10px; align-items:flex-end;">
+      <button class="btn-base" type="submit">Show</button>
+      <a class="btn-link" href="/admin/checkins">Reset</a>
+    </div>
+  </form>
+`;
+
+    /* const toolbar = `
       <h1>Admin • Check-ins</h1>
       <p class="muted">Filter by arrival date</p>
 
@@ -876,7 +908,7 @@ app.get("/admin/checkins", async (req, res) => {
         <button class="btn-base" type="submit">Show</button>
         <a class="btn-link" href="/admin/checkins">Reset</a>
       </form>
-    `;
+    `;*/
 
     const table = `
       <div class="table-wrap">
@@ -1041,6 +1073,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
