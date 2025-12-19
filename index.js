@@ -683,29 +683,27 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 // --- LIST + FILTER ---
 app.get("/admin/checkins", async (req, res) => {
   try {
-   const { from, to, quick: quickRaw } = req.query;
-// если выбраны даты — quick пустой (чтобы не “держал” Today)
-const quick = (from || to) ? (quickRaw || "") : (quickRaw || "today");
-    const tz = "Europe/Madrid";
+  const { from, to, quick: quickRaw } = req.query;
 
+const tz = "Europe/Madrid";
 const today = ymdInTz(new Date(), tz);
 const tomorrow = ymdInTz(new Date(Date.now() + 86400000), tz);
 const yesterday = ymdInTz(new Date(Date.now() - 86400000), tz);
 
+// quick выбран?
+const quick = (quickRaw === "yesterday" || quickRaw === "today" || quickRaw === "tomorrow") ? quickRaw : "";
+
+// ✅ Приоритет: если quick выбран — он главнее дат
 let fromDate = from;
 let toDate = to;
-const useQuick = !!quick && !fromDate && !toDate;
 
-if (useQuick) {
+if (quick) {
   if (quick === "yesterday") {
-    fromDate = yesterday;
-    toDate = yesterday;
+    fromDate = yesterday; toDate = yesterday;
   } else if (quick === "today") {
-    fromDate = today;
-    toDate = today;
+    fromDate = today; toDate = today;
   } else if (quick === "tomorrow") {
-    fromDate = tomorrow;
-    toDate = tomorrow;
+    fromDate = tomorrow; toDate = tomorrow;
   }
 }
 
@@ -936,6 +934,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
