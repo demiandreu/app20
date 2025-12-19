@@ -536,21 +536,6 @@ tr:hover td{ background:#f9fafb; }
   cursor: pointer;
 }
 /* Clean pill uses the same sizing as other buttons */
-.pill {
-  min-width: 72px;
-  height: 32px;
-  padding: 0 12px;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-
-  border-radius: 999px;
-  border: none;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
 
 /* Colors */
 .pill-yes {
@@ -1047,6 +1032,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
