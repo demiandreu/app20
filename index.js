@@ -56,17 +56,19 @@ const phone =
   bookingStatus: booking?.bookingStatus
 });
 const arrivalDate =
-  booking?.arrival?.date ||
-  booking?.arrivalDate ||
-  booking?.checkin?.date ||
-  booking?.checkinDate ||
+  booking?.arrival?.date ??
+  booking?.arrival ??
+  booking?.arrivalDate ??
+  booking?.checkin?.date ??
+  booking?.checkinDate ??
   null;
 
 const departureDate =
-  booking?.departure?.date ||
-  booking?.departureDate ||
-  booking?.checkout?.date ||
-  booking?.checkoutDate ||
+  booking?.departure?.date ??
+  booking?.departure ??
+  booking?.departureDate ??
+  booking?.checkout?.date ??
+  booking?.checkoutDate ??
   null;
 
 const arrivalTime = booking?.arrival?.time || booking?.arrivalTime || null;
@@ -1117,6 +1119,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
