@@ -315,6 +315,31 @@ function renderPage(title, innerHtml) {
   <title>${title}</title>
   
   <style>
+  
+  /* === FORCE ONE-LINE CONTROLS IN TABLE === */
+.lock-form{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:nowrap;      /* ВАЖНО: запрет переноса */
+  white-space:nowrap;
+}
+
+.lock-form .btn-small,
+.lock-form .btn-small.btn-ghost,
+.lock-form button{
+  white-space:nowrap;
+}
+
+td{
+  white-space:nowrap;    /* чтобы в ячейках не было переносов */
+  vertical-align:middle;
+}
+
+/* если где-то есть flex в ячейке Visible — тоже фикс */
+td form{
+  white-space:nowrap;
+}
   th.sticky-col, td.sticky-col{
   background: #fff;
   z-index: 2;
@@ -1046,6 +1071,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
