@@ -37,9 +37,7 @@ app.get("/admin/checkins", (req, res) => {
   `);
 });
 
-app.get("/admin/checkins", (req, res) => {
-  return res.redirect("/admin"); 
-});
+
 app.get("api/admin/checkins", async (req, res) => {
   try {
     const from = String(req.query.from || "").trim();
@@ -1183,6 +1181,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
