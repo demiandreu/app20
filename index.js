@@ -321,6 +321,16 @@ function renderPage(title, innerHtml) {
   text-align: center;
   font-size: 18px;
   line-height: 1;
+  border: none;
+  box-shadow: none;
+}
+.pill-yes.clean-pill {
+  color: #1a7f37; /* приятный зелёный */
+  font-weight: bold;
+}
+
+.pill-no.clean-pill {
+  color: transparent; /* ничего не показываем */
 }
   th.sticky-col,
 td.sticky-col {
@@ -833,13 +843,13 @@ const returnTo = req.originalUrl;
                         <tr>
                           <td class="sticky-col">
                             <form method="POST" action="/admin/checkins/${r.id}/clean">
-                             <button
+                            <button
   type="submit"
   class="pill clean-pill ${r.clean_ok ? "pill-yes" : "pill-no"}"
   title="${r.clean_ok ? "Clean" : "Not clean"}"
   aria-label="${r.clean_ok ? "Clean" : "Not clean"}"
 >
-  🧹
+  ${r.clean_ok ? "✔" : ""}
 </button>
                             </form>
                           </td>
@@ -968,6 +978,7 @@ res.redirect(back);
     process.exit(1);
   }
 })();
+
 
 
 
