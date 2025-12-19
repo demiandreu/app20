@@ -864,51 +864,48 @@ app.get("/admin/checkins", async (req, res) => {
       <input type="date" name="to" value="${toDate || ""}">
     </div>
 
-  <div>
-  <label>Quick</label>
-  <div style="display:flex; gap:8px; flex-wrap:wrap;">
-    <a class="btn-base ${quick === "yesterday" ? "btn-ghost" : ""}" href="/admin/checkins?quick=yesterday">Yesterday</a>
-    <a class="btn-base ${quick === "today" ? "btn-ghost" : ""}" href="/admin/checkins?quick=today">Today</a>
-    <a class="btn-base ${quick === "tomorrow" ? "btn-ghost" : ""}" href="/admin/checkins?quick=tomorrow">Tomorrow</a>
-  </div>
-  </div>
-  <a class="btn-link" href="/admin/checkins">Reset</a>
+  const toolbar = `
+  <h1>Admin • Check-ins</h1>
+  <p class="muted">Arrival date</p>
 
+  <form class="toolbar" method="GET" action="/admin/checkins">
+    <!-- Date range -->
+    <div>
+      <label>From</label>
+      <input type="date" name="from" value="${fromDate || ""}">
+    </div>
 
+    <div>
+      <label>To</label>
+      <input type="date" name="to" value="${toDate || ""}">
+    </div>
+
+    <!-- Actions for calendar -->
     <div style="display:flex; gap:10px; align-items:flex-end;">
       <button class="btn-base" type="submit">Show</button>
       <a class="btn-link" href="/admin/checkins">Reset</a>
     </div>
+
+    <!-- Spacer -->
+    <div style="flex-basis:100%; height:8px;"></div>
+
+    <!-- Quick filters -->
+    <div>
+      <p class="muted" style="margin:0 0 6px;">Quick filters</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn-base ${quick === "yesterday" ? "btn-ghost" : ""}" href="/admin/checkins?quick=yesterday">
+          Yesterday
+        </a>
+        <a class="btn-base ${quick === "today" ? "btn-ghost" : ""}" href="/admin/checkins?quick=today">
+          Today
+        </a>
+        <a class="btn-base ${quick === "tomorrow" ? "btn-ghost" : ""}" href="/admin/checkins?quick=tomorrow">
+          Tomorrow
+        </a>
+      </div>
+    </div>
   </form>
 `;
-
-    /* const toolbar = `
-      <h1>Admin • Check-ins</h1>
-      <p class="muted">Filter by arrival date</p>
-
-      <form class="toolbar" method="GET" action="/admin/checkins">
-        <div>
-          <label>From</label>
-          <input type="date" name="from" value="${fromDate || ""}">
-        </div>
-        <div>
-          <label>To</label>
-          <input type="date" name="to" value="${toDate || ""}">
-        </div>
-        <div>
-          <label>Quick</label>
-          <select name="quick">
-            <option value="" ${!quick ? "selected" : ""}>-</option>
-            <option value="yesterday" ${quick === "yesterday" ? "selected" : ""}>Yesterday</option>
-            <option value="today" ${quick === "today" ? "selected" : ""}>Today</option>
-            <option value="tomorrow" ${quick === "tomorrow" ? "selected" : ""}>Tomorrow</option>
-          </select>
-        </div>
-
-        <button class="btn-base" type="submit">Show</button>
-        <a class="btn-link" href="/admin/checkins">Reset</a>
-      </form>
-    `;*/
 
     const table = `
       <div class="table-wrap">
@@ -1073,6 +1070,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
