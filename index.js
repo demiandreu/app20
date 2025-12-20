@@ -658,6 +658,29 @@ app.post("/webhooks/beds24", async (req, res) => {
     }
 
     console.log("✅ Booking received:", booking.id);
+    // ---- room / apartment name ----
+    //vremenno
+const ROOM_NAME_MAP = {
+  "433806": "Argenta",
+  // "123456": "APT 2",
+};
+
+const beds24RoomId = String(
+  booking?.roomId ?? booking?.room?.id ?? booking?.unitId ?? ""
+);
+
+const apartmentName =
+  ROOM_NAME_MAP[beds24RoomId] ||
+  booking?.roomName ||
+  booking?.unitName ||
+  booking?.apartmentName ||
+  booking?.room?.name ||
+  booking?.unit?.name ||
+  null;
+
+const beds24BookingId = booking?.id ?? null;
+const beds24Raw = payload;
+//vremenno
 
     // ---- helpers (adults/children) ----
     function toInt(v) {
@@ -1338,6 +1361,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
