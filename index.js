@@ -943,6 +943,16 @@ app.get("/guest/:aptId/:token", async (req, res) => {
     }
 
     const r = rows[0];
+    //-------------временно
+    const r = bookingResult.rows[0];
+
+console.log("DEBUG guests:", {
+  adults: r.adults,
+  children: r.children,
+  typeAdults: typeof r.adults,
+  typeChildren: typeof r.children,
+});
+ //-------------временно
     const adults = Number(r.adults ?? 0);
 const children = Number(r.children ?? 0);
 
@@ -1340,6 +1350,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
