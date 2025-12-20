@@ -650,21 +650,7 @@ app.post("/webhooks/beds24", async (req, res) => {
     const payload = req.body || {};
     const booking = payload.booking || payload; // fallback
 
- //vremenno   // ---- guests (Beds24 uses numAdult / numChild) ----
-const toInt = (v) => {
-  const n = Number(v);
-  return Number.isFinite(n) ? Math.trunc(n) : 0;
-};
 
-const adults = toInt(booking?.numAdult);
-const children = toInt(booking?.numChild);
-
-console.log("👥 Guests parsed:", {
-  adults,
-  children,
-  raw: { numAdult: booking?.numAdult, numChild: booking?.numChild },
-});
-//vremenno
 
     if (!booking || !booking.id) {
       console.log("ℹ️ Beds24 webhook: no booking.id, ignored");
@@ -1425,6 +1411,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
