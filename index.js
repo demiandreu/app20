@@ -143,8 +143,10 @@ START_${bookingId}`
       const r = bookingResult.rows[0];
 
       // Guests line (adultos/niños)
-      const adults = Number(r.adults ?? 0);
-      const children = Number(r.children ?? 0);
+     const adults = Number(booking?.numAdult ?? 0);
+const children = Number(booking?.numChild ?? 0);
+
+console.log("👥 Guests parsed:", { adults, children });
 
       let guestsLine = "";
       if (adults || children) {
@@ -806,16 +808,16 @@ app.post("/webhooks/beds24", async (req, res) => {
         arrival_time,
         departure_date,
         departure_time,
-        beds24_raw,
         adults,
-        children
+        children,
+        beds24_raw
       )
-      VALUES (
+     VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8,
         $9, $10, $11, $12,
-        $13::jsonb,
-        $14, $15
+        $13, $14,
+        $15::jsonb
       )
       ON CONFLICT (booking_token)
       DO UPDATE SET
@@ -830,16 +832,16 @@ app.post("/webhooks/beds24", async (req, res) => {
         arrival_time   = COALESCE(EXCLUDED.arrival_time,   checkins.arrival_time),
         departure_date = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
         departure_time = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
-        adults   = COALESCE(EXCLUDED.adults,   checkins.adults),
+               adults   = COALESCE(EXCLUDED.adults,   checkins.adults),
         children = COALESCE(EXCLUDED.children, checkins.children),
         beds24_raw = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
       `,
-      [
-        String(beds24RoomId || ""), // apartment_id (your internal)
-        String(booking.id || ""),   // booking_token (unique per booking)
-        beds24BookingId,            // beds24_booking_id
-        String(beds24RoomId || ""), // beds24_room_id
-        apartmentName,              // apartment_name
+     [
+        String(beds24RoomId || ""),
+        String(booking.id || ""),
+        beds24BookingId,
+        String(beds24RoomId || ""),
+        apartmentName,
         fullName,
         email,
         phone,
@@ -847,9 +849,9 @@ app.post("/webhooks/beds24", async (req, res) => {
         arrivalTime,
         departureDate,
         departureTime,
-        JSON.stringify(beds24Raw),
         adults,
         children,
+        JSON.stringify(beds24Raw),
       ]
     );
 
@@ -1424,6 +1426,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
