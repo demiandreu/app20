@@ -650,6 +650,22 @@ app.post("/webhooks/beds24", async (req, res) => {
     const payload = req.body || {};
     const booking = payload.booking || payload; // fallback
 
+ //vremenno   // ---- guests (Beds24 uses numAdult / numChild) ----
+const toInt = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.trunc(n) : 0;
+};
+
+const adults = toInt(booking?.numAdult);
+const children = toInt(booking?.numChild);
+
+console.log("👥 Guests parsed:", {
+  adults,
+  children,
+  raw: { numAdult: booking?.numAdult, numChild: booking?.numChild },
+});
+//vremenno
+
     if (!booking || !booking.id) {
       console.log("ℹ️ Beds24 webhook: no booking.id, ignored");
       return res.status(200).send("Ignored");
@@ -778,30 +794,30 @@ app.post("/webhooks/beds24", async (req, res) => {
     // ---- upsert ----
     await pool.query(
       `
-      INSERT INTO checkins (
-        apartment_id,
-        booking_token,
-        beds24_booking_id,
-        beds24_room_id,
-        apartment_name,
-        full_name,
-        email,
-        phone,
-        arrival_date,
-        arrival_time,
-        departure_date,
-        departure_time,
-        adults,
-        children,
-        beds24_raw
-      )
-     VALUES (
-        $1, $2, $3, $4, $5,
-        $6, $7, $8,
-        $9, $10, $11, $12,
-        $13, $14,
-        $15::jsonb
-      )
+   INSERT INTO checkins (
+  apartment_id,
+  booking_token,
+  beds24_booking_id,
+  beds24_room_id,
+  apartment_name,
+  full_name,
+  email,
+  phone,
+  arrival_date,
+  arrival_time,
+  departure_date,
+  departure_time,
+  adults,
+  children,
+  beds24_raw
+)
+VALUES (
+  $1, $2, $3, $4, $5,
+  $6, $7, $8,
+  $9, $10, $11, $12,
+  $13, $14,
+  $15::jsonb
+)
       ON CONFLICT (booking_token)
       DO UPDATE SET
         apartment_id = EXCLUDED.apartment_id,
@@ -815,27 +831,27 @@ app.post("/webhooks/beds24", async (req, res) => {
         arrival_time   = COALESCE(EXCLUDED.arrival_time,   checkins.arrival_time),
         departure_date = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
         departure_time = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
-               adults   = COALESCE(EXCLUDED.adults,   checkins.adults),
-        children = COALESCE(EXCLUDED.children, checkins.children),
+       adults   = COALESCE(EXCLUDED.adults, checkins.adults),
+children = COALESCE(EXCLUDED.children, checkins.children),
         beds24_raw = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
       `,
-     [
-        String(beds24RoomId || ""),
-        String(booking.id || ""),
-        beds24BookingId,
-        String(beds24RoomId || ""),
-        apartmentName,
-        fullName,
-        email,
-        phone,
-        arrivalDate,
-        arrivalTime,
-        departureDate,
-        departureTime,
-        adults,
-        children,
-        JSON.stringify(beds24Raw),
-      ]
+    [
+  String(beds24RoomId || ""),
+  String(booking.id || ""),
+  beds24BookingId,
+  String(beds24RoomId || ""),
+  apartmentName,
+  fullName,
+  email,
+  phone,
+  arrivalDate,
+  arrivalTime,
+  departureDate,
+  departureTime,
+  adults,
+  children,
+  JSON.stringify(beds24Raw),
+]
     );
 
     console.log("✅ Booking saved:", booking.id);
@@ -1409,6 +1425,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
