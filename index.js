@@ -91,6 +91,7 @@ function ymd(d) {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
+
 // ===================== TWILIO WHATSAPP INBOUND (START_<id> + LISTO) =====================
 app.post("/webhooks/twilio/whatsapp", async (req, res) => {
   try {
@@ -99,31 +100,31 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
 
     console.log("📩 Twilio WhatsApp inbound:", { from, body });
 
-    const phone = from.replace("whatsapp:", "").trim();
+    const phone = from.replace("whatsapp:", "").trim(); // "+34..."
     const textUpper = body.toUpperCase();
 
     // ----------------- 1) START_<ID> -----------------
     if (textUpper.startsWith("START_")) {
       const bookingId = textUpper.replace("START_", "").trim();
 
-      // 1️⃣ Получаем бронь
+      // 1) Получаем бронь
       const bookingResult = await pool.query(
         `
-      SELECT
-  apartment_id,
-  apartment_name,
-  booking_token,
-  full_name,
-  arrival_date,
-  arrival_time,
-  departure_date,
-  departure_time,
-  adults,
-  children
-FROM checkins
-WHERE booking_token = $1
-ORDER BY id DESC
-LIMIT 1
+        SELECT
+          apartment_id,
+          apartment_name,
+          booking_token,
+          full_name,
+          arrival_date,
+          arrival_time,
+          departure_date,
+          departure_time,
+          adults,
+          children
+        FROM checkins
+        WHERE booking_token = $1
+        ORDER BY id DESC
+        LIMIT 1
         `,
         [bookingId]
       );
@@ -141,52 +142,160 @@ START_${bookingId}`
       }
 
       const r = bookingResult.rows[0];
+
+      // 2) Guests line (adultos/niños)
       const adults = Number(r.adults ?? 0);
-const children = Number(r.children ?? 0);
+      const children = Number(r.children ?? 0);
 
-let guestsLine = "";
-if (adults || children) {
-  const parts = [];
-  if (adults) parts.push(`${adults} adulto${adults === 1 ? "" : "s"}`);
-  if (children) parts.push(`${children} niño${children === 1 ? "" : "s"}`);
-  guestsLine = `Huéspedes: ${parts.join(", ")}\n`;
-}
+      let guestsLine = "";
+      if (adults || children) {
+        const parts = [];
+        if (adults) parts.push(`${adults} adulto${adults === 1 ? "" : "s"}`);
+        if (children) parts.push(`${children} niño${children === 1 ? "" : "s"}`);
+        guestsLine = `Huéspedes: ${parts.join(", ")}\n`;
+      }
 
-
-      // 2️⃣ Получаем настройки менеджера (default times)
+      // 3) Получаем настройки менеджера (default times)
       const settingsResult = await pool.query(
-        `SELECT default_arrival_time, default_departure_time FROM app_settings WHERE id = 1`
+        `SELECT default_arrival_time, default_departure_time FROM app_settings WHERE id = 1 LIMIT 1`
       );
 
-      const settings = settingsResult.rows[0];
+      const settings = settingsResult.rows[0] || {
+        default_arrival_time: "15:00",
+        default_departure_time: "11:00",
+      };
 
       const arrivalTimeFinal = r.arrival_time || settings.default_arrival_time;
       const departureTimeFinal = r.departure_time || settings.default_departure_time;
 
-      // 3️⃣ Формируем данные
+      // 4) Формируем данные
       const name = r.full_name || "Hola";
       const apt = r.apartment_name || r.apartment_id || "";
 
       const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(arrivalTimeFinal).slice(0, 5)}`;
       const depart = `${String(r.departure_date).slice(0, 10)} ${String(departureTimeFinal).slice(0, 5)}`;
 
-      // 4️⃣ Отправляем сообщение
-  await sendWhatsApp(
-  from,
-  `Hola, ${name} 👋
+      // 5) Отправляем сообщение
+      await sendWhatsApp(
+        from,
+        `Hola, ${name} 👋
 
 Tu reserva está confirmada ✅
 Apartamento: ${apt}
 Entrada: ${arrive}
 Salida: ${depart}
-${guestsLine}
-Para enviarte las instrucciones de acceso y el código de la caja de llaves, primero necesito 2 pasos:
+${guestsLine}Para enviarte las instrucciones de acceso y el código de la caja de llaves, primero necesito 2 pasos:
 
 1) Registro de huéspedes
 2) Pago (tasa turística + depósito, según la plataforma)
 
 Cuando lo tengas listo, responde aquí: LISTO`
-);
+      );
+
+      return res.status(200).send("OK");
+    }
+
+    // ----------------- 2) LISTO -----------------
+    if (textUpper === "LISTO") {
+      const { rows } = await pool.query(
+        `
+        SELECT apartment_id, booking_token
+        FROM checkins
+        WHERE phone = $1
+        ORDER BY id DESC
+        LIMIT 1
+        `,
+        [phone]
+      );
+
+      if (!rows.length) {
+        await sendWhatsApp(
+          from,
+          `Gracias 😊  
+Aún no encuentro tu reserva en el sistema.
+Si acabas de reservar, espera unos minutos y vuelve a escribir LISTO.`
+        );
+        return res.status(200).send("OK");
+      }
+
+      const { apartment_id, booking_token } = rows[0];
+
+      const base = (process.env.PUBLIC_BASE_URL || "").replace(/\/$/, "");
+      const link = `${base}/guest/${encodeURIComponent(apartment_id)}/${encodeURIComponent(booking_token)}`;
+
+      await sendWhatsApp(
+        from,
+        `Perfecto ✅
+
+Aquí tienes tu portal con la información del apartamento:
+${link}
+
+ℹ️ El código de acceso aparecerá el día de llegada cuando el anfitrión lo active.`
+      );
+
+      return res.status(200).send("OK");
+    }
+
+    // ----------------- 3) default -----------------
+    return res.status(200).send("OK");
+  } catch (err) {
+    console.error("❌ WhatsApp inbound error:", err);
+    return res.status(200).send("OK");
+  }
+});
+
+      return res.status(200).send("OK");
+    }
+
+    // ----------------- 2) LISTO -----------------
+    if (textUpper === "LISTO") {
+      const { rows } = await pool.query(
+        `
+        SELECT apartment_id, booking_token
+        FROM checkins
+        WHERE phone = $1
+        ORDER BY id DESC
+        LIMIT 1
+        `,
+        [phone]
+      );
+
+      if (!rows.length) {
+        await sendWhatsApp(
+          from,
+          `Gracias 😊  
+Aún no encuentro tu reserva en el sistema.
+Si acabas de reservar, espera unos minutos y vuelve a escribir LISTO.`
+        );
+        return res.status(200).send("OK");
+      }
+
+      const { apartment_id, booking_token } = rows[0];
+
+      const base = (process.env.PUBLIC_BASE_URL || "").replace(/\/$/, "");
+      const link = `${base}/guest/${encodeURIComponent(apartment_id)}/${encodeURIComponent(booking_token)}`;
+
+      await sendWhatsApp(
+        from,
+        `Perfecto ✅
+
+Aquí tienes tu portal con la información del apartamento:
+${link}
+
+ℹ️ El código de acceso aparecerá el día de llegada cuando el anfitrión lo active.`
+      );
+
+      return res.status(200).send("OK");
+    }
+
+    // ----------------- 3) default -----------------
+    return res.status(200).send("OK");
+  } catch (err) {
+    console.error("❌ WhatsApp inbound error:", err);
+    return res.status(200).send("OK");
+  }
+});
+
 
 
       return res.status(200).send("OK");
@@ -942,17 +1051,8 @@ app.get("/guest/:aptId/:token", async (req, res) => {
       return res.send(renderPage("Guest Dashboard", html));
     }
 
-  //  const r = rows[0];
-    //-------------временно
-    const r = bookingResult.rows[0];
+  const r = rows[0];
 
-console.log("DEBUG guests:", {
-  adults: r.adults,
-  children: r.children,
-  typeAdults: typeof r.adults,
-  typeChildren: typeof r.children,
-});
- //-------------временно
     const adults = Number(r.adults ?? 0);
 const children = Number(r.children ?? 0);
 
@@ -1350,6 +1450,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
