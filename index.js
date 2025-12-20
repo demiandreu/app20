@@ -648,6 +648,22 @@ app.post("/webhooks/beds24", async (req, res) => {
     const payload = req.body || {};
     const booking = payload.booking || payload; // fallback
 
+    // vremenno
+    console.log("DEBUG booking guest fields:", {
+  keys: Object.keys(booking || {}),
+  adults: booking?.adults,
+  children: booking?.children,
+  numAdults: booking?.numAdults,
+  numChildren: booking?.numChildren,
+  guests: booking?.guests,
+  guestCount: booking?.guestCount,
+  persons: booking?.persons,
+  people: booking?.people,
+  occupancy: booking?.occupancy,
+  pax: booking?.pax,
+});
+
+
     if (!booking || !booking.id) {
       console.log("ℹ️ Beds24 webhook: no booking.id, ignored");
       return res.status(200).send("Ignored");
@@ -937,13 +953,7 @@ app.get("/checkin/:aptId/:token", (req, res) => {
 app.post("/checkin/:aptId/:token", async (req, res) => {
   const { aptId, token } = req.params;
 
-  //временно
-  console.log("DEBUG GUEST COUNTS:", {
-  adults: booking?.adults,
-  children: booking?.children,
-  guests: booking?.guests,
-  persons: booking?.persons,
-});
+
 
   try {
     // 👉 НОРМАЛИЗАЦИЯ ДАННЫХ (ОБЯЗАТЕЛЬНО)
@@ -1412,6 +1422,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
