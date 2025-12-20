@@ -650,21 +650,11 @@ app.post("/webhooks/beds24", async (req, res) => {
     const payload = req.body || {};
     const booking = payload.booking || payload; // fallback
 
-    // vremenno
-    console.log("DEBUG booking guest fields:", {
-  id: booking?.id,
-  keys: Object.keys(booking || {}).slice(0, 60),
-  adults: booking?.adults,
-  children: booking?.children,
-  numAdults: booking?.numAdults,
-  numChildren: booking?.numChildren,
-  guests: booking?.guests,
-  guestCount: booking?.guestCount,
-  persons: booking?.persons,
-  people: booking?.people,
-  occupancy: booking?.occupancy,
-  pax: booking?.pax,
-});
+   //vremenno
+    const adults = Number(booking?.numAdult ?? 0);
+    const children = Number(booking?.numChild ?? 0);
+     console.log("👥 Guests parsed:", { adults, children, raw: { numAdult: booking?.numAdult, numChild: booking?.numChild } });
+ //vremenno
 
 
 
@@ -691,11 +681,7 @@ app.post("/webhooks/beds24", async (req, res) => {
     }
 
     // ---- guest fields ----
-    //vremenno
-    const adults = Number(booking?.numAdult ?? 0);
-    const children = Number(booking?.numChild ?? 0);
-     console.log("👥 Guests parsed:", { adults, children, raw: { numAdult: booking?.numAdult, numChild: booking?.numChild } });
- //vremenno
+  
     const guest = payload.guest || booking.guest || booking.guestData || {};
     const fullName =
       guest.name ||
@@ -1431,6 +1417,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
