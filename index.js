@@ -762,7 +762,7 @@ app.get("/", (req, res) => {
     <h1>RCS Guest Portal</h1>
     <p class="muted">Example entry:</p>
     <p><a class="btn-primary" href="/booking/apt1/TESTTOKEN123">Open booking example</a></p>
-    <p class="muted">Admin: <a class="btn-link" href="/admin/checkins">/admin/checkins</a></p>
+    <p class="muted">Admin: <a class="btn-link" href="/staff/checkins">/staff/checkins</a></p>
   `;
   res.send(renderPage("Home", html));
 });
@@ -973,7 +973,7 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 // ===================== ADMIN ROUTES =====================
 
 // --- LIST + FILTER ---
-app.get("/admin/checkins", async (req, res) => {
+app.get("/staff/checkins", async (req, res) => {
   try {
     // --- read query ---
     const { from, to, quick: quickRaw } = req.query;
@@ -1059,7 +1059,7 @@ app.get("/admin/checkins", async (req, res) => {
   <h1>Admin • Check-ins</h1>
   <p class="muted">Arrival date</p>
 
-  <form class="toolbar" method="GET" action="/admin/checkins">
+  <form class="toolbar" method="GET" action="/staff/checkins">
     <div>
       <label>From</label>
       <input type="date" name="from" value="${fromDate || ""}">
@@ -1072,7 +1072,7 @@ app.get("/admin/checkins", async (req, res) => {
 
     <div style="display:flex; gap:10px; align-items:flex-end;">
       <button class="btn-base" type="submit">Show</button>
-      <a class="btn-link" href="/admin/checkins">Reset</a>
+      <a class="btn-link" href="/staff/checkins">Reset</a>
     </div>
 
     <div style="flex-basis:100%; height:8px;"></div>
@@ -1080,9 +1080,9 @@ app.get("/admin/checkins", async (req, res) => {
     <div>
       <p class="muted" style="margin:0 0 6px;">Quick filters</p>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <a class="btn-base ${quick === "yesterday" ? "btn-ghost" : ""}" href="/admin/checkins?quick=yesterday">Yesterday</a>
-        <a class="btn-base ${quick === "today" ? "btn-ghost" : ""}" href="/admin/checkins?quick=today">Today</a>
-        <a class="btn-base ${quick === "tomorrow" ? "btn-ghost" : ""}" href="/admin/checkins?quick=tomorrow">Tomorrow</a>
+        <a class="btn-base ${quick === "yesterday" ? "btn-ghost" : ""}" href="/staff/checkins?quick=yesterday">Yesterday</a>
+        <a class="btn-base ${quick === "today" ? "btn-ghost" : ""}" href="/staff/checkins?quick=today">Today</a>
+        <a class="btn-base ${quick === "tomorrow" ? "btn-ghost" : ""}" href="/staff/checkins?quick=tomorrow">Tomorrow</a>
       </div>
     </div>
   </form>
@@ -1117,7 +1117,7 @@ app.get("/admin/checkins", async (req, res) => {
                       return `
                         <tr>
                           <td class="sticky-col">
-                            <form method="POST" action="/admin/checkins/${r.id}/clean">
+                            <form method="POST" action="/staff/checkins/${r.id}/clean">
                               <button
                                 type="submit"
                                 class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}"
@@ -1141,7 +1141,7 @@ app.get("/admin/checkins", async (req, res) => {
                           </td>
 
                           <td>
-                            <form method="POST" action="/admin/checkins/${r.id}/lock" class="lock-form">
+                            <form method="POST" action="/staff/checkins/${r.id}/lock" class="lock-form">
                               <input
                                 class="lock-input"
                                 name="lock_code"
@@ -1157,7 +1157,7 @@ app.get("/admin/checkins", async (req, res) => {
                           </td>
 
                           <td>
-                            <form method="POST" action="/admin/checkins/${r.id}/visibility" class="vis-form">
+                            <form method="POST" action="/staff/checkins/${r.id}/visibility" class="vis-form">
                               <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "🔓 YES" : "🔒 NO"}</span>
                               <button class="btn-small ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
                                 ${r.lock_visible ? "Hide" : "Show"}
@@ -1184,7 +1184,7 @@ app.get("/admin/checkins", async (req, res) => {
 
 
 // ===================== ADMIN: LOCK CODE SAVE (REPLACE, NOT APPEND) =====================
-app.post("/admin/checkins/:id/lock", async (req, res) => {
+app.post("/staff/checkins/:id/lock", async (req, res) => {
   const id = Number(req.params.id);
 
   // ✅ sometimes body can become array; take last
@@ -1202,7 +1202,7 @@ app.post("/admin/checkins/:id/lock", async (req, res) => {
       lockCode || null,
       id,
     ]);
-    const back = req.body.returnTo || req.get("referer") || "/admin/checkins";
+    const back = req.body.returnTo || req.get("referer") || "/staff/checkins";
     res.redirect(back);
   } catch (e) {
     console.error("Lock code update error:", e);
@@ -1211,7 +1211,7 @@ app.post("/admin/checkins/:id/lock", async (req, res) => {
 });
 
 // ===================== ADMIN: SET VISIBILITY =====================
-app.post("/admin/checkins/:id/visibility", async (req, res) => {
+app.post("/staff/checkins/:id/visibility", async (req, res) => {
   const id = Number(req.params.id);
   const makeVisible = String(req.body.makeVisible) === "1";
 
@@ -1220,7 +1220,7 @@ app.post("/admin/checkins/:id/visibility", async (req, res) => {
       makeVisible,
       id,
     ]);
-    const back = req.body.returnTo || req.get("referer") || "/admin/checkins";
+    const back = req.body.returnTo || req.get("referer") || "/staff/checkins";
     res.redirect(back);
   } catch (e) {
     console.error("Visibility update error:", e);
@@ -1229,12 +1229,12 @@ app.post("/admin/checkins/:id/visibility", async (req, res) => {
 });
 
 // ===================== ADMIN: CLEAN TOGGLE =====================
-app.post("/admin/checkins/:id/clean", async (req, res) => {
+app.post("/staff/checkins/:id/clean", async (req, res) => {
   const id = Number(req.params.id);
 
   try {
     await pool.query(`UPDATE checkins SET clean_ok = NOT clean_ok WHERE id = $1`, [id]);
-    const back = req.body.returnTo || req.get("referer") || "/admin/checkins";
+    const back = req.body.returnTo || req.get("referer") || "/staff/checkins";
     res.redirect(back);
   } catch (e) {
     console.error("Clean toggle error:", e);
@@ -1252,6 +1252,7 @@ app.post("/admin/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
