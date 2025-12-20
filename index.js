@@ -704,20 +704,6 @@ const beds24BookingId = booking?.id ?? null;
 const beds24Raw = payload;
 //vremenno
 
-    // ---- helpers (adults/children) ----
-    function toInt(v) {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : 0;
-    }
-    function pick(obj, paths) {
-      for (const p of paths) {
-        const parts = p.split(".");
-        let cur = obj;
-        for (const k of parts) cur = cur?.[k];
-        if (cur !== undefined && cur !== null && cur !== "") return cur;
-      }
-      return undefined;
-    }
 
     // ---- guest fields ----
   
@@ -748,6 +734,25 @@ const children = Number.isFinite(Number(booking?.numChild)) ? Number(booking.num
 
 console.log("👥 Guests parsed:", { adults, children, raw: { numAdult: booking?.numAdult, numChild: booking?.numChild } });
 
+    const arrivalDate =
+  booking?.arrival?.date ??
+  booking?.arrivalDate ??
+  booking?.checkin?.date ??
+  booking?.checkinDate ??
+  booking?.arrival ??
+  null;
+
+const departureDate =
+  booking?.departure?.date ??
+  booking?.departureDate ??
+  booking?.checkout?.date ??
+  booking?.checkoutDate ??
+  booking?.departure ??
+  null;
+
+const arrivalTime = booking?.arrival?.time || booking?.arrivalTime || null;
+const departureTime = booking?.departure?.time || booking?.departureTime || null;
+
 // ---- upsert ----
 await pool.query(
   `
@@ -777,23 +782,23 @@ await pool.query(
   )
   ON CONFLICT (booking_token)
   DO UPDATE SET
-    apartment_id = EXCLUDED.apartment_id,
-    beds24_booking_id = COALESCE(EXCLUDED.beds24_booking_id, checkins.beds24_booking_id),
-    beds24_room_id    = COALESCE(EXCLUDED.beds24_room_id,    checkins.beds24_room_id),
-    apartment_name    = COALESCE(EXCLUDED.apartment_name,    checkins.apartment_name),
-    full_name = EXCLUDED.full_name,
-    email     = EXCLUDED.email,
-    phone     = EXCLUDED.phone,
-    arrival_date   = COALESCE(EXCLUDED.arrival_date,   checkins.arrival_date),
-    arrival_time   = COALESCE(EXCLUDED.arrival_time,   checkins.arrival_time),
-    departure_date = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
-    departure_time = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
-    adults   = EXCLUDED.adults,
-    children = EXCLUDED.children,
-    beds24_raw = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
+    apartment_id       = EXCLUDED.apartment_id,
+    beds24_booking_id  = COALESCE(EXCLUDED.beds24_booking_id, checkins.beds24_booking_id),
+    beds24_room_id     = COALESCE(EXCLUDED.beds24_room_id,    checkins.beds24_room_id),
+    apartment_name     = COALESCE(EXCLUDED.apartment_name,    checkins.apartment_name),
+    full_name          = EXCLUDED.full_name,
+    email              = EXCLUDED.email,
+    phone              = EXCLUDED.phone,
+    arrival_date       = COALESCE(EXCLUDED.arrival_date,   checkins.arrival_date),
+    arrival_time       = COALESCE(EXCLUDED.arrival_time,   checkins.arrival_time),
+    departure_date     = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
+    departure_time     = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
+    adults             = COALESCE(EXCLUDED.adults,   checkins.adults),
+    children           = COALESCE(EXCLUDED.children, checkins.children),
+    beds24_raw         = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
   `,
   [
-    String(beds24RoomId || ""), // apartment_id (your internal)
+    String(beds24RoomId || ""), // apartment_id
     String(booking.id || ""),   // booking_token
     beds24BookingId,            // beds24_booking_id
     String(beds24RoomId || ""), // beds24_room_id
@@ -1383,6 +1388,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
