@@ -142,14 +142,13 @@ START_${bookingId}`
 
       const r = bookingResult.rows[0];
 
-      // Guests line (adultos/niños)
-     const adults = Number(booking?.numAdult ?? 0);
+     // Guests line (adultos/niños)
+const adults = Number(booking?.numAdult ?? 0);
 const children = Number(booking?.numChild ?? 0);
 
 console.log("👥 Guests parsed:", { adults, children });
 
-      //vremenno
-      // ---- dates (we keep DATE; time can be empty) ----
+// ---- dates ----
 const arrivalDate =
   booking?.arrival?.date ??
   booking?.arrivalDate ??
@@ -1388,6 +1387,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
