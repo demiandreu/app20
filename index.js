@@ -104,11 +104,10 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
 
     // ----------------- 1) START_<ID> -----------------
     if (textUpper.startsWith("START_")) {
-      const bookingId = textUpper.replace("START_", "").trim(); // "79774088"
+      const bookingId = textUpper.replace("START_", "").trim();
 
-      // ищем бронь (сначала по booking_token, если ты его делаешь = booking.id)
-      // если у тебя booking_token != beds24_booking_id, то переключим на beds24_booking_id
-      const { rows } = await pool.query(
+      // 1️⃣ Получаем бронь
+      const bookingResult = await pool.query(
         `
         SELECT
           apartment_id,
@@ -127,7 +126,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
         [bookingId]
       );
 
-      if (!rows.length) {
+      if (!bookingResult.rows.length) {
         await sendWhatsApp(
           from,
           `Gracias 😊  
@@ -139,12 +138,26 @@ START_${bookingId}`
         return res.status(200).send("OK");
       }
 
-      const r = rows[0];
+      const r = bookingResult.rows[0];
+
+      // 2️⃣ Получаем настройки менеджера (default times)
+      const settingsResult = await pool.query(
+        `SELECT default_arrival_time, default_departure_time FROM app_settings WHERE id = 1`
+      );
+
+      const settings = settingsResult.rows[0];
+
+      const arrivalTimeFinal = r.arrival_time || settings.default_arrival_time;
+      const departureTimeFinal = r.departure_time || settings.default_departure_time;
+
+      // 3️⃣ Формируем данные
       const name = r.full_name || "Hola";
       const apt = r.apartment_name || r.apartment_id || "";
-      const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time || "").slice(0, 5)}`;
-      const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time || "").slice(0, 5)}`;
 
+      const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(arrivalTimeFinal).slice(0, 5)}`;
+      const depart = `${String(r.departure_date).slice(0, 10)} ${String(departureTimeFinal).slice(0, 5)}`;
+
+      // 4️⃣ Отправляем сообщение
       await sendWhatsApp(
         from,
         `Hola, ${name} 👋
@@ -206,7 +219,7 @@ ${link}
       return res.status(200).send("OK");
     }
 
-    // ----------------- 3) default: ignore -----------------
+    // ----------------- 3) default -----------------
     return res.status(200).send("OK");
   } catch (err) {
     console.error("❌ WhatsApp inbound error:", err);
@@ -1302,6 +1315,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
