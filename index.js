@@ -644,7 +644,7 @@ app.post("/webhooks/beds24", async (req, res) => {
       console.log("❌ Beds24 webhook: invalid secret");
       return res.status(401).send("Unauthorized");
     }
-    
+
     const payload = req.body || {};
     const booking = payload.booking || payload; // fallback
 
@@ -654,6 +654,21 @@ app.post("/webhooks/beds24", async (req, res) => {
     }
 
     console.log("✅ Booking received:", booking.id);
+
+    // ---- helpers (adults/children) ----
+    function toInt(v) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : 0;
+    }
+    function pick(obj, paths) {
+      for (const p of paths) {
+        const parts = p.split(".");
+        let cur = obj;
+        for (const k of parts) cur = cur?.[k];
+        if (cur !== undefined && cur !== null && cur !== "") return cur;
+      }
+      return undefined;
+    }
 
     // ---- guest fields ----
     const guest = payload.guest || booking.guest || booking.guestData || {};
@@ -676,6 +691,44 @@ app.post("/webhooks/beds24", async (req, res) => {
       booking.mobile ||
       booking.phoneNumber ||
       "";
+
+    // ---- adults / children ----
+    const adults = toInt(
+      pick(payload, [
+        "booking.adults",
+        "booking.numAdults",
+        "booking.occupancy.adults",
+        "booking.guestCount.adults",
+        "adults",
+        "numAdults",
+      ]) ??
+        pick(booking, [
+          "adults",
+          "numAdults",
+          "occupancy.adults",
+          "guestCount.adults",
+        ])
+    );
+
+    const children = toInt(
+      pick(payload, [
+        "booking.children",
+        "booking.numChildren",
+        "booking.occupancy.children",
+        "booking.guestCount.children",
+        "children",
+        "numChildren",
+      ]) ??
+        pick(booking, [
+          "children",
+          "numChildren",
+          "occupancy.children",
+          "guestCount.children",
+        ])
+    );
+
+    // (можно потом убрать)
+    console.log("👥 Guests parsed:", { adults, children });
 
     // ---- dates (we keep DATE; time can be empty) ----
     const arrivalDate =
@@ -735,13 +788,16 @@ app.post("/webhooks/beds24", async (req, res) => {
         arrival_time,
         departure_date,
         departure_time,
-        beds24_raw
+        beds24_raw,
+        adults,
+        children
       )
       VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8,
         $9, $10, $11, $12,
-        $13::jsonb
+        $13::jsonb,
+        $14, $15
       )
       ON CONFLICT (booking_token)
       DO UPDATE SET
@@ -756,6 +812,8 @@ app.post("/webhooks/beds24", async (req, res) => {
         arrival_time   = COALESCE(EXCLUDED.arrival_time,   checkins.arrival_time),
         departure_date = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
         departure_time = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
+        adults   = COALESCE(EXCLUDED.adults,   checkins.adults),
+        children = COALESCE(EXCLUDED.children, checkins.children),
         beds24_raw = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
       `,
       [
@@ -772,6 +830,8 @@ app.post("/webhooks/beds24", async (req, res) => {
         departureDate,
         departureTime,
         JSON.stringify(beds24Raw),
+        adults,
+        children,
       ]
     );
 
@@ -782,6 +842,7 @@ app.post("/webhooks/beds24", async (req, res) => {
     res.status(500).send("DB error");
   }
 });
+
 
 // ===================== GUEST ROUTES =====================
 
@@ -1343,6 +1404,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
