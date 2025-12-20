@@ -697,148 +697,75 @@ app.post("/webhooks/beds24", async (req, res) => {
       booking.phoneNumber ||
       "";
 
-    // ---- adults / children ----
-    const adults = toInt(
-      pick(payload, [
-        "booking.adults",
-        "booking.numAdults",
-        "booking.occupancy.adults",
-        "booking.guestCount.adults",
-        "adults",
-        "numAdults",
-      ]) ??
-        pick(booking, [
-          "adults",
-          "numAdults",
-          "occupancy.adults",
-          "guestCount.adults",
-        ])
-    );
+// ---- adults / children (Beds24) ----
+const adults = Number.isFinite(Number(booking?.numAdult)) ? Number(booking.numAdult) : 0;
+const children = Number.isFinite(Number(booking?.numChild)) ? Number(booking.numChild) : 0;
 
-    const children = toInt(
-      pick(payload, [
-        "booking.children",
-        "booking.numChildren",
-        "booking.occupancy.children",
-        "booking.guestCount.children",
-        "children",
-        "numChildren",
-      ]) ??
-        pick(booking, [
-          "children",
-          "numChildren",
-          "occupancy.children",
-          "guestCount.children",
-        ])
-    );
+console.log("👥 Guests parsed:", { adults, children, raw: { numAdult: booking?.numAdult, numChild: booking?.numChild } });
 
-    // (можно потом убрать)
-    console.log("👥 Guests parsed:", { adults, children });
+// ---- upsert ----
+await pool.query(
+  `
+  INSERT INTO checkins (
+    apartment_id,
+    booking_token,
+    beds24_booking_id,
+    beds24_room_id,
+    apartment_name,
+    full_name,
+    email,
+    phone,
+    arrival_date,
+    arrival_time,
+    departure_date,
+    departure_time,
+    adults,
+    children,
+    beds24_raw
+  )
+  VALUES (
+    $1, $2, $3, $4, $5,
+    $6, $7, $8,
+    $9, $10, $11, $12,
+    $13, $14,
+    $15::jsonb
+  )
+  ON CONFLICT (booking_token)
+  DO UPDATE SET
+    apartment_id = EXCLUDED.apartment_id,
+    beds24_booking_id = COALESCE(EXCLUDED.beds24_booking_id, checkins.beds24_booking_id),
+    beds24_room_id    = COALESCE(EXCLUDED.beds24_room_id,    checkins.beds24_room_id),
+    apartment_name    = COALESCE(EXCLUDED.apartment_name,    checkins.apartment_name),
+    full_name = EXCLUDED.full_name,
+    email     = EXCLUDED.email,
+    phone     = EXCLUDED.phone,
+    arrival_date   = COALESCE(EXCLUDED.arrival_date,   checkins.arrival_date),
+    arrival_time   = COALESCE(EXCLUDED.arrival_time,   checkins.arrival_time),
+    departure_date = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
+    departure_time = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
+    adults   = EXCLUDED.adults,
+    children = EXCLUDED.children,
+    beds24_raw = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
+  `,
+  [
+    String(beds24RoomId || ""), // apartment_id (your internal)
+    String(booking.id || ""),   // booking_token
+    beds24BookingId,            // beds24_booking_id
+    String(beds24RoomId || ""), // beds24_room_id
+    apartmentName,              // apartment_name
+    fullName,
+    email,
+    phone,
+    arrivalDate,
+    arrivalTime,
+    departureDate,
+    departureTime,
+    adults,
+    children,
+    JSON.stringify(beds24Raw),
+  ]
+);
 
-    // ---- dates (we keep DATE; time can be empty) ----
-    const arrivalDate =
-      booking?.arrival?.date ??
-      booking?.arrivalDate ??
-      booking?.checkin?.date ??
-      booking?.checkinDate ??
-      booking?.arrival ??
-      null;
-
-    const departureDate =
-      booking?.departure?.date ??
-      booking?.departureDate ??
-      booking?.checkout?.date ??
-      booking?.checkoutDate ??
-      booking?.departure ??
-      null;
-
-    const arrivalTime = booking?.arrival?.time || booking?.arrivalTime || null;
-    const departureTime = booking?.departure?.time || booking?.departureTime || null;
-
-    // ---- room / apartment name ----
-    const ROOM_NAME_MAP = {
-      "433806": "Argenta",
-      // "123456": "APT 2",
-    };
-
-    const beds24RoomId = String(
-      booking?.roomId ?? booking?.room?.id ?? booking?.unitId ?? ""
-    );
-
-    const apartmentName =
-      ROOM_NAME_MAP[beds24RoomId] ||
-      booking?.roomName ||
-      booking?.unitName ||
-      booking?.apartmentName ||
-      booking?.room?.name ||
-      booking?.unit?.name ||
-      null;
-
-    const beds24BookingId = booking?.id ?? null;
-    const beds24Raw = payload;
-
-    // ---- upsert ----
-    await pool.query(
-      `
-   INSERT INTO checkins (
-  apartment_id,
-  booking_token,
-  beds24_booking_id,
-  beds24_room_id,
-  apartment_name,
-  full_name,
-  email,
-  phone,
-  arrival_date,
-  arrival_time,
-  departure_date,
-  departure_time,
-  adults,
-  children,
-  beds24_raw
-)
-VALUES (
-  $1, $2, $3, $4, $5,
-  $6, $7, $8,
-  $9, $10, $11, $12,
-  $13, $14,
-  $15::jsonb
-)
-      ON CONFLICT (booking_token)
-      DO UPDATE SET
-        apartment_id = EXCLUDED.apartment_id,
-        beds24_booking_id = COALESCE(EXCLUDED.beds24_booking_id, checkins.beds24_booking_id),
-        beds24_room_id    = COALESCE(EXCLUDED.beds24_room_id,    checkins.beds24_room_id),
-        apartment_name    = COALESCE(EXCLUDED.apartment_name,    checkins.apartment_name),
-        full_name = EXCLUDED.full_name,
-        email     = EXCLUDED.email,
-        phone     = EXCLUDED.phone,
-        arrival_date   = COALESCE(EXCLUDED.arrival_date,   checkins.arrival_date),
-        arrival_time   = COALESCE(EXCLUDED.arrival_time,   checkins.arrival_time),
-        departure_date = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
-        departure_time = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
-       adults   = COALESCE(EXCLUDED.adults, checkins.adults),
-children = COALESCE(EXCLUDED.children, checkins.children),
-        beds24_raw = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
-      `,
-    [
-  String(beds24RoomId || ""),
-  String(booking.id || ""),
-  beds24BookingId,
-  String(beds24RoomId || ""),
-  apartmentName,
-  fullName,
-  email,
-  phone,
-  arrivalDate,
-  arrivalTime,
-  departureDate,
-  departureTime,
-  adults,
-  children,
-  JSON.stringify(beds24Raw),
-]
-    );
 
     console.log("✅ Booking saved:", booking.id);
     res.status(200).send("OK");
@@ -1411,6 +1338,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
