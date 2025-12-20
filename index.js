@@ -942,7 +942,7 @@ app.get("/guest/:aptId/:token", async (req, res) => {
       return res.send(renderPage("Guest Dashboard", html));
     }
 
-    const r = rows[0];
+  //  const r = rows[0];
     //-------------временно
     const r = bookingResult.rows[0];
 
@@ -1350,6 +1350,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
