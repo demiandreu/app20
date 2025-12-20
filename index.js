@@ -141,6 +141,17 @@ START_${bookingId}`
       }
 
       const r = bookingResult.rows[0];
+      const adults = Number(r.adults ?? 0);
+const children = Number(r.children ?? 0);
+
+let guestsLine = "";
+if (adults || children) {
+  const parts = [];
+  if (adults) parts.push(`${adults} adulto${adults === 1 ? "" : "s"}`);
+  if (children) parts.push(`${children} niño${children === 1 ? "" : "s"}`);
+  guestsLine = `Huéspedes: ${parts.join(", ")}\n`;
+}
+
 
       // 2️⃣ Получаем настройки менеджера (default times)
       const settingsResult = await pool.query(
@@ -176,6 +187,7 @@ Para enviarte las instrucciones de acceso y el código de la caja de llaves, pri
 
 Cuando lo tengas listo, responde aquí: LISTO`
 );
+
 
       return res.status(200).send("OK");
     }
@@ -1328,6 +1340,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
