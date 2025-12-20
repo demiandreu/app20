@@ -244,8 +244,8 @@ ${link}
   }
 });
 
-      return res.status(200).send("OK");
-    }
+     //--временно return res.status(200).send("OK");
+   // }
 
     // ----------------- 2) LISTO -----------------
     if (textUpper === "LISTO") {
@@ -1450,6 +1450,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
