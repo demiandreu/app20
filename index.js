@@ -691,6 +691,11 @@ app.post("/webhooks/beds24", async (req, res) => {
     }
 
     // ---- guest fields ----
+    //vremenno
+    const adults = Number(booking?.numAdult ?? 0);
+    const children = Number(booking?.numChild ?? 0);
+     console.log("👥 Guests parsed:", { adults, children, raw: { numAdult: booking?.numAdult, numChild: booking?.numChild } });
+ //vremenno
     const guest = payload.guest || booking.guest || booking.guestData || {};
     const fullName =
       guest.name ||
@@ -1426,6 +1431,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
