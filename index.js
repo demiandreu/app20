@@ -142,31 +142,18 @@ START_${bookingId}`
 
       const r = bookingResult.rows[0];
 
-     // Guests line (adultos/niños)
-const adults = Number(booking?.numAdult ?? 0);
-const children = Number(booking?.numChild ?? 0);
+    // ---- data from DB (checkins table) ----
+const adults = r.adults ?? 0;
+const children = r.children ?? 0;
 
-console.log("👥 Guests parsed:", { adults, children });
+const arrivalDate = r.arrival_date;
+const arrivalTime = r.arrival_time;
+const departureDate = r.departure_date;
+const departureTime = r.departure_time;
 
-// ---- dates ----
-const arrivalDate =
-  booking?.arrival?.date ??
-  booking?.arrivalDate ??
-  booking?.checkin?.date ??
-  booking?.checkinDate ??
-  booking?.arrival ??
-  null;
+console.log("👥 Guests from DB:", { adults, children });
 
-const departureDate =
-  booking?.departure?.date ??
-  booking?.departureDate ??
-  booking?.checkout?.date ??
-  booking?.checkoutDate ??
-  booking?.departure ??
-  null;
-
-const arrivalTime = booking?.arrival?.time || booking?.arrivalTime || null;
-const departureTime = booking?.departure?.time || booking?.departureTime || null;
+      
 //vremenno
 
       let guestsLine = "";
@@ -1387,6 +1374,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
