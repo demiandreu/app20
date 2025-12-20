@@ -148,6 +148,28 @@ const children = Number(booking?.numChild ?? 0);
 
 console.log("👥 Guests parsed:", { adults, children });
 
+      //vremenno
+      // ---- dates (we keep DATE; time can be empty) ----
+const arrivalDate =
+  booking?.arrival?.date ??
+  booking?.arrivalDate ??
+  booking?.checkin?.date ??
+  booking?.checkinDate ??
+  booking?.arrival ??
+  null;
+
+const departureDate =
+  booking?.departure?.date ??
+  booking?.departureDate ??
+  booking?.checkout?.date ??
+  booking?.checkoutDate ??
+  booking?.departure ??
+  null;
+
+const arrivalTime = booking?.arrival?.time || booking?.arrivalTime || null;
+const departureTime = booking?.departure?.time || booking?.departureTime || null;
+//vremenno
+
       let guestsLine = "";
       if (adults || children) {
         const parts = [];
@@ -1361,6 +1383,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
