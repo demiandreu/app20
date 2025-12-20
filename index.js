@@ -109,19 +109,21 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       // 1️⃣ Получаем бронь
       const bookingResult = await pool.query(
         `
-        SELECT
-          apartment_id,
-          apartment_name,
-          booking_token,
-          full_name,
-          arrival_date,
-          arrival_time,
-          departure_date,
-          departure_time
-        FROM checkins
-        WHERE booking_token = $1
-        ORDER BY id DESC
-        LIMIT 1
+      SELECT
+  apartment_id,
+  apartment_name,
+  booking_token,
+  full_name,
+  arrival_date,
+  arrival_time,
+  departure_date,
+  departure_time,
+  adults,
+  children
+FROM checkins
+WHERE booking_token = $1
+ORDER BY id DESC
+LIMIT 1
         `,
         [bookingId]
       );
@@ -158,22 +160,22 @@ START_${bookingId}`
       const depart = `${String(r.departure_date).slice(0, 10)} ${String(departureTimeFinal).slice(0, 5)}`;
 
       // 4️⃣ Отправляем сообщение
-      await sendWhatsApp(
-        from,
-        `Hola, ${name} 👋
+  await sendWhatsApp(
+  from,
+  `Hola, ${name} 👋
 
 Tu reserva está confirmada ✅
 Apartamento: ${apt}
 Entrada: ${arrive}
 Salida: ${depart}
-
+${guestsLine}
 Para enviarte las instrucciones de acceso y el código de la caja de llaves, primero necesito 2 pasos:
 
 1) Registro de huéspedes
 2) Pago (tasa turística + depósito, según la plataforma)
 
 Cuando lo tengas listo, responde aquí: LISTO`
-      );
+);
 
       return res.status(200).send("OK");
     }
@@ -929,6 +931,17 @@ app.get("/guest/:aptId/:token", async (req, res) => {
     }
 
     const r = rows[0];
+    const adults = Number(r.adults ?? 0);
+const children = Number(r.children ?? 0);
+
+let guestsLine = "";
+if (adults || children) {
+  const parts = [];
+  if (adults) parts.push(`${adults} adulto${adults === 1 ? "" : "s"}`);
+  if (children) parts.push(`${children} niño${children === 1 ? "" : "s"}`);
+  guestsLine = `Huéspedes: ${parts.join(", ")}\n`;
+}
+
 
     // Spain date for "today"
     const todayES = ymdInTz(new Date(), "Europe/Madrid");
@@ -1315,6 +1328,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
