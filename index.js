@@ -937,6 +937,14 @@ app.get("/checkin/:aptId/:token", (req, res) => {
 app.post("/checkin/:aptId/:token", async (req, res) => {
   const { aptId, token } = req.params;
 
+  //временно
+  console.log("DEBUG GUEST COUNTS:", {
+  adults: booking?.adults,
+  children: booking?.children,
+  guests: booking?.guests,
+  persons: booking?.persons,
+});
+
   try {
     // 👉 НОРМАЛИЗАЦИЯ ДАННЫХ (ОБЯЗАТЕЛЬНО)
     const arrivalDate = req.body.arrivalDate;
@@ -1404,6 +1412,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
