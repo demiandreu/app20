@@ -650,7 +650,8 @@ app.post("/webhooks/beds24", async (req, res) => {
 
     // vremenno
     console.log("DEBUG booking guest fields:", {
-  keys: Object.keys(booking || {}),
+  id: booking?.id,
+  keys: Object.keys(booking || {}).slice(0, 60),
   adults: booking?.adults,
   children: booking?.children,
   numAdults: booking?.numAdults,
@@ -662,6 +663,7 @@ app.post("/webhooks/beds24", async (req, res) => {
   occupancy: booking?.occupancy,
   pax: booking?.pax,
 });
+
 
 
     if (!booking || !booking.id) {
@@ -1422,6 +1424,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
