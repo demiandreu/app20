@@ -1241,6 +1241,56 @@ app.post("/staff/checkins/:id/clean", async (req, res) => {
     res.status(500).send("❌ Cannot toggle clean status");
   }
 });
+// ===================== MANAGER SETTINGS =====================
+
+// показать настройки
+app.get("/manager/settings", async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT * FROM app_settings WHERE id = 1`
+  );
+
+  const s = rows[0];
+
+  res.send(`
+    <h1>Manager Settings</h1>
+
+    <form method="POST">
+      <label>Brand name</label><br/>
+      <input name="brand_name" value="${s.brand_name}" /><br/><br/>
+
+      <label>Default arrival time</label><br/>
+      <input type="time" name="default_arrival_time" value="${s.default_arrival_time.slice(0,5)}" /><br/><br/>
+
+      <label>Default departure time</label><br/>
+      <input type="time" name="default_departure_time" value="${s.default_departure_time.slice(0,5)}" /><br/><br/>
+
+      <button type="submit">Save</button>
+    </form>
+  `);
+});
+// сохранить настройки
+app.post("/manager/settings", async (req, res) => {
+  const {
+    brand_name,
+    default_arrival_time,
+    default_departure_time
+  } = req.body;
+
+  await pool.query(
+    `
+    UPDATE app_settings
+    SET
+      brand_name = $1,
+      default_arrival_time = $2,
+      default_departure_time = $3,
+      updated_at = now()
+    WHERE id = 1
+    `,
+    [brand_name, default_arrival_time, default_departure_time]
+  );
+
+  res.redirect("/manager/settings");
+});
 
 // ===================== START =====================
 (async () => {
@@ -1252,6 +1302,7 @@ app.post("/staff/checkins/:id/clean", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
