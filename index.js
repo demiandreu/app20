@@ -1,4 +1,3 @@
-app.get("/ping", (req, res) => res.send("pong"));
 // =====================================================
 // RCS Guest Portal — Stable organized single-file version
 // (same logic, only reorganized and labeled)
@@ -1688,6 +1687,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
