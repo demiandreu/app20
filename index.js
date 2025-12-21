@@ -754,6 +754,24 @@ const departureDate =
 const arrivalTime = booking?.arrival?.time || booking?.arrivalTime || null;
 const departureTime = booking?.departure?.time || booking?.departureTime || null;
 
+    //vremenno
+// ---- save/refresh roomId -> apartmentName mapping (auto) ----
+if (beds24RoomId && beds24RoomId !== "undefined" && beds24RoomId !== "null") {
+  await pool.query(
+    `
+    INSERT INTO beds24_rooms (beds24_room_id, apartment_name, is_active)
+    VALUES ($1, COALESCE($2, ''), true)
+    ON CONFLICT (beds24_room_id)
+    DO UPDATE SET
+      apartment_name = COALESCE(EXCLUDED.apartment_name, beds24_rooms.apartment_name),
+      is_active = true,
+      updated_at = NOW()
+    `,
+    [String(beds24RoomId), apartmentName ? String(apartmentName) : ""]
+  );
+}
+ //vremenno
+
 // ---- upsert ----
 await pool.query(
   `
@@ -1509,6 +1527,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
