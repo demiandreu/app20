@@ -667,7 +667,45 @@ app.post("/webhooks/beds24", async (req, res) => {
 
     console.log("✅ Booking received:", booking.id);
     // ---- room / apartment name ----
-    
+    //vremenno
+// ---- room / apartment (from DB mapping) ----
+const beds24RoomId = String(
+  booking?.roomId ?? booking?.room?.id ?? booking?.unitId ?? ""
+);
+
+let apartmentName = null;
+
+if (beds24RoomId) {
+  const roomRes = await pool.query(
+    `
+    SELECT apartment_name
+    FROM beds24_rooms
+    WHERE beds24_room_id = $1
+      AND is_active = true
+    LIMIT 1
+    `,
+    [beds24RoomId]
+  );
+
+  if (roomRes.rows.length) {
+    apartmentName = roomRes.rows[0].apartment_name;
+  }
+}
+
+// fallback — если в менеджере ещё не добавили
+if (!apartmentName) {
+  apartmentName =
+    booking?.roomName ||
+    booking?.unitName ||
+    booking?.apartmentName ||
+    booking?.room?.name ||
+    booking?.unit?.name ||
+    null;
+}
+
+const beds24BookingId = booking?.id ?? null;
+const beds24Raw = payload;
+     //vremenno
     // ---- guest fields ----
   
     const guest = payload.guest || booking.guest || booking.guestData || {};
@@ -1351,6 +1389,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
