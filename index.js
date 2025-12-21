@@ -1202,7 +1202,6 @@ app.get("/staff/checkins", async (req, res) => {
 
                           <td>${r.apartment_name ?? ""}</td>
                           <td>${r.full_name ?? ""}</td>
-                          <td>${row.adults} | ${row.children}</td>
                           <td>${r.phone ?? ""}</td>
                           <td>${arrive}</td>
                           <td>${depart}</td>
@@ -1375,6 +1374,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
