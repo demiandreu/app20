@@ -1441,10 +1441,61 @@ app.get("/manager/channels/sync", async (req, res) => {
         },
       }
     );
+      //vremenno
+    // 1) достаём массив properties
+const properties = propertiesResp?.data?.getProperties || propertiesResp?.data || [];
+if (!Array.isArray(properties) || properties.length === 0) {
+  return res.send("⚠️ No properties found in Beds24");
+}
+
+// 2) собираем roomTypes
+const rooms = [];
+for (const p of properties) {
+  const propertyName = p?.name || "";
+  const roomTypes = Array.isArray(p?.roomTypes) ? p.roomTypes : Array.isArray(p?.roomTypes?.roomType) ? p.roomTypes.roomType : [];
+  for (const rt of roomTypes) {
+    const roomId = rt?.roomId;
+    if (!roomId) continue;
+
+    const roomName = (rt?.name || propertyName || "").trim();
+    rooms.push({
+      beds24_room_id: String(roomId),
+      apartment_name: roomName,
+    });
+  }
+}
+
+if (!rooms.length) {
+  return res.send("⚠️ No roomTypes found in Beds24 properties");
+}
+
+// 3) UPSERT в твою таблицу apartments (или как она у тебя называется)
+let inserted = 0;
+let updated = 0;
+
+for (const r of rooms) {
+  const result = await pool.query(
+    `
+    INSERT INTO apartments (beds24_room_id, apartment_name, active)
+    VALUES ($1, $2, true)
+    ON CONFLICT (beds24_room_id)
+    DO UPDATE SET apartment_name = EXCLUDED.apartment_name,
+                  active = true
+    RETURNING (xmax = 0) AS inserted;
+    `,
+    [r.beds24_room_id, r.apartment_name]
+  );
+
+  if (result.rows?.[0]?.inserted) inserted++;
+  else updated++;
+}
+
+return res.send(`✅ Sync done. Rooms: ${rooms.length}. Inserted: ${inserted}, Updated: ${updated}`);
     //vremenno
-    return res.send(`
-  <h2>Beds24 raw response</h2>
-  <pre style="white-space:pre-wrap">${escapeHtml(JSON.stringify(propertiesResp, null, 2))}</pre>
+    //vremenno
+ //   return res.send(`
+ // <h2>Beds24 raw response</h2>
+//  <pre style="white-space:pre-wrap">${escapeHtml(JSON.stringify(propertiesResp, null, 2))}</pre>
 `);
     //vremenno
 
@@ -1673,6 +1724,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
