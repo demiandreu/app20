@@ -1075,7 +1075,23 @@ if (adults || children) {
 });
 
 // ===================== staff ROUTES =====================
+//vremenno
+app.post("/staff/checkins/:id/delete", async (req, res) => {
+  try {
+    const { id } = req.params;
 
+    await pool.query(
+      `DELETE FROM checkins WHERE id = $1`,
+      [id]
+    );
+
+    res.redirect("/staff/checkins");
+  } catch (e) {
+    console.error("Delete checkin error:", e);
+    res.status(500).send("❌ Cannot delete check-in");
+  }
+});
+//vremenno
 // --- LIST + FILTER ---
 app.get("/staff/checkins", async (req, res) => {
   try {
@@ -1220,6 +1236,7 @@ app.get("/staff/checkins", async (req, res) => {
               <th>Guest</th>
               <th>Lock code</th>
               <th>Visible</th>
+              <th>Delete</th>
             </tr>
           </thead>
 
@@ -1285,6 +1302,17 @@ app.get("/staff/checkins", async (req, res) => {
                               </button>
                             </form>
                           </td>
+                          <td>
+  <form
+    method="POST"
+    action="/staff/checkins/${r.id}/delete"
+    onsubmit="return confirm('Are you sure you want to permanently delete this booking?');"
+  >
+    <button class="btn-small btn-ghost" type="submit">
+      Delete
+    </button>
+  </form>
+</td>
                         </tr>
                       `;
                     })
@@ -1543,6 +1571,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
