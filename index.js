@@ -1203,11 +1203,11 @@ app.get("/staff/checkins", async (req, res) => {
           <thead>
             <tr>
               <th class="sticky-col">Clean</th>
+                  <th>Id</th>
               <th>Apartment</th>
               <th>Name</th>
               <th>Phone</th>
               <th>A|C</th>
-               <th>B#</th>
               <th>Arrive</th>
               <th>Depart</th>
               <th>Guest</th>
@@ -1237,14 +1237,14 @@ app.get("/staff/checkins", async (req, res) => {
                               </button>
                             </form>
                           </td>
-
+                  <td class="mono">${r.booking_token ?? ""}</td>
                           <td>${r.apartment_name ?? ""}</td>
                           <td>${r.full_name ?? ""}</td>
                           <td>${r.phone ?? ""}</td>
                           <td class="mono">
   ${(r.adults ?? 0)}|${(r.children ?? 0)}
 </td>
-                          <td class="mono">${r.booking_token ?? ""}</td>
+        
                           <td>${arrive}</td>
                           <td>${depart}</td>
 
@@ -1536,6 +1536,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
