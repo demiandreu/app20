@@ -1469,6 +1469,33 @@ app.post("/staff/checkins/:id/clean", async (req, res) => {
 // ===================== MANAGER SETTINGS =====================
 
 //vremenno1
+
+app.get("/manager/channels/bookings", async (req, res) => {
+  try {
+    const API_KEY = process.env.BEDS24_API_KEY; // твой общий APK4
+    if (!API_KEY) return res.status(500).send("❌ BEDS24_API_KEY not set");
+
+    // диапазон дат (пока широкий)
+    const from = String(req.query.from || "2025-01-01");
+    const to = String(req.query.to || "2026-12-31");
+
+    const resp = await beds24PostJson("https://api.beds24.com/json/getBookings", {
+      authentication: { apiKey: API_KEY },
+      from,
+      to,
+    });
+
+    return res.send(`
+      <h2>Bookings</h2>
+      <p>from=${escapeHtml(from)} to=${escapeHtml(to)}</p>
+      <pre style="white-space:pre-wrap">${escapeHtml(JSON.stringify(resp?.data ?? resp, null, 2))}</pre>
+    `);
+  } catch (e) {
+    console.error("❌ bookings debug error:", e);
+    return res.status(500).send("Bookings failed");
+  }
+});
+
 // ===================== MANAGER: Sync Beds24 Rooms =====================
 
 app.get("/manager/channels/sync", async (req, res) => {
@@ -1687,6 +1714,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
