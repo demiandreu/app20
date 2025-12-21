@@ -1673,6 +1673,7 @@ app.post("/manager/settings", async (req, res) => {
   }
 })();
 
+console.log("FILE LOADED OK");
 
 
 
