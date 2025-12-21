@@ -667,16 +667,7 @@ app.post("/webhooks/beds24", async (req, res) => {
 
     console.log("✅ Booking received:", booking.id);
     // ---- room / apartment name ----
-
-const booking = payload.booking || payload;
-
-// ---- apartment name from Beds24 ----
-const apartmentName =
-  booking?.roomName ||
-  booking?.unitName ||
-  booking?.room?.name ||
-  booking?.unit?.name ||
-  null;
+    
     // ---- guest fields ----
   
     const guest = payload.guest || booking.guest || booking.guestData || {};
@@ -1360,6 +1351,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
