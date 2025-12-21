@@ -1,3 +1,4 @@
+app.get("/ping", (req, res) => res.send("pong"));
 // =====================================================
 // RCS Guest Portal — Stable organized single-file version
 // (same logic, only reorganized and labeled)
@@ -13,6 +14,20 @@ const twilio = require("twilio");
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+   //vremenno
+// ===================== MANAGER: Debug =====================
+app.get("/manager/channels/debug", (req, res) => {
+  res.send(`
+    <h1>Debug</h1>
+    <p>OK</p>
+    <ul>
+      <li><a href="/manager/channels/sync">Sync</a></li>
+      <li><a href="/manager/settings/apartments">Apartments</a></li>
+    </ul>
+  `);
+});
+    //vremenno
 
 //vremenno
 function escapeHtml(str) {
@@ -1470,19 +1485,7 @@ app.get("/manager/channels/sync", async (req, res) => {
         authentication: { apiKey: API_KEY },
       }
     );
-    //vremenno
-// ===================== MANAGER: Debug =====================
-app.get("/manager/channels/debug", (req, res) => {
-  res.send(`
-    <h1>Debug</h1>
-    <p>OK</p>
-    <ul>
-      <li><a href="/manager/channels/sync">Sync</a></li>
-      <li><a href="/manager/settings/apartments">Apartments</a></li>
-    </ul>
-  `);
-});
-    //vremenno
+ 
 
     const properties = Array.isArray(propertiesResp?.getProperties)
       ? propertiesResp.getProperties
@@ -1685,6 +1688,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
