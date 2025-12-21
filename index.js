@@ -1491,60 +1491,8 @@ for (const r of rooms) {
 }
 
 return res.send(`✅ Sync done. Rooms: ${rooms.length}. Inserted: ${inserted}, Updated: ${updated}`);
-    //vremenno
-    //vremenno
- //   return res.send(`
- // <h2>Beds24 raw response</h2>
-//  <pre style="white-space:pre-wrap">${escapeHtml(JSON.stringify(propertiesResp, null, 2))}</pre>
-// `);
-    //vremenno
 
-    const properties = propertiesResp?.data || [];
-
-    if (!properties.length) {
-      return res.send("⚠️ No properties found in Beds24");
-    }
-
-    const rooms = [];
-
-    // 2️⃣ Для каждой property получаем rooms
-    for (const prop of properties) {
-      const propertyResp = await beds24PostJson(
-        "https://api.beds24.com/json/getProperty",
-        {
-          authentication: {
-            apiKey: API_KEY,
-          },
-          propertyId: prop.id,
-          includeRooms: true,
-        }
-      );
-
-      const propertyRooms = propertyResp?.data?.rooms || [];
-
-      propertyRooms.forEach((room) => {
-        rooms.push({
-          propertyId: prop.id,
-          roomId: room.id,
-          roomName: room.name,
-        });
-      });
-    }
-
-    console.log("🏠 Beds24 rooms:", rooms);
-
-    res.json({
-      success: true,
-      count: rooms.length,
-      rooms,
-    });
-  } catch (err) {
-    console.error("❌ Beds24 sync error:", err);
-    res.status(500).send("Beds24 sync failed");
-  }
-});
-//vremenno1
-//vremenno
+    
 // ===================== MANAGER: Beds24 Rooms mapping =====================
 
 // страница со списком и формой добавления
@@ -1724,6 +1672,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
