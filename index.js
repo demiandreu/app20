@@ -383,7 +383,10 @@ function renderPage(title, innerHtml) {
   .lock-form button{
     white-space:nowrap;
   }
-
+.mono {
+  text-align: center;
+  font-weight: 600;
+}
   td{
     white-space:nowrap;
     vertical-align:middle;
@@ -407,7 +410,7 @@ function renderPage(title, innerHtml) {
     border-collapse: separate;
     border-spacing: 0;
   }
-
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace; white-space: nowrap; }
   .btn-base {
     height: 34px;
     min-height: 34px;
@@ -1203,6 +1206,8 @@ app.get("/staff/checkins", async (req, res) => {
               <th>Apartment</th>
               <th>Name</th>
               <th>Phone</th>
+              <th>A|C</th>
+               <th>B#</th>
               <th>Arrive</th>
               <th>Depart</th>
               <th>Guest</th>
@@ -1236,6 +1241,10 @@ app.get("/staff/checkins", async (req, res) => {
                           <td>${r.apartment_name ?? ""}</td>
                           <td>${r.full_name ?? ""}</td>
                           <td>${r.phone ?? ""}</td>
+                          <td class="mono">
+  ${(r.adults ?? 0)}|${(r.children ?? 0)}
+</td>
+                          <td class="mono">${r.booking_token ?? ""}</td>
                           <td>${arrive}</td>
                           <td>${depart}</td>
 
@@ -1273,7 +1282,7 @@ app.get("/staff/checkins", async (req, res) => {
                       `;
                     })
                     .join("")
-                : `<tr><td colspan="9" class="muted">No records</td></tr>`
+                : `<tr><td colspan="10" class="muted">No records</td></tr>`
             }
           </tbody>
         </table>
@@ -1527,6 +1536,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
