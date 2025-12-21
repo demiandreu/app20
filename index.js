@@ -1166,15 +1166,24 @@ app.get("/staff/checkins", async (req, res) => {
   <p class="muted">Arrival date</p>
 
   <form class="toolbar" method="GET" action="/staff/checkins">
-    <div>
-      <label>From</label>
-      <input type="date" name="from" value="${fromDate || ""}">
-    </div>
-
-    <div>
-      <label>To</label>
-      <input type="date" name="to" value="${toDate || ""}">
-    </div>
+   <div>
+  <label>Arrival date (from → to)</label>
+  <div style="display:flex; gap:6px; align-items:center;">
+    <input
+      type="date"
+      name="from"
+      value="${fromDate || ""}"
+      style="max-width:140px;"
+    />
+    <span style="opacity:0.6;">→</span>
+    <input
+      type="date"
+      name="to"
+      value="${toDate || ""}"
+      style="max-width:140px;"
+    />
+  </div>
+</div>
 
     <div style="display:flex; gap:10px; align-items:flex-end;">
       <button class="btn-base" type="submit">Show</button>
@@ -1534,6 +1543,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
