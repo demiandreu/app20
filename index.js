@@ -1470,6 +1470,25 @@ app.get("/manager/channels/sync", async (req, res) => {
         authentication: { apiKey: API_KEY },
       }
     );
+    //vremenno
+app.get("/manager/channels/debug-bookings", async (req, res) => {
+  const API_KEY = process.env.BEDS24_API_KEY;
+
+  const resp = await beds24PostJson(
+    "https://api.beds24.com/json/getBookings",
+    {
+      authentication: { apiKey: API_KEY },
+      from: "2025-01-01",
+      to: "2026-12-31"
+    }
+  );
+
+  res.send(`
+    <h2>Beds24 RAW bookings response</h2>
+    <pre>${escapeHtml(JSON.stringify(resp?.data, null, 2))}</pre>
+  `);
+});
+    //vremenno
 
     const properties = Array.isArray(propertiesResp?.getProperties)
       ? propertiesResp.getProperties
@@ -1672,6 +1691,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
