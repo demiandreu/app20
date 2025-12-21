@@ -143,10 +143,21 @@ START_${bookingId}`
       const r = bookingResult.rows[0];
 
       //vremenno
+// берём данные ТОЛЬКО из БД (r), а не из booking
+const adults = Number(r.adults ?? 0);
+const children = Number(r.children ?? 0);
+
+const arrivalDate = r.arrival_date;
+const departureDate = r.departure_date;
+
+const arrivalTime = r.arrival_time;
+const departureTime = r.departure_time;
+
+// форматирование для текста
 function fmtDate(d) {
   if (!d) return "";
   const dt = new Date(d);
-  return dt.toDateString(); // типа: "Sat Dec 20 2025"
+  return dt.toDateString(); // "Sat Dec 20 2025"
 }
 
 function fmtTime(t) {
@@ -1392,6 +1403,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
