@@ -1147,6 +1147,8 @@ app.get("/staff/checkins", async (req, res) => {
         arrival_time,
         departure_date,
         departure_time,
+        adults,
+        children,
         lock_code,
         lock_visible,
         clean_ok
@@ -1532,6 +1534,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
