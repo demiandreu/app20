@@ -1042,7 +1042,7 @@ if (adults || children) {
   }
 });
 
-// ===================== ADMIN ROUTES =====================
+// ===================== staff ROUTES =====================
 
 // --- LIST + FILTER ---
 app.get("/staff/checkins", async (req, res) => {
@@ -1203,6 +1203,7 @@ app.get("/staff/checkins", async (req, res) => {
                           <td>${r.apartment_name ?? ""}</td>
                           <td>${r.full_name ?? ""}</td>
                           <td>${r.phone ?? ""}</td>
+                          <td>{{ adults }} | {{ children }}</td>
                           <td>${arrive}</td>
                           <td>${depart}</td>
 
@@ -1374,6 +1375,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
