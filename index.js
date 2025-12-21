@@ -14,6 +14,17 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+//vremenno
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+//vremenno
+
 const PORT = process.env.PORT || 3000;
 
 // ===================== DB: ENV CHECK =====================
@@ -1430,6 +1441,12 @@ app.get("/manager/channels/sync", async (req, res) => {
         },
       }
     );
+    //vremenno
+    return res.send(`
+  <h2>Beds24 raw response</h2>
+  <pre style="white-space:pre-wrap">${escapeHtml(JSON.stringify(propertiesResp, null, 2))}</pre>
+`);
+    //vremenno
 
     const properties = propertiesResp?.data || [];
 
@@ -1656,6 +1673,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
