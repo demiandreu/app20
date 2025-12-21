@@ -1424,85 +1424,79 @@ app.post("/staff/checkins/:id/clean", async (req, res) => {
 
 //vremenno1
 // ===================== MANAGER: Sync Beds24 Rooms =====================
+
 app.get("/manager/channels/sync", async (req, res) => {
   try {
-    const API_KEY = process.env.BEDS24_API_KEY; // один ключ, APK4 как мы решили
-
+    const API_KEY = process.env.BEDS24_API_KEY;
     if (!API_KEY) {
       return res.status(500).send("❌ BEDS24_API_KEY not set");
     }
 
-    // 1️⃣ Получаем список properties
     const propertiesResp = await beds24PostJson(
       "https://api.beds24.com/json/getProperties",
       {
-        authentication: {
-          apiKey: API_KEY,
-        },
+        authentication: { apiKey: API_KEY },
       }
     );
-    return res.send(`
-  <h2>Beds24 RAW response</h2>
-  <pre style="white-space: pre-wrap; font-size: 12px;">
-${escapeHtml(JSON.stringify(propertiesResp, null, 2))}
-  </pre>
-`);
-      //vremenno
-    // 1) достаём массив properties
-const properties = propertiesResp?.data?.getProperties || propertiesResp?.data || [];
-if (!Array.isArray(properties) || properties.length === 0) {
-  return res.send("⚠️ No properties found in Beds24");
-}
 
-// 2) собираем roomTypes
-const rooms = [];
-for (const p of properties) {
-  const propertyName = p?.name || "";
-  const roomTypes = Array.isArray(p?.roomTypes) ? p.roomTypes : Array.isArray(p?.roomTypes?.roomType) ? p.roomTypes.roomType : [];
-  for (const rt of roomTypes) {
-    const roomId = rt?.roomId;
-    if (!roomId) continue;
+    const properties = Array.isArray(propertiesResp?.getProperties)
+      ? propertiesResp.getProperties
+      : [];
 
-    const roomName = (rt?.name || propertyName || "").trim();
-    rooms.push({
-      beds24_room_id: String(roomId),
-      apartment_name: roomName,
-    });
-  }
-}
+    if (!properties.length) {
+      return res.send("⚠️ No properties found in Beds24");
+    }
 
-if (!rooms.length) {
-  return res.send("⚠️ No roomTypes found in Beds24 properties");
-}
+    const rooms = [];
 
-// 3) UPSERT в твою таблицу apartments (или как она у тебя называется)
-let inserted = 0;
-let updated = 0;
+    for (const p of properties) {
+      const propertyName = p?.name || "";
+      const roomTypes = Array.isArray(p?.roomTypes) ? p.roomTypes : [];
 
-for (const r of rooms) {
-  const result = await pool.query(
-    `
-    INSERT INTO apartments (beds24_room_id, apartment_name, active)
-    VALUES ($1, $2, true)
-    ON CONFLICT (beds24_room_id)
-    DO UPDATE SET apartment_name = EXCLUDED.apartment_name,
-                  active = true
-    RETURNING (xmax = 0) AS inserted;
-    `,
-    [r.beds24_room_id, r.apartment_name]
-  );
+      for (const rt of roomTypes) {
+        if (!rt?.roomId) continue;
 
-  if (result.rows?.[0]?.inserted) inserted++;
-  else updated++;
-}
+        rooms.push({
+          beds24_room_id: String(rt.roomId),
+          apartment_name: (rt.name || propertyName || "").trim(),
+        });
+      }
+    }
 
-return res.send(`✅ Sync done. Rooms: ${rooms.length}. Inserted: ${inserted}, Updated: ${updated}`);
+    if (!rooms.length) {
+      return res.send("⚠️ No roomTypes found in Beds24");
+    }
 
-    } catch (err) {
+    let inserted = 0;
+    let updated = 0;
+
+    for (const r of rooms) {
+      const result = await pool.query(
+        `
+        INSERT INTO beds24_rooms (beds24_room_id, apartment_name, is_active)
+        VALUES ($1, $2, true)
+        ON CONFLICT (beds24_room_id)
+        DO UPDATE SET
+          apartment_name = EXCLUDED.apartment_name,
+          is_active = true,
+          updated_at = NOW()
+        RETURNING (xmax = 0) AS inserted
+        `,
+        [r.beds24_room_id, r.apartment_name]
+      );
+
+      if (result.rows[0].inserted) inserted++;
+      else updated++;
+    }
+
+    res.send(
+      `✅ Sync done. Rooms: ${rooms.length}. Inserted: ${inserted}, Updated: ${updated}`
+    );
+  } catch (err) {
     console.error("❌ Beds24 sync error:", err);
-    return res.status(500).send("Beds24 sync failed");
+    res.status(500).send("Beds24 sync failed");
   }
-}); // <-- ВАЖНО: закрыли app.get("/manager/channels/sync"...)
+});
     
 // ===================== MANAGER: Beds24 Rooms mapping =====================
 
@@ -1683,6 +1677,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
