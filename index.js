@@ -142,35 +142,6 @@ START_${bookingId}`
 
       const r = bookingResult.rows[0];
 
-      //vremenno
-// берём данные ТОЛЬКО из БД (r), а не из booking
-const adults = Number(r.adults ?? 0);
-const children = Number(r.children ?? 0);
-
-const arrivalDate = r.arrival_date;
-const departureDate = r.departure_date;
-
-const arrivalTime = r.arrival_time;
-const departureTime = r.departure_time;
-
-// форматирование для текста
-function fmtDate(d) {
-  if (!d) return "";
-  const dt = new Date(d);
-  return dt.toDateString(); // "Sat Dec 20 2025"
-}
-
-function fmtTime(t) {
-  if (!t) return "";
-  return String(t).slice(0, 5); // "17:00"
-}
-
-const entryLine = [fmtDate(arrivalDate), fmtTime(arrivalTime)].filter(Boolean).join(" ");
-const exitLine  = [fmtDate(departureDate), fmtTime(departureTime)].filter(Boolean).join(" ");
-
-const guestsLine = `${adults} adultos${children ? `, ${children} niños` : ""}`;
-      //vremenno
-
     // ---- data from DB (checkins table) ----
 const adults = r.adults ?? 0;
 const children = r.children ?? 0;
@@ -1403,6 +1374,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
