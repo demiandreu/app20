@@ -1579,7 +1579,7 @@ app.get("/manager/settings/apartments", async (req, res) => {
   try {
     const rows = await pool.query(
       `
-      SELECT id, beds24_room_id, apartment_name, is_active, created_at, updated_at
+      SELECT id, beds24_room_id, beds24_prop_key, apartment_name, is_active, created_at, updated_at
       FROM beds24_rooms
       ORDER BY apartment_name ASC
       `
@@ -1654,6 +1654,14 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
+//vremenno3
+function maskKey(k) {
+  k = String(k || "");
+  if (!k) return "";
+  if (k.length <= 10) return k;
+  return k.slice(0, 4) + "…" + k.slice(-4);
+}
+//vremenno3
 //vremenno
 // показать настройки
 app.get("/manager/settings", async (req, res) => {
@@ -1714,6 +1722,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
