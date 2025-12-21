@@ -1471,22 +1471,15 @@ app.get("/manager/channels/sync", async (req, res) => {
       }
     );
     //vremenno
-app.get("/manager/channels/debug", async (req, res) => {
-   console.log("🔥 DEBUG BOOKINGS ROUTE HIT");
-  const API_KEY = process.env.BEDS24_API_KEY;
-
-  const resp = await beds24PostJson(
-    "https://api.beds24.com/json/getBookings",
-    {
-      authentication: { apiKey: API_KEY },
-      from: "2025-01-01",
-      to: "2026-12-31"
-    }
-  );
-
+// ===================== MANAGER: Debug =====================
+app.get("/manager/channels/debug", (req, res) => {
   res.send(`
-    <h2>Beds24 RAW bookings response</h2>
-    <pre>${escapeHtml(JSON.stringify(resp?.data, null, 2))}</pre>
+    <h1>Debug</h1>
+    <p>OK</p>
+    <ul>
+      <li><a href="/manager/channels/sync">Sync</a></li>
+      <li><a href="/manager/settings/apartments">Apartments</a></li>
+    </ul>
   `);
 });
     //vremenno
@@ -1692,6 +1685,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
