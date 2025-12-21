@@ -1441,6 +1441,12 @@ app.get("/manager/channels/sync", async (req, res) => {
         },
       }
     );
+    return res.send(`
+  <h2>Beds24 RAW response</h2>
+  <pre style="white-space: pre-wrap; font-size: 12px;">
+${escapeHtml(JSON.stringify(propertiesResp, null, 2))}
+  </pre>
+`);
       //vremenno
     // 1) достаём массив properties
 const properties = propertiesResp?.data?.getProperties || propertiesResp?.data || [];
@@ -1677,6 +1683,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
