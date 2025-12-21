@@ -383,10 +383,7 @@ function renderPage(title, innerHtml) {
   .lock-form button{
     white-space:nowrap;
   }
-.mono {
-  text-align: center;
-  font-weight: 600;
-}
+
   td{
     white-space:nowrap;
     vertical-align:middle;
@@ -410,7 +407,6 @@ function renderPage(title, innerHtml) {
     border-collapse: separate;
     border-spacing: 0;
   }
-.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace; white-space: nowrap; }
   .btn-base {
     height: 34px;
     min-height: 34px;
@@ -1237,11 +1233,11 @@ app.get("/staff/checkins", async (req, res) => {
                               </button>
                             </form>
                           </td>
-                  <td class="mono">${r.booking_token ?? ""}</td>
+                  <td>${r.booking_token ?? ""}</td>
                           <td>${r.apartment_name ?? ""}</td>
                           <td>${r.full_name ?? ""}</td>
                           <td>${r.phone ?? ""}</td>
-                          <td class="mono">
+                          <td>
   ${(r.adults ?? 0)}|${(r.children ?? 0)}
 </td>
         
@@ -1536,6 +1532,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
