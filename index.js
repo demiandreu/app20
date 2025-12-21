@@ -1108,25 +1108,6 @@ if (adults || children) {
   }
 });
 
-// ===================== staff ROUTES =====================
-//vremenno
-app.post("/staff/checkins/:id/delete", async (req, res) => {
-  try {
-    const { id } = req.params;
-    await pool.query(`DELETE FROM checkins WHERE id = $1`, [id]);
-
-    const returnTo = (req.body && req.body.returnTo) ? String(req.body.returnTo) : "/staff/checkins";
-
-    // защита: редиректим только внутри нашего сайта
-    if (!returnTo.startsWith("/staff/checkins")) return res.redirect("/staff/checkins");
-
-    return res.redirect(returnTo);
-  } catch (e) {
-    console.error("Delete error:", e);
-    return res.status(500).send("❌ Cannot delete");
-  }
-});
-//vremenno
 // --- LIST + FILTER ---
 app.get("/staff/checkins", async (req, res) => {
   try {
@@ -1143,7 +1124,6 @@ app.get("/staff/checkins", async (req, res) => {
     const hasAnyFilter = Boolean(from || to || quickRaw);
     const quickCandidate = hasAnyFilter ? quickRaw : "today";
 
-    // quick выбран?
     const quick =
       quickCandidate === "yesterday" ||
       quickCandidate === "today" ||
@@ -1168,23 +1148,31 @@ app.get("/staff/checkins", async (req, res) => {
       }
     }
 
-    // --- build WHERE ---
-    const where = [];
-    const params = [];
+    // ----------------------------
+    // helpers: build WHERE for field
+    // ----------------------------
+    function buildWhereFor(fieldName) {
+      const where = [];
+      const params = [];
 
-    if (fromDate) {
-      params.push(fromDate);
-      where.push(`arrival_date >= $${params.length}`);
+      if (fromDate) {
+        params.push(fromDate);
+        where.push(`${fieldName} >= $${params.length}`);
+      }
+      if (toDate) {
+        params.push(toDate);
+        where.push(`${fieldName} <= $${params.length}`);
+      }
+
+      const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+      return { whereSql, params };
     }
-    if (toDate) {
-      params.push(toDate);
-      where.push(`arrival_date <= $${params.length}`);
-    }
 
-    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
-
-    // --- query data ---
-    const { rows } = await pool.query(
+    // ----------------------------
+    // ARRIVALS query (arrival_date)
+    // ----------------------------
+    const wArr = buildWhereFor("arrival_date");
+    const arrivalsRes = await pool.query(
       `
       SELECT
         id,
@@ -1204,160 +1192,203 @@ app.get("/staff/checkins", async (req, res) => {
         lock_visible,
         clean_ok
       FROM checkins
-      ${whereSql}
+      ${wArr.whereSql}
       ORDER BY arrival_date ASC, arrival_time ASC, id DESC
       LIMIT 300
       `,
-      params
+      wArr.params
     );
 
-    // --- UI ---
-  const toolbar = `
-  <h1>Staff • Check-ins</h1>
-  <p class="muted">Arrival date</p>
+    // ----------------------------
+    // DEPARTURES query (departure_date)
+    // ----------------------------
+    const wDep = buildWhereFor("departure_date");
+    const departuresRes = await pool.query(
+      `
+      SELECT
+        id,
+        beds24_booking_id,
+        apartment_name,
+        apartment_id,
+        booking_token,
+        full_name,
+        phone,
+        arrival_date,
+        arrival_time,
+        departure_date,
+        departure_time,
+        adults,
+        children,
+        lock_code,
+        lock_visible,
+        clean_ok
+      FROM checkins
+      ${wDep.whereSql}
+      ORDER BY departure_date ASC, departure_time ASC, id DESC
+      LIMIT 300
+      `,
+      wDep.params
+    );
 
-  <form class="toolbar" method="GET" action="/staff/checkins">
-   <div>
-  <label>Arrival date (from → to)</label>
-  <div style="display:flex; gap:6px; align-items:center;">
-    <input
-      type="date"
-      name="from"
-      value="${fromDate || ""}"
-      style="max-width:140px;"
-    />
-    <span style="opacity:0.6;">→</span>
-    <input
-      type="date"
-      name="to"
-      value="${toDate || ""}"
-      style="max-width:140px;"
-    />
-  </div>
-</div>
+    const arrivals = arrivalsRes.rows || [];
+    const departures = departuresRes.rows || [];
 
-    <div style="display:flex; gap:10px; align-items:flex-end;">
-      <button class="btn-base" type="submit">Show</button>
-      <a class="btn-link" href="/staff/checkins">Reset</a>
-    </div>
+    // ----------------------------
+    // UI Toolbar (общий диапазон дат)
+    // ----------------------------
+    const toolbar = `
+      <h1>Staff • Arrivals & Departures</h1>
+      <p class="muted">Choose date range (Spain timezone)</p>
 
-    <div style="flex-basis:100%; height:8px;"></div>
+      <form class="toolbar" method="GET" action="/staff/checkins">
+        <div>
+          <label>Date range (from → to)</label>
+          <div style="display:flex; gap:6px; align-items:center;">
+            <input type="date" name="from" value="${fromDate || ""}" style="max-width:140px;" />
+            <span style="opacity:0.6;">→</span>
+            <input type="date" name="to" value="${toDate || ""}" style="max-width:140px;" />
+          </div>
+        </div>
 
-    <div>
-     <h2 style="margin:16px 0 8px;">Arrivals</h2>
-<p class="muted" style="margin:0 0 8px;">Quick filters</p>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <a class="btn-base ${quick === "yesterday" ? "btn-ghost" : ""}" href="/staff/checkins?quick=yesterday">Yesterday</a>
-        <a class="btn-base ${quick === "today" ? "btn-ghost" : ""}" href="/staff/checkins?quick=today">Today</a>
-        <a class="btn-base ${quick === "tomorrow" ? "btn-ghost" : ""}" href="/staff/checkins?quick=tomorrow">Tomorrow</a>
-      </div>
-    </div>
-  </form>
-`;
+        <div style="display:flex; gap:10px; align-items:flex-end;">
+          <button class="btn-base" type="submit">Show</button>
+          <a class="btn-link" href="/staff/checkins">Reset</a>
+        </div>
 
+        <div style="flex-basis:100%; height:8px;"></div>
 
-    const table = `
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th class="sticky-col">Clean</th>
-                  <th>Id</th>
-              <th>Apartment</th>
-              <th>Name</th>
-              <th>Phone</th>
-              <th>A|C</th>
-              <th>Arrive</th>
-              <th>Depart</th>
-              <th>Guest</th>
-              <th>Lock code</th>
-              <th>Visible</th>
-              <th>Delete</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            ${
-              rows.length
-                ? rows
-                    .map((r) => {
-                      const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time).slice(0, 5)}`;
-                      const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time).slice(0, 5)}`;
-
-                      return `
-                        <tr>
-                          <td class="sticky-col">
-                            <form method="POST" action="/staff/checkins/${r.id}/clean">
-                              <button
-                                type="submit"
-                                class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}"
-                                title="${r.clean_ok ? "Clean" : "Not clean"}"
-                              >
-                                ${r.clean_ok ? "✓" : ""}
-                              </button>
-                            </form>
-                          </td>
-                  <td>${r.booking_token ?? ""}</td>
-                          <td>${r.apartment_name ?? ""}</td>
-                          <td>${r.full_name ?? ""}</td>
-                          <td>${r.phone ?? ""}</td>
-                          <td>
-  ${(r.adults ?? 0)}|${(r.children ?? 0)}
-</td>
-        
-                          <td>${arrive}</td>
-                          <td>${depart}</td>
-
-                          <td>
-                            <a class="btn-small btn-ghost" href="/guest/${r.apartment_id}/${r.booking_token}" target="_blank">
-                              Open
-                            </a>
-                          </td>
-
-                          <td>
-                            <form method="POST" action="/staff/checkins/${r.id}/lock" class="lock-form">
-                              <input
-                                class="lock-input"
-                                name="lock_code"
-                                value="${r.lock_code ?? ""}"
-                                inputmode="numeric"
-                                pattern="\\d{4}"
-                                maxlength="4"
-                                placeholder="1234"
-                              />
-                              <button class="btn-base" type="submit">Save</button>
-                              <button class="btn-base btn-ghost" type="submit" name="clear" value="1">Clear</button>
-                            </form>
-                          </td>
-
-                          <td>
-                            <form method="POST" action="/staff/checkins/${r.id}/visibility" class="vis-form">
-                              <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "🔓 YES" : "🔒 NO"}</span>
-                              <button class="btn-small ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
-                                ${r.lock_visible ? "Hide" : "Show"}
-                              </button>
-                            </form>
-                          </td>
-                          <td>
- <form method="POST" action="/staff/checkins/${r.id}/delete" onsubmit="return confirm('Are you sure you want to delete this booking?');">
-  <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
-  <button class="btn-small btn-ghost" type="submit">Delete</button>
-</form>
-</td>
-                        </tr>
-                      `;
-                    })
-                    .join("")
-                : `<tr><td colspan="10" class="muted">No records</td></tr>`
-            }
-          </tbody>
-        </table>
-      </div>
+        <div>
+          <p class="muted" style="margin:0 0 8px;">Quick filters</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <a class="btn-base ${quick === "yesterday" ? "btn-ghost" : ""}" href="/staff/checkins?quick=yesterday">Yesterday</a>
+            <a class="btn-base ${quick === "today" ? "btn-ghost" : ""}" href="/staff/checkins?quick=today">Today</a>
+            <a class="btn-base ${quick === "tomorrow" ? "btn-ghost" : ""}" href="/staff/checkins?quick=tomorrow">Tomorrow</a>
+          </div>
+        </div>
+      </form>
     `;
 
-    res.send(renderPage("Admin • Check-ins", toolbar + table));
+    // ----------------------------
+    // Table renderer (одна функция для обеих таблиц)
+    // mode: "arrivals" | "departures"
+    // ----------------------------
+    function renderTable(rows, mode) {
+      const title =
+        mode === "departures"
+          ? `Departures <span class="muted">(${rows.length})</span>`
+          : `Arrivals <span class="muted">(${rows.length})</span>`;
+
+      const dateColTitle = mode === "departures" ? "Depart" : "Arrive";
+
+      const tbody =
+        rows.length
+          ? rows
+              .map((r) => {
+                const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time).slice(0, 5)}`;
+                const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time).slice(0, 5)}`;
+                const mainDate = mode === "departures" ? depart : arrive;
+
+                return `
+                  <tr>
+                    <td class="sticky-col">
+                      <form method="POST" action="/staff/checkins/${r.id}/clean">
+                        <button
+                          type="submit"
+                          class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}"
+                          title="${r.clean_ok ? "Clean" : "Not clean"}"
+                        >
+                          ${r.clean_ok ? "✓" : ""}
+                        </button>
+                      </form>
+                    </td>
+
+                    <td>${r.booking_token ?? ""}</td>
+                    <td>${r.apartment_name ?? ""}</td>
+                    <td>${r.full_name ?? ""}</td>
+                    <td>${r.phone ?? ""}</td>
+                    <td>${(r.adults ?? 0)}|${(r.children ?? 0)}</td>
+
+                    <td>${mainDate}</td>
+
+                    <td>
+                      <a class="btn-small btn-ghost" href="/guest/${r.apartment_id}/${r.booking_token}" target="_blank">
+                        Open
+                      </a>
+                    </td>
+
+                    <td>
+                      <form method="POST" action="/staff/checkins/${r.id}/lock" class="lock-form">
+                        <input
+                          class="lock-input"
+                          name="lock_code"
+                          value="${r.lock_code ?? ""}"
+                          inputmode="numeric"
+                          pattern="\\d{4}"
+                          maxlength="4"
+                          placeholder="1234"
+                        />
+                        <button class="btn-base" type="submit">Save</button>
+                        <button class="btn-base btn-ghost" type="submit" name="clear" value="1">Clear</button>
+                      </form>
+                    </td>
+
+                    <td>
+                      <form method="POST" action="/staff/checkins/${r.id}/visibility" class="vis-form">
+                        <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "🔓 YES" : "🔒 NO"}</span>
+                        <button class="btn-small ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
+                          ${r.lock_visible ? "Hide" : "Show"}
+                        </button>
+                      </form>
+                    </td>
+
+                    <td>
+                      <form method="POST" action="/staff/checkins/${r.id}/delete"
+                        onsubmit="return confirm('Are you sure you want to delete this booking?');">
+                        <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+                        <button class="btn-small btn-ghost" type="submit">Delete</button>
+                      </form>
+                    </td>
+                  </tr>
+                `;
+              })
+              .join("")
+          : `<tr><td colspan="11" class="muted">No records</td></tr>`;
+
+      return `
+        <h2 style="margin:18px 0 10px;">${title}</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="sticky-col">Clean</th>
+                <th>Id</th>
+                <th>Apartment</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>A|C</th>
+                <th>${dateColTitle}</th>
+                <th>Guest</th>
+                <th>Lock code</th>
+                <th>Visible</th>
+                <th>Delete</th>
+              </tr>
+            </thead>
+            <tbody>${tbody}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    const pageHtml =
+      toolbar +
+      renderTable(arrivals, "arrivals") +
+      `<div style="height:18px;"></div>` +
+      renderTable(departures, "departures");
+
+    // ✅ title тоже исправляем
+    res.send(renderPage("Staff • Arrivals & Departures", pageHtml));
   } catch (e) {
-    console.error("Admin list error:", e);
+    console.error("Staff list error:", e);
     res.status(500).send("❌ Cannot load checkins");
   }
 });
@@ -1641,6 +1672,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
