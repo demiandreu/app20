@@ -1492,6 +1492,11 @@ for (const r of rooms) {
 
 return res.send(`✅ Sync done. Rooms: ${rooms.length}. Inserted: ${inserted}, Updated: ${updated}`);
 
+    } catch (err) {
+    console.error("❌ Beds24 sync error:", err);
+    return res.status(500).send("Beds24 sync failed");
+  }
+}); // <-- ВАЖНО: закрыли app.get("/manager/channels/sync"...)
     
 // ===================== MANAGER: Beds24 Rooms mapping =====================
 
@@ -1673,7 +1678,8 @@ app.post("/manager/settings", async (req, res) => {
   }
 })();
 
-console.log("FILE LOADED OK");
+
+
 
 
 
