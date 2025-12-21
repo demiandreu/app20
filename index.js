@@ -1329,7 +1329,127 @@ app.post("/staff/checkins/:id/clean", async (req, res) => {
   }
 });
 // ===================== MANAGER SETTINGS =====================
+//vremenno
+// ===================== MANAGER: Beds24 Rooms mapping =====================
 
+// страница со списком и формой добавления
+app.get("/manager/settings/apartments", async (req, res) => {
+  try {
+    const rows = await pool.query(
+      `
+      SELECT id, beds24_room_id, apartment_name, is_active, created_at, updated_at
+      FROM beds24_rooms
+      ORDER BY apartment_name ASC
+      `
+    );
+
+    const listHtml = rows.rows
+      .map(
+        (r) => `
+        <tr>
+          <td>${escapeHtml(r.beds24_room_id)}</td>
+          <td>${escapeHtml(r.apartment_name)}</td>
+          <td>${r.is_active ? "✅" : "❌"}</td>
+          <td>
+            <form method="POST" action="/manager/settings/apartments/toggle" style="display:inline;">
+              <input type="hidden" name="id" value="${r.id}">
+              <button type="submit">${r.is_active ? "Disable" : "Enable"}</button>
+            </form>
+          </td>
+        </tr>
+      `
+      )
+      .join("");
+
+    res.send(`
+      <h2>Beds24 Apartments (Room ID → Name)</h2>
+
+      <form method="POST" action="/manager/settings/apartments/add" style="margin: 16px 0;">
+        <input name="beds24_room_id" placeholder="Beds24 Room ID (e.g. 433806)" required />
+        <input name="apartment_name" placeholder="Apartment name (e.g. Argenta)" required />
+        <button type="submit">Save</button>
+      </form>
+
+      <table border="1" cellpadding="8" cellspacing="0">
+        <thead>
+          <tr>
+            <th>beds24_room_id</th>
+            <th>apartment_name</th>
+            <th>active</th>
+            <th>action</th>
+          </tr>
+        </thead>
+        <tbody>${listHtml || ""}</tbody>
+      </table>
+    `);
+  } catch (err) {
+    console.error("❌ manager apartments page error:", err);
+    res.status(500).send("Error");
+  }
+});
+
+// add / upsert
+app.post("/manager/settings/apartments/add", async (req, res) => {
+  try {
+    const beds24_room_id = String(req.body.beds24_room_id || "").trim();
+    const apartment_name = String(req.body.apartment_name || "").trim();
+
+    if (!beds24_room_id || !apartment_name) {
+      return res.status(400).send("Missing beds24_room_id or apartment_name");
+    }
+
+    await pool.query(
+      `
+      INSERT INTO beds24_rooms (beds24_room_id, apartment_name, is_active)
+      VALUES ($1, $2, true)
+      ON CONFLICT (beds24_room_id)
+      DO UPDATE SET
+        apartment_name = EXCLUDED.apartment_name,
+        is_active = true,
+        updated_at = NOW()
+      `,
+      [beds24_room_id, apartment_name]
+    );
+
+    res.redirect("/manager/settings/apartments");
+  } catch (err) {
+    console.error("❌ add apartment mapping error:", err);
+    res.status(500).send("DB error");
+  }
+});
+
+// toggle active
+app.post("/manager/settings/apartments/toggle", async (req, res) => {
+  try {
+    const id = Number(req.body.id);
+
+    await pool.query(
+      `
+      UPDATE beds24_rooms
+      SET is_active = NOT is_active,
+          updated_at = NOW()
+      WHERE id = $1
+      `,
+      [id]
+    );
+
+    res.redirect("/manager/settings/apartments");
+  } catch (err) {
+    console.error("❌ toggle apartment mapping error:", err);
+    res.status(500).send("DB error");
+  }
+});
+
+// tiny helper (если у тебя уже есть — НЕ добавляй второй раз)
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+//vremenno
 // показать настройки
 app.get("/manager/settings", async (req, res) => {
   const { rows } = await pool.query(
@@ -1389,6 +1509,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
