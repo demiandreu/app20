@@ -1471,7 +1471,7 @@ app.get("/manager/channels/sync", async (req, res) => {
       }
     );
     //vremenno
-app.get("/manager/channels/debug-bookings", async (req, res) => {
+app.get("/manager/channels/debug", async (req, res) => {
    console.log("🔥 DEBUG BOOKINGS ROUTE HIT");
   const API_KEY = process.env.BEDS24_API_KEY;
 
@@ -1692,6 +1692,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
