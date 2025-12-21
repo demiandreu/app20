@@ -1414,6 +1414,72 @@ app.post("/staff/checkins/:id/clean", async (req, res) => {
   }
 });
 // ===================== MANAGER SETTINGS =====================
+
+//vremenno1
+// ===================== MANAGER: Sync Beds24 Rooms =====================
+app.get("/manager/sync-beds24-rooms", async (req, res) => {
+  try {
+    const API_KEY = process.env.BEDS24_API_KEY; // один ключ, APK4 как мы решили
+
+    if (!API_KEY) {
+      return res.status(500).send("❌ BEDS24_API_KEY not set");
+    }
+
+    // 1️⃣ Получаем список properties
+    const propertiesResp = await beds24PostJson(
+      "https://api.beds24.com/json/getProperties",
+      {
+        authentication: {
+          apiKey: API_KEY,
+        },
+      }
+    );
+
+    const properties = propertiesResp?.data || [];
+
+    if (!properties.length) {
+      return res.send("⚠️ No properties found in Beds24");
+    }
+
+    const rooms = [];
+
+    // 2️⃣ Для каждой property получаем rooms
+    for (const prop of properties) {
+      const propertyResp = await beds24PostJson(
+        "https://api.beds24.com/json/getProperty",
+        {
+          authentication: {
+            apiKey: API_KEY,
+          },
+          propertyId: prop.id,
+          includeRooms: true,
+        }
+      );
+
+      const propertyRooms = propertyResp?.data?.rooms || [];
+
+      propertyRooms.forEach((room) => {
+        rooms.push({
+          propertyId: prop.id,
+          roomId: room.id,
+          roomName: room.name,
+        });
+      });
+    }
+
+    console.log("🏠 Beds24 rooms:", rooms);
+
+    res.json({
+      success: true,
+      count: rooms.length,
+      rooms,
+    });
+  } catch (err) {
+    console.error("❌ Beds24 sync error:", err);
+    res.status(500).send("Beds24 sync failed");
+  }
+});
+//vremenno1
 //vremenno
 // ===================== MANAGER: Beds24 Rooms mapping =====================
 
@@ -1594,6 +1660,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
