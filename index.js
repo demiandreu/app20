@@ -644,8 +644,31 @@ function renderPage(title, innerHtml) {
 // =====================================================
 // ROUTES
 // =====================================================
+//vremenno
+async function beds24PostJson(url, data) {
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
 
+  const text = await resp.text();
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch (e) {
+    throw new Error(`Beds24 API non-JSON response: ${text.slice(0, 200)}`);
+  }
+
+  if (!resp.ok) {
+    throw new Error(`Beds24 API HTTP ${resp.status}: ${JSON.stringify(json).slice(0, 200)}`);
+  }
+  return json;
+}
+//vremenno
 // ===================== Beds24 Webhook (receiver) =====================
+
+
 app.post("/webhooks/beds24", async (req, res) => {
   try {
     const secret = String(req.query.key || "");
@@ -1571,6 +1594,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
