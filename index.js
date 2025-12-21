@@ -1417,7 +1417,7 @@ app.post("/staff/checkins/:id/clean", async (req, res) => {
 
 //vremenno1
 // ===================== MANAGER: Sync Beds24 Rooms =====================
-app.get("/manager/sync-beds24-rooms", async (req, res) => {
+app.get("/manager/channels/sync", async (req, res) => {
   try {
     const API_KEY = process.env.BEDS24_API_KEY; // один ключ, APK4 как мы решили
 
@@ -1660,6 +1660,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
