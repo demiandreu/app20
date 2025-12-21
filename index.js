@@ -1530,14 +1530,7 @@ app.get("/manager/settings/apartments", async (req, res) => {
       .join("");
 
     res.send(`
-      <h2>Beds24 Apartments (Room ID → Name)</h2>
-
-      <form method="POST" action="/manager/settings/apartments/add" style="margin: 16px 0;">
-        <input name="beds24_room_id" placeholder="Beds24 Room ID (e.g. 433806)" required />
-        <input name="apartment_name" placeholder="Apartment name (e.g. Argenta)" required />
-        <button type="submit">Save</button>
-      </form>
-
+      <h2>Apartments (synced) from your channel manager</h2>
       <table border="1" cellpadding="8" cellspacing="0">
         <thead>
           <tr>
@@ -1553,36 +1546,6 @@ app.get("/manager/settings/apartments", async (req, res) => {
   } catch (err) {
     console.error("❌ manager apartments page error:", err);
     res.status(500).send("Error");
-  }
-});
-
-// add / upsert
-app.post("/manager/settings/apartments/add", async (req, res) => {
-  try {
-    const beds24_room_id = String(req.body.beds24_room_id || "").trim();
-    const apartment_name = String(req.body.apartment_name || "").trim();
-
-    if (!beds24_room_id || !apartment_name) {
-      return res.status(400).send("Missing beds24_room_id or apartment_name");
-    }
-
-    await pool.query(
-      `
-      INSERT INTO beds24_rooms (beds24_room_id, apartment_name, is_active)
-      VALUES ($1, $2, true)
-      ON CONFLICT (beds24_room_id)
-      DO UPDATE SET
-        apartment_name = EXCLUDED.apartment_name,
-        is_active = true,
-        updated_at = NOW()
-      `,
-      [beds24_room_id, apartment_name]
-    );
-
-    res.redirect("/manager/settings/apartments");
-  } catch (err) {
-    console.error("❌ add apartment mapping error:", err);
-    res.status(500).send("DB error");
   }
 });
 
@@ -1677,6 +1640,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
