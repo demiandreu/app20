@@ -1102,16 +1102,17 @@ if (adults || children) {
 app.post("/staff/checkins/:id/delete", async (req, res) => {
   try {
     const { id } = req.params;
+    await pool.query(`DELETE FROM checkins WHERE id = $1`, [id]);
 
-    await pool.query(
-      `DELETE FROM checkins WHERE id = $1`,
-      [id]
-    );
+    const returnTo = (req.body && req.body.returnTo) ? String(req.body.returnTo) : "/staff/checkins";
 
-    res.redirect("/staff/checkins");
+    // защита: редиректим только внутри нашего сайта
+    if (!returnTo.startsWith("/staff/checkins")) return res.redirect("/staff/checkins");
+
+    return res.redirect(returnTo);
   } catch (e) {
-    console.error("Delete checkin error:", e);
-    res.status(500).send("❌ Cannot delete check-in");
+    console.error("Delete error:", e);
+    return res.status(500).send("❌ Cannot delete");
   }
 });
 //vremenno
@@ -1326,15 +1327,10 @@ app.get("/staff/checkins", async (req, res) => {
                             </form>
                           </td>
                           <td>
-  <form
-    method="POST"
-    action="/staff/checkins/${r.id}/delete"
-    onsubmit="return confirm('Are you sure you want to permanently delete this booking?');"
-  >
-    <button class="btn-small btn-ghost" type="submit">
-      Delete
-    </button>
-  </form>
+ <form method="POST" action="/staff/checkins/${r.id}/delete" onsubmit="return confirm('Are you sure you want to delete this booking?');">
+  <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+  <button class="btn-small btn-ghost" type="submit">Delete</button>
+</form>
 </td>
                         </tr>
                       `;
@@ -1660,6 +1656,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
