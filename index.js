@@ -1213,7 +1213,7 @@ app.get("/staff/checkins", async (req, res) => {
 
     // --- UI ---
   const toolbar = `
-  <h1>Admin • Check-ins</h1>
+  <h1>Staff • Check-ins</h1>
   <p class="muted">Arrival date</p>
 
   <form class="toolbar" method="GET" action="/staff/checkins">
@@ -1250,6 +1250,8 @@ app.get("/staff/checkins", async (req, res) => {
         <a class="btn-base ${quick === "today" ? "btn-ghost" : ""}" href="/staff/checkins?quick=today">Today</a>
         <a class="btn-base ${quick === "tomorrow" ? "btn-ghost" : ""}" href="/staff/checkins?quick=tomorrow">Tomorrow</a>
       </div>
+      <h2 style="margin:16px 0 8px;">Arrivals</h2>
+<p class="muted" style="margin:0 0 8px;">Quick filters</p>
     </div>
   </form>
 `;
@@ -1640,6 +1642,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
