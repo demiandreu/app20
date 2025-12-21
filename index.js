@@ -1589,6 +1589,7 @@ app.get("/manager/settings/apartments", async (req, res) => {
       .map(
         (r) => `
         <tr>
+          <td>${escapeHtml(maskKey(r.beds24_prop_key))}</td>
           <td>${escapeHtml(r.beds24_room_id)}</td>
           <td>${escapeHtml(r.apartment_name)}</td>
           <td>${r.is_active ? "✅" : "❌"}</td>
@@ -1608,6 +1609,7 @@ app.get("/manager/settings/apartments", async (req, res) => {
       <table border="1" cellpadding="8" cellspacing="0">
         <thead>
           <tr>
+            <th>prop key</th>
             <th>beds24_room_id</th>
             <th>apartment_name</th>
             <th>active</th>
@@ -1722,6 +1724,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
