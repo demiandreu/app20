@@ -1496,7 +1496,7 @@ return res.send(`✅ Sync done. Rooms: ${rooms.length}. Inserted: ${inserted}, U
  //   return res.send(`
  // <h2>Beds24 raw response</h2>
 //  <pre style="white-space:pre-wrap">${escapeHtml(JSON.stringify(propertiesResp, null, 2))}</pre>
-`);
+// `);
     //vremenno
 
     const properties = propertiesResp?.data || [];
@@ -1724,6 +1724,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
