@@ -1521,14 +1521,10 @@ app.get("/manager/channels/bookings-test", async (req, res) => {
     const propKey = rows[0].beds24_prop_key;
 
     // 2️⃣ запрос в Beds24
- const resp = await beds24PostJson(
-  "https://api.beds24.com/json/getBookings",
-  {
-    authentication: { propKey: propKey },
-    from: "2025-01-01",
-    to: "2026-12-31",
-  }
-);
+const resp = await beds24PostJson("https://api.beds24.com/json/getBookings", {
+  from: "2025-01-01",
+  to: "2026-12-31",
+});
 
 res.send(`
   <h1>Bookings (RAW)</h1>
@@ -1700,6 +1696,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
