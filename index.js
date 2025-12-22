@@ -1498,77 +1498,43 @@ app.get("/manager/channels/bookings", async (req, res) => {
 
 // ===================== MANAGER: Sync Beds24 Rooms =====================
 
-app.get("/manager/channels/sync", async (req, res) => {
+app.get("/manager/channels/bookings-test", async (req, res) => {
   try {
-    const API_KEY = process.env.BEDS24_API_KEY;
-    if (!API_KEY) {
-      return res.status(500).send("❌ BEDS24_API_KEY not set");
+    // 1️⃣ берём ОДИН активный апартамент с prop_key
+    const { rows } = await pool.query(`
+      SELECT beds24_prop_key
+      FROM beds24_rooms
+      WHERE is_active = true
+        AND beds24_prop_key IS NOT NULL
+      LIMIT 1
+    `);
+
+    if (!rows.length) {
+      return res.send("❌ No apartment with prop_key found");
     }
 
-    const propertiesResp = await beds24PostJson(
-      "https://api.beds24.com/json/getProperties",
+    const propKey = rows[0].beds24_prop_key;
+
+    // 2️⃣ запрос в Beds24
+    const resp = await beds24PostJson(
+      "https://api.beds24.com/json/getBookings",
       {
-        authentication: { apiKey: API_KEY },
+        authentication: {
+          propKey: propKey, // 🔑 ВАЖНО
+        },
+        from: "2025-01-01",
+        to: "2026-12-31",
       }
     );
- 
 
-    const properties = Array.isArray(propertiesResp?.getProperties)
-      ? propertiesResp.getProperties
-      : [];
-
-    if (!properties.length) {
-      return res.send("⚠️ No properties found in Beds24");
-    }
-
-    const rooms = [];
-
-    for (const p of properties) {
-      const propertyName = p?.name || "";
-      const roomTypes = Array.isArray(p?.roomTypes) ? p.roomTypes : [];
-
-      for (const rt of roomTypes) {
-        if (!rt?.roomId) continue;
-
-        rooms.push({
-          beds24_room_id: String(rt.roomId),
-          apartment_name: (rt.name || propertyName || "").trim(),
-        });
-      }
-    }
-
-    if (!rooms.length) {
-      return res.send("⚠️ No roomTypes found in Beds24");
-    }
-
-    let inserted = 0;
-    let updated = 0;
-
-    for (const r of rooms) {
-      const result = await pool.query(
-        `
-        INSERT INTO beds24_rooms (beds24_room_id, apartment_name, is_active)
-        VALUES ($1, $2, true)
-        ON CONFLICT (beds24_room_id)
-        DO UPDATE SET
-          apartment_name = EXCLUDED.apartment_name,
-          is_active = true,
-          updated_at = NOW()
-        RETURNING (xmax = 0) AS inserted
-        `,
-        [r.beds24_room_id, r.apartment_name]
-      );
-
-      if (result.rows[0].inserted) inserted++;
-      else updated++;
-    }
-
-    res.send(
-      `✅ Sync done. Rooms: ${rooms.length}. Inserted: ${inserted}, Updated: ${updated}`
-    );
-  } catch (err) {
-    console.error("❌ Beds24 sync error:", err);
-    res.status(500).send("Beds24 sync failed");
+    // 3️⃣ показываем RAW
+    res.send(`
+      <h2>Bookings (RAW)</h2>
+      <pre>${escapeHtml(JSON.stringify(resp.data, null, 2))}</pre>
+    `);
+  } catch (e) {
+    console.error(e);
+    res.status(500).send("❌ Error loading bookings");
   }
 });
     
@@ -1724,6 +1690,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
