@@ -827,7 +827,7 @@ app.get("/manager", (req, res) => {
       <a class="btn-base" href="/manager/settings/apartments">Apartments</a>
 
       <a class="btn-base" href="/manager/channels/sync">Sync</a>
-      <a class="btn-base" href="/manager/channels/bookings">Bookings</a>
+      <a class="btn-base" href="/kings">Bookings</a>
 
       <a class="btn-base btn-ghost" href="/manager/channels/debug">Debug</a>
       <a class="btn-base btn-ghost" href="/staff/checkins">Staff</a>
@@ -1665,7 +1665,60 @@ app.get("/manager/channels/bookings", async (req, res) => {
   }
 });
 
+//vremenno45
 
+app.get("/manager/channels/bookings-all", async (req, res) => {
+  try {
+    const from = String(req.query.from || "2025-01-01");
+    const to = String(req.query.to || "2026-12-31");
+
+    const rooms = await pool.query(`
+      SELECT beds24_room_id, beds24_prop_key, apartment_name
+      FROM beds24_rooms
+      WHERE is_active = true AND beds24_prop_key IS NOT NULL
+      ORDER BY apartment_name ASC
+    `);
+
+    const out = [];
+
+    for (const r of rooms.rows) {
+      try {
+        const url = "https://api.beds24.com/json/getBookings"; // если у тебя другой endpoint — оставь тот, который сейчас работает
+        const payload = {
+          propKey: r.beds24_prop_key,
+          roomId: String(r.beds24_room_id),
+          from,
+          to,
+        };
+
+        const data = await beds24PostJson(url, payload);
+
+        const count = Array.isArray(data) ? data.length : (data?.bookings?.length || 0);
+
+        out.push({
+          apartment: r.apartment_name,
+          roomId: r.beds24_room_id,
+          count,
+          sample: Array.isArray(data)
+            ? data.slice(0, 2).map(x => ({ bookId: x.bookId, firstNight: x.firstNight, lastNight: x.lastNight, status: x.status }))
+            : (data?.bookings || []).slice(0, 2).map(x => ({ bookId: x.bookId, firstNight: x.firstNight, lastNight: x.lastNight, status: x.status })),
+        });
+      } catch (e) {
+        out.push({
+          apartment: r.apartment_name,
+          roomId: r.beds24_room_id,
+          error: String(e.message || e),
+        });
+      }
+    }
+
+    res.json({ from, to, rooms: rooms.rows.length, out });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(String(err.message || err));
+  }
+});
+//vremenno45
 
 
 // ===================== MANAGER: Sync Beds24 Rooms =====================
@@ -1856,6 +1909,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
