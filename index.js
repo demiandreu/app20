@@ -53,7 +53,10 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
       // получаем брони по этой квартире
       const resp = await beds24PostJson(
         "https://api.beds24.com/json/getBookings",
-        { from, to },
+          from,
+    to,
+    includeAll: 1,
+    status: "confirmed"
         apt.beds24_prop_key
       );
 
@@ -1989,6 +1992,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
