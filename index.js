@@ -629,16 +629,24 @@ function renderPage(title, innerHtml) {
 async function beds24PostJson(url, body) {
   const resp = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    headers: {
+      "Content-Type": "application/json",
+      // один общий ключ (APK4)
+      "X-API-Key": process.env.BEDS24_API_KEY,
+    },
+    body: JSON.stringify(body || {}),
   });
 
   const text = await resp.text();
   let json;
-  try { json = JSON.parse(text); } catch { json = { raw: text }; }
+  try {
+    json = JSON.parse(text);
+  } catch {
+    json = { raw: text };
+  }
 
   if (!resp.ok) {
-    throw new Error(`Beds24 API HTTP ${resp.status}: ${text.slice(0, 200)}`);
+    throw new Error(`Beds24 API HTTP ${resp.status}: ${text.slice(0, 300)}`);
   }
   return json;
 }
@@ -1421,23 +1429,27 @@ app.post("/staff/checkins/:id/clean", async (req, res) => {
   }
 });
 
-app.get("/manager/channels/bookingstest", async (req, res) => {
+app.get("/manager/channels/bookings", async (req, res) => {
   try {
-    const API_KEY = process.env.BEDS24_API_KEY;
-    if (!API_KEY) return res.status(500).send("❌ BEDS24_API_KEY not set");
+    if (!process.env.BEDS24_API_KEY) return res.status(500).send("❌ BEDS24_API_KEY not set");
 
     const from = String(req.query.from || "2025-01-01");
     const to = String(req.query.to || "2026-12-31");
 
     const resp = await beds24PostJson("https://api.beds24.com/json/getBookings", {
-      authentication: { apiKey: API_KEY },
       from,
       to,
+      // позже сюда добавим фильтры по roomId / propertyId, если надо
     });
 
-    res.send(`<pre>${escapeHtml(JSON.stringify(resp, null, 2))}</pre>`);
+    return res.send(`
+      <h2>Bookings</h2>
+      <p>from=${escapeHtml(from)} to=${escapeHtml(to)}</p>
+      <pre style="white-space:pre-wrap">${escapeHtml(JSON.stringify(resp, null, 2))}</pre>
+    `);
   } catch (e) {
-    res.status(500).send("❌ " + escapeHtml(e.message || String(e)));
+    console.error("❌ bookings error:", e);
+    return res.status(500).send("Bookings failed: " + escapeHtml(e.message || String(e)));
   }
 });
 
@@ -1637,6 +1649,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
