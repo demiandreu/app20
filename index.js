@@ -28,7 +28,7 @@ app.get("/manager/channels/debug", (req, res) => {
 });
     //vremenno
 // ===================== MANAGER: Sync Bookings =====================
-/channels/bookingssync", async (req, res) => {
+app.get("/channels/bookingssync", async (req, res) => {
   try {
     const from = String(req.query.from || "2025-01-01");
     const to = String(req.query.to || "2026-12-31");
@@ -1989,6 +1989,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
