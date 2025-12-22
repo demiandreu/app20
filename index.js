@@ -626,38 +626,29 @@ function renderPage(title, innerHtml) {
 // ROUTES
 // =====================================================
 //vremenno
-async function beds24PostJson(url, body) {
-  const apiKey = String(process.env.BEDS24_API_KEY || "").trim();
+async function beds24PostJson(url, body = {}, propKey) {
+  const apiKey = process.env.BEDS24_API_KEY;
+  if (!apiKey) throw new Error("BEDS24_API_KEY missing in env");
+  if (!propKey) throw new Error("Beds24 propKey is required for JSON API");
 
-  if (!apiKey) {
-    throw new Error("BEDS24_API_KEY is empty");
-  }
+  const payload = {
+    authentication: { apiKey, propKey },
+    ...body,
+  };
 
   const resp = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      // ✅ ВАЖНО: ТОЛЬКО ТАК
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(body || {}),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 
   const text = await resp.text();
-
   let json;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    json = { raw: text };
-  }
+  try { json = JSON.parse(text); } catch { json = { raw: text }; }
 
   if (!resp.ok) {
-    throw new Error(
-      `Beds24 API HTTP ${resp.status}: ${text.slice(0, 300)}`
-    );
+    throw new Error(`Beds24 API HTTP ${resp.status}: ${text.slice(0, 300)}`);
   }
-
   return json;
 }
 //vremenno
@@ -1448,23 +1439,54 @@ app.post("/staff/checkins/:id/clean", async (req, res) => {
   }
 });
 
+// ===================== MANAGER SETTINGS =====================
 app.get("/manager/channels/bookings", async (req, res) => {
   try {
     const from = String(req.query.from || "2025-01-01");
     const to = String(req.query.to || "2026-12-31");
 
-    const resp = await beds24PostJson("https://api.beds24.com/json/getBookings", { from, to });
+    const roomId = String(req.query.roomId || "").trim();
+
+    const q = roomId
+      ? `
+        SELECT beds24_room_id, beds24_prop_key, apartment_name
+        FROM beds24_rooms
+        WHERE beds24_room_id = $1 AND beds24_prop_key IS NOT NULL
+        LIMIT 1
+      `
+      : `
+        SELECT beds24_room_id, beds24_prop_key, apartment_name
+        FROM beds24_rooms
+        WHERE is_active = true AND beds24_prop_key IS NOT NULL
+        ORDER BY apartment_name ASC
+        LIMIT 1
+      `;
+
+    const params = roomId ? [roomId] : [];
+    const { rows } = await pool.query(q, params);
+
+    if (!rows.length) {
+      return res.send("❌ No apartment found with beds24_prop_key (set it in /manager/settings/apartments)");
+    }
+
+    const apt = rows[0];
+    const propKey = apt.beds24_prop_key;
+
+    const resp = await beds24PostJson(
+      "https://api.beds24.com/json/getBookings",
+      { from, to },
+      propKey
+    );
 
     return res.send(`
       <h2>Bookings</h2>
+      <p>Apartment: ${escapeHtml(apt.apartment_name || "")} (roomId=${escapeHtml(apt.beds24_room_id || "")})</p>
       <p>from=${escapeHtml(from)} to=${escapeHtml(to)}</p>
       <pre style="white-space:pre-wrap">${escapeHtml(JSON.stringify(resp, null, 2))}</pre>
     `);
   } catch (e) {
-    console.error("❌ bookings error:", e);
-    return res
-      .status(500)
-      .send("Bookings failed: " + escapeHtml(e.message || String(e)));
+    console.error("❌ bookings debug error:", e);
+    return res.status(500).send("Bookings failed: " + escapeHtml(e.message || String(e)));
   }
 });
 
@@ -1666,6 +1688,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
