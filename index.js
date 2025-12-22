@@ -27,7 +27,59 @@ app.get("/manager/channels/debug", (req, res) => {
   `);
 });
     //vremenno
+app.get("/manager/channels/sync", async (req, res) => {
+  try {
+    const from = String(req.query.from || "2025-01-01");
+    const to = String(req.query.to || "2026-12-31");
 
+    const { rows: rooms } = await pool.query(`
+      SELECT beds24_room_id, beds24_prop_key, apartment_name
+      FROM beds24_rooms
+      WHERE is_active = true AND beds24_prop_key IS NOT NULL
+      ORDER BY apartment_name ASC
+    `);
+
+    let totalBookings = 0;
+    let saved = 0;
+    let skipped = 0;
+    const errors = [];
+
+    for (const r of rooms) {
+      try {
+        const resp = await beds24PostJson(
+          "https://api.beds24.com/json/getBookings",
+          { from, to },
+          r.beds24_prop_key
+        );
+
+        const list = Array.isArray(resp) ? resp : (resp?.data || resp?.bookings || []);
+        totalBookings += Array.isArray(list) ? list.length : 0;
+
+        for (const b of list) {
+          const row = mapBeds24BookingToRow(b, r.apartment_name, r.beds24_room_id);
+          const result = await upsertCheckinFromBeds24(row);
+          if (result?.skipped) skipped++;
+          else saved++;
+        }
+      } catch (e) {
+        errors.push({ roomId: r.beds24_room_id, message: String(e.message || e) });
+      }
+    }
+
+    return res.send(`
+      <h1>Sync done</h1>
+      <p>from=${escapeHtml(from)} to=${escapeHtml(to)}</p>
+      <p>rooms=${rooms.length}</p>
+      <p>totalBookings=${totalBookings}</p>
+      <p>saved=${saved}</p>
+      <p>skipped=${skipped}</p>
+      <pre style="white-space:pre-wrap">${escapeHtml(JSON.stringify(errors, null, 2))}</pre>
+    `);
+  } catch (e) {
+    console.error("❌ sync error:", e);
+    return res.status(500).send("Sync failed: " + escapeHtml(e.message || String(e)));
+  }
+});
 //vremenno
 function escapeHtml(str) {
   return String(str)
@@ -625,6 +677,107 @@ function renderPage(title, innerHtml) {
 // =====================================================
 // ROUTES
 // =====================================================
+
+function mapBeds24BookingToRow(b, apartmentName = "", apartmentId = "") {
+  const bookingId = String(b.bookId || b.id || "").trim();
+  const roomId = String(b.roomId || "").trim();
+
+  // dates
+  const arrivalDate = String(b.firstNight || b.arrival || "").slice(0, 10);
+  const departureDate = String(b.lastNight || b.departure || "").slice(0, 10);
+
+  // guests
+  const adults = Number(b.numAdult ?? b.adults ?? 0) || 0;
+  const children = Number(b.numChild ?? b.children ?? 0) || 0;
+
+  // guest info
+  const fullName = String(
+    [b.guestFirstName, b.guestName].filter(Boolean).join(" ").trim() || "Guest"
+  );
+  const email = String(b.guestEmail || "").trim() || "unknown@unknown";
+  const phone = String(b.guestPhone || b.guestMobile || "").trim() || "+000";
+
+  // times (если нет — ставим дефолт)
+  const arrivalTime = String(b.guestArrivalTime || "16:00").slice(0, 5) + ":00";
+  const departureTime = "11:00:00";
+
+  return {
+    beds24_booking_id: bookingId ? Number(bookingId) : null,
+    beds24_room_id: roomId || null,
+    apartment_name: apartmentName || null,
+    apartment_id: apartmentId || roomId || "unknown",
+    booking_token: bookingId || (roomId + "-" + Date.now()),
+    full_name: fullName,
+    email,
+    phone,
+    arrival_date: arrivalDate,
+    arrival_time: arrivalTime,
+    departure_date: departureDate,
+    departure_time: departureTime,
+    adults,
+    children,
+    beds24_raw: b,
+  };
+}
+
+async function upsertCheckinFromBeds24(row) {
+  // если дат нет — пропускаем (без дат нельзя вставить в checkins)
+  if (!row.arrival_date || !row.departure_date) return { skipped: true };
+
+  await pool.query(
+    `
+    INSERT INTO checkins (
+      apartment_id, booking_token, full_name, email, phone,
+      arrival_date, arrival_time, departure_date, departure_time,
+      adults, children,
+      beds24_booking_id, beds24_room_id, apartment_name, beds24_raw
+    )
+    VALUES (
+      $1,$2,$3,$4,$5,
+      $6,$7,$8,$9,
+      $10,$11,
+      $12,$13,$14,$15
+    )
+    ON CONFLICT (beds24_booking_id)
+    DO UPDATE SET
+      apartment_id = EXCLUDED.apartment_id,
+      booking_token = EXCLUDED.booking_token,
+      full_name = EXCLUDED.full_name,
+      email = EXCLUDED.email,
+      phone = EXCLUDED.phone,
+      arrival_date = EXCLUDED.arrival_date,
+      arrival_time = EXCLUDED.arrival_time,
+      departure_date = EXCLUDED.departure_date,
+      departure_time = EXCLUDED.departure_time,
+      adults = EXCLUDED.adults,
+      children = EXCLUDED.children,
+      beds24_room_id = EXCLUDED.beds24_room_id,
+      apartment_name = EXCLUDED.apartment_name,
+      beds24_raw = EXCLUDED.beds24_raw
+    `,
+    [
+      row.apartment_id,
+      row.booking_token,
+      row.full_name,
+      row.email,
+      row.phone,
+      row.arrival_date,
+      row.arrival_time,
+      row.departure_date,
+      row.departure_time,
+      row.adults,
+      row.children,
+      row.beds24_booking_id,
+      row.beds24_room_id,
+      row.apartment_name,
+      row.beds24_raw,
+    ]
+  );
+
+  return { ok: true };
+}
+
+
 //vremenno
 async function beds24PostJson(url, body = {}, propKey) {
   const apiKey = process.env.BEDS24_API_KEY;
@@ -1688,6 +1841,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
