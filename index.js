@@ -867,25 +867,25 @@ async function upsertCheckinFromBeds24(row) {
 
 
 //vremenno
-async function beds24PostJson(url, body = {}, propKey) {
-  const apiKey = process.env.BEDS24_API_KEY;
-  if (!apiKey) throw new Error("BEDS24_API_KEY missing in env");
-  if (!propKey) throw new Error("Beds24 propKey is required for JSON API");
-
-  const payload = {
-    authentication: { apiKey, propKey },
-    ...body,
-  };
+async function beds24PostJson(url, body, apiKeyOverride) {
+  const apiKey = apiKeyOverride || process.env.BEDS24_API_KEY;
 
   const resp = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": apiKey,
+    },
+    body: JSON.stringify(body || {}),
   });
 
   const text = await resp.text();
   let json;
-  try { json = JSON.parse(text); } catch { json = { raw: text }; }
+  try {
+    json = JSON.parse(text);
+  } catch {
+    json = { raw: text };
+  }
 
   if (!resp.ok) {
     throw new Error(`Beds24 API HTTP ${resp.status}: ${text.slice(0, 300)}`);
@@ -1997,6 +1997,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
