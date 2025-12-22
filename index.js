@@ -1522,6 +1522,14 @@ app.get("/manager/channels/bookings-test", async (req, res) => {
         authentication: {
           propKey: propKey, // 🔑 ВАЖНО
         },
+         //vremenno 4
+res.send(`
+  <h1>Bookings (RAW)</h1>
+  <p>Status: ${resp?.status ?? "no-status"}</p>
+  <pre>${escapeHtml(JSON.stringify(resp, null, 2))}</pre>
+`);
+return;
+          //vremenno 4
         from: "2025-01-01",
         to: "2026-12-31",
       }
@@ -1690,6 +1698,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
