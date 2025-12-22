@@ -277,50 +277,6 @@ ${link}
   }
 });
 
-
-// ===================== TWILIO WHATSAPP INBOUND (LISTO -> ACK) =====================
-/* app.post("/webhooks/twilio/whatsapp", async (req, res) => {
-  try {
-    const from = String(req.body.From || ""); // "whatsapp:+34..."
-    const body = String(req.body.Body || "");
-    console.log("📩 Twilio WhatsApp inbound:", { from, body });
-
-    // нормализация текста
-    const text = body.trim().toLowerCase();
-
-    // пока реагируем только на "listo"
-    if (text !== "listo") {
-      return res.status(200).send("OK");
-    }
-
-    // ответ тестовый (пока без ссылки/логики)
-    if (!twilioClient) {
-      console.log("ℹ️ twilioClient is null (missing creds), cannot reply");
-      return res.status(200).send("OK");
-    }
-
-    const fromNumber = process.env.TWILIO_WHATSAPP_FROM || "";
-    if (!fromNumber) {
-      console.log("ℹ️ TWILIO_WHATSAPP_FROM missing, cannot reply");
-      return res.status(200).send("OK");
-    }
-
-    await twilioClient.messages.create({
-      from: fromNumber,      // должен быть "whatsapp:+1937..."
-      to: from,              // ответим тому же отправителю
-      body: "Perfecto ✅ Hemos recibido tu mensaje. En breve te envío el enlace al portal.",
-    });
-
-    console.log("✅ Replied to WhatsApp:", from);
-    return res.status(200).send("OK");
-  } catch (e) {
-    console.error("❌ Twilio inbound handler error:", e);
-    return res.status(200).send("OK");
-  }
-}); */
-
-
-
 // ===================== TWILIO CLIENT =====================
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || "";
@@ -670,18 +626,20 @@ function renderPage(title, innerHtml) {
 // ROUTES
 // =====================================================
 //vremenno
-async function beds24PostJson(url, body) {
+async function beds24PostJson(url, body, apiKeyOverride) {
+  const apiKey = String(apiKeyOverride || process.env.BEDS24_API_KEY || "").trim();
+  if (!apiKey) throw new Error("Beds24 API key missing (no env key and no override)");
+
   const resp = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      // ✅ Тут НЕ нужен X-API-Key. Beds24 ждёт ключ внутри body.authentication
+      "X-API-Key": apiKey,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(body || {}),
   });
 
   const text = await resp.text();
-
   let json;
   try {
     json = JSON.parse(text);
@@ -690,12 +648,11 @@ async function beds24PostJson(url, body) {
   }
 
   if (!resp.ok) {
-    throw new Error(`Beds24 API HTTP ${resp.status}: ${text.slice(0, 200)}`);
+    throw new Error(`Beds24 API HTTP ${resp.status}: ${text.slice(0, 500)}`);
   }
 
   return json;
 }
-
 //vremenno
 // ===================== Beds24 Webhook (receiver) =====================
 
@@ -1478,33 +1435,59 @@ app.post("/staff/checkins/:id/clean", async (req, res) => {
 
 app.get("/manager/channels/bookings", async (req, res) => {
   try {
-    const API_KEY = process.env.BEDS24_API_KEY; // твой общий APK4
-    if (!API_KEY) return res.status(500).send("❌ BEDS24_API_KEY not set");
-
-    // диапазон дат (пока широкий)
     const from = String(req.query.from || "2025-01-01");
     const to = String(req.query.to || "2026-12-31");
 
-    const resp = await beds24PostJson("https://api.beds24.com/json/getBookings", {
-      authentication: { apiKey: API_KEY },
-      from,
-      to,
-    });
+    // 1) берём квартиру с prop_key (можно выбрать конкретную по roomId)
+    const roomId = String(req.query.roomId || "").trim();
+
+    const q = roomId
+      ? `
+        SELECT beds24_room_id, beds24_prop_key, apartment_name
+        FROM beds24_rooms
+        WHERE beds24_room_id = $1 AND beds24_prop_key IS NOT NULL
+        LIMIT 1
+      `
+      : `
+        SELECT beds24_room_id, beds24_prop_key, apartment_name
+        FROM beds24_rooms
+        WHERE is_active = true AND beds24_prop_key IS NOT NULL
+        ORDER BY apartment_name ASC
+        LIMIT 1
+      `;
+
+    const params = roomId ? [roomId] : [];
+    const { rows } = await pool.query(q, params);
+
+    if (!rows.length) {
+      return res.send("❌ No apartment found with beds24_prop_key (set it in /manager/settings/apartments)");
+    }
+
+    const apt = rows[0];
+    const propKey = apt.beds24_prop_key;
+
+    // 2) запрос в Beds24 (без authentication в body — ключ идёт в X-API-Key)
+    const resp = await beds24PostJson(
+      "https://api.beds24.com/json/getBookings",
+      { from, to },
+      propKey
+    );
 
     return res.send(`
       <h2>Bookings</h2>
+      <p>Apartment: ${escapeHtml(apt.apartment_name || "")} (roomId=${escapeHtml(apt.beds24_room_id || "")})</p>
       <p>from=${escapeHtml(from)} to=${escapeHtml(to)}</p>
-      <pre style="white-space:pre-wrap">${escapeHtml(JSON.stringify(resp?.data ?? resp, null, 2))}</pre>
+      <pre style="white-space:pre-wrap">${escapeHtml(JSON.stringify(resp, null, 2))}</pre>
     `);
   } catch (e) {
     console.error("❌ bookings debug error:", e);
-    return res.status(500).send("Bookings failed");
+    return res.status(500).send("Bookings failed: " + escapeHtml(e.message || String(e)));
   }
 });
 
 // ===================== MANAGER: Sync Beds24 Rooms =====================
 
-app.get("/manager/channels/bookings-test", async (req, res) => {
+/* app.get("/manager/channels/bookings-test", async (req, res) => {
   try {
     // 1️⃣ берём ОДИН активный апартамент с prop_key
     const { rows } = await pool.query(`
@@ -1544,7 +1527,7 @@ return;
     res.status(500).send("❌ Error loading bookings");
   }
 });
-    
+    */
 // ===================== MANAGER: Beds24 Rooms mapping =====================
 
 // страница со списком и формой добавления
@@ -1697,6 +1680,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
