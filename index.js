@@ -125,10 +125,15 @@ app.get("/manager/channels/sync", async (req, res) => {
     for (const r of rooms) {
       try {
         const resp = await beds24PostJson(
-          "https://api.beds24.com/json/getBookings",
-          { from, to },
-          r.beds24_prop_key
-        );
+  "https://api.beds24.com/json/getBookings",
+  {
+    from,
+    to,
+    includeAll: 1,
+    status: "confirmed"
+  },
+  apt.beds24_prop_key
+);
 
         const list = Array.isArray(resp) ? resp : (resp?.data || resp?.bookings || []);
         totalBookings += Array.isArray(list) ? list.length : 0;
@@ -1992,6 +1997,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
