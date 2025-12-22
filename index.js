@@ -132,10 +132,11 @@ app.get("/manager/channels/sync", async (req, res) => {
     from,
     to,
     includeAll: 1,
-    status: "confirmed"
   },
   apt.beds24_prop_key
 );
+         console.log("BEDS24 RAW RESP KEYS:", Object.keys(resp || {}));
+console.log("BEDS24 RAW RESP:", JSON.stringify(resp).slice(0, 500));
 
         const list = Array.isArray(resp) ? resp : (resp?.data || resp?.bookings || []);
         totalBookings += Array.isArray(list) ? list.length : 0;
@@ -1999,6 +2000,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
