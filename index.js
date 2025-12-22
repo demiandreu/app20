@@ -1716,6 +1716,72 @@ app.get("/manager/channels/bookings", async (req, res) => {
 
 //vremenno45
 
+
+app.get("/manager/channels/bookingssync", async (req, res) => {
+  try {
+    const from = String(req.query.from || "2025-01-01");
+    const to   = String(req.query.to   || "2026-12-31");
+
+    const { rows: apts } = await pool.query(`
+      SELECT beds24_room_id, beds24_prop_key, apartment_name
+      FROM beds24_rooms
+      WHERE is_active = true
+        AND beds24_prop_key IS NOT NULL
+      ORDER BY apartment_name ASC
+    `);
+
+    let totalFetched = 0;
+    const perApt = [];
+
+    for (const apt of apts) {
+      const resp = await beds24PostJson(
+        "https://api.beds24.com/json/getBookings",
+        {
+          from,
+          to,
+          includeAll: 1
+        },
+        apt.beds24_prop_key
+      );
+
+      const bookings =
+        Array.isArray(resp?.data?.bookings)
+          ? resp.data.bookings
+          : Array.isArray(resp?.bookings)
+          ? resp.bookings
+          : [];
+
+      totalFetched += bookings.length;
+
+      perApt.push({
+        apartment: apt.apartment_name,
+        roomId: apt.beds24_room_id,
+        bookings: bookings.length
+      });
+    }
+
+    return res.send(renderPage(
+      "Sync Bookings",
+      `
+        <p>from=${from} to=${to}</p>
+        <p>Total fetched: ${totalFetched}</p>
+        <table border="1" cellpadding="6">
+          <tr><th>Apartment</th><th>Room ID</th><th>Bookings</th></tr>
+          ${perApt.map(r =>
+            `<tr><td>${r.apartment}</td><td>${r.roomId}</td><td>${r.bookings}</td></tr>`
+          ).join("")}
+        </table>
+      `
+    ));
+  } catch (e) {
+    console.error("❌ bookingssync error:", e);
+    return res.status(500).send("Sync failed: " + String(e.message || e));
+  }
+});
+
+
+
+
 app.get("/manager/channels/bookings-all", async (req, res) => {
   try {
     const from = String(req.query.from || "2025-01-01");
@@ -1958,6 +2024,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
