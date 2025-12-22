@@ -675,12 +675,13 @@ async function beds24PostJson(url, body) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-API-Key": process.env.BEDS24_API_KEY
+      // ✅ Тут НЕ нужен X-API-Key. Beds24 ждёт ключ внутри body.authentication
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
   });
 
   const text = await resp.text();
+
   let json;
   try {
     json = JSON.parse(text);
@@ -689,7 +690,7 @@ async function beds24PostJson(url, body) {
   }
 
   if (!resp.ok) {
-    throw new Error(`Beds24 API HTTP ${resp.status}: ${text.slice(0,200)}`);
+    throw new Error(`Beds24 API HTTP ${resp.status}: ${text.slice(0, 200)}`);
   }
 
   return json;
@@ -1696,6 +1697,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
