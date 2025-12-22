@@ -124,7 +124,7 @@ app.get("/manager/channels/sync", async (req, res) => {
 
     for (const r of rooms) {
       try {
-        const resp = await beds24PostJson(
+       const resp = await beds24PostJson(
   "https://api.beds24.com/json/getBookings",
   {
     from,
@@ -1997,6 +1997,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
