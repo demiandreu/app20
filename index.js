@@ -670,20 +670,23 @@ function renderPage(title, innerHtml) {
 // ROUTES
 // =====================================================
 //vremenno
-async function beds24PostJson(url, data) {
-  const resp = await fetch(url, {
+async function beds24PostJson(url, body) {
+  return fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+    headers: {
+      "Content-Type": "application/json",
+      "X-API-Key": process.env.BEDS24_API_KEY
+    },
+    body: JSON.stringify(body)
+  }).then(async r => {
+    const text = await r.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { raw: text };
+    }
   });
-
-  const text = await resp.text();
-  let json;
-  try {
-    json = JSON.parse(text);
-  } catch (e) {
-    throw new Error(`Beds24 API non-JSON response: ${text.slice(0, 200)}`);
-  }
+}
 
   if (!resp.ok) {
     throw new Error(`Beds24 API HTTP ${resp.status}: ${JSON.stringify(json).slice(0, 200)}`);
@@ -1695,6 +1698,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
