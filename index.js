@@ -16,25 +16,13 @@ app.use(express.json());
 
    //vremenno
 // ===================== MANAGER: Debug =====================
-app.get("/manager/channels/debug", (req, res) => {
-  res.send(`
-    <h1>Debug</h1>
-    <p>OK</p>
-    <ul>
-      <li><a href="/manager/channels/sync">Sync</a></li>
-      <li><a href="/manager/settings/apartments">Apartments</a></li>
-    </ul>
-  `);
-});
-    //vremenno
-// ===================== MANAGER: Sync Bookings =====================
+
+
 app.get("/manager/channels/bookingssync", async (req, res) => {
   try {
-    // 1. Читаем параметры
     const from = String(req.query.from || "2025-01-01");
     const to   = String(req.query.to   || "2026-12-31");
 
-    // 2. Берём квартиры
     const { rows: apts } = await pool.query(`
       SELECT beds24_room_id, beds24_prop_key, apartment_name
       FROM beds24_rooms
@@ -44,47 +32,55 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     `);
 
     let totalFetched = 0;
+    const perApt = [];
 
-    // 3. Цикл по квартирам
     for (const apt of apts) {
-      try {
-        const resp = await beds24PostJson(
-          "https://api.beds24.com/json/getBookings",
-          {
-            from,
-            to,
-            includeAll: 1
-          },
-          apt.beds24_prop_key
-        );
+      const resp = await beds24PostJson(
+        "https://api.beds24.com/json/getBookings",
+        {
+          from,
+          to,
+          includeAll: 1
+        },
+        apt.beds24_prop_key
+      );
 
-        const bookings =
-          resp?.data?.bookings ||
-          resp?.bookings ||
-          [];
+      const bookings =
+        Array.isArray(resp?.data?.bookings)
+          ? resp.data.bookings
+          : Array.isArray(resp?.bookings)
+          ? resp.bookings
+          : [];
 
-        totalFetched += bookings.length;
+      totalFetched += bookings.length;
 
-      } catch (aptError) {
-        // ❗ ошибка ТОЛЬКО этой квартиры
-        console.error("Apartment error:", apt.apartment_name, aptError);
-      }
+      perApt.push({
+        apartment: apt.apartment_name,
+        roomId: apt.beds24_room_id,
+        bookings: bookings.length
+      });
     }
 
-    // 4. Ответ браузеру
-    res.send(`
-      <h1>Sync finished</h1>
-      <p>from: ${from}</p>
-      <p>to: ${to}</p>
-      <p>totalFetched: ${totalFetched}</p>
-    `);
-
+    return res.send(renderPage(
+      "Sync Bookings",
+      `
+        <p>from=${from} to=${to}</p>
+        <p>Total fetched: ${totalFetched}</p>
+        <table border="1" cellpadding="6">
+          <tr><th>Apartment</th><th>Room ID</th><th>Bookings</th></tr>
+          ${perApt.map(r =>
+            `<tr><td>${r.apartment}</td><td>${r.roomId}</td><td>${r.bookings}</td></tr>`
+          ).join("")}
+        </table>
+      `
+    ));
   } catch (e) {
-    // ❌ глобальная ошибка
-    console.error("❌ GLOBAL SYNC ERROR:", e);
-    res.status(500).send("Sync failed: " + e.message);
+    console.error("❌ bookingssync error:", e);
+    return res.status(500).send("Sync failed: " + String(e.message || e));
   }
 });
+
+
       // пытаемся достать массив броней (формат бывает разный)
       const bookings =
         resp?.data?.getBookings ||
@@ -2023,6 +2019,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
