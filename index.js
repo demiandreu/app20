@@ -626,33 +626,24 @@ function renderPage(title, innerHtml) {
 // ROUTES
 // =====================================================
 //vremenno
-async function beds24PostJson(url, body, apiKeyOverride) {
-  const apiKey = String(apiKeyOverride || process.env.BEDS24_API_KEY || "").trim();
-  if (!apiKey) throw new Error("Beds24 API key missing (no env key and no override)");
-
+async function beds24PostJson(url, body) {
   const resp = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": apiKey,
-    },
-    body: JSON.stringify(body || {}),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
 
   const text = await resp.text();
   let json;
-  try {
-    json = JSON.parse(text);
-  } catch {
-    json = { raw: text };
-  }
+  try { json = JSON.parse(text); } catch { json = { raw: text }; }
 
   if (!resp.ok) {
-    throw new Error(`Beds24 API HTTP ${resp.status}: ${text.slice(0, 500)}`);
+    throw new Error(`Beds24 API HTTP ${resp.status}: ${text.slice(0, 200)}`);
   }
-
   return json;
 }
+//vremenno
+
 //vremenno
 // ===================== Beds24 Webhook (receiver) =====================
 
@@ -1429,61 +1420,27 @@ app.post("/staff/checkins/:id/clean", async (req, res) => {
     res.status(500).send("❌ Cannot toggle clean status");
   }
 });
-// ===================== MANAGER SETTINGS =====================
 
-//vremenno1
-
-app.get("/manager/channels/bookings", async (req, res) => {
+app.get("/manager/channels/bookingstest", async (req, res) => {
   try {
+    const API_KEY = process.env.BEDS24_API_KEY;
+    if (!API_KEY) return res.status(500).send("❌ BEDS24_API_KEY not set");
+
     const from = String(req.query.from || "2025-01-01");
     const to = String(req.query.to || "2026-12-31");
 
-    // 1) берём квартиру с prop_key (можно выбрать конкретную по roomId)
-    const roomId = String(req.query.roomId || "").trim();
+    const resp = await beds24PostJson("https://api.beds24.com/json/getBookings", {
+      authentication: { apiKey: API_KEY },
+      from,
+      to,
+    });
 
-    const q = roomId
-      ? `
-        SELECT beds24_room_id, beds24_prop_key, apartment_name
-        FROM beds24_rooms
-        WHERE beds24_room_id = $1 AND beds24_prop_key IS NOT NULL
-        LIMIT 1
-      `
-      : `
-        SELECT beds24_room_id, beds24_prop_key, apartment_name
-        FROM beds24_rooms
-        WHERE is_active = true AND beds24_prop_key IS NOT NULL
-        ORDER BY apartment_name ASC
-        LIMIT 1
-      `;
-
-    const params = roomId ? [roomId] : [];
-    const { rows } = await pool.query(q, params);
-
-    if (!rows.length) {
-      return res.send("❌ No apartment found with beds24_prop_key (set it in /manager/settings/apartments)");
-    }
-
-    const apt = rows[0];
-    const propKey = apt.beds24_prop_key;
-
-    // 2) запрос в Beds24 (без authentication в body — ключ идёт в X-API-Key)
-    const resp = await beds24PostJson(
-      "https://api.beds24.com/json/getBookings",
-      { from, to },
-      propKey
-    );
-
-    return res.send(`
-      <h2>Bookings</h2>
-      <p>Apartment: ${escapeHtml(apt.apartment_name || "")} (roomId=${escapeHtml(apt.beds24_room_id || "")})</p>
-      <p>from=${escapeHtml(from)} to=${escapeHtml(to)}</p>
-      <pre style="white-space:pre-wrap">${escapeHtml(JSON.stringify(resp, null, 2))}</pre>
-    `);
+    res.send(`<pre>${escapeHtml(JSON.stringify(resp, null, 2))}</pre>`);
   } catch (e) {
-    console.error("❌ bookings debug error:", e);
-    return res.status(500).send("Bookings failed: " + escapeHtml(e.message || String(e)));
+    res.status(500).send("❌ " + escapeHtml(e.message || String(e)));
   }
 });
+
 
 // ===================== MANAGER: Sync Beds24 Rooms =====================
 
@@ -1680,6 +1637,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
