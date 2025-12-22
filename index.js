@@ -631,8 +631,7 @@ async function beds24PostJson(url, body) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      // один общий ключ (APK4)
-      "X-API-Key": process.env.BEDS24_API_KEY,
+      "X-API-Key": process.env.BEDS24_API_KEY, // один общий API (APK4)
     },
     body: JSON.stringify(body || {}),
   });
@@ -648,6 +647,7 @@ async function beds24PostJson(url, body) {
   if (!resp.ok) {
     throw new Error(`Beds24 API HTTP ${resp.status}: ${text.slice(0, 300)}`);
   }
+
   return json;
 }
 //vremenno
@@ -1649,6 +1649,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
