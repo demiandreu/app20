@@ -28,7 +28,7 @@ app.get("/manager/channels/debug", (req, res) => {
 });
     //vremenno
 // ===================== MANAGER: Sync Bookings =====================
-app.get("/manager/channels/bookingssync", async (req, res) => {
+/channels/bookingssync", async (req, res) => {
   try {
     const from = String(req.query.from || "2025-01-01");
     const to = String(req.query.to || "2026-12-31");
@@ -100,31 +100,6 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     console.error("bookingssync error:", e);
     return res.status(500).send("Sync Bookings failed: " + (e.message || String(e)));
   }
-});
-// ===================== MANAGER: Home =====================
-app.get("/manager", (req, res) => {
-  const html = `
-    <h1>Manager</h1>
-
-    <h3>Staff</h3>
-    <ul>
-      <li><a href="/staff/arrivals">Staff · Arrivals</a></li>
-      <li><a href="/staff/checkins">Staff · Check-ins</a></li>
-    </ul>
-
-    <h3>Channels</h3>
-    <ul>
-      <li><a href="/manager/channels/sync">Sync Rooms</a></li>
-      <li><a href="/manager/channels/bookingssync">Sync Bookings</a></li>
-      <li><a href="/manager/channels/bookings?all=1">Bookings (debug)</a></li>
-    </ul>
-
-    <h3>Settings</h3>
-    <ul>
-      <li><a href="/manager/settings/apartments">Apartments</a></li>
-    </ul>
-  `;
-  res.send(renderPage("Manager", html));
 });
 
 app.get("/manager/channels/sync", async (req, res) => {
@@ -2009,6 +1984,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
