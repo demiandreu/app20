@@ -101,7 +101,7 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
 
       // TODO: upsert в checkins (сделаем отдельным шагом)
       // totalUpserted += ...
-    }
+    
 
     const rowsHtml = perApt
       .map(
@@ -2019,6 +2019,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
