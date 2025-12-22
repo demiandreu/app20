@@ -816,6 +816,28 @@ app.get("/manager/channels/beds24key", (req, res) => {
 });
 
 //vremenno
+// ===================== MANAGER: Menu =====================
+app.get("/manager", (req, res) => {
+  const html = `
+    <h1>Manager</h1>
+    <p class="muted">Quick navigation</p>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <a class="btn-base" href="/manager/settings">Settings</a>
+      <a class="btn-base" href="/manager/settings/apartments">Apartments</a>
+
+      <a class="btn-base" href="/manager/channels/sync">Sync</a>
+      <a class="btn-base" href="/manager/channels/bookings">Bookings</a>
+
+      <a class="btn-base btn-ghost" href="/manager/channels/debug">Debug</a>
+      <a class="btn-base btn-ghost" href="/staff/checkins">Staff</a>
+    </div>
+
+    <hr style="margin:16px 0; opacity:0.2;" />
+    <p class="muted">Tip: add new pages here when you create them.</p>
+  `;
+  return res.send(renderPage("Manager", html));
+});
 // ===================== Beds24 Webhook (receiver) =====================
 
 
@@ -1701,7 +1723,11 @@ app.get("/manager/settings/apartments", async (req, res) => {
       ORDER BY apartment_name ASC
       `
     );
-
+     //vremenno2323
+     const top = `<p style="margin:0 0 12px;"><a class="btn-link" href="/manager">← Manager</a></p>`;
+     const top = `<p style="margin:0 0 12px;"><a class="btn-link" href="/manager">← Manager</a></p>`;
+res.send(renderPage("Apartments", top + `...твой текущий HTML...`));
+ //vremenno2323
     const listHtml = rows.rows
       .map(
         (r) => `
@@ -1841,6 +1867,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
