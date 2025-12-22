@@ -698,11 +698,6 @@ async function beds24PostJson(url, body) {
   return json;
 }
 
-  if (!resp.ok) {
-    throw new Error(`Beds24 API HTTP ${resp.status}: ${JSON.stringify(json).slice(0, 200)}`);
-  }
-  return json;
-}
 //vremenno
 // ===================== Beds24 Webhook (receiver) =====================
 
@@ -1708,6 +1703,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
