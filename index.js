@@ -27,6 +27,94 @@ app.get("/manager/channels/debug", (req, res) => {
   `);
 });
     //vremenno
+// ===================== MANAGER: Sync Bookings =====================
+app.get("/manager/channels/bookingssync", async (req, res) => {
+  try {
+    const from = String(req.query.from || "2025-01-01");
+    const to = String(req.query.to || "2026-12-31");
+
+    // берём все активные квартиры с prop key
+    const aptsRes = await pool.query(`
+      SELECT beds24_room_id, beds24_prop_key, apartment_name
+      FROM beds24_rooms
+      WHERE is_active = true AND beds24_prop_key IS NOT NULL
+      ORDER BY apartment_name ASC
+    `);
+    const apts = aptsRes.rows || [];
+    if (!apts.length) {
+      return res.send("No active apartments with channel key (beds24_prop_key).");
+    }
+
+    let totalFetched = 0;
+    let totalUpserted = 0;
+    const perApt = [];
+
+    for (const apt of apts) {
+      // получаем брони по этой квартире
+      const resp = await beds24PostJson(
+        "https://api.beds24.com/json/getBookings",
+        { from, to },
+        apt.beds24_prop_key
+      );
+
+      // пытаемся достать массив броней (формат бывает разный)
+      const bookings =
+        resp?.data?.getBookings ||
+        resp?.data?.bookings ||
+        resp?.getBookings ||
+        resp?.bookings ||
+        [];
+
+      const list = Array.isArray(bookings) ? bookings : [];
+      totalFetched += list.length;
+
+      // здесь пока просто считаем, апсерт сделаем следующим шагом (чтобы не сломать)
+      perApt.push({
+        name: apt.apartment_name,
+        roomId: apt.beds24_room_id,
+        count: list.length,
+      });
+
+      // TODO: upsert в checkins (сделаем отдельным шагом)
+      // totalUpserted += ...
+    }
+
+    const rowsHtml = perApt
+      .map(
+        (x) =>
+          `<tr><td>${escapeHtml(x.name || "")}</td><td>${escapeHtml(x.roomId || "")}</td><td>${x.count}</td></tr>`
+      )
+      .join("");
+
+    return res.send(renderPage("Sync Bookings", `
+      <p style="margin:0 0 12px;"><a class="btn-link" href="/manager">← Manager</a></p>
+      <h2>Sync Bookings</h2>
+      <p class="muted">from=${escapeHtml(from)} to=${escapeHtml(to)}</p>
+      <p>Total fetched: <strong>${totalFetched}</strong></p>
+      <table border="1" cellpadding="8" cellspacing="0">
+        <thead><tr><th>Apartment</th><th>Room ID</th><th>Bookings</th></tr></thead>
+        <tbody>${rowsHtml || ""}</tbody>
+      </table>
+    `));
+  } catch (e) {
+    console.error("bookingssync error:", e);
+    return res.status(500).send("Sync Bookings failed: " + (e.message || String(e)));
+  }
+});
+// ===================== MANAGER: Home =====================
+app.get("/manager", (req, res) => {
+  const html = `
+    <h1>Manager</h1>
+    <p class="muted">Sync tools</p>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <a class="btn-base" href="/manager/channels/sync">Sync Rooms</a>
+      <a class="btn-base" href="/manager/channels/bookingssync">Sync Bookings</a>
+      <a class="btn-base btn-ghost" href="/manager/settings/apartments">Apartments</a>
+    </div>
+  `;
+  res.send(renderPage("Manager", html));
+});
+
 app.get("/manager/channels/sync", async (req, res) => {
   try {
     const from = String(req.query.from || "2025-01-01");
@@ -1909,6 +1997,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
