@@ -1716,6 +1716,7 @@ return;
 // страница со списком и формой добавления
 app.get("/manager/settings/apartments", async (req, res) => {
   try {
+     const top = `<p style="margin:0 0 12px;"><a class="btn-link" href="/manager">← Manager</a></p>`;
     const rows = await pool.query(
       `
       SELECT id, beds24_room_id, beds24_prop_key, apartment_name, is_active, created_at, updated_at
@@ -1743,21 +1744,13 @@ app.get("/manager/settings/apartments", async (req, res) => {
       )
       .join("");
 
-    res.send(`
-      <h2>Apartments (synced) from your channel manager</h2>
-      <table border="1" cellpadding="8" cellspacing="0">
-        <thead>
-          <tr>
-            <th>prop key</th>
-            <th>beds24_room_id</th>
-            <th>apartment_name</th>
-            <th>active</th>
-            <th>action</th>
-          </tr>
-        </thead>
-        <tbody>${listHtml || ""}</tbody>
-      </table>
-    `);
+   res.send(`
+  ${top}
+  <h2>Apartments (synced) from your channel manager</h2>
+  <table border="1" cellpadding="8" cellspacing="0">
+    ...
+  </table>
+`);
   } catch (err) {
     console.error("❌ manager apartments page error:", err);
     res.status(500).send("Error");
@@ -1863,6 +1856,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
