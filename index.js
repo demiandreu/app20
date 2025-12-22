@@ -671,6 +671,7 @@ function renderPage(title, innerHtml) {
 // =====================================================
 //vremenno
 async function beds24PostJson(url, body) {
+   console.log("BEDS24_API_KEY len:", String(process.env.BEDS24_API_KEY || "").length);
   const resp = await fetch(url, {
     method: "POST",
     headers: {
@@ -1703,6 +1704,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
