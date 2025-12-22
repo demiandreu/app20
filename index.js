@@ -627,13 +627,29 @@ function renderPage(title, innerHtml) {
 // =====================================================
 //vremenno
 async function beds24PostJson(url, body) {
+  const apiKeyRaw = process.env.BEDS24_API_KEY || "";
+  const apiKey = String(apiKeyRaw).trim(); // важно: убираем пробелы/переносы
+
+  if (!apiKey) {
+    throw new Error("BEDS24_API_KEY is empty");
+  }
+
+  const payload = body && typeof body === "object" ? { ...body } : {};
+
+  // ✅ дублируем authentication в body (некоторые endpoints/аккаунты так ожидают)
+  payload.authentication = {
+    ...(payload.authentication || {}),
+    apiKey,
+  };
+
   const resp = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-API-Key": process.env.BEDS24_API_KEY, // один общий API (APK4)
+      // ✅ и в header тоже
+      "X-API-Key": apiKey,
     },
-    body: JSON.stringify(body || {}),
+    body: JSON.stringify(payload),
   });
 
   const text = await resp.text();
@@ -645,12 +661,24 @@ async function beds24PostJson(url, body) {
   }
 
   if (!resp.ok) {
-    throw new Error(`Beds24 API HTTP ${resp.status}: ${text.slice(0, 300)}`);
+    const masked = apiKey.length <= 8 ? apiKey : `${apiKey.slice(0, 4)}…${apiKey.slice(-4)}`;
+    throw new Error(
+      `Beds24 API HTTP ${resp.status}: ${text.slice(0, 300)} | keyLen=${apiKey.length} key=${masked}`
+    );
   }
 
   return json;
 }
 //vremenno
+app.get("/manager/channels/beds24key", (req, res) => {
+  const k = String(process.env.BEDS24_API_KEY || "").trim();
+  const masked = k.length <= 8 ? k : `${k.slice(0, 4)}…${k.slice(-4)}`;
+  res.send({
+    hasKey: Boolean(k),
+    keyLen: k.length,
+    keyMasked: masked,
+  });
+});
 
 //vremenno
 // ===================== Beds24 Webhook (receiver) =====================
@@ -1431,16 +1459,10 @@ app.post("/staff/checkins/:id/clean", async (req, res) => {
 
 app.get("/manager/channels/bookings", async (req, res) => {
   try {
-    if (!process.env.BEDS24_API_KEY) return res.status(500).send("❌ BEDS24_API_KEY not set");
-
     const from = String(req.query.from || "2025-01-01");
     const to = String(req.query.to || "2026-12-31");
 
-    const resp = await beds24PostJson("https://api.beds24.com/json/getBookings", {
-      from,
-      to,
-      // позже сюда добавим фильтры по roomId / propertyId, если надо
-    });
+    const resp = await beds24PostJson("https://api.beds24.com/json/getBookings", { from, to });
 
     return res.send(`
       <h2>Bookings</h2>
@@ -1449,9 +1471,13 @@ app.get("/manager/channels/bookings", async (req, res) => {
     `);
   } catch (e) {
     console.error("❌ bookings error:", e);
-    return res.status(500).send("Bookings failed: " + escapeHtml(e.message || String(e)));
+    return res
+      .status(500)
+      .send("Bookings failed: " + escapeHtml(e.message || String(e)));
   }
 });
+
+
 
 
 // ===================== MANAGER: Sync Beds24 Rooms =====================
@@ -1649,6 +1675,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
