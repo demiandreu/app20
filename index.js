@@ -892,26 +892,31 @@ app.get("/manager/channels/beds24key", (req, res) => {
 
 //vremenno
 // ===================== MANAGER: Menu =====================
+// ❌ НЕТ другого app.get("/manager") выше
+
 app.get("/manager", (req, res) => {
   const html = `
     <h1>Manager</h1>
-    <p class="muted">Quick navigation</p>
 
-    <div style="display:flex; gap:10px; flex-wrap:wrap;">
-      <a class="btn-base" href="/manager/settings">Settings</a>
-      <a class="btn-base" href="/manager/settings/apartments">Apartments</a>
+    <h3>Staff</h3>
+    <ul>
+      <li><a href="/staff/arrivals">Staff · Arrivals</a></li>
+      <li><a href="/staff/checkins">Staff · Check-ins</a></li>
+    </ul>
 
-      <a class="btn-base" href="/manager/channels/sync">Sync</a>
-      <a class="btn-base" href="/kings">Bookings</a>
+    <h3>Channels</h3>
+    <ul>
+      <li><a href="/manager/channels/sync">Sync Rooms</a></li>
+      <li><a href="/manager/channels/bookingssync">Sync Bookings</a></li>
+      <li><a href="/manager/channels/bookings?all=1">Bookings (debug)</a></li>
+    </ul>
 
-      <a class="btn-base btn-ghost" href="/manager/channels/debug">Debug</a>
-      <a class="btn-base btn-ghost" href="/staff/checkins">Staff</a>
-    </div>
-
-    <hr style="margin:16px 0; opacity:0.2;" />
-    <p class="muted">Tip: add new pages here when you create them.</p>
+    <h3>Settings</h3>
+    <ul>
+      <li><a href="/manager/settings/apartments">Apartments</a></li>
+    </ul>
   `;
-  return res.send(renderPage("Manager", html));
+  res.send(renderPage("Manager", html));
 });
 // ===================== Beds24 Webhook (receiver) =====================
 
@@ -1984,6 +1989,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
