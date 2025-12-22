@@ -627,32 +627,24 @@ function renderPage(title, innerHtml) {
 // =====================================================
 //vremenno
 async function beds24PostJson(url, body) {
-  const apiKeyRaw = process.env.BEDS24_API_KEY || "";
-  const apiKey = String(apiKeyRaw).trim(); // важно: убираем пробелы/переносы
+  const apiKey = String(process.env.BEDS24_API_KEY || "").trim();
 
   if (!apiKey) {
     throw new Error("BEDS24_API_KEY is empty");
   }
 
-  const payload = body && typeof body === "object" ? { ...body } : {};
-
-  // ✅ дублируем authentication в body (некоторые endpoints/аккаунты так ожидают)
-  payload.authentication = {
-    ...(payload.authentication || {}),
-    apiKey,
-  };
-
   const resp = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      // ✅ и в header тоже
-      "X-API-Key": apiKey,
+      // ✅ ВАЖНО: ТОЛЬКО ТАК
+      "Authorization": `Bearer ${apiKey}`,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body || {}),
   });
 
   const text = await resp.text();
+
   let json;
   try {
     json = JSON.parse(text);
@@ -661,9 +653,8 @@ async function beds24PostJson(url, body) {
   }
 
   if (!resp.ok) {
-    const masked = apiKey.length <= 8 ? apiKey : `${apiKey.slice(0, 4)}…${apiKey.slice(-4)}`;
     throw new Error(
-      `Beds24 API HTTP ${resp.status}: ${text.slice(0, 300)} | keyLen=${apiKey.length} key=${masked}`
+      `Beds24 API HTTP ${resp.status}: ${text.slice(0, 300)}`
     );
   }
 
@@ -1675,6 +1666,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
