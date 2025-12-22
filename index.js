@@ -105,12 +105,24 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
 app.get("/manager", (req, res) => {
   const html = `
     <h1>Manager</h1>
-    <p class="muted">Sync tools</p>
-    <div style="display:flex; gap:10px; flex-wrap:wrap;">
-      <a class="btn-base" href="/manager/channels/sync">Sync Rooms</a>
-      <a class="btn-base" href="/manager/channels/bookingssync">Sync Bookings</a>
-      <a class="btn-base btn-ghost" href="/manager/settings/apartments">Apartments</a>
-    </div>
+
+    <h3>Staff</h3>
+    <ul>
+      <li><a href="/staff/arrivals">Staff · Arrivals</a></li>
+      <li><a href="/staff/checkins">Staff · Check-ins</a></li>
+    </ul>
+
+    <h3>Channels</h3>
+    <ul>
+      <li><a href="/manager/channels/sync">Sync Rooms</a></li>
+      <li><a href="/manager/channels/bookingssync">Sync Bookings</a></li>
+      <li><a href="/manager/channels/bookings?all=1">Bookings (debug)</a></li>
+    </ul>
+
+    <h3>Settings</h3>
+    <ul>
+      <li><a href="/manager/settings/apartments">Apartments</a></li>
+    </ul>
   `;
   res.send(renderPage("Manager", html));
 });
@@ -1997,6 +2009,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
