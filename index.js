@@ -1723,11 +1723,7 @@ app.get("/manager/settings/apartments", async (req, res) => {
       ORDER BY apartment_name ASC
       `
     );
-     //vremenno2323
-     const top = `<p style="margin:0 0 12px;"><a class="btn-link" href="/manager">← Manager</a></p>`;
-     const top = `<p style="margin:0 0 12px;"><a class="btn-link" href="/manager">← Manager</a></p>`;
-res.send(renderPage("Apartments", top + `...твой текущий HTML...`));
- //vremenno2323
+   
     const listHtml = rows.rows
       .map(
         (r) => `
@@ -1867,6 +1863,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
