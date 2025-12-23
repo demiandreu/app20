@@ -268,6 +268,14 @@ function ymd(d) {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
+function nightsBetween(arrive, depart) {
+  const a = new Date(arrive);
+  const d = new Date(depart);
+  if (!arrive || !depart || isNaN(a) || isNaN(d)) return "";
+  const ms = d - a;
+  const n = Math.round(ms / 86400000);
+  return n > 0 ? n : "";
+}
 
 // ===================== TWILIO WHATSAPP INBOUND (START_<id> + LISTO) =====================
 app.post("/webhooks/twilio/whatsapp", async (req, res) => {
@@ -1572,6 +1580,7 @@ app.get("/staff/checkins", async (req, res) => {
                     <td>${mainDate}</td>
 
                     <td>
+                        <td><td>${calcNights(r.arrive_date, r.depart_date)}</td></td>
                       <a class="btn-small btn-ghost" href="/guest/${r.apartment_id}/${r.booking_token}" target="_blank">
                         Open
                       </a>
@@ -1589,7 +1598,6 @@ app.get("/staff/checkins", async (req, res) => {
                           placeholder="1234"
                         />
                         <button class="btn-base" type="submit">Save</button>
-                        <button class="btn-base btn-ghost" type="submit" name="clear" value="1">Clear</button>
                       </form>
                     </td>
 
@@ -1628,6 +1636,7 @@ app.get("/staff/checkins", async (req, res) => {
                 <th>Phone</th>
                 <th>A|C</th>
                 <th>${dateColTitle}</th>
+                 <th>N</th>
                 <th>Guest</th>
                 <th>Lock code</th>
                 <th>Visible</th>
@@ -2009,6 +2018,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
