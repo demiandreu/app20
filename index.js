@@ -593,8 +593,8 @@ function renderPage(title, innerHtml) {
   }
   
   /* подсветка ячейки Apartment */
-.td.apartment-cell.red { background: #ffe5e5; }
-.td.apartment-cell.green { background: #e7ffe7; }
+td.apartment-cell.red { background: #ffe5e5; }
+td.apartment-cell.green { background: #e7ffe7; }
 
   .clean-btn:focus{ outline:none; }
   .clean-btn.pill-yes{ color:#1a7f37; }
@@ -1450,7 +1450,11 @@ app.get("/staff/checkins", async (req, res) => {
       const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
       return { whereSql, params };
     }
-   
+
+     function aptColor(apartmentId) {
+  // временно ничего не красим для arrivals — только для departures сделаем отдельно
+  return "";
+}
 
     // ----------------------------
     // ARRIVALS query (arrival_date)
@@ -2068,6 +2072,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
