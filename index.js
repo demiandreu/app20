@@ -1983,48 +1983,7 @@ app.get("/manager/settings/apartments", async (req, res) => {
     res.status(500).send("Error");
   }
 });
-
-// toggle active
-app.post("/manager/settings/apartments/toggle", async (req, res) => {
-  try {
-    const id = Number(req.body.id);
-
-    await pool.query(
-      `
-      UPDATE beds24_rooms
-      SET is_active = NOT is_active,
-          updated_at = NOW()
-      WHERE id = $1
-      `,
-      [id]
-    );
-
-    res.redirect("/manager/settings/apartments");
-  } catch (err) {
-    console.error("❌ toggle apartment mapping error:", err);
-    res.status(500).send("DB error");
-  }
-});
-
-// tiny helper (если у тебя уже есть — НЕ добавляй второй раз)
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-//vremenno3
-function maskKey(k) {
-  k = String(k || "");
-  if (!k) return "";
-  if (k.length <= 10) return k;
-  return k.slice(0, 4) + "…" + k.slice(-4);
-}
-//vremenno3
 //vremenno
-// показать настройки
 // ===================== MANAGER: one page for apartments + defaults =====================
 
 // helper: safe value
@@ -2241,6 +2200,48 @@ app.post("/manager/apartment/save", async (req, res) => {
 // optional: keep old URL working
 app.get("/manager/settings", (req, res) => res.redirect("/manager"));
 app.post("/manager/settings", (req, res) => res.redirect("/manager"));
+//vremenno
+// toggle active
+app.post("/manager/settings/apartments/toggle", async (req, res) => {
+  try {
+    const id = Number(req.body.id);
+
+    await pool.query(
+      `
+      UPDATE beds24_rooms
+      SET is_active = NOT is_active,
+          updated_at = NOW()
+      WHERE id = $1
+      `,
+      [id]
+    );
+
+    res.redirect("/manager/settings/apartments");
+  } catch (err) {
+    console.error("❌ toggle apartment mapping error:", err);
+    res.status(500).send("DB error");
+  }
+});
+
+// tiny helper (если у тебя уже есть — НЕ добавляй второй раз)
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+//vremenno3
+function maskKey(k) {
+  k = String(k || "");
+  if (!k) return "";
+  if (k.length <= 10) return k;
+  return k.slice(0, 4) + "…" + k.slice(-4);
+}
+//vremenno3
+//vremenno
+// показать настройки
 
 // ===================== START =====================
 (async () => {
@@ -2252,6 +2253,7 @@ app.post("/manager/settings", (req, res) => res.redirect("/manager"));
     process.exit(1);
   }
 })();
+
 
 
 
