@@ -268,7 +268,7 @@ function ymd(d) {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
-function nightsBetween(arrive, depart) {
+function calcNights(arrive, depart) {
   const a = new Date(arrive);
   const d = new Date(depart);
   if (!arrive || !depart || isNaN(a) || isNaN(d)) return "";
@@ -2018,6 +2018,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
