@@ -274,8 +274,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
 
     // ----------------- 1) START_<ID> -----------------
     if (textUpper.startsWith("START_")) {
-      const bookingId = textUpper.replace("START_", "").trim();
-
+   const bookingIdFromStart = textUpper.replace("START_", "").trim();
       const bookingResult = await pool.query(
         `
         SELECT
@@ -310,6 +309,27 @@ START_${bookingId}`
       }
 
       const r = bookingResult.rows[0];
+       // ===== links (registration / payment / keys) =====
+const bookingId = String(r.booking_token || bookingIdFromStart || "").trim();
+
+// 1) registration link
+const regTemplate = String(r.registration_url || "").trim();
+const regLink = regTemplate
+  ? regTemplate.replace("[BOOKID]", bookingId)
+  : "";
+
+// 2) payment link (Beds24)
+const payTemplate = String(r.payment_url || "").trim(); // e.g. https://beds24.com/bookpay.php?bookid=[BOOKID]&g=st
+const payLink = payTemplate
+  ? payTemplate.replace("[BOOKID]", bookingId)
+  : "";
+
+// 3) keys/instructions link (optional now)
+const keysTemplate = String(r.keys_instructions_url || "").trim();
+const keysLink = keysTemplate
+  ? keysTemplate.replace("[BOOKID]", bookingId)
+  : "";
+       
 
     // ---- data from DB (checkins table) ----
 const adults = r.adults ?? 0;
@@ -352,25 +372,31 @@ console.log("👥 Guests from DB:", { adults, children });
       const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(arrivalTimeFinal).slice(0, 5)}`;
       const depart = `${String(r.departure_date).slice(0, 10)} ${String(departureTimeFinal).slice(0, 5)}`;
 
-      await sendWhatsApp(
-        from,
-        `Hola, ${name} 👋
+      const lines = [
+  `Hola, ${name} 👋`,
+  `Tu reserva está confirmada ✅`,
+  `Apartamento: ${apt}`,
+  `Entrada: ${arrive}`,
+  `Salida: ${depart}`,
+];
 
-Tu reserva está confirmada ✅
-Apartamento: ${apt}
-Entrada: ${arrive}
-Salida: ${depart}
-${guestsLine}
-Para enviarte las instrucciones de acceso y el código de la caja de llaves, primero necesito 2 pasos:
+if (guestsLine) lines.push(guestsLine.trim());
 
-1) Registro de huéspedes
-2) Pago (tasa turística + depósito, según la plataforma)
+lines.push(`Para enviarte las instrucciones de acceso y el código de la caja de llaves, primero necesito 2 pasos:`);
 
-Cuando lo tengas listo, responde aquí: LISTO`
-      );
+if (regLink) lines.push(`1) Registro de huéspedes:\n${regLink}`);
+else lines.push(`1) Registro de huéspedes`);
 
-      return res.status(200).send("OK");
-    }
+if (payLink) lines.push(`2) Pago (tasa turística + depósito, según la plataforma):\n${payLink}`);
+else lines.push(`2) Pago (tasa turística + depósito, según la plataforma)`);
+
+// keys link пока не показываем (или показываем позже, когда активируешь)
+// if (keysLink) lines.push(`ℹ️ Instrucciones / llaves:\n${keysLink}`);
+
+lines.push(`Cuando lo tengas listo, responde aquí: LISTO`);
+lines.push(`Si tienes preguntas, escribe aquí y te ayudaremos.`);
+
+await sendWhatsApp(from, lines.join("\n\n"));
 
     // ----------------- 2) LISTO -----------------
     if (textUpper === "LISTO") {
@@ -2400,6 +2426,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
