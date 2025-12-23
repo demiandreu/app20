@@ -1648,7 +1648,9 @@ function aptColor(apartmentId) {
                     </td>
 
                     <td>${r.booking_token ?? ""}</td>
-                    <td>${r.apartment_name ?? ""}</td>
+                    <td class="apartment-cell ${aptColorById(r.apartment_id)}">
+  ${r.apartment_name ?? ""}
+</td>
                     <td>${(r.adults ?? 0)}|${(r.children ?? 0)}</td>
                     <td>${mainDate}</td>
 
@@ -1973,7 +1975,7 @@ app.get("/manager/settings/apartments", async (req, res) => {
         <tr>
           <td>${escapeHtml(maskKey(r.beds24_prop_key))}</td>
           <td>${escapeHtml(r.beds24_room_id)}</td>
-         <td class="apartment-cell ${aptColorById(r.apartment_id)}">${r.apartment_name ?? ""}</td>
+          <td>${r.apartment_name ?? ""}</td>
           <td>${r.is_active ? "✅" : "❌"}</td>
           <td>
             <form method="POST" action="/manager/settings/apartments/toggle" style="display:inline;">
@@ -2098,6 +2100,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
