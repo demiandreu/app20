@@ -2236,7 +2236,7 @@ app.get("/manager", async (req, res) => {
             : `
           <form method="POST" action="/manager/apartment/save">
             <input type="hidden" name="id" value="${escapeHtml(apt.id)}" />
-
+            <input type="hidden" name="id" value="${a.id}">
             <label>Apartment name</label><br/>
             <input name="apartment_name" value="${escapeHtml(aptName)}" style="width:360px" /><br/><br/>
 
@@ -2400,6 +2400,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
