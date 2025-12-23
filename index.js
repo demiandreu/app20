@@ -15,6 +15,59 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
    //vremenno
+app.get("/check-beds24", (req, res) => {
+  res.send("Эта страница принимает только POST запрос. Отправьте apiKey и propKey через POST.");
+});
+app.post("/check-beds24", async (req, res) => {
+  const { apiKey, propKey } = req.body;
+
+  if (!apiKey || !propKey) {
+    return res.status(400).json({
+      ok: false,
+      message: "apiKey и propKey обязательны"
+    });
+  }
+
+  const result = await checkBeds24ApiKey(apiKey, propKey);
+  res.json(result);
+});
+async function checkBeds24ApiKey(apiKey, propKey) {
+  const url = "https://api.beds24.com/json/getBookings";
+
+  const payload = {
+    authentication: {
+      apiKey: "76348624782347346238476487236487twillio",
+      propKey: "apartsalouargenta123456789"
+    },
+    limit: 1
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      return { ok: false, message: data.error };
+    }
+
+    return { ok: true, message: "API ключи корректны", data };
+
+  } catch (err) {
+    return {
+      ok: false,
+      message: "Ошибка сети или Beds24 недоступен",
+      error: err.message
+    };
+  }
+}
+
+
+
 // ===================== MANAGER: Debug =====================
 app.get("/manager/channels/debug", (req, res) => {
   res.send(`
@@ -1277,66 +1330,12 @@ app.get("/checkin/:aptId/:token", (req, res) => {
   res.send(renderPage("Check-in", html));
 });
 
-// --- Check-in submit -> DB ---
-app.post("/checkin/:aptId/:token", async (req, res) => {
-  const { aptId, token } = req.params;
-
-app.get("/check-beds24", async (req, res) => { const { apiKey, propKey } = req.body; if (!apiKey || !propKey) { return res.status(400).json({ ok: false, message: "apiKey и propKey обязательны" }); } try { const result = await checkBeds24ApiKey(apiKey, propKey); res.json(result); } catch (err) { res.status(500).json({ ok: false, message: "Ошибка сервера", error: err.message }); } });
-   app.post("/check-beds24", async (req, res) => {
-  const { apiKey, propKey } = req.body;
-
-  if (!apiKey || !propKey) {
-    return res.status(400).json({
-      ok: false,
-      message: "apiKey и propKey обязательны"
-    });
-  }
 
   const result = await checkBeds24ApiKey(apiKey, propKey);
   res.json(result);
 });
 
-   async function checkBeds24ApiKey(apiKey, propKey) {
-  const url = "https://api.beds24.com/json/getBookings";
 
-  const payload = {
-    authentication: {
-      apiKey: "76348624782347346238476487236487twillio",
-      propKey: "apartsalouargenta123456789"
-    },
-    limit: 1
-  };
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await response.json();
-
-    if (data.error) {
-      return {
-        ok: false,
-        message: data.error
-      };
-    }
-
-    return {
-      ok: true,
-      message: "API ключи корректны",
-      data
-    };
-
-  } catch (err) {
-    return {
-      ok: false,
-      message: "Ошибка сети или Beds24 недоступен",
-      error: err.message
-    };
-  }
-}
 
   try {
     // 👉 НОРМАЛИЗАЦИЯ ДАННЫХ (ОБЯЗАТЕЛЬНО)
@@ -2182,6 +2181,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
