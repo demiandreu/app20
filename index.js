@@ -593,8 +593,8 @@ function renderPage(title, innerHtml) {
   }
   
   /* подсветка ячейки Apartment */
-td.apartment-cell.red { background: #ffe5e5; }
-td.apartment-cell.green { background: #e7ffe7; }
+.td.apartment-cell.red { background: #ffe5e5; }
+.td.apartment-cell.green { background: #e7ffe7; }
 
   .clean-btn:focus{ outline:none; }
   .clean-btn.pill-yes{ color:#1a7f37; }
@@ -2068,6 +2068,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
