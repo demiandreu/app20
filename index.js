@@ -1445,6 +1445,21 @@ app.get("/staff/checkins", async (req, res) => {
       const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
       return { whereSql, params };
     }
+     function lockPlaceholderFromApartment(name) {
+  if (!name) return "";
+
+  const parts = name.trim().split(/\s+/);
+
+  if (parts.length === 1) {
+    // если одно слово — берём первые 4 буквы
+    return parts[0].slice(0, 4).toUpperCase();
+  }
+
+  const first = parts[0].slice(0, 2);
+  const second = parts[1].slice(-2);
+
+  return (first + second).toUpperCase();
+}
 
     // ----------------------------
     // ARRIVALS query (arrival_date)
@@ -1612,7 +1627,7 @@ app.get("/staff/checkins", async (req, res) => {
                           inputmode="numeric"
                           pattern="\\d{4}"
                           maxlength="4"
-                          placeholder="1234"
+                          placeholder="${lockPlaceholderFromApartment(r.apartment_name)}"
                         />
                         <button class="btn-base" type="submit">Save</button>
                       </form>
@@ -2035,6 +2050,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
