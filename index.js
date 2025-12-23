@@ -70,6 +70,7 @@ app.get("/manager/channels/sync", async (req, res) => {
     const from = String(req.query.from || "2025-01-01");
     const to = String(req.query.to || "2026-12-31");
 
+    // Загружаем активные комнаты
     const { rows: rooms } = await pool.query(`
       SELECT beds24_room_id, beds24_prop_key, apartment_name
       FROM beds24_rooms
@@ -82,31 +83,44 @@ app.get("/manager/channels/sync", async (req, res) => {
     let skipped = 0;
     const errors = [];
 
+    // Универсальный парсер ответа Beds24
+    function extractBookings(resp) {
+      return (
+        resp?.data?.getBookings ||
+        resp?.data?.bookings ||
+        resp?.getBookings ||
+        resp?.bookings ||
+        (Array.isArray(resp) ? resp : []) ||
+        []
+      );
+    }
+
     for (const r of rooms) {
       try {
-       const resp = await beds24PostJson(
-  "https://api.beds24.com/json/getBookings",
-  {
-    from,
-    to,
-    includeAll: 1,
-  },
-  apt.beds24_prop_key
-);
-         console.log("BEDS24 RAW RESP KEYS:", Object.keys(resp || {}));
-console.log("BEDS24 RAW RESP:", JSON.stringify(resp).slice(0, 500));
+        const resp = await beds24PostJson(
+          "https://api.beds24.com/json/getBookings",
+          { from, to, includeAll: 1 },
+          r.beds24_prop_key
+        );
 
-        const list = Array.isArray(resp) ? resp : (resp?.data || resp?.bookings || []);
-        totalBookings += Array.isArray(list) ? list.length : 0;
+        console.log("BEDS24 RESP TYPE:", typeof resp);
+        console.log("BEDS24 RAW (first 500 chars):", JSON.stringify(resp).slice(0, 500));
+
+        const list = extractBookings(resp);
+        totalBookings += list.length;
 
         for (const b of list) {
           const row = mapBeds24BookingToRow(b, r.apartment_name, r.beds24_room_id);
           const result = await upsertCheckinFromBeds24(row);
+
           if (result?.skipped) skipped++;
           else saved++;
         }
       } catch (e) {
-        errors.push({ roomId: r.beds24_room_id, message: String(e.message || e) });
+        errors.push({
+          roomId: r.beds24_room_id,
+          message: String(e.message || e),
+        });
       }
     }
 
@@ -124,6 +138,7 @@ console.log("BEDS24 RAW RESP:", JSON.stringify(resp).slice(0, 500));
     return res.status(500).send("Sync failed: " + escapeHtml(e.message || String(e)));
   }
 });
+
 //vremenno
 function escapeHtml(str) {
   return String(str)
@@ -2024,6 +2039,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
