@@ -1455,6 +1455,19 @@ app.get("/staff/checkins", async (req, res) => {
   // временно ничего не красим для arrivals — только для departures сделаем отдельно
   return "";
 }
+     function aptColorById(apartmentId) {
+  const id = String(apartmentId || "");
+  if (!id) return "";
+
+  // если сегодня есть выезд — красный (уборка нужна)
+  if (departSet.has(id)) return "red";
+
+  // если сегодня НЕТ выезда и НЕТ заезда — считаем “вчера пусто” -> зелёный
+  // (это приближение. идеальную проверку “вчера пусто” сделаем следующим шагом через запрос на вчерашние брони)
+  if (!arriveSet.has(id)) return "green";
+
+  return "";
+}
 
     // ----------------------------
     // ARRIVALS query (arrival_date)
@@ -1520,6 +1533,19 @@ app.get("/staff/checkins", async (req, res) => {
 
     const arrivals = arrivalsRes.rows || [];
     const departures = departuresRes.rows || [];
+
+   // 1) какие квартиры выезжают сегодня (значит убирать) -> красный
+const departSet = new Set(departures.map(r => String(r.apartment_id)));
+
+// 2) какие квартиры приезжают сегодня
+const arriveSet = new Set(arrivals.map(r => String(r.apartment_id)));
+
+function aptColorById(apartmentId) {
+  const id = String(apartmentId || "");
+  if (departSet.has(id)) return "red";          // есть выезд -> красный
+  if (!arriveSet.has(id)) return "green";       // нет заезда (и нет выезда) -> зелёный
+  return "";
+}
 
     // ----------------------------
     // UI Toolbar (общий диапазон дат)
@@ -1947,7 +1973,7 @@ app.get("/manager/settings/apartments", async (req, res) => {
         <tr>
           <td>${escapeHtml(maskKey(r.beds24_prop_key))}</td>
           <td>${escapeHtml(r.beds24_room_id)}</td>
-          <td class="apartment-cell ${aptColor(r.apartment_id)}">${r.apartment_name ?? ""}</td>
+         <td class="apartment-cell ${aptColorById(r.apartment_id)}">${r.apartment_name ?? ""}</td>
           <td>${r.is_active ? "✅" : "❌"}</td>
           <td>
             <form method="POST" action="/manager/settings/apartments/toggle" style="display:inline;">
@@ -2072,6 +2098,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
