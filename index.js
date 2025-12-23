@@ -938,6 +938,24 @@ app.get("/manager/channels/beds24key", (req, res) => {
 });
 
 //vremenno
+app.get("/debug/rooms", async (req, res) => {
+  try {
+    const a = await pool.query(`
+      SELECT count(*)::int AS cnt FROM beds24_rooms
+    `);
+    const b = await pool.query(`
+      SELECT id, apartment_name, beds24_room_id,
+             CASE WHEN beds24_prop_key IS NULL THEN 'NULL' ELSE 'SET' END AS prop_key
+      FROM beds24_rooms
+      ORDER BY apartment_name ASC
+      LIMIT 20
+    `);
+    res.json({ count: a.rows[0].cnt, sample: b.rows });
+  } catch (e) {
+    res.status(500).json({ error: String(e.message || e) });
+  }
+});
+
 // ===================== MANAGER: Menu =====================
 app.get("/manager", (req, res) => {
   const html = `
@@ -2127,6 +2145,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
