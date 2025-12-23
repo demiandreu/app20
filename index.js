@@ -441,6 +441,8 @@ ${link}
 
     // ----------------- 3) default -----------------
     return res.status(200).send("OK");
+  try {
+     
   } catch (err) {
     console.error("❌ WhatsApp inbound error:", err);
     return res.status(200).send("OK");
@@ -2426,6 +2428,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
