@@ -908,7 +908,7 @@ async function beds24PostJson(url, body, apiKeyOverride) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-API-Key": apiKey,
+      token:apiKey
     },
     body: JSON.stringify(body || {}),
   });
@@ -2114,6 +2114,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
