@@ -1045,6 +1045,41 @@ app.get("/manager/apartment", async (req, res) => {
   }
 });
 
+app.post("/manager/apartment", async (req, res) => {
+  const {
+    id,
+    apartment_name,
+    default_arrival_time,
+    default_departure_time,
+    registration_url,
+    payment_url,
+    keys_instructions_url
+  } = req.body;
+
+  await pool.query(`
+    UPDATE beds24_rooms
+    SET
+      apartment_name = $1,
+      default_arrival_time = $2,
+      default_departure_time = $3,
+      registration_url = $4,
+      payment_url = $5,
+      keys_instructions_url = $6,
+      updated_at = now()
+    WHERE id = $7
+  `, [
+    apartment_name,
+    default_arrival_time,
+    default_departure_time,
+    registration_url,
+    payment_url,
+    keys_instructions_url,
+    id
+  ]);
+
+  res.redirect(`/manager/apartment?id=${id}`);
+});
+
 // ===== SAVE APARTMENT SETTINGS =====
 app.post("/manager/apartment/save", async (req, res) => {
   try {
@@ -2365,6 +2400,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
