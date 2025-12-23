@@ -1576,18 +1576,23 @@ app.get("/staff/checkins", async (req, res) => {
                     <td>${r.full_name ?? ""}</td>
                     <td>${r.phone ?? ""}</td>
                     <td>${(r.adults ?? 0)}|${(r.children ?? 0)}</td>
-
                     <td>${mainDate}</td>
 
-                    <td>
-                       <td>${calcNights(r.arrive_date, r.depart_date)}</td> <!-- N -->
+<td>${calcNights(r.arrival_date, r.departure_date)}</td> <!-- N -->
+
 <td>
+
   <a class="btn-small btn-ghost"
+
      href="/guest/${r.apartment_id}/${r.booking_token}"
+
      target="_blank">
+
     Open
+
   </a>
-</td>
+
+</td>               
 
                     <td>
                       <form method="POST" action="/staff/checkins/${r.id}/lock" class="lock-form">
@@ -1624,7 +1629,7 @@ app.get("/staff/checkins", async (req, res) => {
                 `;
               })
               .join("")
-          : `<tr><td colspan="11" class="muted">No records</td></tr>`;
+          : `<tr><td colspan="12" class="muted">No records</td></tr>`;
 
       return `
         <h2 style="margin:18px 0 10px;">${title}</h2>
@@ -1639,7 +1644,7 @@ app.get("/staff/checkins", async (req, res) => {
                 <th>Phone</th>
                 <th>A|C</th>
                 <th>${dateColTitle}</th>
-                 <th>N</th>
+                <th>N</th>
                 <th>Guest</th>
                 <th>Lock code</th>
                 <th>Visible</th>
@@ -2021,6 +2026,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
