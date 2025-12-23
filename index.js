@@ -591,6 +591,11 @@ function renderPage(title, innerHtml) {
     line-height:1;
     cursor:pointer;
   }
+  
+  /* подсветка ячейки Apartment */
+td.apartment-cell.red { background: #ffe5e5; }
+td.apartment-cell.green { background: #e7ffe7; }
+
   .clean-btn:focus{ outline:none; }
   .clean-btn.pill-yes{ color:#1a7f37; }
   .clean-btn.pill-no{ color:#b42318; }
@@ -1547,6 +1552,37 @@ app.get("/staff/checkins", async (req, res) => {
       </form>
     `;
 
+     // 1) квартиры с выездом СЕГОДНЯ -> красный
+const depTodaySet = new Set(
+  departures
+    .filter(r => String(r.departure_date || "").slice(0, 10) === today)
+    .map(r => String(r.apartment_id))
+);
+
+// 2) квартиры, которые были ЗАНЯТЫ ВЧЕРА
+const { rows: occ } = await pool.query(
+  `
+  SELECT DISTINCT apartment_id
+  FROM checkins
+  WHERE cancelled IS DISTINCT FROM true
+    AND arrival_date <= $1::date
+    AND departure_date > $1::date
+  `,
+  [yesterday]
+);
+
+const occupiedYesterdaySet = new Set(occ.map(r => String(r.apartment_id)));
+
+// 3) функция цвета для таблицы
+function aptColor(apartmentId) {
+  const id = String(apartmentId);
+
+  if (depTodaySet.has(id)) return "red";
+  if (!occupiedYesterdaySet.has(id)) return "green";
+  return "";
+}
+
+
     // ----------------------------
     // Table renderer (одна функция для обеих таблиц)
     // mode: "arrivals" | "departures"
@@ -1907,7 +1943,7 @@ app.get("/manager/settings/apartments", async (req, res) => {
         <tr>
           <td>${escapeHtml(maskKey(r.beds24_prop_key))}</td>
           <td>${escapeHtml(r.beds24_room_id)}</td>
-          <td>${escapeHtml(r.apartment_name)}</td>
+          <td class="apartment-cell ${aptColor(r.apartment_id)}">${r.apartment_name ?? ""}</td>
           <td>${r.is_active ? "✅" : "❌"}</td>
           <td>
             <form method="POST" action="/manager/settings/apartments/toggle" style="display:inline;">
@@ -2032,6 +2068,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
