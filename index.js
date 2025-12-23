@@ -16,9 +16,46 @@ app.use(express.json());
 
    //vremenno
 // ===================== MANAGER: Debug =====================
+app.get("/manager/channels/debug", (req, res) => {
+  res.send(`
+    <h1>Debug</h1>
+    <p>OK</p>
+    <ul>
+      <li><a href="/manager/channels/sync">Sync</a></li>
+      <li><a href="/manager/settings/apartments">Apartments</a></li>
+    </ul>
+  `);
+});
+    //vremenno
+// ===================== MANAGER: Sync Bookings =====================
+/channels/bookingssync", async (req, res) => {
+  try {
+    const from = String(req.query.from || "2025-01-01");
+    const to = String(req.query.to || "2026-12-31");
 
+    // берём все активные квартиры с prop key
+    const aptsRes = await pool.query(`
+      SELECT beds24_room_id, beds24_prop_key, apartment_name
+      FROM beds24_rooms
+      WHERE is_active = true AND beds24_prop_key IS NOT NULL
+      ORDER BY apartment_name ASC
+    `);
+    const apts = aptsRes.rows || [];
+    if (!apts.length) {
+      return res.send("No active apartments with channel key (beds24_prop_key).");
+    }
 
+    let totalFetched = 0;
+    let totalUpserted = 0;
+    const perApt = [];
 
+    for (const apt of apts) {
+      // получаем брони по этой квартире
+      const resp = await beds24PostJson(
+        "https://api.beds24.com/json/getBookings",
+        { from, to },
+        apt.beds24_prop_key
+      );
 
       // пытаемся достать массив броней (формат бывает разный)
       const bookings =
@@ -40,7 +77,7 @@ app.use(express.json());
 
       // TODO: upsert в checkins (сделаем отдельным шагом)
       // totalUpserted += ...
-    )
+    }
 
     const rowsHtml = perApt
       .map(
@@ -70,7 +107,6 @@ app.get("/manager/channels/sync", async (req, res) => {
     const from = String(req.query.from || "2025-01-01");
     const to = String(req.query.to || "2026-12-31");
 
-    // Загружаем активные комнаты
     const { rows: rooms } = await pool.query(`
       SELECT beds24_room_id, beds24_prop_key, apartment_name
       FROM beds24_rooms
@@ -83,44 +119,25 @@ app.get("/manager/channels/sync", async (req, res) => {
     let skipped = 0;
     const errors = [];
 
-    // Универсальный парсер ответа Beds24
-    function extractBookings(resp) {
-      return (
-        resp?.data?.getBookings ||
-        resp?.data?.bookings ||
-        resp?.getBookings ||
-        resp?.bookings ||
-        (Array.isArray(resp) ? resp : []) ||
-        []
-      );
-    }
-
     for (const r of rooms) {
       try {
         const resp = await beds24PostJson(
           "https://api.beds24.com/json/getBookings",
-          { from, to, includeAll: 1 },
+          { from, to },
           r.beds24_prop_key
         );
 
-        console.log("BEDS24 RESP TYPE:", typeof resp);
-        console.log("BEDS24 RAW (first 500 chars):", JSON.stringify(resp).slice(0, 500));
-
-        const list = extractBookings(resp);
-        totalBookings += list.length;
+        const list = Array.isArray(resp) ? resp : (resp?.data || resp?.bookings || []);
+        totalBookings += Array.isArray(list) ? list.length : 0;
 
         for (const b of list) {
           const row = mapBeds24BookingToRow(b, r.apartment_name, r.beds24_room_id);
           const result = await upsertCheckinFromBeds24(row);
-
           if (result?.skipped) skipped++;
           else saved++;
         }
       } catch (e) {
-        errors.push({
-          roomId: r.beds24_room_id,
-          message: String(e.message || e),
-        });
+        errors.push({ roomId: r.beds24_room_id, message: String(e.message || e) });
       }
     }
 
@@ -138,7 +155,6 @@ app.get("/manager/channels/sync", async (req, res) => {
     return res.status(500).send("Sync failed: " + escapeHtml(e.message || String(e)));
   }
 });
-
 //vremenno
 function escapeHtml(str) {
   return String(str)
@@ -1709,7 +1725,7 @@ app.get("/manager/channels/bookings", async (req, res) => {
     }
 
     const apt = rows[0];
-    const propKey = r.beds24_prop_key;
+    const propKey = apt.beds24_prop_key;
 
     const resp = await beds24PostJson(
       "https://api.beds24.com/json/getBookings",
@@ -1730,72 +1746,6 @@ app.get("/manager/channels/bookings", async (req, res) => {
 });
 
 //vremenno45
-
-
-app.get("/manager/channels/bookingssync", async (req, res) => {
-  try {
-    const from = String(req.query.from || "2025-01-01");
-    const to   = String(req.query.to   || "2026-12-31");
-
-    const { rows: apts } = await pool.query(`
-      SELECT beds24_room_id, beds24_prop_key, apartment_name
-      FROM beds24_rooms
-      WHERE is_active = true
-        AND beds24_prop_key IS NOT NULL
-      ORDER BY apartment_name ASC
-    `);
-
-    let totalFetched = 0;
-    const perApt = [];
-
-    for (const apt of apts) {
-      const resp = await beds24PostJson(
-        "https://api.beds24.com/json/getBookings",
-        {
-          from,
-          to,
-          includeAll: 1
-        },
-        apt.beds24_prop_key
-      );
-
-      const bookings =
-        Array.isArray(resp?.data?.bookings)
-          ? resp.data.bookings
-          : Array.isArray(resp?.bookings)
-          ? resp.bookings
-          : [];
-
-      totalFetched += bookings.length;
-
-      perApt.push({
-        apartment: apt.apartment_name,
-        roomId: apt.beds24_room_id,
-        bookings: bookings.length
-      });
-    }
-
-    return res.send(renderPage(
-      "Sync Bookings",
-      `
-        <p>from=${from} to=${to}</p>
-        <p>Total fetched: ${totalFetched}</p>
-        <table border="1" cellpadding="6">
-          <tr><th>Apartment</th><th>Room ID</th><th>Bookings</th></tr>
-          ${perApt.map(r =>
-            `<tr><td>${r.apartment}</td><td>${r.roomId}</td><td>${r.bookings}</td></tr>`
-          ).join("")}
-        </table>
-      `
-    ));
-  } catch (e) {
-    console.error("❌ bookingssync error:", e);
-    return res.status(500).send("Sync failed: " + String(e.message || e));
-  }
-});
-
-
-
 
 app.get("/manager/channels/bookings-all", async (req, res) => {
   try {
@@ -2039,22 +1989,6 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
