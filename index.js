@@ -1281,7 +1281,21 @@ app.get("/checkin/:aptId/:token", (req, res) => {
 app.post("/checkin/:aptId/:token", async (req, res) => {
   const { aptId, token } = req.params;
 
-app.post("/check-beds24", async (req, res) => { const { apiKey, propKey } = req.body; if (!apiKey || !propKey) { return res.status(400).json({ ok: false, message: "apiKey и propKey обязательны" }); } try { const result = await checkBeds24ApiKey(apiKey, propKey); res.json(result); } catch (err) { res.status(500).json({ ok: false, message: "Ошибка сервера", error: err.message }); } });
+app.get("/check-beds24", async (req, res) => { const { apiKey, propKey } = req.body; if (!apiKey || !propKey) { return res.status(400).json({ ok: false, message: "apiKey и propKey обязательны" }); } try { const result = await checkBeds24ApiKey(apiKey, propKey); res.json(result); } catch (err) { res.status(500).json({ ok: false, message: "Ошибка сервера", error: err.message }); } });
+   app.post("/check-beds24", async (req, res) => {
+  const { apiKey, propKey } = req.body;
+
+  if (!apiKey || !propKey) {
+    return res.status(400).json({
+      ok: false,
+      message: "apiKey и propKey обязательны"
+    });
+  }
+
+  const result = await checkBeds24ApiKey(apiKey, propKey);
+  res.json(result);
+});
+
    async function checkBeds24ApiKey(apiKey, propKey) {
   const url = "https://api.beds24.com/json/getBookings";
 
@@ -2168,6 +2182,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
