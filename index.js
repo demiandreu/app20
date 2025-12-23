@@ -1955,89 +1955,54 @@ app.get("/manager/channels/bookings-all", async (req, res) => {
   }
 });
 //vremenno45
-
-
-// ===================== MANAGER: Sync Beds24 Rooms =====================
-
-/* app.get("/manager/channels/bookings-test", async (req, res) => {
-  try {
-    // 1️⃣ берём ОДИН активный апартамент с prop_key
-    const { rows } = await pool.query(`
-      SELECT beds24_prop_key
-      FROM beds24_rooms
-      WHERE is_active = true
-        AND beds24_prop_key IS NOT NULL
-      LIMIT 1
-    `);
-
-    if (!rows.length) {
-      return res.send("❌ No apartment with prop_key found");
-    }
-
-    const propKey = rows[0].beds24_prop_key;
-
-    // 2️⃣ запрос в Beds24
-const resp = await beds24PostJson("https://api.beds24.com/json/getBookings", {
-  from: "2025-01-01",
-  to: "2026-12-31",
-});
-
-res.send(`
-  <h1>Bookings (RAW)</h1>
-  <p>Status: ${resp?.status ?? "no-status"}</p>
-  <pre>${escapeHtml(JSON.stringify(resp, null, 2))}</pre>
-`);
-return;
-
-    // 3️⃣ показываем RAW
-    res.send(`
-      <h2>Bookings (RAW)</h2>
-      <pre>${escapeHtml(JSON.stringify(resp.data, null, 2))}</pre>
-    `);
-  } catch (e) {
-    console.error(e);
-    res.status(500).send("❌ Error loading bookings");
-  }
-});
-    */
-// ===================== MANAGER: Beds24 Rooms mapping =====================
-
-// страница со списком и формой добавления
+// страница со списком апартаментов (Beds24 rooms mapping)
 app.get("/manager/settings/apartments", async (req, res) => {
-  const q = await pool.query(`
-    SELECT id, beds24_room_id, beds24_prop_key, apartment_name, is_active
-    FROM beds24_rooms
-    ORDER BY apartment_name ASC
-  `);
-  return res.json({ count: q.rows.length, first: q.rows[0] });
-});
-   
-    const listHtml = rows.rows
+  try {
+    const top = `<p style="margin:0 0 12px;"><a class="btn-link" href="/manager">← Manager</a></p>`;
+
+    const { rows } = await pool.query(`
+      SELECT id, beds24_room_id, beds24_prop_key, apartment_name, is_active
+      FROM beds24_rooms
+      ORDER BY apartment_name ASC
+    `);
+
+    const listHtml = rows
       .map(
         (r) => `
-        <tr>
-          <td>${escapeHtml(maskKey(r.beds24_prop_key))}</td>
-          <td>${escapeHtml(r.beds24_room_id)}</td>
-          <td>${r.apartment_name ?? ""}</td>
-          <td>${r.is_active ? "✅" : "❌"}</td>
-          <td>
-            <form method="POST" action="/manager/settings/apartments/toggle" style="display:inline;">
-              <input type="hidden" name="id" value="${r.id}">
-              <button type="submit">${r.is_active ? "Disable" : "Enable"}</button>
-            </form>
-          </td>
-        </tr>
-      `
+          <tr>
+            <td>${escapeHtml(maskKey(r.beds24_prop_key))}</td>
+            <td>${escapeHtml(String(r.beds24_room_id ?? ""))}</td>
+            <td>${escapeHtml(r.apartment_name ?? "")}</td>
+            <td>${r.is_active ? "✅" : "❌"}</td>
+            <td>
+              <form method="POST" action="/manager/settings/apartments/toggle" style="display:inline;">
+                <input type="hidden" name="id" value="${r.id}">
+                <button type="submit">${r.is_active ? "Disable" : "Enable"}</button>
+              </form>
+            </td>
+          </tr>
+        `
       )
       .join("");
 
-   res.send(`
-  ${top}
-  <h2>Apartments (synced) from your channel manager</h2>
-  <table border="1" cellpadding="8" cellspacing="0">
-    ...
-  </table>
-`);
+    res.send(`
+      ${top}
+      <h2>Apartments (synced) from your channel manager</h2>
+      <table border="1" cellpadding="8" cellspacing="0">
+        <thead>
+          <tr>
+            <th>Property key</th>
+            <th>Room ID</th>
+            <th>Apartment</th>
+            <th>Active</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${listHtml}
+        </tbody>
+      </table>
+    `);
   } catch (err) {
     console.error("❌ manager apartments page error:", err);
     res.status(500).send("Error");
@@ -2143,6 +2108,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
