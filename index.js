@@ -101,31 +101,6 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     return res.status(500).send("Sync Bookings failed: " + (e.message || String(e)));
   }
 });
-// ===================== MANAGER: Home =====================
-app.get("/manager", (req, res) => {
-  const html = `
-    <h1>Manager</h1>
-
-    <h3>Staff</h3>
-    <ul>
-      <li><a href="/staff/arrivals">Staff · Arrivals</a></li>
-      <li><a href="/staff/checkins">Staff · Check-ins</a></li>
-    </ul>
-
-    <h3>Channels</h3>
-    <ul>
-      <li><a href="/manager/channels/sync">Sync Rooms</a></li>
-      <li><a href="/manager/channels/bookingssync">Sync Bookings</a></li>
-      <li><a href="/manager/channels/bookings?all=1">Bookings (debug)</a></li>
-    </ul>
-
-    <h3>Settings</h3>
-    <ul>
-      <li><a href="/manager/settings/apartments">Apartments</a></li>
-    </ul>
-  `;
-  res.send(renderPage("Manager", html));
-});
 
 app.get("/manager/channels/sync", async (req, res) => {
   try {
@@ -2253,6 +2228,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
