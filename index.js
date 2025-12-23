@@ -932,26 +932,164 @@ app.get("/debug/rooms", async (req, res) => {
 });
 
 // ===================== MANAGER: Menu =====================
-app.get("/manager", (req, res) => {
-  const html = `
-    <h1>Manager</h1>
-    <p class="muted">Quick navigation</p>
+// ===== MANAGER HOME: select apartment =====
+app.get("/manager", async (req, res) => {
+  try {
+    const { rows: apartments } = await pool.query(`
+      SELECT id, apartment_name
+      FROM beds24_rooms
+      ORDER BY apartment_name ASC
+    `);
 
-    <div style="display:flex; gap:10px; flex-wrap:wrap;">
-      <a class="btn-base" href="/manager/settings">Settings</a>
-      <a class="btn-base" href="/manager/settings/apartments">Apartments</a>
+    const options = apartments
+      .map(
+        (a) =>
+          `<option value="${a.id}">${escapeHtml(a.apartment_name || ("Apartment #" + a.id))}</option>`
+      )
+      .join("");
 
-      <a class="btn-base" href="/manager/channels/sync">Sync</a>
-      <a class="btn-base" href="/kings">Bookings</a>
+    const html = `
+      <h1>Manager</h1>
 
-      <a class="btn-base btn-ghost" href="/manager/channels/debug">Debug</a>
-      <a class="btn-base btn-ghost" href="/staff/checkins">Staff</a>
-    </div>
+      <h3>Apartment settings</h3>
+      <form method="GET" action="/manager/apartment">
+        <label>Select apartment:</label><br/>
+        <select name="id" style="min-width:320px; padding:6px;">
+          ${options}
+        </select>
+        <button type="submit" style="padding:6px 10px;">Open</button>
+      </form>
 
-    <hr style="margin:16px 0; opacity:0.2;" />
-    <p class="muted">Tip: add new pages here when you create them.</p>
-  `;
-  return res.send(renderPage("Manager", html));
+      <hr/>
+
+      <h3>Quick links</h3>
+      <ul>
+        <li><a href="/manager/channels/sync">Sync Rooms</a></li>
+        <li><a href="/manager/channels/bookingssync">Sync Bookings</a></li>
+        <li><a href="/staff/arrivals">Staff · Arrivals</a></li>
+        <li><a href="/staff/checkins">Staff · Check-ins</a></li>
+      </ul>
+    `;
+
+    res.send(renderPage("Manager", html));
+  } catch (e) {
+    console.error("❌ /manager error:", e);
+    res.status(500).send("Manager error");
+  }
+});
+
+// ===== EDIT APARTMENT SETTINGS PAGE =====
+app.get("/manager/apartment", async (req, res) => {
+  try {
+    const id = Number(req.query.id);
+    if (!id) return res.status(400).send("Missing id");
+
+    const { rows } = await pool.query(
+      `
+      SELECT
+        id,
+        apartment_name,
+        default_arrival_time,
+        default_departure_time,
+        registration_url,
+        payment_url,
+        keys_instructions_url
+      FROM beds24_rooms
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [id]
+    );
+
+    if (!rows.length) return res.status(404).send("Apartment not found");
+    const a = rows[0];
+
+    const html = `
+      <h1>Apartment Settings</h1>
+      <p><a href="/manager">← Back to Manager</a></p>
+
+      <form method="POST" action="/manager/apartment/save">
+        <input type="hidden" name="id" value="${a.id}" />
+
+        <label>Apartment name</label><br/>
+        <input name="apartment_name" value="${escapeHtml(a.apartment_name || "")}" style="width:100%; max-width:700px;" />
+        <br/><br/>
+
+        <label>Default arrival time</label><br/>
+        <input type="time" name="default_arrival_time" value="${escapeHtml(String(a.default_arrival_time || "").slice(0,5))}" />
+        <br/><br/>
+
+        <label>Default departure time</label><br/>
+        <input type="time" name="default_departure_time" value="${escapeHtml(String(a.default_departure_time || "").slice(0,5))}" />
+        <br/><br/>
+
+        <label>Registration link</label><br/>
+        <input name="registration_url" value="${escapeHtml(a.registration_url || "")}" style="width:100%; max-width:700px;" />
+        <br/><br/>
+
+        <label>Payment link</label><br/>
+        <input name="payment_url" value="${escapeHtml(a.payment_url || "")}" style="width:100%; max-width:700px;" />
+        <br/><br/>
+
+        <label>Keys / Instructions link</label><br/>
+        <input name="keys_instructions_url" value="${escapeHtml(a.keys_instructions_url || "")}" style="width:100%; max-width:700px;" />
+        <br/><br/>
+
+        <button type="submit">Save</button>
+      </form>
+    `;
+
+    res.send(renderPage("Apartment Settings", html));
+  } catch (e) {
+    console.error("❌ /manager/apartment error:", e);
+    res.status(500).send("Error");
+  }
+});
+
+// ===== SAVE APARTMENT SETTINGS =====
+app.post("/manager/apartment/save", async (req, res) => {
+  try {
+    const id = Number(req.body.id);
+    if (!id) return res.status(400).send("Missing id");
+
+    const {
+      apartment_name,
+      default_arrival_time,
+      default_departure_time,
+      registration_url,
+      payment_url,
+      keys_instructions_url,
+    } = req.body;
+
+    await pool.query(
+      `
+      UPDATE beds24_rooms
+      SET
+        apartment_name = $2,
+        default_arrival_time = $3,
+        default_departure_time = $4,
+        registration_url = $5,
+        payment_url = $6,
+        keys_instructions_url = $7,
+        updated_at = NOW()
+      WHERE id = $1
+      `,
+      [
+        id,
+        apartment_name || null,
+        default_arrival_time || null,
+        default_departure_time || null,
+        registration_url || null,
+        payment_url || null,
+        keys_instructions_url || null,
+      ]
+    );
+
+    res.redirect(`/manager/apartment?id=${id}`);
+  } catch (e) {
+    console.error("❌ /manager/apartment/save error:", e);
+    res.status(500).send("DB error");
+  }
 });
 // ===================== Beds24 Webhook (receiver) =====================
 
@@ -2228,6 +2366,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
