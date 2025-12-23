@@ -2044,7 +2044,26 @@ app.get("/manager/settings", async (req, res) => {
 
       <label>Default departure time</label><br/>
       <input type="time" name="default_departure_time" value="${s.default_departure_time.slice(0,5)}" /><br/><br/>
+      <label>Registration link (template)</label><br/>
+<input
+  name="registration_url"
+  value="${escapeHtml(s.registration_url || "")}"
+  style="width:100%"
+/><br/><br/>
 
+<label>Payment link (template)</label><br/>
+<input
+  name="payment_url"
+  value="${escapeHtml(s.payment_url || "")}"
+  style="width:100%"
+/><br/><br/>
+
+<label>Keys / Instructions link (template)</label><br/>
+<input
+  name="keys_instructions_url"
+  value="${escapeHtml(s.keys_instructions_url || "")}"
+  style="width:100%"
+/><br/><br/>
       <button type="submit">Save</button>
     </form>
   `);
@@ -2052,22 +2071,35 @@ app.get("/manager/settings", async (req, res) => {
 // сохранить настройки
 app.post("/manager/settings", async (req, res) => {
   const {
-    brand_name,
-    default_arrival_time,
-    default_departure_time
-  } = req.body;
+  brand_name,
+  default_arrival_time,
+  default_departure_time,
+  registration_url,
+  payment_url,
+  keys_instructions_url
+} = req.body;
 
   await pool.query(
     `
-    UPDATE app_settings
-    SET
-      brand_name = $1,
-      default_arrival_time = $2,
-      default_departure_time = $3,
-      updated_at = now()
-    WHERE id = 1
+  UPDATE app_settings
+SET
+  brand_name = $1,
+  default_arrival_time = $2,
+  default_departure_time = $3,
+  registration_url = $4,
+  payment_url = $5,
+  keys_instructions_url = $6,
+  updated_at = now()
+WHERE id = 1
     `,
-    [brand_name, default_arrival_time, default_departure_time]
+   [
+  brand_name,
+  default_arrival_time,
+  default_departure_time,
+  registration_url,
+  payment_url,
+  keys_instructions_url
+]
   );
 
   res.redirect("/manager/settings");
@@ -2083,6 +2115,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
