@@ -1287,8 +1287,8 @@ app.post("/check-beds24", async (req, res) => { const { apiKey, propKey } = req.
 
   const payload = {
     authentication: {
-      apiKey: 76348624782347346238476487236487twillio,
-      propKey: apartsalouargenta123456789
+      apiKey: "76348624782347346238476487236487twillio",
+      propKey: "apartsalouargenta123456789"
     },
     limit: 1
   };
@@ -2168,6 +2168,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
