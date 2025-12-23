@@ -2004,15 +2004,13 @@ return;
 
 // страница со списком и формой добавления
 app.get("/manager/settings/apartments", async (req, res) => {
-  try {
-     const top = `<p style="margin:0 0 12px;"><a class="btn-link" href="/manager">← Manager</a></p>`;
-    const rows = await pool.query(
-      `
-      SELECT id, beds24_room_id, beds24_prop_key, apartment_name, is_active, created_at, updated_at
-      FROM beds24_rooms
-      ORDER BY apartment_name ASC
-      `
-    );
+  const q = await pool.query(`
+    SELECT id, beds24_room_id, beds24_prop_key, apartment_name, is_active
+    FROM beds24_rooms
+    ORDER BY apartment_name ASC
+  `);
+  return res.json({ count: q.rows.length, first: q.rows[0] });
+});
    
     const listHtml = rows.rows
       .map(
@@ -2145,6 +2143,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
