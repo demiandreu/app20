@@ -269,11 +269,20 @@ function ymd(d) {
   return `${yyyy}-${mm}-${dd}`;
 }
 function calcNights(arrive, depart) {
+  if (!arrive || !depart) return "";
+
   const a = new Date(arrive);
   const d = new Date(depart);
-  if (!arrive || !depart || isNaN(a) || isNaN(d)) return "";
+
+  if (isNaN(a) || isNaN(d)) return "";
+
+  // обнуляем время
+  a.setHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
+
   const ms = d - a;
-  const n = Math.round(ms / 86400000);
+  const n = Math.floor(ms / 86400000);
+
   return n > 0 ? n : "";
 }
 
@@ -2026,6 +2035,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
