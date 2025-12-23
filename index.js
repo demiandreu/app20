@@ -1580,7 +1580,7 @@ app.get("/staff/checkins", async (req, res) => {
                     <td>${mainDate}</td>
 
                     <td>
-                        <td><td>${calcNights(r.arrive_date, r.depart_date)}</td></td>
+                        <td>${calcNights(r.arrive_date, r.depart_date)}</td>
                       <a class="btn-small btn-ghost" href="/guest/${r.apartment_id}/${r.booking_token}" target="_blank">
                         Open
                       </a>
@@ -2018,6 +2018,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
