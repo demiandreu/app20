@@ -1182,11 +1182,7 @@ await pool.query(
 
 // ===================== GUEST ROUTES =====================
 
-    const text = await r.text();
-    res.status(r.status).send(text);
-  } catch (e) {
-    res.status(500).send(String(e));
-  }
+
 });
 // --- Home ---
 app.get("/", (req, res) => {
@@ -2124,6 +2120,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
