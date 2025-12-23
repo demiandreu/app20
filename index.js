@@ -1331,9 +1331,7 @@ app.get("/checkin/:aptId/:token", (req, res) => {
 });
 
 
-  const result = await checkBeds24ApiKey(apiKey, propKey);
-  res.json(result);
-});
+
 
 
 
@@ -2181,6 +2179,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
