@@ -27,23 +27,6 @@ app.get("/manager/channels/debug", (req, res) => {
   `);
 });
     //vremenno
-app.get("/debug/rooms", async (req, res) => {
-  try {
-    const a = await pool.query(`
-      SELECT count(*)::int AS cnt FROM beds24_rooms
-    `);
-    const b = await pool.query(`
-      SELECT id, apartment_name, beds24_room_id,
-             CASE WHEN beds24_prop_key IS NULL THEN 'NULL' ELSE 'SET' END AS prop_key
-      FROM beds24_rooms
-      ORDER BY apartment_name ASC
-      LIMIT 20
-    `);
-    res.json({ count: a.rows[0].cnt, sample: b.rows });
-  } catch (e) {
-    res.status(500).json({ error: String(e.message || e) });
-  }
-});
 // ===================== MANAGER: Sync Bookings =====================
 app.get("/manager/channels/bookingssync", async (req, res) => {
   try {
@@ -610,7 +593,7 @@ function renderPage(title, innerHtml) {
   }
   
   /* подсветка ячейки Apartment */
-td.apartment-cell.red { background: #f0f0f0; }
+td.apartment-cell.red { background: #e9e9e9; }
 td.apartment-cell.green { background: #e7ffe7; }
 
   .clean-btn:focus{ outline:none; }
@@ -979,7 +962,19 @@ app.get("/manager", (req, res) => {
 });
 // ===================== Beds24 Webhook (receiver) =====================
 
-
+app.get("/debug/beds24", async (req, res) => {
+  try {
+    const r = await fetch("https://api.beds24.com/v2/properties", {
+      headers: {
+        token: process.env.BEDS24_API_KEY,
+      },
+    });
+    const data = await r.json();
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
 
 
 app.post("/webhooks/beds24", async (req, res) => {
@@ -1181,8 +1176,19 @@ await pool.query(
 
 
 // ===================== GUEST ROUTES =====================
+app.get("/debug/beds24-v2-test", async (req, res) => {
+  try {
+    const token = String(process.env.BEDS24_API_KEY || "").trim();
 
+    const r = await fetch("https://api.beds24.com/v2/authentication/details", {
+      headers: { token },
+    });
 
+    const text = await r.text();
+    res.status(r.status).send(text);
+  } catch (e) {
+    res.status(500).send(String(e));
+  }
 });
 // --- Home ---
 app.get("/", (req, res) => {
@@ -1274,6 +1280,7 @@ app.get("/checkin/:aptId/:token", (req, res) => {
 // --- Check-in submit -> DB ---
 app.post("/checkin/:aptId/:token", async (req, res) => {
   const { aptId, token } = req.params;
+
 
 
   try {
@@ -2120,12 +2127,6 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
-
-
-
-
-
-
 
 
 
