@@ -962,19 +962,7 @@ app.get("/manager", (req, res) => {
 });
 // ===================== Beds24 Webhook (receiver) =====================
 
-app.get("/debug/beds24", async (req, res) => {
-  try {
-    const r = await fetch("https://api.beds24.com/v2/properties", {
-      headers: {
-        token: process.env.BEDS24_API_KEY,
-      },
-    });
-    const data = await r.json();
-    res.json(data);
-  } catch (e) {
-    res.status(500).json({ error: String(e) });
-  }
-});
+
 
 
 app.post("/webhooks/beds24", async (req, res) => {
@@ -1176,13 +1164,6 @@ await pool.query(
 
 
 // ===================== GUEST ROUTES =====================
-app.get("/debug/beds24-v2-test", async (req, res) => {
-  try {
-    const token = String(process.env.BEDS24_API_KEY || "").trim();
-
-    const r = await fetch("https://api.beds24.com/v2/authentication/details", {
-      headers: { token },
-    });
 
     const text = await r.text();
     res.status(r.status).send(text);
@@ -1281,48 +1262,6 @@ app.get("/checkin/:aptId/:token", (req, res) => {
 app.post("/checkin/:aptId/:token", async (req, res) => {
   const { aptId, token } = req.params;
 
-app.post("/check-beds24", async (req, res) => { const { apiKey, propKey } = req.body; if (!apiKey || !propKey) { return res.status(400).json({ ok: false, message: "apiKey и propKey обязательны" }); } try { const result = await checkBeds24ApiKey(apiKey, propKey); res.json(result); } catch (err) { res.status(500).json({ ok: false, message: "Ошибка сервера", error: err.message }); } });
-   async function checkBeds24ApiKey(apiKey, propKey) {
-  const url = "https://api.beds24.com/json/getBookings";
-
-  const payload = {
-    authentication: {
-      apiKey: "76348624782347346238476487236487twillio",
-      propKey: "apartsalouargenta123456789"
-    },
-    limit: 1
-  };
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await response.json();
-
-    if (data.error) {
-      return {
-        ok: false,
-        message: data.error
-      };
-    }
-
-    return {
-      ok: true,
-      message: "API ключи корректны",
-      data
-    };
-
-  } catch (err) {
-    return {
-      ok: false,
-      message: "Ошибка сети или Beds24 недоступен",
-      error: err.message
-    };
-  }
-}
 
   try {
     // 👉 НОРМАЛИЗАЦИЯ ДАННЫХ (ОБЯЗАТЕЛЬНО)
@@ -2168,6 +2107,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
