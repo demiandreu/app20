@@ -1445,21 +1445,7 @@ app.get("/staff/checkins", async (req, res) => {
       const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
       return { whereSql, params };
     }
-     function lockPlaceholderFromApartment(name) {
-  if (!name) return "";
-
-  const parts = name.trim().split(/\s+/);
-
-  if (parts.length === 1) {
-    // если одно слово — берём первые 4 буквы
-    return parts[0].slice(0, 4).toUpperCase();
-  }
-
-  const first = parts[0].slice(0, 2);
-  const second = parts[1].slice(-2);
-
-  return (first + second).toUpperCase();
-}
+   
 
     // ----------------------------
     // ARRIVALS query (arrival_date)
@@ -1597,8 +1583,6 @@ app.get("/staff/checkins", async (req, res) => {
 
                     <td>${r.booking_token ?? ""}</td>
                     <td>${r.apartment_name ?? ""}</td>
-                    <td>${r.full_name ?? ""}</td>
-                    <td>${r.phone ?? ""}</td>
                     <td>${(r.adults ?? 0)}|${(r.children ?? 0)}</td>
                     <td>${mainDate}</td>
 
@@ -1627,7 +1611,7 @@ app.get("/staff/checkins", async (req, res) => {
                           inputmode="numeric"
                           pattern="\\d{4}"
                           maxlength="4"
-                          placeholder="${lockPlaceholderFromApartment(r.apartment_name)}"
+                          placeholder=""
                         />
                         <button class="btn-base" type="submit">Save</button>
                       </form>
@@ -1664,8 +1648,6 @@ app.get("/staff/checkins", async (req, res) => {
                 <th class="sticky-col">Clean</th>
                 <th>Id</th>
                 <th>Apartment</th>
-                <th>Name</th>
-                <th>Phone</th>
                 <th>A|C</th>
                 <th>${dateColTitle}</th>
                 <th>N</th>
@@ -2050,6 +2032,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
