@@ -2025,85 +2025,222 @@ function maskKey(k) {
 //vremenno3
 //vremenno
 // показать настройки
-app.get("/manager/settings", async (req, res) => {
-  const { rows } = await pool.query(
-    `SELECT * FROM app_settings WHERE id = 1`
-  );
+// ===================== MANAGER: one page for apartments + defaults =====================
 
-  const s = rows[0];
+// helper: safe value
+function safeTime(val) {
+  const s = String(val || "");
+  return s.length >= 5 ? s.slice(0, 5) : "";
+}
 
-  res.send(`
-    <h1>Manager Settings</h1>
+// GET /manager (dropdown + form)
+app.get("/manager", async (req, res) => {
+  try {
+    // 1) global settings (defaults)
+    const sRes = await pool.query(`SELECT * FROM app_settings WHERE id = 1 LIMIT 1`);
+    const s = sRes.rows[0] || {};
 
-    <form method="POST">
-      <label>Brand name</label><br/>
-      <input name="brand_name" value="${s.brand_name}" /><br/><br/>
+    // 2) apartments list
+    const listRes = await pool.query(`
+      SELECT id, apartment_name, beds24_room_id
+      FROM beds24_rooms
+      ORDER BY apartment_name ASC
+    `);
+    const apts = listRes.rows || [];
 
-      <label>Default arrival time</label><br/>
-      <input type="time" name="default_arrival_time" value="${s.default_arrival_time.slice(0,5)}" /><br/><br/>
+    // which apt is selected?
+    const selectedIdRaw = req.query.aptId;
+    const selectedId =
+      selectedIdRaw != null && String(selectedIdRaw).trim() !== ""
+        ? Number(selectedIdRaw)
+        : (apts[0]?.id ?? null);
 
-      <label>Default departure time</label><br/>
-      <input type="time" name="default_departure_time" value="${s.default_departure_time.slice(0,5)}" /><br/><br/>
-      <label>Registration link (template)</label><br/>
-<input
-  name="registration_url"
-  value="${escapeHtml(s.registration_url || "")}"
-  style="width:100%"
-/><br/><br/>
+    // load selected apt
+    let apt = null;
+    if (selectedId) {
+      const aptRes = await pool.query(
+        `
+        SELECT *
+        FROM beds24_rooms
+        WHERE id = $1
+        LIMIT 1
+        `,
+        [selectedId]
+      );
+      apt = aptRes.rows[0] || null;
+    }
 
-<label>Payment link (template)</label><br/>
-<input
-  name="payment_url"
-  value="${escapeHtml(s.payment_url || "")}"
-  style="width:100%"
-/><br/><br/>
+    // dropdown html
+    const optionsHtml = apts
+      .map((r) => {
+        const label = r.apartment_name || `Room ${r.beds24_room_id || r.id}`;
+        const sel = String(r.id) === String(selectedId) ? "selected" : "";
+        return `<option value="${escapeHtml(r.id)}" ${sel}>${escapeHtml(label)}</option>`;
+      })
+      .join("");
 
-<label>Keys / Instructions link (template)</label><br/>
-<input
-  name="keys_instructions_url"
-  value="${escapeHtml(s.keys_instructions_url || "")}"
-  style="width:100%"
-/><br/><br/>
-      <button type="submit">Save</button>
-    </form>
-  `);
+    // current values (apt overrides or empty)
+    const aptName = apt?.apartment_name ?? "";
+    const aptArrive = safeTime(apt?.default_arrival_time);
+    const aptDepart = safeTime(apt?.default_departure_time);
+
+    const regUrl = apt?.registration_url ?? "";
+    const payUrl = apt?.payment_url ?? "";
+    const keysUrl = apt?.keys_instructions_url ?? "";
+
+    // global defaults (shown for reference)
+    const brand = s.brand_name ?? "";
+    const defArr = safeTime(s.default_arrival_time) || "17:00";
+    const defDep = safeTime(s.default_departure_time) || "11:00";
+
+    res.send(`
+      <h1>Manager</h1>
+
+      <div style="margin-bottom:16px; padding:12px; border:1px solid #ddd;">
+        <b>Global defaults</b> (если в апартаменте пусто — можно использовать эти)<br/><br/>
+        <form method="POST" action="/manager/defaults/save">
+          <label>Brand name</label><br/>
+          <input name="brand_name" value="${escapeHtml(brand)}" style="width:320px" /><br/><br/>
+
+          <label>Default arrival time</label><br/>
+          <input type="time" name="default_arrival_time" value="${escapeHtml(defArr)}" /><br/><br/>
+
+          <label>Default departure time</label><br/>
+          <input type="time" name="default_departure_time" value="${escapeHtml(defDep)}" /><br/><br/>
+
+          <button type="submit">Save defaults</button>
+        </form>
+      </div>
+
+      <div style="margin-bottom:16px; padding:12px; border:1px solid #ddd;">
+        <b>Apartment settings</b><br/><br/>
+
+        <form method="GET" action="/manager">
+          <label>Select apartment</label><br/>
+          <select name="aptId" onchange="this.form.submit()" style="width:360px">
+            ${optionsHtml}
+          </select>
+        </form>
+
+        <hr style="margin:16px 0;" />
+
+        ${
+          !apt
+            ? `<div>Нет апартаментов в базе (beds24_rooms пустая).</div>`
+            : `
+          <form method="POST" action="/manager/apartment/save">
+            <input type="hidden" name="id" value="${escapeHtml(apt.id)}" />
+
+            <label>Apartment name</label><br/>
+            <input name="apartment_name" value="${escapeHtml(aptName)}" style="width:360px" /><br/><br/>
+
+            <label>Arrival time (optional)</label><br/>
+            <input type="time" name="default_arrival_time" value="${escapeHtml(aptArrive)}" />
+            <small style="margin-left:8px;">(если пусто — будет ${escapeHtml(defArr)})</small>
+            <br/><br/>
+
+            <label>Departure time (optional)</label><br/>
+            <input type="time" name="default_departure_time" value="${escapeHtml(aptDepart)}" />
+            <small style="margin-left:8px;">(если пусто — будет ${escapeHtml(defDep)})</small>
+            <br/><br/>
+
+            <label>Registration link</label><br/>
+            <input name="registration_url" value="${escapeHtml(regUrl)}" style="width:100%" />
+            <br/><small>Можно хранить готовую ссылку под этот апарт.</small><br/><br/>
+
+            <label>Payment link (template)</label><br/>
+            <input name="payment_url" value="${escapeHtml(payUrl)}" style="width:100%" />
+            <br/><small>Шаблон. Например: https://pay.site/checkout?booking={{BOOKING}}</small><br/><br/>
+
+            <label>Keys / Instructions link</label><br/>
+            <input name="keys_instructions_url" value="${escapeHtml(keysUrl)}" style="width:100%" />
+            <br/><small>Ссылка на инструкции/ключи (пока можно пусто).</small><br/><br/>
+
+            <button type="submit">Save apartment</button>
+          </form>
+        `
+        }
+      </div>
+    `);
+  } catch (err) {
+    console.error("❌ /manager error:", err);
+    res.status(500).send("Manager error");
+  }
 });
-// сохранить настройки
-app.post("/manager/settings", async (req, res) => {
-  const {
-  brand_name,
-  default_arrival_time,
-  default_departure_time,
-  registration_url,
-  payment_url,
-  keys_instructions_url
-} = req.body;
 
-  await pool.query(
-    `
-  UPDATE app_settings
-SET
-  brand_name = $1,
-  default_arrival_time = $2,
-  default_departure_time = $3,
-  registration_url = $4,
-  payment_url = $5,
-  keys_instructions_url = $6,
-  updated_at = now()
-WHERE id = 1
-    `,
-   [
-  brand_name,
-  default_arrival_time,
-  default_departure_time,
-  registration_url,
-  payment_url,
-  keys_instructions_url
-]
-  );
+// save global defaults
+app.post("/manager/defaults/save", async (req, res) => {
+  try {
+    const { brand_name, default_arrival_time, default_departure_time } = req.body;
 
-  res.redirect("/manager/settings");
+    await pool.query(
+      `
+      UPDATE app_settings
+      SET
+        brand_name = $1,
+        default_arrival_time = $2,
+        default_departure_time = $3,
+        updated_at = now()
+      WHERE id = 1
+      `,
+      [brand_name, default_arrival_time, default_departure_time]
+    );
+
+    res.redirect("/manager");
+  } catch (err) {
+    console.error("❌ /manager/defaults/save error:", err);
+    res.status(500).send("Save defaults error");
+  }
 });
+
+// save apartment settings
+app.post("/manager/apartment/save", async (req, res) => {
+  try {
+    const id = Number(req.body.id);
+
+    const {
+      apartment_name,
+      default_arrival_time,
+      default_departure_time,
+      registration_url,
+      payment_url,
+      keys_instructions_url,
+    } = req.body;
+
+    await pool.query(
+      `
+      UPDATE beds24_rooms
+      SET
+        apartment_name = $2,
+        default_arrival_time = $3,
+        default_departure_time = $4,
+        registration_url = $5,
+        payment_url = $6,
+        keys_instructions_url = $7,
+        updated_at = now()
+      WHERE id = $1
+      `,
+      [
+        id,
+        apartment_name,
+        default_arrival_time,
+        default_departure_time,
+        registration_url,
+        payment_url,
+        keys_instructions_url,
+      ]
+    );
+
+    res.redirect(`/manager?aptId=${encodeURIComponent(String(id))}`);
+  } catch (err) {
+    console.error("❌ /manager/apartment/save error:", err);
+    res.status(500).send("Save apartment error");
+  }
+});
+
+// optional: keep old URL working
+app.get("/manager/settings", (req, res) => res.redirect("/manager"));
+app.post("/manager/settings", (req, res) => res.redirect("/manager"));
 
 // ===================== START =====================
 (async () => {
@@ -2115,6 +2252,7 @@ WHERE id = 1
     process.exit(1);
   }
 })();
+
 
 
 
