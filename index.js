@@ -40,8 +40,8 @@ app.use(express.json());
 
       // TODO: upsert в checkins (сделаем отдельным шагом)
       // totalUpserted += ...
-    
- {
+    )
+
     const rowsHtml = perApt
       .map(
         (x) =>
@@ -2039,6 +2039,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
