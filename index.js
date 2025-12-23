@@ -966,7 +966,6 @@ app.get("/manager", async (req, res) => {
       <ul>
         <li><a href="/manager/channels/sync">Sync Rooms</a></li>
         <li><a href="/manager/channels/bookingssync">Sync Bookings</a></li>
-        <li><a href="/staff/arrivals">Staff · Arrivals</a></li>
         <li><a href="/staff/checkins">Staff · Check-ins</a></li>
       </ul>
     `;
@@ -2366,6 +2365,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
