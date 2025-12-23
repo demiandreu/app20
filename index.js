@@ -962,6 +962,20 @@ app.get("/manager", (req, res) => {
 });
 // ===================== Beds24 Webhook (receiver) =====================
 
+app.get("/debug/beds24", async (req, res) => {
+  try {
+    const r = await fetch("https://api.beds24.com/v2/properties", {
+      headers: {
+        token: process.env.BEDS24_API_KEY,
+      },
+    });
+    const data = await r.json();
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
 
 app.post("/webhooks/beds24", async (req, res) => {
   try {
@@ -2100,6 +2114,7 @@ app.post("/manager/settings", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
