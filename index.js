@@ -111,9 +111,6 @@ app.get("/manager/apartment/sections", async (req, res) => {
               ${rowsHtml || `<tr><td colspan="3" class="muted" style="padding:10px;">No sections yet.</td></tr>`}
             </tbody>
           </table>
-<p style="margin-top:10px;">
-  <a class="btn-link" href="/manager/apartment/sections?id=${a.id}">🪗 Manage guest accordion sections</a>
-</p>
           <div style="margin-top:12px;">
             <button type="submit" name="save" value="1">Save all</button>
           </div>
@@ -1414,6 +1411,9 @@ app.get("/manager/apartment", async (req, res) => {
 
         <button type="submit">Save</button>
       </form>
+      <p style="margin-top:10px;">
+  <a class="btn-link" href="/manager/apartment/sections?id=${a.id}">🪗 Manage guest accordion sections</a>
+</p>
     `;
 
     res.send(renderPage("Apartment Settings", html));
