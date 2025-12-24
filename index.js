@@ -1201,7 +1201,7 @@ app.get("/manager/apartment", async (req, res) => {
 app.post("/manager/apartment", async (req, res) => {
   const {
     id,
-    apartment_name
+    apartment_name,
      support_phone,
     default_arrival_time,
     default_departure_time,
@@ -2549,6 +2549,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
