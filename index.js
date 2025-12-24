@@ -422,6 +422,10 @@ START_${bookingId}`
       }
 
       const r = bookingResult.rows[0];
+
+              console.log("🧩 roomKey:", roomKey);
+console.log("🧩 room from DB:", room);
+console.log("🧩 support_phone raw:", room.support_phone);
        // привязать телефон к найденной записи
 const upd = await pool.query(
   `UPDATE checkins
@@ -441,9 +445,7 @@ console.log("📌 phone bind result:", {
       // settings
       const room = await getRoomSettings(r.apartment_id);
 
-       console.log("🧩 roomKey:", roomKey);
-console.log("🧩 room from DB:", room);
-console.log("🧩 support_phone raw:", room.support_phone);
+
 
       // links
       const regTpl = String(room.registration_url || "");
@@ -2556,6 +2558,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
