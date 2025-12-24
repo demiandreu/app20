@@ -1123,6 +1123,7 @@ app.get("/manager/apartment", async (req, res) => {
       SELECT
         id,
         apartment_name,
+        support_phone,
         default_arrival_time,
         default_departure_time,
         registration_url,
@@ -1151,7 +1152,7 @@ app.get("/manager/apartment", async (req, res) => {
                     <label>Support WhatsApp (human)</label><br/>
 <input
   name="support_phone"
-  value="${escapeHtml(apt?.support_phone || "")}"
+  value="${escapeHtml(a?.support_phone || "")}"
   placeholder="+34 600 123 456"
   style="width:320px"
 />
@@ -1226,45 +1227,38 @@ app.post("/manager/apartment", async (req, res) => {
 app.post("/manager/apartment/save", async (req, res) => {
   try {
     const id = Number(req.body.id);
-    if (!id) return res.status(400).send("Missing id");
 
-    const {
-      apartment_name,
-      default_arrival_time,
-      default_departure_time,
-      registration_url,
-      payment_url,
-      keys_instructions_url,
-    } = req.body;
+    const supportPhone = String(req.body.support_phone || "").trim();
 
     await pool.query(
       `
       UPDATE beds24_rooms
       SET
         apartment_name = $2,
-        default_arrival_time = $3,
-        default_departure_time = $4,
-        registration_url = $5,
-        payment_url = $6,
-        keys_instructions_url = $7,
-        updated_at = NOW()
+        support_phone = $3,
+        default_arrival_time = NULLIF($4,''),
+        default_departure_time = NULLIF($5,''),
+        registration_url = $6,
+        payment_url = $7,
+        keys_instructions_url = $8
       WHERE id = $1
       `,
       [
         id,
-        apartment_name || null,
-        default_arrival_time || null,
-        default_departure_time || null,
-        registration_url || null,
-        payment_url || null,
-        keys_instructions_url || null,
+        req.body.apartment_name || "",
+        supportPhone,
+        String(req.body.default_arrival_time || ""),
+        String(req.body.default_departure_time || ""),
+        req.body.registration_url || "",
+        req.body.payment_url || "",
+        req.body.keys_instructions_url || "",
       ]
     );
 
-    res.redirect(`/manager/apartment?id=${id}`);
+    return res.redirect(`/manager/apartment?id=${id}`);
   } catch (e) {
     console.error("❌ /manager/apartment/save error:", e);
-    res.status(500).send("DB error");
+    return res.status(500).send("Error");
   }
 });
 // ===================== Beds24 Webhook (receiver) =====================
@@ -2542,6 +2536,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
