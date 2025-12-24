@@ -273,7 +273,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
 
     console.log("📩 Twilio WhatsApp inbound:", { from, body });
 
-    // ✅ helper: получить последнюю бронь по телефону (для REG_OK / PAGO_OK / LISTO)
+    // ✅ helper: получить последнюю бронь по телефону (для REGOK / PAYOK / LISTO)
     const getLastCheckinByPhone = async () => {
       const q = await pool.query(
         `
@@ -327,8 +327,8 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
     const applyTpl = (tpl, bookId) =>
       String(tpl || "").replace(/\[BOOKID\]/g, String(bookId || ""));
 
-    // ----------------- REG_OK -----------------
-    if (textUpper === "REG_OK") {
+    // ----------------- REGOK -----------------
+    if (textUpper === "REGOK") {
       const last = await getLastCheckinByPhone();
       if (!last) {
         await sendWhatsApp(from, "No encuentro tu reserva. Envía primero: START_XXXX");
@@ -345,12 +345,12 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
         [last.id]
       );
 
-      await sendWhatsApp(from, "✅ Registro confirmado.\nAhora realiza el pago y luego escribe: PAGO_OK");
+      await sendWhatsApp(from, "✅ Registro confirmado.\nAhora realiza el pago y luego escribe: PAYOK");
       return res.status(200).send("OK");
     }
 
-    // ----------------- PAGO_OK -----------------
-    if (textUpper === "PAGO_OK") {
+    // ----------------- PAYOK -----------------
+    if (textUpper === "PAYOK") {
       const last = await getLastCheckinByPhone();
       if (!last) {
         await sendWhatsApp(from, "No encuentro tu reserva. Envía primero: START_XXXX");
@@ -486,17 +486,17 @@ Para enviarte las instrucciones de acceso y el código de la caja de llaves, nec
 
 1️⃣ Registro de huéspedes:
 ${regLink || "—"}
-Después escribe: REG_OK
+Después escribe: REGOK
 
 2️⃣ Pago (tasa turística + depósito):
 ${payLink || "—"}
-Después escribe: PAGO_OK
+Después escribe: PAYOK
 
 3️⃣ Llaves:
 ${showKeys ? (keysLink || "—") : "🔒 Se mostrarán después de completar REGISTRO y PAGO"}
 
 👨‍💬 Soporte humano:
-${room.support_phone || "—"}
+https://wa.me/${room.support_phone || "—"}
 
 Cuando lo tengas listo, escribe: LISTO`
       );
@@ -519,8 +519,8 @@ Cuando lo tengas listo, escribe: LISTO`
           from,
           `Casi listo 🙂 
 Antes necesito:
-1) Registro (después escribe REG_OK)
-2) Pago (después escribe PAGO_OK)`
+1) Registro (después escribe REGOK)
+2) Pago (después escribe PAYOK)`
         );
         return res.status(200).send("OK");
       }
@@ -2539,6 +2539,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
