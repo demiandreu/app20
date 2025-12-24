@@ -320,44 +320,36 @@ START_${bookingId}`
   const r = bookingResult.rows[0];
 
    // --- load apartment settings from beds24_rooms (NOT apartments) ---
-const roomSettingsRes = await pool.query(
+const roomRes = await pool.query(
   `
   SELECT
-    id,
-    room_id,
-    apartment_name,
-    default_arrival_time,
-    default_departure_time,
     registration_url,
     payment_url,
     keys_instructions_url
   FROM beds24_rooms
-  WHERE room_id = $1
+  WHERE beds24_room_id = $1
      OR id::text = $1
   LIMIT 1
   `,
-  [String(r.apartment_id || "")]
+  [String(r.beds24_room_id || r.apartment_id)]
 );
 
-const room = roomSettingsRes.rows[0] || {};
+const room = roomRes.rows[0] || {};
 
-// templates (what you put in Manager -> Apartment Settings)
-const regTpl  = room.registration_url || "";
-const payTpl  = room.payment_url || "";
-const keysTpl = room.keys_instructions_url || "";
+const regTpl  = String(room.registration_url || "");
+const payTpl  = String(room.payment_url || "");
+const keysTpl = String(room.keys_instructions_url || "");
 
-// pick BOOKID for Beds24 payment link
 const bookIdForPayment =
   String(r.beds24_booking_id || r.booking_id_from_start || r.booking_token || "");
 
-// helper: replace [BOOKID] in template
 const applyTpl = (tpl) =>
-  String(tpl || "").replace(/\[BOOKID\]/g, bookIdForPayment);
+  String(tpl).replace(/\[BOOKID\]/g, bookIdForPayment);
 
-// final links
 const regLink  = applyTpl(regTpl);
 const payLink  = applyTpl(payTpl);
 const keysLink = applyTpl(keysTpl);
+
 
    // 1) берём ссылки квартиры из таблицы apartments (где ты их сохраняешь со страницы Manager)
 const aptRes = await pool.query(
@@ -372,6 +364,7 @@ const aptSettings = aptRes.rows[0] || {};
 const regTpl  = String(aptSettings.registration_url || "");
 const payTpl  = String(aptSettings.payment_url || "");
 const keysTpl = String(aptSettings.keys_instructions_url || "");
+
 
 // 2) какой BOOKID подставлять
 // для Beds24 правильнее использовать beds24_booking_id, если он есть
@@ -395,17 +388,14 @@ await sendWhatsApp(
   from,
   `Hola, ${name}
 Tu reserva está confirmada ✅
-Apartamento: ${apt}
-Entrada: ${arrive}
-Salida: ${depart}
 
-1) Registro de huéspedes:
+1) Registro:
 ${regLink || "—"}
 
 2) Pago:
 ${payLink || "—"}
 
-3) Instrucciones / llaves:
+3) Llaves:
 ${keysLink || "—"}
 
 Cuando lo tengas listo, responde aquí: LISTO`
@@ -2633,6 +2623,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
