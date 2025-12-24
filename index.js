@@ -261,8 +261,105 @@ function calcNights(arrive, depart) {
   return n > 0 ? n : "";
 }
 
-// ===================== TWILIO WHATSAPP INBOUND (START_<id> + LISTO) =====================
 app.post("/webhooks/twilio/whatsapp", async (req, res) => {
+  try {
+    const from = String(req.body.From || ""); // "whatsapp:+34..."
+    const body = String(req.body.Body || "").trim();
+    console.log("📩 Twilio WhatsApp inbound:", { from, body });
+
+    const phone = from.replace("whatsapp:", "").trim(); // "+34..."
+    const textUpper = body.toUpperCase();
+
+    // ----------------- 1) START_<ID> -----------------
+    if (textUpper.startsWith("START_")) {
+      const bookingId = textUpper.replace("START_", "").trim();
+
+      const bookingResult = await pool.query(
+        `
+        SELECT
+          apartment_id,
+          apartment_name,
+          booking_token,
+          full_name,
+          arrival_date,
+          arrival_time,
+          departure_date,
+          departure_time,
+          adults,
+          children
+        FROM checkins
+        WHERE booking_token = $1
+        ORDER BY id DESC
+        LIMIT 1
+        `,
+        [bookingId]
+      );
+
+      if (!bookingResult.rows.length) {
+        await sendWhatsApp(
+          from,
+          `Gracias 🙂
+Aún no encuentro tu reserva en el sistema.
+Si acabas de reservar, espera unos minutos y vuelve a enviar:
+START_${bookingId}`
+        );
+        return res.status(200).send("OK");
+      }
+
+      const r = bookingResult.rows[0];
+
+      // ... (твой код формирования текста START_ оставь как есть) ...
+
+      return res.status(200).send("OK");
+    }
+
+    // ----------------- 2) LISTO -----------------
+    if (textUpper === "LISTO") {
+      const result = await pool.query(
+        `
+        SELECT apartment_id, booking_token
+        FROM checkins
+        WHERE phone = $1
+        ORDER BY id DESC
+        LIMIT 1
+        `,
+        [phone]
+      );
+
+      if (!result.rows.length) {
+        await sendWhatsApp(
+          from,
+          `Gracias 🙂
+Aún no encuentro tu reserva en el sistema.
+Si acabas de reservar, espera unos minutos y vuelve a escribir LISTO.`
+        );
+        return res.status(200).send("OK");
+      }
+
+      const { apartment_id, booking_token } = result.rows[0];
+      const base = (process.env.PUBLIC_BASE_URL || "").replace(/\/$/, "");
+      const link = `${base}/guest/${encodeURIComponent(apartment_id)}/${encodeURIComponent(booking_token)}`;
+
+      await sendWhatsApp(
+        from,
+        `Perfecto ✅
+Aquí tienes tu portal con la información del apartamento:
+${link}
+ℹ️ El código de acceso aparecerá el día de llegada cuando el anfitrión lo active.`
+      );
+
+      return res.status(200).send("OK");
+    }
+
+    // ----------------- 3) default -----------------
+    return res.status(200).send("OK");
+  } catch (err) {
+    console.error("❌ WhatsApp inbound error:", err);
+    return res.status(200).send("OK");
+  }
+});
+// ===================== TWILIO WHATSAPP INBOUND (START_<id> + LISTO) =====================
+/* app.post("/webhooks/twilio/whatsapp", async (req, res) => {
   try {
     const from = String(req.body.From || ""); // "whatsapp:+34..."
     const body = String(req.body.Body || "").trim();
@@ -447,7 +544,7 @@ ${link}
     console.error("❌ WhatsApp inbound error:", err);
     return res.status(200).send("OK");
   }
-});
+}); */
 
 // ===================== TWILIO CLIENT =====================
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
@@ -2428,6 +2525,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
