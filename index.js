@@ -305,23 +305,30 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
 
     // ✅ helper: получить ссылки/дефолты из beds24_rooms по apartment_id
     const getRoomSettings = async (apartmentId) => {
-      const roomRes = await pool.query(
-        `
-        SELECT
-          registration_url,
-          payment_url,
-          keys_instructions_url,
-          default_arrival_time,
-          default_departure_time
-        FROM beds24_rooms
-        WHERE beds24_room_id = $1
-           OR id::text = $1
-        LIMIT 1
-        `,
-        [String(apartmentId || "")]
-      );
-      return roomRes.rows[0] || {};
-    };
+
+const roomKey = String(r.beds24_room_id || r.apartment_id || "");
+
+const roomRes = await pool.query(
+  `
+  SELECT
+    registration_url,
+    payment_url,
+    keys_instructions_url,
+    default_arrival_time,
+    default_departure_time,
+    support_phone
+  FROM beds24_rooms
+  WHERE beds24_room_id::text = $1
+     OR id::text = $1
+  LIMIT 1
+  `,
+  [roomKey]
+);
+
+const room = roomRes.rows[0] || {};
+
+       const supportPhoneRaw = String(room.support_phone || "");
+const supportPhoneClean = supportPhoneRaw.replace(/\D/g, ""); // убираем + пробелы и т.д.
 
     // ✅ helper: подстановка [BOOKID]
     const applyTpl = (tpl, bookId) =>
@@ -434,6 +441,10 @@ console.log("📌 phone bind result:", {
       // settings
       const room = await getRoomSettings(r.apartment_id);
 
+       console.log("🧩 roomKey:", roomKey);
+console.log("🧩 room from DB:", room);
+console.log("🧩 support_phone raw:", room.support_phone);
+
       // links
       const regTpl = String(room.registration_url || "");
       const payTpl = String(room.payment_url || "");
@@ -501,7 +512,7 @@ Después escribe: PAYOK
 3️⃣ Llaves:
 ${showKeys ? (keysLink || "—") : "🔒 Se mostrarán después de completar REGISTRO y PAGO"}
 
-👨‍💬  Soporte humano:
+😇 Soporte humano:
 ${supportLink}
 
 Cuando lo tengas listo, escribe: LISTO`
@@ -2545,6 +2556,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
