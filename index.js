@@ -376,7 +376,7 @@ const supportPhoneClean = supportPhoneRaw.replace(/\D/g, ""); // убираем 
 
       await sendWhatsApp(from, "✅ Pago confirmado.\nCuando tengas todo listo, escribe: LISTO");
       return res.status(200).send("OK");
-    }   );
+    } 
 
        app.post("/twilio", async (req, res) => {
   try {
@@ -386,7 +386,11 @@ const supportPhoneClean = supportPhoneRaw.replace(/\D/g, ""); // убираем 
 
     const text = String(req.body.Body || "").trim();
     const textUpper = text.toUpperCase();
+
+     
    // ----------------- START_XXXX -----------------
+
+     
     if (textUpper.startsWith("START_")) {
       const bookingId = textUpper.replace("START_", "").trim();
       console.log("🟢 START bookingId:", bookingId);
@@ -559,23 +563,24 @@ Antes necesito:
 
       const keysLink = applyTpl(keysTpl, bookIdForPayment);
 
-      await sendWhatsApp(
-        from,
-        `✅ Perfecto 🙌  
+await sendWhatsApp(
+  from,
+  `✅ Perfecto 🙌
 Aquí tienes el enlace con toda la información del apartamento:
-📘 instrucciones de llegada  
-📶 Wi-Fi  
-❄️ aire acondicionado  
-🚗 parking (si aplica)  
+📘 instrucciones de llegada
+📶 Wi-Fi
+❄️ aire acondicionado
+🚗 parking (si aplica)
 y otros detalles importantes para tu estancia.
 
-🔐 Código de la caja de llaves  
+🔐 Código de la caja de llaves
 El código se mostrará automáticamente en este mismo enlace el día de llegada,
 ✅ siempre que el registro de huéspedes y el pago estén completados correctamente.
 
 Guarda este enlace, lo necesitarás durante tu estancia 😊
+
 ${keysLink || "—"}`
-      );
+);
 
       return res.status(200).send("OK");
     }
@@ -2568,6 +2573,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
