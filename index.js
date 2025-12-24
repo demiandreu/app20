@@ -265,6 +265,58 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
   console.log("🔥 TWILIO HIT", req.body);
 
   try {
+     // 2.1) REG_OK
+// ----------------- REG_OK (registration done) -----------------
+if (textUpper === "REG_OK") {
+  await pool.query(
+    `
+    UPDATE checkins
+    SET reg_done = true,
+        reg_done_at = NOW()
+    WHERE id = (
+      SELECT id
+      FROM checkins
+      WHERE phone = $1
+      ORDER BY id DESC
+      LIMIT 1
+    )
+    `,
+    [phone]
+  );
+
+  await sendWhatsApp(
+    from,
+    "✅ Registro confirmado.\nAhora realiza el pago y luego escribe: PAGO_OK"
+  );
+
+  return res.status(200).send("OK");
+}
+
+// ----------------- PAGO_OK (payment done) -----------------
+if (textUpper === "PAGO_OK") {
+  await pool.query(
+    `
+    UPDATE checkins
+    SET pay_done = true,
+        pay_done_at = NOW()
+    WHERE id = (
+      SELECT id
+      FROM checkins
+      WHERE phone = $1
+      ORDER BY id DESC
+      LIMIT 1
+    )
+    `,
+    [phone]
+  );
+
+  await sendWhatsApp(
+    from,
+    "✅ Pago confirmado.\nCuando tengas todo listo, escribe: LISTO"
+  );
+
+  return res.status(200).send("OK");
+}
     const from = String(req.body.From || ""); // "whatsapp:+34..."
     const body = String(req.body.Body || "").trim();
     console.log("📩 Twilio WhatsApp inbound:", { from, body });
@@ -274,6 +326,28 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
 
  // ----------------- 1) START_<ID> -----------------
 if (textUpper.startsWith("START_")) {
+   const showKeys = r.reg_done && r.pay_done;
+
+await sendWhatsApp(
+  from,
+  `Hola, ${name}
+Tu reserva está confirmada ✅
+
+1) Registro:
+${regLink || "—"}
+
+2) Pago:
+${payLink || "—"}
+
+3) Llaves:
+${showKeys ? (keysLink || "—") : "🔒 Se mostrará después de completar REGISTRO y PAGO"}
+
+Cuando lo tengas listo:
+- после регистрации: escribe REG_OK
+- после оплаты: escribe PAGO_OK
+- потом: LISTO`
+);
+
   const bookingId = textUpper.replace("START_", "").trim();
   console.log("🟢 START bookingId:", bookingId);
 
@@ -375,41 +449,48 @@ Cuando lo tengas listo, responde aquí: LISTO`
   return res.status(200).send("OK");
 }
     // ----------------- 2) LISTO -----------------
-    if (textUpper === "LISTO") {
-      const result = await pool.query(
-        `
-        SELECT apartment_id, booking_token
-        FROM checkins
-        WHERE phone = $1
-        ORDER BY id DESC
-        LIMIT 1
-        `,
-        [phone]
-      );
 
-      if (!result.rows.length) {
-        await sendWhatsApp(
-          from,
-          `Gracias 🙂
-Aún no encuentro tu reserva en el sistema.
-Si acabas de reservar, espera unos minutos y vuelve a escribir LISTO.`
-        );
-        return res.status(200).send("OK");
-      }
+     // ----------------- 3) LISTO -----------------
+if (textUpper === "LISTO") {
 
-      const { apartment_id, booking_token } = result.rows[0];
-      const base = (process.env.PUBLIC_BASE_URL || "").replace(/\/$/, "");
-      const link = `${base}/guest/${encodeURIComponent(apartment_id)}/${encodeURIComponent(booking_token)}`;
+  // 1️⃣ Проверяем, сделаны ли регистрация и оплата
+  const chk = await pool.query(
+    `
+    SELECT reg_done, pay_done
+    FROM checkins
+    WHERE phone = $1
+    ORDER BY id DESC
+    LIMIT 1
+    `,
+    [phone]
+  );
 
-      await sendWhatsApp(
-        from,
-        `Perfecto ✅
-Aquí tienes tu portal con la información del apartamento:
-${link}`
-      );
+  const { reg_done, pay_done } = chk.rows[0] || {
+    reg_done: false,
+    pay_done: false,
+  };
 
-      return res.status(200).send("OK");
-    }
+  // 2️⃣ Если чего-то не хватает — НЕ показываем ключи
+  if (!reg_done || !pay_done) {
+    await sendWhatsApp(
+      from,
+      `Casi listo 🙂 
+Antes necesito:
+1) Registro (después escribe REG_OK)
+2) Pago (después escribe PAGO_OK)`
+    );
+    return res.status(200).send("OK");
+  }
+
+  // 3️⃣ Если всё готово — показываем ключи
+  await sendWhatsApp(
+    from,
+    `✅ Perfecto. Aquí tienes las llaves:
+${keysLink}`
+  );
+
+  return res.status(200).send("OK");
+}
 
     // ----------------- 3) default -----------------
     return res.status(200).send("OK");
@@ -419,193 +500,6 @@ ${link}`
   }
 });
 
-// ===================== TWILIO WHATSAPP INBOUND (START_<id> + LISTO) =====================
-/* app.post("/webhooks/twilio/whatsapp", async (req, res) => {
-  try {
-    const from = String(req.body.From || ""); // "whatsapp:+34..."
-    const body = String(req.body.Body || "").trim();
-
-    console.log("📩 Twilio WhatsApp inbound:", { from, body });
-
-    const phone = from.replace("whatsapp:", "").trim(); // "+34..."
-    const textUpper = body.toUpperCase();
-
-    // ----------------- 1) START_<ID> -----------------
-    if (textUpper.startsWith("START_")) {
-   const bookingIdFromStart = textUpper.replace("START_", "").trim();
-      const bookingResult = await pool.query(
-        `
-        SELECT
-          apartment_id,
-          apartment_name,
-          booking_token,
-          full_name,
-          arrival_date,
-          arrival_time,
-          departure_date,
-          departure_time,
-          adults,
-          children
-        FROM checkins
-        WHERE booking_token = $1
-        ORDER BY id DESC
-        LIMIT 1
-        `,
-        [bookingId]
-      );
-
-      if (!bookingResult.rows.length) {
-        await sendWhatsApp(
-          from,
-          `Gracias 😊  
-Aún no encuentro tu reserva en el sistema.
-
-Si acabas de reservar, espera unos minutos y vuelve a enviar:
-START_${bookingId}`
-        );
-        return res.status(200).send("OK");
-      }
-
-      const r = bookingResult.rows[0];
-       // ===== links (registration / payment / keys) =====
-const bookingId = String(r.booking_token || bookingIdFromStart || "").trim();
-
-// 1) registration link
-const regTemplate = String(r.registration_url || "").trim();
-const regLink = regTemplate
-  ? regTemplate.replace("[BOOKID]", bookingId)
-  : "";
-
-// 2) payment link (Beds24)
-const payTemplate = String(r.payment_url || "").trim(); // e.g. https://beds24.com/bookpay.php?bookid=[BOOKID]&g=st
-const payLink = payTemplate
-  ? payTemplate.replace("[BOOKID]", bookingId)
-  : "";
-
-// 3) keys/instructions link (optional now)
-const keysTemplate = String(r.keys_instructions_url || "").trim();
-const keysLink = keysTemplate
-  ? keysTemplate.replace("[BOOKID]", bookingId)
-  : "";
-       
-
-    // ---- data from DB (checkins table) ----
-const adults = r.adults ?? 0;
-const children = r.children ?? 0;
-
-const arrivalDate = r.arrival_date;
-const arrivalTime = r.arrival_time;
-const departureDate = r.departure_date;
-const departureTime = r.departure_time;
-
-console.log("👥 Guests from DB:", { adults, children });
-
-      
-//vremenno
-
-      let guestsLine = "";
-      if (adults || children) {
-        const parts = [];
-        if (adults) parts.push(`${adults} adulto${adults === 1 ? "" : "s"}`);
-        if (children) parts.push(`${children} niño${children === 1 ? "" : "s"}`);
-        guestsLine = `Huéspedes: ${parts.join(", ")}\n`;
-      }
-
-      // Manager defaults (times)
-      const settingsResult = await pool.query(
-        `SELECT default_arrival_time, default_departure_time FROM app_settings WHERE id = 1 LIMIT 1`
-      );
-
-      const settings = settingsResult.rows[0] || {
-        default_arrival_time: "15:00",
-        default_departure_time: "11:00",
-      };
-
-      const arrivalTimeFinal = r.arrival_time || settings.default_arrival_time;
-      const departureTimeFinal = r.departure_time || settings.default_departure_time;
-
-      const name = r.full_name || "Hola";
-      const apt = r.apartment_name || r.apartment_id || "";
-
-      const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(arrivalTimeFinal).slice(0, 5)}`;
-      const depart = `${String(r.departure_date).slice(0, 10)} ${String(departureTimeFinal).slice(0, 5)}`;
-
-      const lines = [
-  `Hola, ${name} 👋`,
-  `Tu reserva está confirmada ✅`,
-  `Apartamento: ${apt}`,
-  `Entrada: ${arrive}`,
-  `Salida: ${depart}`,
-];
-
-if (guestsLine) lines.push(guestsLine.trim());
-
-lines.push(`Para enviarte las instrucciones de acceso y el código de la caja de llaves, primero necesito 2 pasos:`);
-
-if (regLink) lines.push(`1) Registro de huéspedes:\n${regLink}`);
-else lines.push(`1) Registro de huéspedes`);
-
-if (payLink) lines.push(`2) Pago (tasa turística + depósito, según la plataforma):\n${payLink}`);
-else lines.push(`2) Pago (tasa turística + depósito, según la plataforma)`);
-
-// keys link пока не показываем (или показываем позже, когда активируешь)
-// if (keysLink) lines.push(`ℹ️ Instrucciones / llaves:\n${keysLink}`);
-
-lines.push(`Cuando lo tengas listo, responde aquí: LISTO`);
-lines.push(`Si tienes preguntas, escribe aquí y te ayudaremos.`);
-
-await sendWhatsApp(from, lines.join("\n\n"));
-
-    // ----------------- 2) LISTO -----------------
-    if (textUpper === "LISTO") {
-      const result = await pool.query(
-        `
-        SELECT apartment_id, booking_token
-        FROM checkins
-        WHERE phone = $1
-        ORDER BY id DESC
-        LIMIT 1
-        `,
-        [phone]
-      );
-
-      if (!result.rows.length) {
-        await sendWhatsApp(
-          from,
-          `Gracias 😊  
-Aún no encuentro tu reserva en el sistema.
-Si acabas de reservar, espera unos minutos y vuelve a escribir LISTO.`
-        );
-        return res.status(200).send("OK");
-      }
-
-      const { apartment_id, booking_token } = result.rows[0];
-
-      const base = (process.env.PUBLIC_BASE_URL || "").replace(/\/$/, "");
-      const link = `${base}/guest/${encodeURIComponent(apartment_id)}/${encodeURIComponent(booking_token)}`;
-
-      await sendWhatsApp(
-        from,
-        `Perfecto ✅
-
-Aquí tienes tu portal con la información del apartamento:
-${link}
-
-ℹ️ El código de acceso aparecerá el día de llegada cuando el anfitrión lo active.`
-      );
-
-      return res.status(200).send("OK");
-    }
-
-    // ----------------- 3) default -----------------
-    return res.status(200).send("OK");
-  try {
-     
-  } catch (err) {
-    console.error("❌ WhatsApp inbound error:", err);
-    return res.status(200).send("OK");
-  }
-}); */
 
 function applyTemplate(tpl, vars) {
   const s = String(tpl || "");
@@ -2594,6 +2488,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
