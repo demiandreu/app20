@@ -495,7 +495,7 @@ Para enviarte las instrucciones de acceso y el código de la caja de llaves, nec
 ${regLink || "—"}
 Después escribe: REGOK
 
-2️⃣ Pago (tasa turística + depósito):
+2️⃣ Pago (tasa turística + depósito segun la plataforma):
 ${payLink || "—"}
 Después escribe: PAYOK
 
@@ -2546,6 +2546,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
