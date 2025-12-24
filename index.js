@@ -531,7 +531,20 @@ Antes necesito:
       );
       const keysLink = applyTpl(keysTpl, bookIdForPayment);
 
-      await sendWhatsApp(from, `✅ Perfecto. Aquí tienes las llaves:\n${keysLink || "—"}`);
+      await sendWhatsApp(from, `✅ Perfecto 🙌
+
+Aquí tienes el enlace con toda la información del apartamento:
+📘 instrucciones de llegada
+📶 Wi-Fi
+❄️ aire acondicionado
+🚗 parking (si aplica)
+y otros detalles importantes para tu estancia.
+
+🔐 Código de la caja de llaves  
+El código se mostrará automáticamente en este mismo enlace el día de llegada,
+✅ siempre que el registro de huéspedes y el pago estén completados correctamente.
+
+Guarda este enlace, lo necesitarás durante tu estancia 😊 \n${keysLink || "—"}`);
       return res.status(200).send("OK");
     }
 
@@ -2522,6 +2535,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
