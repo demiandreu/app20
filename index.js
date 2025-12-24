@@ -312,7 +312,8 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
           payment_url,
           keys_instructions_url,
           default_arrival_time,
-          default_departure_time
+          default_departure_time,
+          support_phone
         FROM beds24_rooms
         WHERE beds24_room_id = $1
            OR id::text = $1
@@ -2545,6 +2546,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
