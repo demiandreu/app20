@@ -320,18 +320,16 @@ START_${bookingId}`
   const r = bookingResult.rows[0];
 
    // --- load apartment settings from beds24_rooms (NOT apartments) ---
-const roomRes = await pool.query(
+
+   const roomRes = await pool.query(
   `
-  SELECT
-    registration_url,
-    payment_url,
-    keys_instructions_url
+  SELECT registration_url, payment_url, keys_instructions_url
   FROM beds24_rooms
   WHERE beds24_room_id = $1
      OR id::text = $1
   LIMIT 1
   `,
-  [String(r.beds24_room_id || r.apartment_id)]
+  [String(r.beds24_room_id || r.apartment_id || "")]
 );
 
 const room = roomRes.rows[0] || {};
@@ -344,7 +342,7 @@ const bookIdForPayment =
   String(r.beds24_booking_id || r.booking_id_from_start || r.booking_token || "");
 
 const applyTpl = (tpl) =>
-  String(tpl).replace(/\[BOOKID\]/g, bookIdForPayment);
+  String(tpl || "").replace(/\[BOOKID\]/g, bookIdForPayment);
 
 const regLink  = applyTpl(regTpl);
 const payLink  = applyTpl(payTpl);
@@ -2360,7 +2358,7 @@ app.get("/manager", async (req, res) => {
     // load selected apt
     let apt = null;
     if (selectedId) {
-      const aptRes = await pool.query(
+       = await pool.query(
         `
         SELECT *
         FROM beds24_rooms
@@ -2596,6 +2594,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
