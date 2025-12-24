@@ -1867,6 +1867,27 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 
     const r = rows[0];
 
+     const secRes = await pool.query(
+  `
+  SELECT title, body
+  FROM apartment_sections
+  WHERE apartment_id = $1 AND is_active = true
+  ORDER BY sort_order ASC, id ASC
+  `,
+  [aptId]
+);
+
+const accordionHtml = secRes.rows.map((s, idx) => `
+  <details style="border:1px solid #e5e7eb; border-radius:14px; padding:10px 12px; background:#fff; margin-top:10px;">
+    <summary style="cursor:pointer; font-weight:700;">
+      ${escapeHtml(s.title || `Section ${idx + 1}`)}
+    </summary>
+    <div style="margin-top:10px; white-space:pre-wrap; line-height:1.45;">
+      ${escapeHtml(s.body || "")}
+    </div>
+  </details>
+`).join("");
+
     // ✅ apartment name (fallback to aptId if empty)
     const aptName = String(r.apartment_name || "").trim() || String(aptId);
 
@@ -1920,6 +1941,7 @@ app.get("/guest/:aptId/:token", async (req, res) => {
       </div>
 
       ${codeBlock}
+      ${accordionHtml}
 
       <p style="margin-top:16px;">
         <a class="btn-link" href="/">← Back</a>
@@ -2775,6 +2797,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
