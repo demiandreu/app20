@@ -572,10 +572,11 @@ Guarda este enlace, lo necesitarás durante tu estancia 😊 \n${keysLink || "�
 
     // ----------------- default -----------------
     return res.status(200).send("OK");
-  catch (err) {
-    console.error("❌ WhatsApp inbound error:", err);
-    return res.status(200).send("OK");
-  }
+
+} catch (err) {
+  console.error("❌ WhatsApp inbound error:", err);
+  return res.status(200).send("OK");
+}
 });
 
 // ===================== TWILIO CLIENT =====================
@@ -2558,6 +2559,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
