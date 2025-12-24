@@ -378,6 +378,14 @@ const supportPhoneClean = supportPhoneRaw.replace(/\D/g, ""); // убираем 
       return res.status(200).send("OK");
     }
 
+       app.post("/twilio", async (req, res) => {
+  try {
+    const fromRaw = String(req.body.From || "");              // "whatsapp:+346..."
+    const from = fromRaw;                                     // Twilio expects replies to this
+    const phone = fromRaw.replace("whatsapp:", "").trim();    // "+346..."
+
+    const text = String(req.body.Body || "").trim();
+    const textUpper = text.toUpperCase();
    // ----------------- START_XXXX -----------------
     if (textUpper.startsWith("START_")) {
       const bookingId = textUpper.replace("START_", "").trim();
@@ -2560,6 +2568,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
