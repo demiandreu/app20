@@ -262,7 +262,8 @@ function calcNights(arrive, depart) {
 }
 
 app.post("/webhooks/twilio/whatsapp", async (req, res) => {
-   console.log("🔥 TWILIO HIT", req.body);
+  console.log("🔥 TWILIO HIT", req.body);
+
   try {
     const from = String(req.body.From || ""); // "whatsapp:+34..."
     const body = String(req.body.Body || "").trim();
@@ -274,6 +275,9 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
     // ----------------- 1) START_<ID> -----------------
     if (textUpper.startsWith("START_")) {
       const bookingId = textUpper.replace("START_", "").trim();
+
+      // ✅ Логи (чтобы понять, что происходит)
+      console.log("🟦 START bookingId:", bookingId);
 
       const bookingResult = await pool.query(
         `
@@ -296,6 +300,11 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
         [bookingId]
       );
 
+      console.log("🟦 DB rows found:", bookingResult.rows.length);
+      if (bookingResult.rows.length) {
+        console.log("🟦 DB row:", bookingResult.rows[0]);
+      }
+
       if (!bookingResult.rows.length) {
         await sendWhatsApp(
           from,
@@ -309,7 +318,24 @@ START_${bookingId}`
 
       const r = bookingResult.rows[0];
 
-      // ... (твой код формирования текста START_ оставь как есть) ...
+      // ✅ Тут твой старый текст ответа START_ (ВАЖНО: он должен быть!)
+      // Я оставляю пример — можешь заменить на свой, но с sendWhatsApp:
+      const name = r.full_name || "Hola";
+      const apt = r.apartment_name || r.apartment_id || "";
+      const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time || "").slice(0, 5)}`;
+      const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time || "").slice(0, 5)}`;
+
+      console.log("🟦 Sending confirmation to:", from);
+      await sendWhatsApp(
+        from,
+        `Hola, ${name}
+Tu reserva está confirmada ✅
+Apartamento: ${apt}
+Entrada: ${arrive}
+Salida: ${depart}
+
+Cuando lo tengas listo, responde aquí: LISTO`
+      );
 
       return res.status(200).send("OK");
     }
@@ -345,8 +371,7 @@ Si acabas de reservar, espera unos minutos y vuelve a escribir LISTO.`
         from,
         `Perfecto ✅
 Aquí tienes tu portal con la información del apartamento:
-${link}
-ℹ️ El código de acceso aparecerá el día de llegada cuando el anfitrión lo active.`
+${link}`
       );
 
       return res.status(200).send("OK");
@@ -359,6 +384,7 @@ ${link}
     return res.status(200).send("OK");
   }
 });
+
 // ===================== TWILIO WHATSAPP INBOUND (START_<id> + LISTO) =====================
 /* app.post("/webhooks/twilio/whatsapp", async (req, res) => {
   try {
@@ -2526,6 +2552,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
