@@ -321,7 +321,7 @@ START_${bookingId}`
 
    // --- load apartment settings from beds24_rooms (NOT apartments) ---
 
-   const roomRes = await pool.query(
+/*   const roomRes = await pool.query(
   `
   SELECT registration_url, payment_url, keys_instructions_url
   FROM beds24_rooms
@@ -346,7 +346,7 @@ const applyTpl = (tpl) =>
 
 const regLink  = applyTpl(regTpl);
 const payLink  = applyTpl(payTpl);
-const keysLink = applyTpl(keysTpl);
+const keysLink = applyTpl(keysTpl); */
 
 
   // тут формируешь текст + ссылки
@@ -2594,6 +2594,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
