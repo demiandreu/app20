@@ -378,7 +378,7 @@ const supportPhoneClean = supportPhoneRaw.replace(/\D/g, ""); // убираем 
       return res.status(200).send("OK");
     }
 
-    // ----------------- START_<ID> -----------------
+   // ----------------- START_XXXX -----------------
     if (textUpper.startsWith("START_")) {
       const bookingId = textUpper.replace("START_", "").trim();
       console.log("🟢 START bookingId:", bookingId);
@@ -386,6 +386,7 @@ const supportPhoneClean = supportPhoneRaw.replace(/\D/g, ""); // убираем 
       const bookingResult = await pool.query(
         `
         SELECT
+          id,                       -- ✅ ДОБАВИЛИ
           apartment_id,
           apartment_name,
           booking_token,
@@ -413,9 +414,9 @@ const supportPhoneClean = supportPhoneRaw.replace(/\D/g, ""); // убираем 
       if (!bookingResult.rows.length) {
         await sendWhatsApp(
           from,
-          `Gracias 🙂
-No encuentro tu reserva todavía.
-Si acabas de reservar, espera un momento y vuelve a enviar:
+          `Gracias 🙂  
+No encuentro tu reserva todavía.  
+Si acabas de reservar, espera un momento y vuelve a enviar:  
 START_${bookingId}`
         );
         return res.status(200).send("OK");
@@ -423,40 +424,39 @@ START_${bookingId}`
 
       const r = bookingResult.rows[0];
 
-              console.log("🧩 roomKey:", roomKey);
-console.log("🧩 room from DB:", room);
-console.log("🧩 support_phone raw:", room.support_phone);
-       // привязать телефон к найденной записи
-const upd = await pool.query(
-  `UPDATE checkins
-   SET phone = $1
-   WHERE id = $2
-   RETURNING id, phone`,
-  [phone, r.id]
-);
+      // ✅ привязать телефон к найденной записи
+      const upd = await pool.query(
+        `
+        UPDATE checkins
+        SET phone = $1
+        WHERE id = $2
+        RETURNING id, phone
+        `,
+        [phone, r.id]
+      );
 
-console.log("📌 phone bind result:", {
-  bookingRowId: r.id,
-  phone,
-  rowCount: upd.rowCount,
-  returned: upd.rows[0],
-});
+      console.log("📌 phone bind result:", {
+        bookingRowId: r.id,
+        phone,
+        rowCount: upd.rowCount,
+        returned: upd.rows[0],
+      });
 
       // settings
       const room = await getRoomSettings(r.apartment_id);
 
-
+      console.log("🧩 room from DB:", room);
+      console.log("🧩 support_phone raw:", room?.support_phone);
 
       // links
-      const regTpl = String(room.registration_url || "");
-      const payTpl = String(room.payment_url || "");
-      const keysTpl = String(room.keys_instructions_url || "");
+      const regTpl = String(room?.registration_url || "");
+      const payTpl = String(room?.payment_url || "");
+      const keysTpl = String(room?.keys_instructions_url || "");
 
-       const supportPhoneRaw = room.support_phone || "";
-const supportPhoneClean = supportPhoneRaw.replace(/\D/g, "");
-const supportLink = supportPhoneClean
-  ? `https://wa.me/${supportPhoneClean}`
-  : "—";
+      // support wa.me link
+      const supportPhoneRaw = String(room?.support_phone || "");
+      const supportPhoneClean = supportPhoneRaw.replace(/\D/g, ""); // оставляем только цифры
+      const supportLink = supportPhoneClean ? `https://wa.me/${supportPhoneClean}` : "—";
 
       const bookIdForPayment = String(
         r.beds24_booking_id || r.booking_id_from_start || r.booking_token || ""
@@ -475,17 +475,16 @@ const supportLink = supportPhoneClean
 
       const arriveTime =
         (r.arrival_time ? String(r.arrival_time).slice(0, 5) : "") ||
-        String(room.default_arrival_time || "").slice(0, 5) ||
+        String(room?.default_arrival_time || "").slice(0, 5) ||
         "17:00";
 
       const departTime =
         (r.departure_time ? String(r.departure_time).slice(0, 5) : "") ||
-        String(room.default_departure_time || "").slice(0, 5) ||
+        String(room?.default_departure_time || "").slice(0, 5) ||
         "11:00";
 
       const adults = Number(r.adults || 0);
       const children = Number(r.children || 0);
-
       const guestsText =
         adults || children ? `${adults} adultos${children ? `, ${children} niños` : ""}` : "—";
 
@@ -494,12 +493,12 @@ const supportLink = supportPhoneClean
 
       await sendWhatsApp(
         from,
-        `Hola, ${name} 👋
-Tu reserva está confirmada ✅
-🏠 Apartamento: ${apt}
-📅 Entrada: ${arriveDate} ${arriveTime}
-📅 Salida: ${departDate} ${departTime}
-👥 Huéspedes: ${guestsText}
+        `Hola, ${name} 👋  
+Tu reserva está confirmada ✅  
+🏠 Apartamento: ${apt}  
+📅 Entrada: ${arriveDate} ${arriveTime}  
+📅 Salida: ${departDate} ${departTime}  
+👥 Huéspedes: ${guestsText}  
 
 Para enviarte las instrucciones de acceso y el código de la caja de llaves, necesito 2 pasos:
 
@@ -525,18 +524,17 @@ Cuando lo tengas listo, escribe: LISTO`
 
     // ----------------- LISTO -----------------
     if (textUpper === "LISTO") {
-      const last = await getLastCheckinByPhone();
+      const last = await getLastCheckinByPhone(phone); // ✅ обязательно передаём phone
 
       if (!last) {
         await sendWhatsApp(from, "No encuentro tu reserva. Envía primero: START_XXXX");
         return res.status(200).send("OK");
       }
 
-      // если не выполнены шаги — просим их сделать
       if (!last.reg_done || !last.pay_done) {
         await sendWhatsApp(
           from,
-          `Casi listo 🙂 
+          `Casi listo 🙂  
 Antes necesito:
 1) Registro (después escribe REGOK)
 2) Pago (después escribe PAYOK)`
@@ -544,39 +542,42 @@ Antes necesito:
         return res.status(200).send("OK");
       }
 
-      // ✅ оба шага выполнены → отправляем ключи
       const room = await getRoomSettings(last.apartment_id);
+      const keysTpl = String(room?.keys_instructions_url || "");
 
-      const keysTpl = String(room.keys_instructions_url || "");
       const bookIdForPayment = String(
         last.beds24_booking_id || last.booking_id_from_start || last.booking_token || ""
       );
+
       const keysLink = applyTpl(keysTpl, bookIdForPayment);
 
-      await sendWhatsApp(from, `✅ Perfecto 🙌
-
+      await sendWhatsApp(
+        from,
+        `✅ Perfecto 🙌  
 Aquí tienes el enlace con toda la información del apartamento:
-📘 instrucciones de llegada
-📶 Wi-Fi
-❄️ aire acondicionado
-🚗 parking (si aplica)
+📘 instrucciones de llegada  
+📶 Wi-Fi  
+❄️ aire acondicionado  
+🚗 parking (si aplica)  
 y otros detalles importantes para tu estancia.
 
 🔐 Código de la caja de llaves  
 El código se mostrará automáticamente en este mismo enlace el día de llegada,
 ✅ siempre que el registro de huéspedes y el pago estén completados correctamente.
 
-Guarda este enlace, lo necesitarás durante tu estancia 😊 \n${keysLink || "—"}`);
+Guarda este enlace, lo necesitarás durante tu estancia 😊
+${keysLink || "—"}`
+      );
+
       return res.status(200).send("OK");
     }
 
     // ----------------- default -----------------
     return res.status(200).send("OK");
-
-} catch (err) {
-  console.error("❌ WhatsApp inbound error:", err);
-  return res.status(200).send("OK");
-}
+  } catch (err) {
+    console.error("❌ WhatsApp inbound error:", err);
+    return res.status(200).send("OK");
+  }
 });
 
 // ===================== TWILIO CLIENT =====================
@@ -2559,6 +2560,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
