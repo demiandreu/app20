@@ -2212,8 +2212,10 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 // ===================== GUEST DASHBOARD =====================
 // Guest opens: /guest/:aptId/:token
 // We show last submitted record for this booking token.
+
 app.get("/guest/:aptId/:token", async (req, res) => {
   const { aptId, token } = req.params;
+
   try {
     const { rows } = await pool.query(
       `
@@ -2243,59 +2245,46 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 
     const r = rows[0];
 
-     const secRes = await pool.query(
-  `
-  SELECT title, body, media_type, media_url
-  FROM apartment_sections
-  WHERE apartment_id = $1 AND is_active = true
-  ORDER BY sort_order ASC, id ASC
-  `,
-  [aptId]
-);
+    // ✅ 1) Подгружаем секции-гармошки (с медиа)
+    const secRes = await pool.query(
+      `
+      SELECT title, body, media_type, media_url
+      FROM apartment_sections
+      WHERE apartment_id = $1 AND is_active = true
+      ORDER BY sort_order ASC, id ASC
+      `,
+      [aptId]
+    );
 
-const accordionHtml = secRes.rows
-  .map((s, idx) => {
-    let mediaHtml = "";
-    if (s.media_type === "image" && s.media_url) {
-      mediaHtml = `<div style="margin-top:10px;"><img src="${escapeHtml(s.media_url)}" style="max-width:100%; border-radius:14px; border:1px solid #eee;" /></div>`;
-    } else if (s.media_type === "video" && s.media_url) {
-      mediaHtml = `<div style="margin-top:10px;"><a target="_blank" href="${escapeHtml(s.media_url)}">🎥 Open video</a></div>`;
-    }
+    // ✅ 2) Собираем HTML гармошки (один раз)
+    const accordionHtml = secRes.rows
+      .map((s, idx) => {
+        let mediaHtml = "";
 
-    return `
-      <details style="border:1px solid #e5e7eb; border-radius:14px; padding:10px 12px; background:#fff; margin-top:10px;">
-        <summary style="cursor:pointer; font-weight:700;">
-          ${escapeHtml(s.title || `Section ${idx + 1}`)}
-        </summary>
-        <div style="margin-top:10px; white-space:pre-wrap; line-height:1.45;">
-          ${escapeHtml(s.body || "")}
-        </div>
-        ${mediaHtml}
-      </details>
-    `;
-  })
-  .join("");
+        if (s.media_type === "image" && s.media_url) {
+          mediaHtml = `<div style="margin-top:10px;">
+            <img src="${escapeHtml(s.media_url)}"
+                 style="max-width:100%; border-radius:14px; border:1px solid #eee;" />
+          </div>`;
+        } else if (s.media_type === "video" && s.media_url) {
+          mediaHtml = `<div style="margin-top:10px;">
+            <a target="_blank" rel="noopener noreferrer" href="${escapeHtml(s.media_url)}">🎥 Open video</a>
+          </div>`;
+        }
 
-     const secRes = await pool.query(
-  `
-  SELECT title, body
-  FROM apartment_sections
-  WHERE apartment_id = $1 AND is_active = true
-  ORDER BY sort_order ASC, id ASC
-  `,
-  [aptId]
-);
-   
-const accordionHtml = secRes.rows.map((s, idx) => `
-  <details style="border:1px solid #e5e7eb; border-radius:14px; padding:10px 12px; background:#fff; margin-top:10px;">
-    <summary style="cursor:pointer; font-weight:700;">
-      ${escapeHtml(s.title || `Section ${idx + 1}`)}
-    </summary>
-    <div style="margin-top:10px; white-space:pre-wrap; line-height:1.45;">
-      ${escapeHtml(s.body || "")}
-    </div>
-  </details>
-`).join("");
+        return `
+          <details style="border:1px solid #e5e7eb; border-radius:14px; padding:10px 12px; background:#fff; margin-top:10px;">
+            <summary style="cursor:pointer; font-weight:700;">
+              ${escapeHtml(s.title || `Section ${idx + 1}`)}
+            </summary>
+            <div style="margin-top:10px; white-space:pre-wrap; line-height:1.45;">
+              ${escapeHtml(s.body || "")}
+            </div>
+            ${mediaHtml}
+          </details>
+        `;
+      })
+      .join("");
 
     // ✅ apartment name (fallback to aptId if empty)
     const aptName = String(r.apartment_name || "").trim() || String(aptId);
@@ -2303,7 +2292,6 @@ const accordionHtml = secRes.rows.map((s, idx) => `
     // ✅ guests line
     const adults = Number(r.adults ?? 0);
     const children = Number(r.children ?? 0);
-
     let guestsLine = "—";
     if (adults || children) {
       const parts = [];
@@ -2312,21 +2300,16 @@ const accordionHtml = secRes.rows.map((s, idx) => `
       guestsLine = parts.join(", ");
     }
 
-    // Spain date for "today"
-    const todayES = ymdInTz(new Date(), "Europe/Madrid");
-
-    const arrivalYmd = String(r.arrival_date).slice(0, 10);
     const canShowCode = Boolean(r.lock_visible) && r.lock_code;
-
-    const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time).slice(0, 5)}`;
-    const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time).slice(0, 5)}`;
+    const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time || "").slice(0, 5)}`;
+    const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time || "").slice(0, 5)}`;
 
     const codeBlock = canShowCode
       ? `
         <div style="margin-top:14px; padding:14px; border:1px solid #bbf7d0; background:#f0fdf4; border-radius:14px;">
           <h2 style="margin:0 0 6px; font-size:16px;">Key box code</h2>
           <p class="muted" style="margin-bottom:10px;">Keep it private.</p>
-          <div style="font-size:28px; font-weight:900; letter-spacing:0.18em;">${String(r.lock_code)}</div>
+          <div style="font-size:28px; font-weight:900; letter-spacing:0.18em;">${escapeHtml(String(r.lock_code))}</div>
         </div>
       `
       : `
@@ -2340,32 +2323,30 @@ const accordionHtml = secRes.rows.map((s, idx) => `
 
     const html = `
       <h1>Guest Dashboard</h1>
-      <p class="muted">Booking: <strong>${token}</strong> • Apartment: <strong>${aptName}</strong></p>
+      <p class="muted">Booking: <strong>${escapeHtml(String(token))}</strong> • Apartment: <strong>${escapeHtml(String(aptName))}</strong></p>
 
       <div style="margin-top:12px; padding:14px; border:1px solid #e5e7eb; background:#fff; border-radius:14px;">
         <h2 style="margin:0 0 10px; font-size:16px;">Your stay</h2>
-        <p style="margin:0 0 6px;"><strong>Arrival:</strong> ${arrive}</p>
-        <p style="margin:0 0 6px;"><strong>Departure:</strong> ${depart}</p>
-        <p style="margin:0;"><strong>Guests:</strong> ${guestsLine}</p>
+        <p style="margin:0 0 6px;"><strong>Arrival:</strong> ${escapeHtml(arrive)}</p>
+        <p style="margin:0 0 6px;"><strong>Departure:</strong> ${escapeHtml(depart)}</p>
+        <p style="margin:0;"><strong>Guests:</strong> ${escapeHtml(guestsLine)}</p>
       </div>
 
       ${codeBlock}
-      ${accordionHtml}
+
+      <div style="margin-top:14px;">
+        ${accordionHtml}
+      </div>
 
       <p style="margin-top:16px;">
         <a class="btn-link" href="/">← Back</a>
       </p>
     `;
-     
-${codeBlock}
-<div style="margin-top:14px;">
-  ${accordionHtml}
-</div>
-     
-    res.send(renderPage("Guest Dashboard", html));
+
+    return res.send(renderPage("Guest Dashboard", html));
   } catch (e) {
     console.error("Guest dashboard error:", e);
-    res.status(500).send("❌ Cannot load guest dashboard");
+    return res.status(500).send("❌ Cannot load guest dashboard");
   }
 });
 
@@ -3211,6 +3192,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
