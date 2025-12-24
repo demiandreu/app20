@@ -1613,15 +1613,15 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 // We show last submitted record for this booking token.
 app.get("/guest/:aptId/:token", async (req, res) => {
   const { aptId, token } = req.params;
-
   try {
     const { rows } = await pool.query(
       `
       SELECT
-        id, apartment_id, booking_token,
+        id, apartment_id, apartment_name, booking_token,
         full_name, email, phone,
         arrival_date, arrival_time,
         departure_date, departure_time,
+        adults, children,
         lock_code, lock_visible
       FROM checkins
       WHERE apartment_id = $1 AND booking_token = $2
@@ -1640,26 +1640,26 @@ app.get("/guest/:aptId/:token", async (req, res) => {
       return res.send(renderPage("Guest Dashboard", html));
     }
 
-  const r = rows[0];
+    const r = rows[0];
 
+    // ✅ apartment name (fallback to aptId if empty)
+    const aptName = String(r.apartment_name || "").trim() || String(aptId);
+
+    // ✅ guests line
     const adults = Number(r.adults ?? 0);
-const children = Number(r.children ?? 0);
+    const children = Number(r.children ?? 0);
 
-let guestsLine = "";
-if (adults || children) {
-  const parts = [];
-  if (adults) parts.push(`${adults} adulto${adults === 1 ? "" : "s"}`);
-  if (children) parts.push(`${children} niño${children === 1 ? "" : "s"}`);
-  guestsLine = `Huéspedes: ${parts.join(", ")}\n`;
-}
-
+    let guestsLine = "—";
+    if (adults || children) {
+      const parts = [];
+      if (adults) parts.push(`${adults} adulto${adults === 1 ? "" : "s"}`);
+      if (children) parts.push(`${children} niño${children === 1 ? "" : "s"}`);
+      guestsLine = parts.join(", ");
+    }
 
     // Spain date for "today"
     const todayES = ymdInTz(new Date(), "Europe/Madrid");
 
-    // show code only when:
-    // 1) admin enabled lock_visible
-    // 2) today >= arrival_date (NOTE: comment only; current behavior checks only visible+code)
     const arrivalYmd = String(r.arrival_date).slice(0, 10);
     const canShowCode = Boolean(r.lock_visible) && r.lock_code;
 
@@ -1685,12 +1685,13 @@ if (adults || children) {
 
     const html = `
       <h1>Guest Dashboard</h1>
-      <p class="muted">Booking: <strong>${token}</strong> • Apartment: <strong>${aptId}</strong></p>
+      <p class="muted">Booking: <strong>${token}</strong> • Apartment: <strong>${aptName}</strong></p>
 
       <div style="margin-top:12px; padding:14px; border:1px solid #e5e7eb; background:#fff; border-radius:14px;">
         <h2 style="margin:0 0 10px; font-size:16px;">Your stay</h2>
         <p style="margin:0 0 6px;"><strong>Arrival:</strong> ${arrive}</p>
-        <p style="margin:0;"><strong>Departure:</strong> ${depart}</p>
+        <p style="margin:0 0 6px;"><strong>Departure:</strong> ${depart}</p>
+        <p style="margin:0;"><strong>Guests:</strong> ${guestsLine}</p>
       </div>
 
       ${codeBlock}
