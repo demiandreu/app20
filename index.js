@@ -273,32 +273,49 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
     const textUpper = body.toUpperCase();
 
     // ----------------- 1) START_<ID> -----------------
-    if (textUpper.startsWith("START_")) {
-      const bookingId = textUpper.replace("START_", "").trim();
+if (textUpper.startsWith("START_")) {
+  const bookingId = textUpper.replace("START_", "").trim();
 
-      // ✅ Логи (чтобы понять, что происходит)
-      console.log("🟦 START bookingId:", bookingId);
+  console.log("🟢 START bookingId:", bookingId);
 
-      const bookingResult = await pool.query(
-        `
-        SELECT
-          apartment_id,
-          apartment_name,
-          booking_token,
-          full_name,
-          arrival_date,
-          arrival_time,
-          departure_date,
-          departure_time,
-          adults,
-          children
-        FROM checkins
-        WHERE booking_token = $1
-        ORDER BY id DESC
-        LIMIT 1
-        `,
-        [bookingId]
-      );
+  const bookingResult = await pool.query(
+    `
+    SELECT
+      apartment_id,
+      apartment_name,
+      booking_token,
+      full_name,
+      arrival_date,
+      arrival_time,
+      departure_date,
+      departure_time,
+      adults,
+      children,
+      beds24_booking_id
+    FROM checkins
+    WHERE booking_token = $1
+       OR booking_id_from_start = $1
+       OR beds24_booking_id::text = $1
+    ORDER BY id DESC
+    LIMIT 1
+    `,
+    [bookingId]
+  );
+
+  if (!bookingResult.rows.length) {
+    await sendWhatsApp(
+      from,
+      `Gracias 🙂
+No encuentro tu reserva todavía.
+Si acabas de reservar, espera un momento y vuelve a enviar:
+START_${bookingId}`
+    );
+    return res.status(200).send("OK");
+  }
+
+  // дальше твой код формирования сообщения + ссылки
+}
+
 
       console.log("🟦 DB rows found:", bookingResult.rows.length);
       if (bookingResult.rows.length) {
@@ -572,6 +589,14 @@ ${link}
     return res.status(200).send("OK");
   }
 }); */
+
+function applyTemplate(tpl, vars) {
+  const s = String(tpl || "");
+  return s.replace(/\{\{\s*([A-Z0-9_]+)\s*\}\}/g, (_, k) => {
+    const v = vars[k];
+    return v === undefined || v === null ? "" : String(v);
+  });
+}
 
 // ===================== TWILIO CLIENT =====================
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
@@ -2552,6 +2577,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
