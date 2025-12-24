@@ -272,10 +272,9 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
     const phone = from.replace("whatsapp:", "").trim(); // "+34..."
     const textUpper = body.toUpperCase();
 
-    // ----------------- 1) START_<ID> -----------------
+ // ----------------- 1) START_<ID> -----------------
 if (textUpper.startsWith("START_")) {
   const bookingId = textUpper.replace("START_", "").trim();
-
   console.log("🟢 START bookingId:", bookingId);
 
   const bookingResult = await pool.query(
@@ -302,6 +301,11 @@ if (textUpper.startsWith("START_")) {
     [bookingId]
   );
 
+  console.log("🟦 DB rows found:", bookingResult.rows.length);
+  if (bookingResult.rows.length) {
+    console.log("🟦 DB row:", bookingResult.rows[0]);
+  }
+
   if (!bookingResult.rows.length) {
     await sendWhatsApp(
       from,
@@ -313,50 +317,27 @@ START_${bookingId}`
     return res.status(200).send("OK");
   }
 
-  // дальше твой код формирования сообщения + ссылки
-}
+  const r = bookingResult.rows[0];
 
+  // тут формируешь текст + ссылки
+  const name = r.full_name || "";
+  const apt = r.apartment_name || r.apartment_id || "";
+  const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time || "").slice(0, 5)}`;
+  const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time || "").slice(0, 5)}`;
 
-      console.log("🟦 DB rows found:", bookingResult.rows.length);
-      if (bookingResult.rows.length) {
-        console.log("🟦 DB row:", bookingResult.rows[0]);
-      }
-
-      if (!bookingResult.rows.length) {
-        await sendWhatsApp(
-          from,
-          `Gracias 🙂
-Aún no encuentro tu reserva en el sistema.
-Si acabas de reservar, espera unos minutos y vuelve a enviar:
-START_${bookingId}`
-        );
-        return res.status(200).send("OK");
-      }
-
-      const r = bookingResult.rows[0];
-
-      // ✅ Тут твой старый текст ответа START_ (ВАЖНО: он должен быть!)
-      // Я оставляю пример — можешь заменить на свой, но с sendWhatsApp:
-      const name = r.full_name || "Hola";
-      const apt = r.apartment_name || r.apartment_id || "";
-      const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time || "").slice(0, 5)}`;
-      const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time || "").slice(0, 5)}`;
-
-      console.log("🟦 Sending confirmation to:", from);
-      await sendWhatsApp(
-        from,
-        `Hola, ${name}
+  await sendWhatsApp(
+    from,
+    `Hola, ${name}
 Tu reserva está confirmada ✅
 Apartamento: ${apt}
 Entrada: ${arrive}
 Salida: ${depart}
 
 Cuando lo tengas listo, responde aquí: LISTO`
-      );
+  );
 
-      return res.status(200).send("OK");
-    }
-
+  return res.status(200).send("OK");
+}
     // ----------------- 2) LISTO -----------------
     if (textUpper === "LISTO") {
       const result = await pool.query(
@@ -2577,6 +2558,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
