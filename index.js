@@ -376,7 +376,7 @@ const supportPhoneClean = supportPhoneRaw.replace(/\D/g, ""); // убираем 
 
       await sendWhatsApp(from, "✅ Pago confirmado.\nCuando tengas todo listo, escribe: LISTO");
       return res.status(200).send("OK");
-    }
+    }   );
 
        app.post("/twilio", async (req, res) => {
   try {
@@ -2568,6 +2568,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
