@@ -1148,6 +1148,13 @@ app.get("/manager/apartment", async (req, res) => {
         <label>Apartment name</label><br/>
         <input name="apartment_name" value="${escapeHtml(a.apartment_name || "")}" style="width:100%; max-width:700px;" />
         <br/><br/>
+                    <label>Support WhatsApp (human)</label><br/>
+<input
+  name="support_phone"
+  value="${escapeHtml(apt?.support_phone || "")}"
+  placeholder="+34 600 123 456"
+  style="width:320px"
+/>
 
         <label>Default arrival time</label><br/>
         <input type="time" name="default_arrival_time" value="${escapeHtml(String(a.default_arrival_time || "").slice(0,5))}" />
@@ -2543,6 +2550,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
