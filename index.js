@@ -2245,6 +2245,39 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 
      const secRes = await pool.query(
   `
+  SELECT title, body, media_type, media_url
+  FROM apartment_sections
+  WHERE apartment_id = $1 AND is_active = true
+  ORDER BY sort_order ASC, id ASC
+  `,
+  [aptId]
+);
+
+const accordionHtml = secRes.rows
+  .map((s, idx) => {
+    let mediaHtml = "";
+    if (s.media_type === "image" && s.media_url) {
+      mediaHtml = `<div style="margin-top:10px;"><img src="${escapeHtml(s.media_url)}" style="max-width:100%; border-radius:14px; border:1px solid #eee;" /></div>`;
+    } else if (s.media_type === "video" && s.media_url) {
+      mediaHtml = `<div style="margin-top:10px;"><a target="_blank" href="${escapeHtml(s.media_url)}">🎥 Open video</a></div>`;
+    }
+
+    return `
+      <details style="border:1px solid #e5e7eb; border-radius:14px; padding:10px 12px; background:#fff; margin-top:10px;">
+        <summary style="cursor:pointer; font-weight:700;">
+          ${escapeHtml(s.title || `Section ${idx + 1}`)}
+        </summary>
+        <div style="margin-top:10px; white-space:pre-wrap; line-height:1.45;">
+          ${escapeHtml(s.body || "")}
+        </div>
+        ${mediaHtml}
+      </details>
+    `;
+  })
+  .join("");
+
+     const secRes = await pool.query(
+  `
   SELECT title, body
   FROM apartment_sections
   WHERE apartment_id = $1 AND is_active = true
@@ -3173,6 +3206,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
