@@ -265,175 +265,203 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
   console.log("🔥 TWILIO HIT", req.body);
 
   try {
-     // 2.1) REG_OK
-// ----------------- REG_OK (registration done) -----------------
-if (textUpper === "REG_OK") {
-  await pool.query(
-    `
-    UPDATE checkins
-    SET reg_done = true,
-        reg_done_at = NOW()
-    WHERE id = (
-      SELECT id
-      FROM checkins
-      WHERE phone = $1
-      ORDER BY id DESC
-      LIMIT 1
-    )
-    `,
-    [phone]
-  );
-
-  await sendWhatsApp(
-    from,
-    "✅ Registro confirmado.\nAhora realiza el pago y luego escribe: PAGO_OK"
-  );
-
-  return res.status(200).send("OK");
-}
-
-// ----------------- PAGO_OK (payment done) -----------------
-if (textUpper === "PAGO_OK") {
-  await pool.query(
-    `
-    UPDATE checkins
-    SET pay_done = true,
-        pay_done_at = NOW()
-    WHERE id = (
-      SELECT id
-      FROM checkins
-      WHERE phone = $1
-      ORDER BY id DESC
-      LIMIT 1
-    )
-    `,
-    [phone]
-  );
-
-  await sendWhatsApp(
-    from,
-    "✅ Pago confirmado.\nCuando tengas todo listo, escribe: LISTO"
-  );
-
-  return res.status(200).send("OK");
-}
+    // ✅ 1) СНАЧАЛА всегда объявляем всё, что будем использовать
     const from = String(req.body.From || ""); // "whatsapp:+34..."
     const body = String(req.body.Body || "").trim();
-    console.log("📩 Twilio WhatsApp inbound:", { from, body });
-
     const phone = from.replace("whatsapp:", "").trim(); // "+34..."
     const textUpper = body.toUpperCase();
 
- // ----------------- 1) START_<ID> -----------------
-if (textUpper.startsWith("START_")) {
-  const bookingId = textUpper.replace("START_", "").trim();
-  console.log("🟢 START bookingId:", bookingId);
+    console.log("📩 Twilio WhatsApp inbound:", { from, body });
 
-  const bookingResult = await pool.query(
-    `
-    SELECT
-      apartment_id,
-      apartment_name,
-      booking_token,
-      full_name,
-      arrival_date,
-      arrival_time,
-      departure_date,
-      departure_time,
-      adults,
-      children,
-      beds24_booking_id,
-      reg_done,
-      pay_done
-    FROM checkins
-    WHERE booking_token = $1
-       OR booking_id_from_start = $1
-       OR beds24_booking_id::text = $1
-    ORDER BY id DESC
-    LIMIT 1
-    `,
-    [bookingId]
-  );
+    // ✅ helper: получить последнюю бронь по телефону (для REG_OK / PAGO_OK / LISTO)
+    const getLastCheckinByPhone = async () => {
+      const q = await pool.query(
+        `
+        SELECT
+          id,
+          apartment_id,
+          apartment_name,
+          booking_token,
+          full_name,
+          arrival_date,
+          arrival_time,
+          departure_date,
+          departure_time,
+          adults,
+          children,
+          beds24_booking_id,
+          booking_id_from_start,
+          reg_done,
+          pay_done
+        FROM checkins
+        WHERE phone = $1
+        ORDER BY id DESC
+        LIMIT 1
+        `,
+        [phone]
+      );
+      return q.rows[0] || null;
+    };
 
-  if (!bookingResult.rows.length) {
-    await sendWhatsApp(
-      from,
-      `Gracias 🙂
+    // ✅ helper: получить ссылки/дефолты из beds24_rooms по apartment_id
+    const getRoomSettings = async (apartmentId) => {
+      const roomRes = await pool.query(
+        `
+        SELECT
+          registration_url,
+          payment_url,
+          keys_instructions_url,
+          default_arrival_time,
+          default_departure_time
+        FROM beds24_rooms
+        WHERE beds24_room_id = $1
+           OR id::text = $1
+        LIMIT 1
+        `,
+        [String(apartmentId || "")]
+      );
+      return roomRes.rows[0] || {};
+    };
+
+    // ✅ helper: подстановка [BOOKID]
+    const applyTpl = (tpl, bookId) =>
+      String(tpl || "").replace(/\[BOOKID\]/g, String(bookId || ""));
+
+    // ----------------- REG_OK -----------------
+    if (textUpper === "REG_OK") {
+      const last = await getLastCheckinByPhone();
+      if (!last) {
+        await sendWhatsApp(from, "No encuentro tu reserva. Envía primero: START_XXXX");
+        return res.status(200).send("OK");
+      }
+
+      await pool.query(
+        `
+        UPDATE checkins
+        SET reg_done = true,
+            reg_done_at = NOW()
+        WHERE id = $1
+        `,
+        [last.id]
+      );
+
+      await sendWhatsApp(from, "✅ Registro confirmado.\nAhora realiza el pago y luego escribe: PAGO_OK");
+      return res.status(200).send("OK");
+    }
+
+    // ----------------- PAGO_OK -----------------
+    if (textUpper === "PAGO_OK") {
+      const last = await getLastCheckinByPhone();
+      if (!last) {
+        await sendWhatsApp(from, "No encuentro tu reserva. Envía primero: START_XXXX");
+        return res.status(200).send("OK");
+      }
+
+      await pool.query(
+        `
+        UPDATE checkins
+        SET pay_done = true,
+            pay_done_at = NOW()
+        WHERE id = $1
+        `,
+        [last.id]
+      );
+
+      await sendWhatsApp(from, "✅ Pago confirmado.\nCuando tengas todo listo, escribe: LISTO");
+      return res.status(200).send("OK");
+    }
+
+    // ----------------- START_<ID> -----------------
+    if (textUpper.startsWith("START_")) {
+      const bookingId = textUpper.replace("START_", "").trim();
+      console.log("🟢 START bookingId:", bookingId);
+
+      const bookingResult = await pool.query(
+        `
+        SELECT
+          apartment_id,
+          apartment_name,
+          booking_token,
+          full_name,
+          arrival_date,
+          arrival_time,
+          departure_date,
+          departure_time,
+          adults,
+          children,
+          beds24_booking_id,
+          booking_id_from_start,
+          reg_done,
+          pay_done
+        FROM checkins
+        WHERE booking_token = $1
+           OR booking_id_from_start = $1
+           OR beds24_booking_id::text = $1
+        ORDER BY id DESC
+        LIMIT 1
+        `,
+        [bookingId]
+      );
+
+      if (!bookingResult.rows.length) {
+        await sendWhatsApp(
+          from,
+          `Gracias 🙂
 No encuentro tu reserva todavía.
 Si acabas de reservar, espera un momento y vuelve a enviar:
 START_${bookingId}`
-    );
-    return res.status(200).send("OK");
-  }
+        );
+        return res.status(200).send("OK");
+      }
 
-  const r = bookingResult.rows[0];
+      const r = bookingResult.rows[0];
 
-  // --- загрузка настроек апартамента ---
-  const roomRes = await pool.query(
-    `
-    SELECT
-      registration_url,
-      payment_url,
-      keys_instructions_url,
-      default_arrival_time,
-      default_departure_time
-    FROM beds24_rooms
-    WHERE beds24_room_id = $1
-       OR id::text = $1
-    LIMIT 1
-    `,
-    [String(r.apartment_id)]
-  );
+      // settings
+      const room = await getRoomSettings(r.apartment_id);
 
-  const room = roomRes.rows[0] || {};
+      // links
+      const regTpl = String(room.registration_url || "");
+      const payTpl = String(room.payment_url || "");
+      const keysTpl = String(room.keys_instructions_url || "");
 
-  // --- ссылки ---
-  const regTpl  = String(room.registration_url || "");
-  const payTpl  = String(room.payment_url || "");
-  const keysTpl = String(room.keys_instructions_url || "");
+      const bookIdForPayment = String(
+        r.beds24_booking_id || r.booking_id_from_start || r.booking_token || ""
+      );
 
-  const bookIdForPayment =
-    String(r.beds24_booking_id || r.booking_id_from_start || r.booking_token || "");
+      const regLink = applyTpl(regTpl, bookIdForPayment);
+      const payLink = applyTpl(payTpl, bookIdForPayment);
+      const keysLink = applyTpl(keysTpl, bookIdForPayment);
 
-  const applyTpl = (tpl) =>
-    String(tpl).replace(/BOOKID/g, bookIdForPayment);
+      // data
+      const name = r.full_name || "";
+      const apt = r.apartment_name || r.apartment_id || "";
 
-  const regLink  = applyTpl(regTpl);
-  const payLink  = applyTpl(payTpl);
-  const keysLink = applyTpl(keysTpl);
+      const arriveDate = r.arrival_date ? String(r.arrival_date).slice(0, 10) : "";
+      const departDate = r.departure_date ? String(r.departure_date).slice(0, 10) : "";
 
-  // --- данные гостя ---
-  const name = r.full_name || "";
-  const apt  = r.apartment_name || r.apartment_id || "";
+      const arriveTime =
+        (r.arrival_time ? String(r.arrival_time).slice(0, 5) : "") ||
+        String(room.default_arrival_time || "").slice(0, 5) ||
+        "17:00";
 
-  const arriveDate = r.arrival_date ? String(r.arrival_date).slice(0, 10) : "";
-  const departDate = r.departure_date ? String(r.departure_date).slice(0, 10) : "";
+      const departTime =
+        (r.departure_time ? String(r.departure_time).slice(0, 5) : "") ||
+        String(room.default_departure_time || "").slice(0, 5) ||
+        "11:00";
 
-  const arriveTime =
-    (r.arrival_time ? String(r.arrival_time).slice(0, 5) : "") ||
-    String(room.default_arrival_time || "").slice(0, 5) ||
-    "17:00";
+      const adults = Number(r.adults || 0);
+      const children = Number(r.children || 0);
 
-  const departTime =
-    (r.departure_time ? String(r.departure_time).slice(0, 5) : "") ||
-    String(room.default_departure_time || "").slice(0, 5) ||
-    "11:00";
+      const guestsText =
+        adults || children ? `${adults} adultos${children ? `, ${children} niños` : ""}` : "—";
 
-  const adults = Number(r.adults || 0);
-  const children = Number(r.children || 0);
-  const guestsText =
-    adults || children
-      ? `${adults} adultos${children ? `, ${children} niños` : ""}`
-      : "—";
+      // 🔒 ключи показываем только если оба true (и всё равно окончательно выдадим на LISTO)
+      const showKeys = !!(r.reg_done && r.pay_done);
 
-  // 🔒 ключи только если оба шага выполнены
-  const showKeys = r.reg_done && r.pay_done;
-
-  await sendWhatsApp(
-    from,
-    `Hola, ${name} 👋
+      await sendWhatsApp(
+        from,
+        `Hola, ${name} 👋
 Tu reserva está confirmada ✅
-
 🏠 Apartamento: ${apt}
 📅 Entrada: ${arriveDate} ${arriveTime}
 📅 Salida: ${departDate} ${departTime}
@@ -450,77 +478,55 @@ ${payLink || "—"}
 Después escribe: PAGO_OK
 
 3️⃣ Llaves:
-${
-  showKeys
-    ? (keysLink || "—")
-    : "🔒 Se mostrarán después de completar REGISTRO y PAGO"
-}
+${showKeys ? (keysLink || "—") : "🔒 Se mostrarán después de completar REGISTRO y PAGO"}
 
 Cuando lo tengas listo, escribe: LISTO`
-  );
+      );
 
-  return res.status(200).send("OK");
-}
-    // ----------------- 2) LISTO -----------------
+      return res.status(200).send("OK");
+    }
 
-     // ----------------- 3) LISTO -----------------
-if (textUpper === "LISTO") {
+    // ----------------- LISTO -----------------
+    if (textUpper === "LISTO") {
+      const last = await getLastCheckinByPhone();
 
-  // 1️⃣ Проверяем, сделаны ли регистрация и оплата
-  const chk = await pool.query(
-    `
-    SELECT reg_done, pay_done
-    FROM checkins
-    WHERE phone = $1
-    ORDER BY id DESC
-    LIMIT 1
-    `,
-    [phone]
-  );
+      if (!last) {
+        await sendWhatsApp(from, "No encuentro tu reserva. Envía primero: START_XXXX");
+        return res.status(200).send("OK");
+      }
 
-  const { reg_done, pay_done } = chk.rows[0] || {
-    reg_done: false,
-    pay_done: false,
-  };
-
-  // 2️⃣ Если чего-то не хватает — НЕ показываем ключи
-  if (!reg_done || !pay_done) {
-    await sendWhatsApp(
-      from,
-      `Casi listo 🙂 
+      // если не выполнены шаги — просим их сделать
+      if (!last.reg_done || !last.pay_done) {
+        await sendWhatsApp(
+          from,
+          `Casi listo 🙂 
 Antes necesito:
 1) Registro (después escribe REG_OK)
 2) Pago (después escribe PAGO_OK)`
-    );
-    return res.status(200).send("OK");
-  }
+        );
+        return res.status(200).send("OK");
+      }
 
-  // 3️⃣ Если всё готово — показываем ключи
-  await sendWhatsApp(
-    from,
-    `✅ Perfecto. Aquí tienes las llaves:
-${keysLink}`
-  );
+      // ✅ оба шага выполнены → отправляем ключи
+      const room = await getRoomSettings(last.apartment_id);
 
-  return res.status(200).send("OK");
-}
+      const keysTpl = String(room.keys_instructions_url || "");
+      const bookIdForPayment = String(
+        last.beds24_booking_id || last.booking_id_from_start || last.booking_token || ""
+      );
+      const keysLink = applyTpl(keysTpl, bookIdForPayment);
 
-    // ----------------- 3) default -----------------
+      await sendWhatsApp(from, `✅ Perfecto. Aquí tienes las llaves:\n${keysLink || "—"}`);
+      return res.status(200).send("OK");
+    }
+
+    // ----------------- default -----------------
     return res.status(200).send("OK");
   } catch (err) {
     console.error("❌ WhatsApp inbound error:", err);
     return res.status(200).send("OK");
   }
 });
-
-
-function applyTemplate(tpl, vars) {
-  const s = String(tpl || "");
-  return s.replace(/\{\{\s*([A-Z0-9_]+)\s*\}\}/g, (_, k) => {
-    const v = vars[k];
-    return v === undefined || v === null ? "" : String(v);
-  });
-}
 
 // ===================== TWILIO CLIENT =====================
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
@@ -2501,6 +2507,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
