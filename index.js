@@ -2355,20 +2355,20 @@ app.get("/manager", async (req, res) => {
         ? Number(selectedIdRaw)
         : (apts[0]?.id ?? null);
 
-    // load selected apt
-    let apt = null;
-    if (selectedId) {
-       = await pool.query(
-        `
-        SELECT *
-        FROM beds24_rooms
-        WHERE id = $1
-        LIMIT 1
-        `,
-        [selectedId]
-      );
-      apt = aptRes.rows[0] || null;
-    }
+ // load selected apt
+let apt = null;
+if (selectedId) {
+  const aptRes = await pool.query(
+    `
+    SELECT *
+    FROM beds24_rooms
+    WHERE id = $1
+    LIMIT 1
+    `,
+    [selectedId]
+  );
+  apt = aptRes.rows[0] || null;
+}
 
     // dropdown html
     const optionsHtml = apts
@@ -2594,6 +2594,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
