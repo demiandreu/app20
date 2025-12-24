@@ -262,6 +262,7 @@ function calcNights(arrive, depart) {
 }
 
 app.post("/webhooks/twilio/whatsapp", async (req, res) => {
+   console.log("🔥 TWILIO HIT", req.body);
   try {
     const from = String(req.body.From || ""); // "whatsapp:+34..."
     const body = String(req.body.Body || "").trim();
@@ -2525,6 +2526,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
