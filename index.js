@@ -319,22 +319,54 @@ START_${bookingId}`
 
   const r = bookingResult.rows[0];
 
+   // 1) берём ссылки квартиры из таблицы apartments (где ты их сохраняешь со страницы Manager)
+const aptRes = await pool.query(
+  `SELECT registration_url, payment_url, keys_instructions_url
+   FROM apartments
+   WHERE id = $1
+   LIMIT 1`,
+  [r.apartment_id]
+);
+
+const aptSettings = aptRes.rows[0] || {};
+const regTpl  = String(aptSettings.registration_url || "");
+const payTpl  = String(aptSettings.payment_url || "");
+const keysTpl = String(aptSettings.keys_instructions_url || "");
+
+// 2) какой BOOKID подставлять
+// для Beds24 правильнее использовать beds24_booking_id, если он есть
+const bookIdForPayment = r.beds24_booking_id || bookingId;
+
+// 3) подстановка [BOOKID]
+const registrationLink = regTpl; // обычно это готовая ссылка (без подстановок)
+const paymentLink = payTpl
+  ? payTpl.replaceAll("[BOOKID]", encodeURIComponent(String(bookIdForPayment)))
+  : "";
+
+const keysLink = keysTpl; // обычно готовая ссылка
+
   // тут формируешь текст + ссылки
   const name = r.full_name || "";
   const apt = r.apartment_name || r.apartment_id || "";
   const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time || "").slice(0, 5)}`;
   const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time || "").slice(0, 5)}`;
 
-  await sendWhatsApp(
-    from,
-    `Hola, ${name}
+await sendWhatsApp(
+  from,
+  `Hola, ${name}
 Tu reserva está confirmada ✅
 Apartamento: ${apt}
 Entrada: ${arrive}
 Salida: ${depart}
 
+1) Registro de huéspedes:
+${registrationLink || "—"}
+
+2) Pago:
+${paymentLink || "—"}
+
 Cuando lo tengas listo, responde aquí: LISTO`
-  );
+);
 
   return res.status(200).send("OK");
 }
@@ -2558,6 +2590,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
