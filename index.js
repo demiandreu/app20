@@ -415,6 +415,21 @@ START_${bookingId}`
       }
 
       const r = bookingResult.rows[0];
+       // привязать телефон к найденной записи
+const upd = await pool.query(
+  `UPDATE checkins
+   SET phone = $1
+   WHERE id = $2
+   RETURNING id, phone`,
+  [phone, r.id]
+);
+
+console.log("📌 phone bind result:", {
+  bookingRowId: r.id,
+  phone,
+  rowCount: upd.rowCount,
+  returned: upd.rows[0],
+});
 
       // settings
       const room = await getRoomSettings(r.apartment_id);
@@ -2507,6 +2522,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
