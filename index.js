@@ -1461,6 +1461,35 @@ app.post("/manager/apartment", async (req, res) => {
   res.redirect(`/manager/apartment?id=${id}`);
 });
 
+
+// ========== POST: create new accordion section ==========
+app.post("/manager/apartment/sections/save", async (req, res) => {
+  try {
+    const apartmentId = Number(req.body.apartment_id || req.query.id || req.body.id);
+    const title = String(req.body.title || "").trim();
+    const body = String(req.body.body || "").trim();
+    const sortOrder = Number(req.body.sort_order || 100);
+    const isActive = req.body.is_active ? true : false;
+
+    if (!apartmentId) return res.status(400).send("Missing apartment_id");
+    if (!title) return res.status(400).send("Missing title");
+
+    await pool.query(
+      `
+      INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active)
+      VALUES ($1, $2, $3, $4, $5)
+      `,
+      [apartmentId, title, body, sortOrder, isActive]
+    );
+
+    return res.redirect(`/manager/apartment/sections?id=${apartmentId}`);
+  } catch (e) {
+    console.error("❌ sections/save error:", e);
+    return res.status(500).send("Cannot save section");
+  }
+});
+
+
 // ===== SAVE APARTMENT SETTINGS =====
 app.post("/manager/apartment/save", async (req, res) => {
   try {
@@ -2797,6 +2826,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
