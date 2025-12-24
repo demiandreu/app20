@@ -319,6 +319,46 @@ START_${bookingId}`
 
   const r = bookingResult.rows[0];
 
+   // --- load apartment settings from beds24_rooms (NOT apartments) ---
+const roomSettingsRes = await pool.query(
+  `
+  SELECT
+    id,
+    room_id,
+    apartment_name,
+    default_arrival_time,
+    default_departure_time,
+    registration_url,
+    payment_url,
+    keys_instructions_url
+  FROM beds24_rooms
+  WHERE room_id = $1
+     OR id::text = $1
+  LIMIT 1
+  `,
+  [String(r.apartment_id || "")]
+);
+
+const room = roomSettingsRes.rows[0] || {};
+
+// templates (what you put in Manager -> Apartment Settings)
+const regTpl  = room.registration_url || "";
+const payTpl  = room.payment_url || "";
+const keysTpl = room.keys_instructions_url || "";
+
+// pick BOOKID for Beds24 payment link
+const bookIdForPayment =
+  String(r.beds24_booking_id || r.booking_id_from_start || r.booking_token || "");
+
+// helper: replace [BOOKID] in template
+const applyTpl = (tpl) =>
+  String(tpl || "").replace(/\[BOOKID\]/g, bookIdForPayment);
+
+// final links
+const regLink  = applyTpl(regTpl);
+const payLink  = applyTpl(payTpl);
+const keysLink = applyTpl(keysTpl);
+
    // 1) берём ссылки квартиры из таблицы apartments (где ты их сохраняешь со страницы Manager)
 const aptRes = await pool.query(
   `SELECT registration_url, payment_url, keys_instructions_url
@@ -360,10 +400,13 @@ Entrada: ${arrive}
 Salida: ${depart}
 
 1) Registro de huéspedes:
-${registrationLink || "—"}
+${regLink || "—"}
 
 2) Pago:
-${paymentLink || "—"}
+${payLink || "—"}
+
+3) Instrucciones / llaves:
+${keysLink || "—"}
 
 Cuando lo tengas listo, responde aquí: LISTO`
 );
@@ -2590,6 +2633,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
