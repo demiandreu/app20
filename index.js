@@ -1915,6 +1915,42 @@ app.get("/guest/:aptId/:token", async (req, res) => {
   `,
   [aptId]
 );
+     const accordionHtml = secRes.rows.map((s, idx) => {
+
+  // 🔹 1. СНАЧАЛА создаём mediaHtml
+  let mediaHtml = "";
+
+  if (s.media_type === "image" && s.media_url) {
+    mediaHtml = `
+      <img src="${escapeHtml(s.media_url)}"
+           style="max-width:100%; border-radius:12px; margin-top:10px;" />
+    `;
+  }
+
+  if (s.media_type === "video" && s.media_url) {
+    mediaHtml = `
+      <p style="margin-top:10px;">
+        ▶ <a href="${escapeHtml(s.media_url)}" target="_blank">
+          Ver video
+        </a>
+      </p>
+    `;
+  }
+
+  // 🔹 2. А ТЕПЕРЬ возвращаем HTML секции
+  return `
+    <details style="border:1px solid #e5e7eb; border-radius:14px; padding:12px; margin-top:12px;">
+      <summary style="cursor:pointer; font-weight:700;">
+        ${escapeHtml(s.title || `Section ${idx + 1}`)}
+      </summary>
+
+      <div style="margin-top:10px; white-space:pre-wrap; line-height:1.45;">
+        ${escapeHtml(s.body || "")}
+        ${mediaHtml}
+      </div>
+    </details>
+  `;
+}).join("");
 
 const accordionHtml = secRes.rows.map((s, idx) => `
   <details style="border:1px solid #e5e7eb; border-radius:14px; padding:10px 12px; background:#fff; margin-top:10px;">
@@ -2836,6 +2872,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
