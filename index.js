@@ -2356,7 +2356,12 @@ const accordionHtml = secRes.rows.map((s, idx) => `
         <a class="btn-link" href="/">← Back</a>
       </p>
     `;
-
+     
+${codeBlock}
+<div style="margin-top:14px;">
+  ${accordionHtml}
+</div>
+     
     res.send(renderPage("Guest Dashboard", html));
   } catch (e) {
     console.error("Guest dashboard error:", e);
@@ -3206,6 +3211,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
