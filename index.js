@@ -2382,14 +2382,6 @@ if (selectedId) {
             <label>Apartment name</label><br/>
             <input name="apartment_name" value="${escapeHtml(aptName)}" style="width:360px" /><br/><br/>
 
-            <label>Support WhatsApp (human)</label><br/>
-<input
-  name="support_phone"
-  value="${escapeHtml(apt?.support_phone || "")}"
-  placeholder="+34 600 123 456"
-  style="width:320px"
-/>
-
             <label>Arrival time (optional)</label><br/>
             <input type="time" name="default_arrival_time" value="${escapeHtml(aptArrive)}" />
             <small style="margin-left:8px;">(если пусто — будет ${escapeHtml(defArr)})</small>
@@ -2550,6 +2542,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
