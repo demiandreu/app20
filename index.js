@@ -2,7 +2,7 @@
 // RCS Guest Portal — Stable organized single-file version
 // (same logic, only reorganized and labeled)
 // =====================================================
-
+console.log("BOOT ✅ build:", new Date().toISOString());
 // ===================== CONFIG =====================
 require("dotenv").config();
 const express = require("express");
@@ -3192,6 +3192,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
