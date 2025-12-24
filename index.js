@@ -495,6 +495,9 @@ Después escribe: PAGO_OK
 3️⃣ Llaves:
 ${showKeys ? (keysLink || "—") : "🔒 Se mostrarán después de completar REGISTRO y PAGO"}
 
+👨‍💬 Soporte humano:
+${room.support_phone || "—"}
+
 Cuando lo tengas listo, escribe: LISTO`
       );
 
@@ -2536,6 +2539,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
