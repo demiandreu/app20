@@ -326,28 +326,6 @@ if (textUpper === "PAGO_OK") {
 
  // ----------------- 1) START_<ID> -----------------
 if (textUpper.startsWith("START_")) {
-   const showKeys = r.reg_done && r.pay_done;
-
-await sendWhatsApp(
-  from,
-  `Hola, ${name}
-Tu reserva está confirmada ✅
-
-1) Registro:
-${regLink || "—"}
-
-2) Pago:
-${payLink || "—"}
-
-3) Llaves:
-${showKeys ? (keysLink || "—") : "🔒 Se mostrará después de completar REGISTRO y PAGO"}
-
-Cuando lo tengas listo:
-- после регистрации: escribe REG_OK
-- после оплаты: escribe PAGO_OK
-- потом: LISTO`
-);
-
   const bookingId = textUpper.replace("START_", "").trim();
   console.log("🟢 START bookingId:", bookingId);
 
@@ -364,7 +342,9 @@ Cuando lo tengas listo:
       departure_time,
       adults,
       children,
-      beds24_booking_id
+      beds24_booking_id,
+      reg_done,
+      pay_done
     FROM checkins
     WHERE booking_token = $1
        OR booking_id_from_start = $1
@@ -374,11 +354,6 @@ Cuando lo tengas listo:
     `,
     [bookingId]
   );
-
-  console.log("🟦 DB rows found:", bookingResult.rows.length);
-  if (bookingResult.rows.length) {
-    console.log("🟦 DB row:", bookingResult.rows[0]);
-  }
 
   if (!bookingResult.rows.length) {
     await sendWhatsApp(
@@ -393,58 +368,96 @@ START_${bookingId}`
 
   const r = bookingResult.rows[0];
 
-   // --- load apartment settings from beds24_rooms (NOT apartments) ---
+  // --- загрузка настроек апартамента ---
+  const roomRes = await pool.query(
+    `
+    SELECT
+      registration_url,
+      payment_url,
+      keys_instructions_url,
+      default_arrival_time,
+      default_departure_time
+    FROM beds24_rooms
+    WHERE beds24_room_id = $1
+       OR id::text = $1
+    LIMIT 1
+    `,
+    [String(r.apartment_id)]
+  );
 
-   const roomRes = await pool.query(
-  `
-  SELECT registration_url, payment_url, keys_instructions_url
-  FROM beds24_rooms
-  WHERE beds24_room_id = $1
-     OR id::text = $1
-  LIMIT 1
-  `,
-  [String(r.beds24_room_id || r.apartment_id || "")]
-);
+  const room = roomRes.rows[0] || {};
 
-const room = roomRes.rows[0] || {};
+  // --- ссылки ---
+  const regTpl  = String(room.registration_url || "");
+  const payTpl  = String(room.payment_url || "");
+  const keysTpl = String(room.keys_instructions_url || "");
 
-const regTpl  = String(room.registration_url || "");
-const payTpl  = String(room.payment_url || "");
-const keysTpl = String(room.keys_instructions_url || "");
+  const bookIdForPayment =
+    String(r.beds24_booking_id || r.booking_id_from_start || r.booking_token || "");
 
-const bookIdForPayment =
-  String(r.beds24_booking_id || r.booking_id_from_start || r.booking_token || "");
+  const applyTpl = (tpl) =>
+    String(tpl).replace(/BOOKID/g, bookIdForPayment);
 
-const applyTpl = (tpl) =>
-  String(tpl || "").replace(/\[BOOKID\]/g, bookIdForPayment);
+  const regLink  = applyTpl(regTpl);
+  const payLink  = applyTpl(payTpl);
+  const keysLink = applyTpl(keysTpl);
 
-const regLink  = applyTpl(regTpl);
-const payLink  = applyTpl(payTpl);
-const keysLink = applyTpl(keysTpl); 
-
-
-  // тут формируешь текст + ссылки
+  // --- данные гостя ---
   const name = r.full_name || "";
-  const apt = r.apartment_name || r.apartment_id || "";
-  const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time || "").slice(0, 5)}`;
-  const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time || "").slice(0, 5)}`;
+  const apt  = r.apartment_name || r.apartment_id || "";
 
-await sendWhatsApp(
-  from,
-  `Hola, ${name}
+  const arriveDate = r.arrival_date ? String(r.arrival_date).slice(0, 10) : "";
+  const departDate = r.departure_date ? String(r.departure_date).slice(0, 10) : "";
+
+  const arriveTime =
+    (r.arrival_time ? String(r.arrival_time).slice(0, 5) : "") ||
+    String(room.default_arrival_time || "").slice(0, 5) ||
+    "17:00";
+
+  const departTime =
+    (r.departure_time ? String(r.departure_time).slice(0, 5) : "") ||
+    String(room.default_departure_time || "").slice(0, 5) ||
+    "11:00";
+
+  const adults = Number(r.adults || 0);
+  const children = Number(r.children || 0);
+  const guestsText =
+    adults || children
+      ? `${adults} adultos${children ? `, ${children} niños` : ""}`
+      : "—";
+
+  // 🔒 ключи только если оба шага выполнены
+  const showKeys = r.reg_done && r.pay_done;
+
+  await sendWhatsApp(
+    from,
+    `Hola, ${name} 👋
 Tu reserva está confirmada ✅
 
-1) Registro:
+🏠 Apartamento: ${apt}
+📅 Entrada: ${arriveDate} ${arriveTime}
+📅 Salida: ${departDate} ${departTime}
+👥 Huéspedes: ${guestsText}
+
+Para enviarte las instrucciones de acceso y el código de la caja de llaves, necesito 2 pasos:
+
+1️⃣ Registro de huéspedes:
 ${regLink || "—"}
+Después escribe: REG_OK
 
-2) Pago:
+2️⃣ Pago (tasa turística + depósito):
 ${payLink || "—"}
+Después escribe: PAGO_OK
 
-3) Llaves:
-${keysLink || "—"}
+3️⃣ Llaves:
+${
+  showKeys
+    ? (keysLink || "—")
+    : "🔒 Se mostrarán después de completar REGISTRO y PAGO"
+}
 
-Cuando lo tengas listo, responde aquí: LISTO`
-);
+Cuando lo tengas listo, escribe: LISTO`
+  );
 
   return res.status(200).send("OK");
 }
@@ -2488,6 +2501,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
