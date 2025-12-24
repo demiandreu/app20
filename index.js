@@ -439,6 +439,12 @@ console.log("📌 phone bind result:", {
       const payTpl = String(room.payment_url || "");
       const keysTpl = String(room.keys_instructions_url || "");
 
+       const supportPhoneRaw = room.support_phone || "";
+const supportPhoneClean = supportPhoneRaw.replace(/\D/g, "");
+const supportLink = supportPhoneClean
+  ? `https://wa.me/${supportPhoneClean}`
+  : "—";
+
       const bookIdForPayment = String(
         r.beds24_booking_id || r.booking_id_from_start || r.booking_token || ""
       );
@@ -495,8 +501,8 @@ Después escribe: PAYOK
 3️⃣ Llaves:
 ${showKeys ? (keysLink || "—") : "🔒 Se mostrarán después de completar REGISTRO y PAGO"}
 
-👨‍💬 Soporte humano:
-https://wa.me/${room.support_phone || "—"}
+👨‍💬  Soporte humano:
+${supportLink}
 
 Cuando lo tengas listo, escribe: LISTO`
       );
@@ -2539,6 +2545,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
