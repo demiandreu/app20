@@ -1201,7 +1201,8 @@ app.get("/manager/apartment", async (req, res) => {
 app.post("/manager/apartment", async (req, res) => {
   const {
     id,
-    apartment_name,
+    apartment_name
+     support_phone,
     default_arrival_time,
     default_departure_time,
     registration_url,
@@ -1213,6 +1214,7 @@ app.post("/manager/apartment", async (req, res) => {
     UPDATE beds24_rooms
     SET
       apartment_name = $1,
+      support_phone = $2,
       default_arrival_time = $2,
       default_departure_time = $3,
       registration_url = $4,
@@ -1222,6 +1224,7 @@ app.post("/manager/apartment", async (req, res) => {
     WHERE id = $7
   `, [
     apartment_name,
+    support_phone,
     default_arrival_time,
     default_departure_time,
     registration_url,
@@ -2546,6 +2549,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
