@@ -135,6 +135,343 @@ app.get("/manager/apartment/sections", async (req, res) => {
   }
 });
 
+const multer = require("multer");
+const { v2: cloudinary } = require("cloudinary");
+
+// ---- Cloudinary config ----
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// memory upload (без сохранения на диск)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+});
+
+// helper: HTML escape (если у тебя уже есть — не дублируй)
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+// ===================== MANAGER: SECTIONS PAGE =====================
+app.get("/manager/apartment/sections", async (req, res) => {
+  try {
+    const aptId = Number(req.query.id);
+    if (!aptId) return res.status(400).send("Missing id");
+
+    const apt = await pool.query(
+      `SELECT id, apartment_name FROM beds24_rooms WHERE id=$1 LIMIT 1`,
+      [aptId]
+    );
+    const apartmentName = apt.rows[0]?.apartment_name || `#${aptId}`;
+
+    const secRes = await pool.query(
+      `
+      SELECT id, title, body, sort_order, is_active, media_type, media_url
+      FROM apartment_sections
+      WHERE apartment_id = $1
+      ORDER BY sort_order ASC, id ASC
+      `,
+      [aptId]
+    );
+
+    const rowsHtml =
+      secRes.rows.length === 0
+        ? `<p class="muted">No sections yet.</p>`
+        : `
+          <form method="POST" action="/manager/apartment/sections/save-all">
+            <input type="hidden" name="apartment_id" value="${aptId}" />
+
+            <table style="width:100%; border-collapse:collapse;">
+              <tr style="text-align:left;">
+                <th style="padding:8px; border-bottom:1px solid #eee;">Order</th>
+                <th style="padding:8px; border-bottom:1px solid #eee;">Active</th>
+                <th style="padding:8px; border-bottom:1px solid #eee;">Title</th>
+                <th style="padding:8px; border-bottom:1px solid #eee;">Text</th>
+                <th style="padding:8px; border-bottom:1px solid #eee;">Media</th>
+                <th style="padding:8px; border-bottom:1px solid #eee;">Actions</th>
+              </tr>
+
+              ${secRes.rows
+                .map((s, idx) => {
+                  const mediaLabel =
+                    s.media_type === "image"
+                      ? `🖼️ image`
+                      : s.media_type === "video"
+                      ? `🎥 video`
+                      : `—`;
+
+                  const mediaPreview =
+                    s.media_type === "image" && s.media_url
+                      ? `<div style="margin-top:6px;"><img src="${escapeHtml(
+                          s.media_url
+                        )}" style="max-width:180px; border-radius:10px; border:1px solid #eee;" /></div>`
+                      : s.media_type === "video" && s.media_url
+                      ? `<div style="margin-top:6px;"><a target="_blank" href="${escapeHtml(
+                          s.media_url
+                        )}">Open video</a></div>`
+                      : "";
+
+                  return `
+                    <tr>
+                      <td style="padding:8px; vertical-align:top;">
+                        <input name="sort_order_${s.id}" value="${Number(
+                    s.sort_order ?? 100
+                  )}" style="width:70px;" />
+                      </td>
+
+                      <td style="padding:8px; vertical-align:top;">
+                        <input type="checkbox" name="is_active_${s.id}" ${
+                    s.is_active ? "checked" : ""
+                  } />
+                      </td>
+
+                      <td style="padding:8px; vertical-align:top;">
+                        <input name="title_${s.id}" value="${escapeHtml(
+                    s.title
+                  )}" style="width:240px;" />
+                      </td>
+
+                      <td style="padding:8px; vertical-align:top;">
+                        <textarea name="body_${s.id}" rows="4" style="width:100%;">${escapeHtml(
+                    s.body
+                  )}</textarea>
+                      </td>
+
+                      <td style="padding:8px; vertical-align:top;">
+                        <div>${mediaLabel}</div>
+                        ${mediaPreview}
+
+                        <div style="margin-top:10px; padding:10px; border:1px solid #eee; border-radius:10px;">
+                          <div style="font-weight:700; margin-bottom:6px;">Upload image</div>
+                          <form method="POST" action="/manager/apartment/sections/upload" enctype="multipart/form-data">
+                            <input type="hidden" name="apartment_id" value="${aptId}" />
+                            <input type="hidden" name="section_id" value="${s.id}" />
+                            <input type="file" name="image" accept="image/*" />
+                            <button type="submit">Upload</button>
+                          </form>
+
+                          <div style="margin-top:10px;">
+                            <div style="font-weight:700; margin-bottom:6px;">Video link</div>
+                            <input name="video_url_${s.id}" value="${
+                    s.media_type === "video" ? escapeHtml(s.media_url) : ""
+                  }" placeholder="https://..." style="width:100%;" />
+                            <div class="muted" style="margin-top:4px;">If you fill video URL, we set media to VIDEO.</div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td style="padding:8px; vertical-align:top;">
+                        <form method="POST" action="/manager/apartment/sections/delete" onsubmit="return confirm('Delete section?');">
+                          <input type="hidden" name="apartment_id" value="${aptId}" />
+                          <input type="hidden" name="id" value="${s.id}" />
+                          <button type="submit">Delete</button>
+                        </form>
+                      </td>
+                    </tr>
+                  `;
+                })
+                .join("")}
+            </table>
+
+            <p style="margin-top:12px;">
+              <button type="submit">Save all</button>
+            </p>
+          </form>
+        `;
+
+    const html = `
+      <h1>Apartment Sections</h1>
+      <p class="muted">Apartment: <strong>${escapeHtml(apartmentName)}</strong></p>
+      <p><a class="btn-link" href="/manager/apartment?id=${aptId}">← Back to Apartment Settings</a></p>
+
+      <h2 style="margin-top:16px;">Add new section</h2>
+      <form method="POST" action="/manager/apartment/sections/add">
+        <input type="hidden" name="apartment_id" value="${aptId}" />
+        <input name="title" placeholder="Title (e.g. Wi-Fi / Parking / Keys)" style="width:100%; margin-bottom:8px;" />
+        <textarea name="body" placeholder="Text for guests..." rows="4" style="width:100%;"></textarea>
+
+        <div style="margin-top:8px; display:flex; gap:10px; align-items:center;">
+          <label>Order: <input name="sort_order" value="100" style="width:80px;" /></label>
+          <label><input type="checkbox" name="is_active" checked /> Active</label>
+          <button type="submit">Add section</button>
+        </div>
+      </form>
+
+      <h2 style="margin-top:18px;">Existing sections</h2>
+      ${rowsHtml}
+    `;
+
+    return res.send(renderPage("Apartment Sections", html));
+  } catch (e) {
+    console.error("sections page error:", e);
+    return res.status(500).send("Manager sections error");
+  }
+});
+
+// ADD section
+app.post("/manager/apartment/sections/add", async (req, res) => {
+  try {
+    const apartment_id = Number(req.body.apartment_id);
+    const title = String(req.body.title || "").trim();
+    const body = String(req.body.body || "").trim();
+    const sort_order = Number(req.body.sort_order || 100);
+    const is_active = req.body.is_active ? true : false;
+
+    if (!apartment_id) return res.status(400).send("Missing apartment_id");
+
+    // лимит 15 секций на апарт (как ты хотел)
+    const cnt = await pool.query(
+      `SELECT COUNT(*)::int AS c FROM apartment_sections WHERE apartment_id=$1`,
+      [apartment_id]
+    );
+    if ((cnt.rows[0]?.c || 0) >= 15) {
+      return res.status(400).send("Limit reached: max 15 sections per apartment.");
+    }
+
+    await pool.query(
+      `
+      INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active, media_type, media_url)
+      VALUES ($1,$2,$3,$4,$5,'none','')
+      `,
+      [apartment_id, title, body, sort_order, is_active]
+    );
+
+    return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+  } catch (e) {
+    console.error("add section error:", e);
+    return res.status(500).send("Cannot add section");
+  }
+});
+
+// SAVE-ALL (редактирование всего списка)
+app.post("/manager/apartment/sections/save-all", async (req, res) => {
+  try {
+    const apartment_id = Number(req.body.apartment_id);
+    if (!apartment_id) return res.status(400).send("Missing apartment_id");
+
+    const secRes = await pool.query(
+      `SELECT id FROM apartment_sections WHERE apartment_id=$1 ORDER BY id ASC`,
+      [apartment_id]
+    );
+
+    for (const row of secRes.rows) {
+      const id = row.id;
+
+      const title = String(req.body[`title_${id}`] || "");
+      const body = String(req.body[`body_${id}`] || "");
+      const sort_order = Number(req.body[`sort_order_${id}`] || 100);
+      const is_active = req.body[`is_active_${id}`] ? true : false;
+
+      // если менеджер вставил видео-линк — ставим media_type=video
+      const videoUrl = String(req.body[`video_url_${id}`] || "").trim();
+
+      if (videoUrl) {
+        await pool.query(
+          `
+          UPDATE apartment_sections
+          SET title=$1, body=$2, sort_order=$3, is_active=$4,
+              media_type='video', media_url=$5, updated_at=NOW()
+          WHERE id=$6 AND apartment_id=$7
+          `,
+          [title, body, sort_order, is_active, videoUrl, id, apartment_id]
+        );
+      } else {
+        // не трогаем media_type/media_url если видео пустое (чтобы не затирать картинки)
+        await pool.query(
+          `
+          UPDATE apartment_sections
+          SET title=$1, body=$2, sort_order=$3, is_active=$4, updated_at=NOW()
+          WHERE id=$5 AND apartment_id=$6
+          `,
+          [title, body, sort_order, is_active, id, apartment_id]
+        );
+      }
+    }
+
+    return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+  } catch (e) {
+    console.error("save-all error:", e);
+    return res.status(500).send("Cannot save sections");
+  }
+});
+
+// DELETE section
+app.post("/manager/apartment/sections/delete", async (req, res) => {
+  try {
+    const apartment_id = Number(req.body.apartment_id);
+    const id = Number(req.body.id);
+    if (!apartment_id || !id) return res.status(400).send("Missing id");
+
+    await pool.query(
+      `DELETE FROM apartment_sections WHERE id=$1 AND apartment_id=$2`,
+      [id, apartment_id]
+    );
+
+    return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+  } catch (e) {
+    console.error("delete section error:", e);
+    return res.status(500).send("Cannot delete section");
+  }
+});
+
+// UPLOAD image -> Cloudinary -> save URL
+app.post(
+  "/manager/apartment/sections/upload",
+  upload.single("image"),
+  async (req, res) => {
+    try {
+      const apartment_id = Number(req.body.apartment_id);
+      const section_id = Number(req.body.section_id);
+
+      if (!apartment_id || !section_id) return res.status(400).send("Missing ids");
+      if (!req.file) return res.status(400).send("No file");
+
+      // лимит 10 картинок на апарт (как ты хотел)
+      const imgCnt = await pool.query(
+        `
+        SELECT COUNT(*)::int AS c
+        FROM apartment_sections
+        WHERE apartment_id=$1 AND media_type='image' AND COALESCE(media_url,'') <> ''
+        `,
+        [apartment_id]
+      );
+      if ((imgCnt.rows[0]?.c || 0) >= 10) {
+        return res.status(400).send("Limit reached: max 10 images per apartment.");
+      }
+
+      const b64 = req.file.buffer.toString("base64");
+      const dataUri = `data:${req.file.mimetype};base64,${b64}`;
+
+      const up = await cloudinary.uploader.upload(dataUri, {
+        folder: `rcs/apartments/${apartment_id}`,
+        resource_type: "image",
+      });
+
+      await pool.query(
+        `
+        UPDATE apartment_sections
+        SET media_type='image', media_url=$1, updated_at=NOW()
+        WHERE id=$2 AND apartment_id=$3
+        `,
+        [String(up.secure_url || ""), section_id, apartment_id]
+      );
+
+      return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+    } catch (e) {
+      console.error("upload image error:", e);
+      return res.status(500).send("Cannot upload image");
+    }
+  }
+);
 
 // ===================== MANAGER: Debug =====================
 app.get("/manager/channels/debug", (req, res) => {
@@ -2836,6 +3173,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
