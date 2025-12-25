@@ -2,7 +2,7 @@
 // RCS Guest Portal — Stable organized single-file version
 // (same logic, only reorganized and labeled)
 // =====================================================
-// ===================== CONFIG =====================
+// ===================== CONFIG ====================
 require("dotenv").config();
 const express = require("express");
 const { Pool } = require("pg");
@@ -3162,6 +3162,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
