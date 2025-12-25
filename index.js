@@ -2861,13 +2861,12 @@ app.get("/manager/settings/apartments", async (req, res) => {
 //vremenno
 // ===================== MANAGER: one page for apartments + defaults =====================
 
-// helper: safe value
+// ===================== MANAGER: one page for apartments + defaults =====================
 function safeTime(val) {
   const s = String(val || "");
   return s.length >= 5 ? s.slice(0, 5) : "";
 }
 
-// GET /manager (dropdown + form)
 app.get("/manager", async (req, res) => {
   try {
     // 1) global settings (defaults)
@@ -2889,20 +2888,20 @@ app.get("/manager", async (req, res) => {
         ? Number(selectedIdRaw)
         : (apts[0]?.id ?? null);
 
- // load selected apt
-let apt = null;
-if (selectedId) {
-  const aptRes = await pool.query(
-    `
-    SELECT *
-    FROM beds24_rooms
-    WHERE id = $1
-    LIMIT 1
-    `,
-    [selectedId]
-  );
-  apt = aptRes.rows[0] || null;
-}
+    // load selected apt
+    let apt = null;
+    if (selectedId) {
+      const aptRes = await pool.query(
+        `
+        SELECT *
+        FROM beds24_rooms
+        WHERE id = $1
+        LIMIT 1
+        `,
+        [selectedId]
+      );
+      apt = aptRes.rows[0] || null;
+    }
 
     // dropdown html
     const optionsHtml = apts
@@ -2917,7 +2916,6 @@ if (selectedId) {
     const aptName = apt?.apartment_name ?? "";
     const aptArrive = safeTime(apt?.default_arrival_time);
     const aptDepart = safeTime(apt?.default_departure_time);
-
     const regUrl = apt?.registration_url ?? "";
     const payUrl = apt?.payment_url ?? "";
     const keysUrl = apt?.keys_instructions_url ?? "";
@@ -2932,17 +2930,18 @@ if (selectedId) {
 
       <div style="margin-bottom:16px; padding:12px; border:1px solid #ddd;">
         <b>Global defaults</b> (если в апартаменте пусто — можно использовать эти)<br/><br/>
-       <form method="POST" action="/staff/lockcode/save" style="display:inline;">
-  <input type="hidden" name="booking_id" value="${row.booking_id}" />
-  <input type="hidden" name="lock_code" value="${escapeHtml(row.lock_code || "")}" />
-  <button type="submit">Save</button>
-</form>
+        <form method="POST" action="/manager/defaults/save">
+          <label>Brand name</label><br/>
+          <input name="brand_name" value="${escapeHtml(brand)}" style="width:320px" /><br/><br/>
 
-<form method="POST" action="/staff/lockcode/save" style="display:inline; margin-left:8px;">
-  <input type="hidden" name="booking_id" value="${row.booking_id}" />
-  <input type="hidden" name="lock_code" value="" />
-  <button type="submit">Clear</button>
-</form>
+          <label>Default arrival time</label><br/>
+          <input type="time" name="default_arrival_time" value="${escapeHtml(defArr)}" /><br/><br/>
+
+          <label>Default departure time</label><br/>
+          <input type="time" name="default_departure_time" value="${escapeHtml(defDep)}" /><br/><br/>
+
+          <button type="submit">Save defaults</button>
+        </form>
       </div>
 
       <div style="margin-bottom:16px; padding:12px; border:1px solid #ddd;">
@@ -2963,7 +2962,7 @@ if (selectedId) {
             : `
           <form method="POST" action="/manager/apartment/save">
             <input type="hidden" name="id" value="${escapeHtml(apt.id)}" />
-          
+
             <label>Apartment name</label><br/>
             <input name="apartment_name" value="${escapeHtml(aptName)}" style="width:360px" /><br/><br/>
 
@@ -2979,15 +2978,15 @@ if (selectedId) {
 
             <label>Registration link</label><br/>
             <input name="registration_url" value="${escapeHtml(regUrl)}" style="width:100%" />
-            <br/><small>Можно хранить готовую ссылку под этот апарт.</small><br/><br/>
+            <br/><br/>
 
             <label>Payment link (template)</label><br/>
             <input name="payment_url" value="${escapeHtml(payUrl)}" style="width:100%" />
-            <br/><small>Шаблон. Например: https://pay.site/checkout?booking={{BOOKING}}</small><br/><br/>
+            <br/><br/>
 
             <label>Keys / Instructions link</label><br/>
             <input name="keys_instructions_url" value="${escapeHtml(keysUrl)}" style="width:100%" />
-            <br/><small>Ссылка на инструкции/ключи (пока можно пусто).</small><br/><br/>
+            <br/><br/>
 
             <button type="submit">Save apartment</button>
           </form>
@@ -3127,6 +3126,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
