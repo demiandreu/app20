@@ -146,7 +146,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
               </tr>
             </thead>
             <tbody>
-              ${rowsHtml || `<tr><td colspan="3" class="muted" style="padding:10px;">No sections yet.</td></tr>`}
+              ${rowsHtml || `<tr><td colspan="3" class="muted" style="padding:10px; "width:100%; max-width:100%; overflow:hidden;"">No sections yet.</td></tr>`}
             </tbody>
           </table>
 
@@ -2799,6 +2799,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
