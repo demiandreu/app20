@@ -57,10 +57,22 @@ app.get("/manager/apartment/sections", async (req, res) => {
                 <button class="btn-mini danger" type="submit" name="delete" value="${s.id}">Delete</button>
               </div>
             </td>
-            <td class="td-text">
-              <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" class="sec-title" />
-              <textarea name="body_${s.id}" rows="5" class="sec-body">${escapeHtml(s.body || "")}</textarea>
-            </td>
+          <td class="td-text">
+  <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" class="sec-title" placeholder="(optional title)" />
+  <textarea name="body_${s.id}" rows="5" class="sec-body" placeholder="Text...">${escapeHtml(s.body || "")}</textarea>
+
+  <div style="margin-top:10px; display:grid; gap:6px;">
+    <label class="muted">Media type</label>
+    <select name="media_type_${s.id}">
+      <option value="none" ${String(s.media_type || "none") === "none" ? "selected" : ""}>None</option>
+      <option value="image" ${String(s.media_type || "") === "image" ? "selected" : ""}>Image</option>
+      <option value="video" ${String(s.media_type || "") === "video" ? "selected" : ""}>Video</option>
+    </select>
+
+    <label class="muted">Media URL</label>
+    <input name="media_url_${s.id}" value="${escapeHtml(s.new_media_url || "")}" placeholder="https://..." style="width:100%;" />
+  </div>
+</td>
           </tr>
         `;
       })
@@ -1466,27 +1478,28 @@ if (String(req.body.add) === "1") {
   const is_active = req.body.new_is_active ? true : false;
 
   // media (optional) — ИМЕНА КАК В ФОРМЕ
-  const new_media_type = String(req.body.new_media_type || "none");
-  const new_media_url = String(req.body.new_media_url || "").trim();
+const media_type = String(req.body.new_media_type || "none");
+const media_url = String(req.body.new_media_url || "").trim();
 
-  // ✅ если title пустой, но есть media_url — подставим авто-заголово
-  let finalTitle = title;
-  if (!finalTitle) {
-    if (new_media_url) {
-      finalTitle = new_media_type === "video" ? "Video" : "Image";
-    } else {
-      return res.status(400).send("Missing title");
-    }
-  }
+// title вообще optional
+const title = String(req.body.new_title || "").trim();
+const body = String(req.body.new_body || "").trim();
 
-  await pool.query(
-    `
-    INSERT INTO apartment_sections
-      (apartment_id, title, body, sort_order, is_active, new_media_type, new_media_url)
-    VALUES ($1,$2,$3,$4,$5,$6,$7)
-    `,
-    [apartment_id, finalTitle, body, sort_order, is_active, new_media_type, new_media_url]
-  );
+// запретим только полностью пустую секцию (вообще ничего)
+if (!title && !body && !media_url) {
+  return res.status(400).send("Empty section");
+}
+
+// если url есть, но media_type none — подправим
+const finalMediaType = media_url ? (media_type === "video" ? "video" : "image") : "none";
+
+await pool.query(
+  `
+  INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active, media_type, new_media_url)
+  VALUES ($1,$2,$3,$4,$5,$6,$7)
+  `,
+  [apartment_id, title, body, sort_order, is_active, finalMediaType, media_url]
+);
 
   return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
 }
@@ -1502,18 +1515,21 @@ if (String(req.body.add) === "1") {
       const body = String(req.body[`body_${id}`] || "");
       const sort_order = Number(req.body[`sort_order_${id}`] || 1);
       const is_active = req.body[`is_active_${id}`] ? true : false;
+       const media_type = String(req.body[`media_type_${id}`] || "none");
+       const media_url  = String(req.body[`media_url_${id}`] || "").trim();
+
 
       // чтобы Save all не падал из-за пустых
       if (!title) continue;
 
-      await pool.query(
-        `
-        UPDATE apartment_sections
-        SET title=$1, body=$2, sort_order=$3, is_active=$4, updated_at=NOW()
-        WHERE id=$5 AND apartment_id=$6
-        `,
-        [title, body, sort_order, is_active, id, apartment_id]
-      );
+     await pool.query(
+  `
+  UPDATE apartment_sections
+  SET title=$1, body=$2, sort_order=$3, is_active=$4, media_type=$5, new_media_url=$6, updated_at=NOW()
+  WHERE id=$7 AND apartment_id=$8
+  `,
+  [title, body, sort_order, is_active, media_type, media_url, id, apartment_id]
+);
     }
 
     return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
@@ -2860,6 +2876,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
