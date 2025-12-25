@@ -1463,7 +1463,7 @@ if (String(req.body.add) === "1") {
   const new_media_type = String(req.body.new_media_type || "none");
   const new_media_url = String(req.body.new_media_url || "").trim();
 
-  // ✅ если title пустой, но есть media_url — подставим авто-заголовок
+  // ✅ если title пустой, но есть media_url — подставим авто-заголово
   let finalTitle = title;
   if (!finalTitle) {
     if (new_media_url) {
@@ -2854,6 +2854,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
