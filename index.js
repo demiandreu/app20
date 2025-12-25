@@ -75,7 +75,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
         <a class="btn-link" href="/manager/apartment?id=${aptId}">← Back to Apartment Settings</a>
       </p>
 
-      <form method="POST" action="/manager/apartment/sections/save">
+      <form method="POST" action="/manager/apartment/sections/add">
         <input type="hidden" name="apartment_id" value="${aptId}" />
 <label>Media type</label><br/>
 <select name="media_type">
@@ -323,7 +323,8 @@ app.get("/manager/apartment/sections", async (req, res) => {
       ${rowsHtml}
     `;
 
-   
+  
+     
 // ADD section
 app.post("/manager/apartment/sections/add", async (req, res) => {
   try {
@@ -3158,6 +3159,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
