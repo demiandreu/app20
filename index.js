@@ -604,6 +604,13 @@ const pool = new Pool({
   ssl: isLocalDb ? false : { rejectUnauthorized: false },
 });
 
+     function aptBadge(name) {
+  const s = String(name || "").trim();
+  if (!s) return "";
+  const clean = s.replace(/\s+/g, " ");
+  if (clean.length <= 4) return clean.toUpperCase();
+  return (clean.slice(0, 2) + clean.slice(-2)).toUpperCase();
+}
 // ===================== DB INIT / MIGRATIONS =====================
 async function initDb() {
   // --- base table ---
@@ -3155,6 +3162,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
