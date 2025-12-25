@@ -1447,37 +1447,47 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
     }
 
     // 3) ADD new section (только если нажали кнопку Add section)
-    if (String(req.body.add) === "1") {
-      const title = String(req.body.new_title || "").trim();
-      const body = String(req.body.new_body || "").trim();
-      const sort_order = Number(req.body.new_sort_order || 1);
-      const is_active = req.body.new_is_active ? true : false;
+  if (String(req.body.add) === "1") {
+  const title = String(req.body.new_title || "").trim();
+  const body = String(req.body.new_body || "").trim();
+  const sort_order = Number(req.body.new_sort_order || 1);
+  const is_active = req.body.new_is_active ? true : false;
 
-      // media (optional) — ИМЕНА КАК В ФОРМЕ
-      const new_media_type = String(req.body.new_media_type || "none");
-      const new_media_url = String(req.body.new_media_url || "").trim();
+  // media (optional) — ИМЕНА КАК В ФОРМЕ
+  let new_media_type = String(req.body.new_media_type || "none");
+  let new_media_url = String(req.body.new_media_url || "").trim();
 
-    let finalTitle = title;
-
-if (!finalTitle) {
-  if (new_media_url) {
-    finalTitle = new_media_type === "video" ? "Video" : "Image";
+  // нормализуем: если ссылки нет — тип none и url = null
+  if (!new_media_url) {
+    new_media_type = "none";
+    new_media_url = null;
   } else {
-    return res.status(400).send("Missing title");
-  }
-}
-
-      await pool.query(
-        `
-        INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active, new_media_type, new_media_url)
-        VALUES ($1,$2,$3,$4,$5,$6,$7)
-        `,
-        [apartment_id, title, body, sort_order, is_active, new_media_type, new_media_url]
-      );
-
-      return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+    // если ссылка есть — тип должен быть image/video (иначе по умолчанию image)
+    if (new_media_type !== "image" && new_media_type !== "video") {
+      new_media_type = "image";
     }
+  }
 
+  // ✅ финальный title: если title пустой, но есть медиа — ставим авто-имя
+  let finalTitle = title;
+  if (!finalTitle) {
+    if (new_media_url) {
+      finalTitle = new_media_type === "video" ? "Video" : "Image";
+    } else {
+      return res.status(400).send("Missing title");
+    }
+  }
+
+  await pool.query(
+    `
+    INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active, new_media_type, new_media_url)
+    VALUES ($1,$2,$3,$4,$5,$6,$7)
+    `,
+    [apartment_id, finalTitle, body, sort_order, is_active, new_media_type, new_media_url]
+  );
+
+  return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+}
     // 4) SAVE ALL edits
     const secRes = await pool.query(
       `SELECT id FROM apartment_sections WHERE apartment_id=$1 ORDER BY id ASC`,
@@ -2848,6 +2858,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
