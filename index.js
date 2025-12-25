@@ -2,7 +2,8 @@
 // RCS Guest Portal — Stable organized single-file version
 // (same logic, only reorganized and labeled)
 // =====================================================
-// ===================== CONFIG ====================
+
+// ===================== CONFIG =====================
 require("dotenv").config();
 const express = require("express");
 const { Pool } = require("pg");
@@ -13,17 +14,127 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+   //vremenno
+// ====== MANAGER: Apartment Sections (Accordion content) ======
+app.get("/manager/apartment/sections", async (req, res) => {
+  try {
+    const aptId = Number(req.query.id);
+    if (!aptId) return res.status(400).send("Missing id");
 
+    const aptRes = await pool.query(
+      `SELECT id, apartment_name FROM beds24_rooms WHERE id = $1 LIMIT 1`,
+      [aptId]
+    );
+    if (!aptRes.rows.length) return res.status(404).send("Apartment not found");
+    const apt = aptRes.rows[0];
 
-// helper: HTML escape (если у тебя уже есть — не дублируй)
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
+    const secRes = await pool.query(
+      `
+      SELECT id, title, body, sort_order, is_active
+      FROM apartment_sections
+      WHERE apartment_id = $1
+      ORDER BY sort_order ASC, id ASC
+      `,
+      [aptId]
+    );
+
+    const rowsHtml = secRes.rows
+      .map((s) => {
+        const checked = s.is_active ? "checked" : "";
+        return `
+          <tr>
+            <td style="width:70px;">
+              <input name="sort_order_${s.id}" value="${Number(s.sort_order)}" style="width:60px;" />
+            </td>
+            <td style="width:140px;">
+              <label style="display:flex; gap:8px; align-items:center;">
+                <input type="checkbox" name="is_active_${s.id}" ${checked}/>
+                Active
+              </label>
+              <div style="display:flex; gap:8px; margin-top:6px;">
+                <button class="btn-mini" type="submit" name="move" value="up:${s.id}">↑</button>
+                <button class="btn-mini" type="submit" name="move" value="down:${s.id}">↓</button>
+                <button class="btn-mini danger" type="submit" name="delete" value="${s.id}">Delete</button>
+              </div>
+            </td>
+            <td>
+              <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" style="width:100%; margin-bottom:8px;" />
+              <textarea name="body_${s.id}" rows="5" style="width:100%;">${escapeHtml(s.body || "")}</textarea>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const html = `
+      <h1>Apartment Sections</h1>
+      <p class="muted">
+        Apartment: <strong>${escapeHtml(apt.apartment_name || String(apt.id))}</strong>
+      </p>
+
+      <p>
+        <a class="btn-link" href="/manager/apartment?id=${aptId}">← Back to Apartment Settings</a>
+      </p>
+
+      <form method="POST" action="/manager/apartment/sections/save">
+        <input type="hidden" name="apartment_id" value="${aptId}" />
+<label>Media type</label><br/>
+<select name="media_type">
+  <option value="none">None</option>
+  <option value="image">Image</option>
+  <option value="video">Video</option>
+</select>
+
+<br/><br/>
+<label>Media URL (image or video link)</label><br/>
+<input name="media_url" placeholder="https://..." style="width:100%;" />
+<br/><br/>
+        <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
+          <h2 style="margin:0 0 8px; font-size:16px;">Add new section</h2>
+          <div style="display:grid; gap:8px;">
+            <input name="new_title" placeholder="Title (e.g. Primera accordion / Wi-Fi / Parking)" />
+            <textarea name="new_body" rows="4" placeholder="Text for guests..."></textarea>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <label class="muted">Order:</label>
+              <input name="new_sort_order" value="100" style="width:80px;" />
+              <label style="display:flex; gap:8px; align-items:center;">
+                <input type="checkbox" name="new_is_active" checked />
+                Active
+              </label>
+              <button type="submit" name="add" value="1">Add section</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
+          <h2 style="margin:0 0 10px; font-size:16px;">Existing sections</h2>
+
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Order</th>
+                <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Actions</th>
+                <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Title & Text</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml || `<tr><td colspan="3" class="muted" style="padding:10px;">No sections yet.</td></tr>`}
+            </tbody>
+          </table>
+          <div style="margin-top:12px;">
+            <button type="submit" name="save" value="1">Save all</button>
+          </div>
+        </div>
+      </form>
+    `;
+
+    return res.send(renderPage("Apartment Sections", html));
+  } catch (e) {
+    console.error("sections page error:", e);
+    return res.status(500).send("Error");
+  }
+});
+
 
 // ===================== MANAGER: Debug =====================
 app.get("/manager/channels/debug", (req, res) => {
@@ -193,13 +304,6 @@ const pool = new Pool({
   ssl: isLocalDb ? false : { rejectUnauthorized: false },
 });
 
-     function aptBadge(name) {
-  const s = String(name || "").trim();
-  if (!s) return "";
-  const clean = s.replace(/\s+/g, " ");
-  if (clean.length <= 4) return clean.toUpperCase();
-  return (clean.slice(0, 2) + clean.slice(-2)).toUpperCase();
-}
 // ===================== DB INIT / MIGRATIONS =====================
 async function initDb() {
   // --- base table ---
@@ -1139,6 +1243,29 @@ app.get("/manager", async (req, res) => {
   }
 });
 
+// ====== MANAGER: Apartment Sections (Accordion content) ======
+app.get("/manager/apartment/sections", async (req, res) => {
+  try {
+    const aptId = Number(req.query.id);
+    if (!aptId) return res.status(400).send("Missing id");
+
+    const aptRes = await pool.query(
+      `SELECT id, apartment_name FROM beds24_rooms WHERE id = $1 LIMIT 1`,
+      [aptId]
+    );
+    if (!aptRes.rows.length) return res.status(404).send("Apartment not found");
+    const apt = aptRes.rows[0];
+
+    const secRes = await pool.query(
+      `
+      SELECT id, title, body, sort_order, is_active
+      FROM apartment_sections
+      WHERE apartment_id = $1
+      ORDER BY sort_order ASC, id ASC
+      `,
+      [aptId]
+    );
+
     const rowsHtml = secRes.rows
       .map((s) => {
         const checked = s.is_active ? "checked" : "";
@@ -1177,7 +1304,7 @@ app.get("/manager", async (req, res) => {
         <a class="btn-link" href="/manager/apartment?id=${aptId}">← Back to Apartment Settings</a>
       </p>
 
-      <form method="POST" action="/manager/apartment/sections/add">
+      <form method="POST" action="/manager/apartment/sections/save">
         <input type="hidden" name="apartment_id" value="${aptId}" />
 
         <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
@@ -1344,200 +1471,25 @@ app.post("/manager/apartment", async (req, res) => {
   res.redirect(`/manager/apartment?id=${id}`);
 });
 
-// ===================== MANAGER: SECTIONS PAGE (CLEAN VERSION) =====================
 
-// GET page
-app.get("/manager/apartment/sections", async (req, res) => {
-  try {
-    const aptId = Number(req.query.id);
-    if (!aptId) return res.status(400).send("Missing id");
-
-    const aptRes = await pool.query(
-      `SELECT id, apartment_name FROM beds24_rooms WHERE id=$1 LIMIT 1`,
-      [aptId]
-    );
-    const apartmentName = aptRes.rows[0]?.apartment_name || `#${aptId}`;
-
-    const secRes = await pool.query(
-      `
-      SELECT id, title, body, sort_order, is_active, media_type, media_url
-      FROM apartment_sections
-      WHERE apartment_id = $1
-      ORDER BY sort_order ASC, id ASC
-      `,
-      [aptId]
-    );
-
-    const rowsHtml =
-      secRes.rows.length === 0
-        ? `<tr><td colspan="6" class="muted" style="padding:10px;">No sections yet.</td></tr>`
-        : secRes.rows
-            .map((s) => {
-              const mediaLabel =
-                s.media_type === "image"
-                  ? "🖼️ image"
-                  : s.media_type === "video"
-                  ? "🎥 video"
-                  : "—";
-
-              return `
-                <tr>
-                  <td style="padding:8px; vertical-align:top;">
-                    <input name="sort_order_${s.id}" value="${Number(s.sort_order ?? 100)}" style="width:70px;" />
-                  </td>
-
-                  <td style="padding:8px; vertical-align:top; text-align:center;">
-                    <input type="checkbox" name="is_active_${s.id}" ${s.is_active ? "checked" : ""} />
-                  </td>
-
-                  <td style="padding:8px; vertical-align:top;">
-                    <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" style="width:240px;" />
-                  </td>
-
-                  <td style="padding:8px; vertical-align:top;">
-                    <textarea name="body_${s.id}" rows="4" style="width:100%;">${escapeHtml(s.body || "")}</textarea>
-                  </td>
-
-                  <td style="padding:8px; vertical-align:top;">
-                    <div class="muted">${mediaLabel}</div>
-                    <div style="margin-top:6px;">
-                      <select name="media_type_${s.id}">
-                        <option value="none" ${s.media_type === "none" || !s.media_type ? "selected" : ""}>None</option>
-                        <option value="image" ${s.media_type === "image" ? "selected" : ""}>Image</option>
-                        <option value="video" ${s.media_type === "video" ? "selected" : ""}>Video</option>
-                      </select>
-                    </div>
-                    <div style="margin-top:6px;">
-                      <input name="media_url_${s.id}" value="${escapeHtml(s.media_url || "")}" placeholder="https://..." style="width:100%;" />
-                    </div>
-                  </td>
-
-                  <td style="padding:8px; vertical-align:top;">
-                    <button
-                      type="submit"
-                      name="delete_id"
-                      value="${s.id}"
-                      formaction="/manager/apartment/sections/delete"
-                      formmethod="POST"
-                      onclick="return confirm('Delete this section?');"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              `;
-            })
-            .join("");
-
-    const html = `
-      <h1>Apartment Sections</h1>
-      <p class="muted">Apartment: <strong>${escapeHtml(apartmentName)}</strong></p>
-      <p><a class="btn-link" href="/manager/apartment?id=${aptId}">← Back to Apartment Settings</a></p>
-
-      <div style="margin-top:16px; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
-        <h2 style="margin:0 0 10px; font-size:16px;">Add new section</h2>
-        <form method="POST" action="/manager/apartment/sections/save">
-          <input type="hidden" name="apartment_id" value="${aptId}" />
-
-          <label>Title</label><br/>
-          <input name="title" placeholder="Title..." style="width:100%;" /><br/><br/>
-
-          <label>Text</label><br/>
-          <textarea name="body" rows="4" placeholder="Text for guests..." style="width:100%;"></textarea><br/><br/>
-
-          <label>Order</label><br/>
-          <input name="sort_order" value="100" style="width:80px;" /><br/><br/>
-
-          <label>
-            <input type="checkbox" name="is_active" checked />
-            Active
-          </label>
-          <br/><br/>
-
-          <label>Media type</label><br/>
-          <select name="media_type">
-            <option value="none">None</option>
-            <option value="image">Image</option>
-            <option value="video">Video</option>
-          </select>
-          <br/><br/>
-
-          <label>Media URL</label><br/>
-          <input name="media_url" placeholder="https://..." style="width:100%;" />
-          <br/><br/>
-
-          <button type="submit">Add section</button>
-        </form>
-      </div>
-
-      <div style="margin-top:16px; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
-        <h2 style="margin:0 0 10px; font-size:16px;">Existing sections</h2>
-
-        <form method="POST" action="/manager/apartment/sections/save-all">
-          <input type="hidden" name="apartment_id" value="${aptId}" />
-
-          <table style="width:100%; border-collapse:collapse;">
-            <thead>
-              <tr style="text-align:left;">
-                <th style="padding:8px; border-bottom:1px solid #eee;">Order</th>
-                <th style="padding:8px; border-bottom:1px solid #eee;">Active</th>
-                <th style="padding:8px; border-bottom:1px solid #eee;">Title</th>
-                <th style="padding:8px; border-bottom:1px solid #eee;">Text</th>
-                <th style="padding:8px; border-bottom:1px solid #eee;">Media</th>
-                <th style="padding:8px; border-bottom:1px solid #eee;">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml}
-            </tbody>
-          </table>
-
-          <p style="margin-top:12px;">
-            <button type="submit">Save all</button>
-          </p>
-        </form>
-      </div>
-    `;
-
-    return res.send(renderPage("Apartment Sections", html));
-  } catch (e) {
-    console.error("sections page error:", e);
-    return res.status(500).send("Manager sections error");
-  }
-});
-
-// POST: add section
+// ========== POST: create new accordion section ==========
 app.post("/manager/apartment/sections/save", async (req, res) => {
   try {
-    const apartmentId = Number(req.body.apartment_id);
-    if (!apartmentId) return res.status(400).send("Missing apartment_id");
-
+    const apartmentId = Number(req.body.apartment_id || req.query.id || req.body.id);
     const title = String(req.body.title || "").trim();
     const body = String(req.body.body || "").trim();
     const sortOrder = Number(req.body.sort_order || 100);
     const isActive = req.body.is_active ? true : false;
 
-    const mediaType = String(req.body.media_type || "none");
-    const mediaUrl = String(req.body.media_url || "").trim();
-
+    if (!apartmentId) return res.status(400).send("Missing apartment_id");
     if (!title) return res.status(400).send("Missing title");
-
-    // limit 15
-    const cnt = await pool.query(
-      `SELECT COUNT(*)::int AS c FROM apartment_sections WHERE apartment_id=$1`,
-      [apartmentId]
-    );
-    if ((cnt.rows[0]?.c || 0) >= 15) {
-      return res.status(400).send("Limit reached: max 15 sections per apartment.");
-    }
 
     await pool.query(
       `
-      INSERT INTO apartment_sections
-        (apartment_id, title, body, sort_order, is_active, media_type, media_url)
-      VALUES ($1,$2,$3,$4,$5,$6,$7)
+      INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active)
+      VALUES ($1, $2, $3, $4, $5)
       `,
-      [apartmentId, title, body, sortOrder, isActive, mediaType, mediaUrl]
+      [apartmentId, title, body, sortOrder, isActive]
     );
 
     return res.redirect(`/manager/apartment/sections?id=${apartmentId}`);
@@ -1546,67 +1498,6 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
     return res.status(500).send("Cannot save section");
   }
 });
-
-// POST: save all
-app.post("/manager/apartment/sections/save-all", async (req, res) => {
-  try {
-    const apartmentId = Number(req.body.apartment_id);
-    if (!apartmentId) return res.status(400).send("Missing apartment_id");
-
-    const secRes = await pool.query(
-      `SELECT id FROM apartment_sections WHERE apartment_id=$1 ORDER BY id ASC`,
-      [apartmentId]
-    );
-
-    for (const row of secRes.rows) {
-      const id = row.id;
-
-      const title = String(req.body[`title_${id}`] || "");
-      const body = String(req.body[`body_${id}`] || "");
-      const sortOrder = Number(req.body[`sort_order_${id}`] || 100);
-      const isActive = req.body[`is_active_${id}`] ? true : false;
-
-      const mediaType = String(req.body[`media_type_${id}`] || "none");
-      const mediaUrl = String(req.body[`media_url_${id}`] || "").trim();
-
-      await pool.query(
-        `
-        UPDATE apartment_sections
-        SET title=$1, body=$2, sort_order=$3, is_active=$4,
-            media_type=$5, media_url=$6, updated_at=NOW()
-        WHERE id=$7 AND apartment_id=$8
-        `,
-        [title, body, sortOrder, isActive, mediaType, mediaUrl, id, apartmentId]
-      );
-    }
-
-    return res.redirect(`/manager/apartment/sections?id=${apartmentId}`);
-  } catch (e) {
-    console.error("save-all error:", e);
-    return res.status(500).send("Cannot save sections");
-  }
-});
-
-// POST: delete section (called by button with formaction)
-app.post("/manager/apartment/sections/delete", async (req, res) => {
-  try {
-    const apartmentId = Number(req.body.apartment_id);
-    const id = Number(req.body.delete_id || req.body.id);
-
-    if (!apartmentId || !id) return res.status(400).send("Missing id");
-
-    await pool.query(
-      `DELETE FROM apartment_sections WHERE id=$1 AND apartment_id=$2`,
-      [id, apartmentId]
-    );
-
-    return res.redirect(`/manager/apartment/sections?id=${apartmentId}`);
-  } catch (e) {
-    console.error("delete section error:", e);
-    return res.status(500).send("Cannot delete section");
-  }
-});
-
 
 
 // ===== SAVE APARTMENT SETTINGS =====
@@ -1984,10 +1875,8 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 // ===================== GUEST DASHBOARD =====================
 // Guest opens: /guest/:aptId/:token
 // We show last submitted record for this booking token.
-
 app.get("/guest/:aptId/:token", async (req, res) => {
   const { aptId, token } = req.params;
-
   try {
     const { rows } = await pool.query(
       `
@@ -2017,46 +1906,26 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 
     const r = rows[0];
 
-    // ✅ 1) Подгружаем секции-гармошки (с медиа)
-    const secRes = await pool.query(
-      `
-      SELECT title, body, media_type, media_url
-      FROM apartment_sections
-      WHERE apartment_id = $1 AND is_active = true
-      ORDER BY sort_order ASC, id ASC
-      `,
-      [aptId]
-    );
+     const secRes = await pool.query(
+  `
+  SELECT title, body
+  FROM apartment_sections
+  WHERE apartment_id = $1 AND is_active = true
+  ORDER BY sort_order ASC, id ASC
+  `,
+  [aptId]
+);
 
-    // ✅ 2) Собираем HTML гармошки (один раз)
-    const accordionHtml = secRes.rows
-      .map((s, idx) => {
-        let mediaHtml = "";
-
-        if (s.media_type === "image" && s.media_url) {
-          mediaHtml = `<div style="margin-top:10px;">
-            <img src="${escapeHtml(s.media_url)}"
-                 style="max-width:100%; border-radius:14px; border:1px solid #eee;" />
-          </div>`;
-        } else if (s.media_type === "video" && s.media_url) {
-          mediaHtml = `<div style="margin-top:10px;">
-            <a target="_blank" rel="noopener noreferrer" href="${escapeHtml(s.media_url)}">🎥 Open video</a>
-          </div>`;
-        }
-
-        return `
-          <details style="border:1px solid #e5e7eb; border-radius:14px; padding:10px 12px; background:#fff; margin-top:10px;">
-            <summary style="cursor:pointer; font-weight:700;">
-              ${escapeHtml(s.title || `Section ${idx + 1}`)}
-            </summary>
-            <div style="margin-top:10px; white-space:pre-wrap; line-height:1.45;">
-              ${escapeHtml(s.body || "")}
-            </div>
-            ${mediaHtml}
-          </details>
-        `;
-      })
-      .join("");
+const accordionHtml = secRes.rows.map((s, idx) => `
+  <details style="border:1px solid #e5e7eb; border-radius:14px; padding:10px 12px; background:#fff; margin-top:10px;">
+    <summary style="cursor:pointer; font-weight:700;">
+      ${escapeHtml(s.title || `Section ${idx + 1}`)}
+    </summary>
+    <div style="margin-top:10px; white-space:pre-wrap; line-height:1.45;">
+      ${escapeHtml(s.body || "")}
+    </div>
+  </details>
+`).join("");
 
     // ✅ apartment name (fallback to aptId if empty)
     const aptName = String(r.apartment_name || "").trim() || String(aptId);
@@ -2064,6 +1933,7 @@ app.get("/guest/:aptId/:token", async (req, res) => {
     // ✅ guests line
     const adults = Number(r.adults ?? 0);
     const children = Number(r.children ?? 0);
+
     let guestsLine = "—";
     if (adults || children) {
       const parts = [];
@@ -2072,16 +1942,21 @@ app.get("/guest/:aptId/:token", async (req, res) => {
       guestsLine = parts.join(", ");
     }
 
+    // Spain date for "today"
+    const todayES = ymdInTz(new Date(), "Europe/Madrid");
+
+    const arrivalYmd = String(r.arrival_date).slice(0, 10);
     const canShowCode = Boolean(r.lock_visible) && r.lock_code;
-    const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time || "").slice(0, 5)}`;
-    const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time || "").slice(0, 5)}`;
+
+    const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time).slice(0, 5)}`;
+    const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time).slice(0, 5)}`;
 
     const codeBlock = canShowCode
       ? `
         <div style="margin-top:14px; padding:14px; border:1px solid #bbf7d0; background:#f0fdf4; border-radius:14px;">
           <h2 style="margin:0 0 6px; font-size:16px;">Key box code</h2>
           <p class="muted" style="margin-bottom:10px;">Keep it private.</p>
-          <div style="font-size:28px; font-weight:900; letter-spacing:0.18em;">${escapeHtml(String(r.lock_code))}</div>
+          <div style="font-size:28px; font-weight:900; letter-spacing:0.18em;">${String(r.lock_code)}</div>
         </div>
       `
       : `
@@ -2095,30 +1970,27 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 
     const html = `
       <h1>Guest Dashboard</h1>
-      <p class="muted">Booking: <strong>${escapeHtml(String(token))}</strong> • Apartment: <strong>${escapeHtml(String(aptName))}</strong></p>
+      <p class="muted">Booking: <strong>${token}</strong> • Apartment: <strong>${aptName}</strong></p>
 
       <div style="margin-top:12px; padding:14px; border:1px solid #e5e7eb; background:#fff; border-radius:14px;">
         <h2 style="margin:0 0 10px; font-size:16px;">Your stay</h2>
-        <p style="margin:0 0 6px;"><strong>Arrival:</strong> ${escapeHtml(arrive)}</p>
-        <p style="margin:0 0 6px;"><strong>Departure:</strong> ${escapeHtml(depart)}</p>
-        <p style="margin:0;"><strong>Guests:</strong> ${escapeHtml(guestsLine)}</p>
+        <p style="margin:0 0 6px;"><strong>Arrival:</strong> ${arrive}</p>
+        <p style="margin:0 0 6px;"><strong>Departure:</strong> ${depart}</p>
+        <p style="margin:0;"><strong>Guests:</strong> ${guestsLine}</p>
       </div>
 
       ${codeBlock}
-
-      <div style="margin-top:14px;">
-        ${accordionHtml}
-      </div>
+      ${accordionHtml}
 
       <p style="margin-top:16px;">
         <a class="btn-link" href="/">← Back</a>
       </p>
     `;
 
-    return res.send(renderPage("Guest Dashboard", html));
+    res.send(renderPage("Guest Dashboard", html));
   } catch (e) {
     console.error("Guest dashboard error:", e);
-    return res.status(500).send("❌ Cannot load guest dashboard");
+    res.status(500).send("❌ Cannot load guest dashboard");
   }
 });
 
@@ -2373,7 +2245,7 @@ function aptColor(apartmentId) {
                           class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}"
                           title="${r.clean_ok ? "Clean" : "Not clean"}"
                         >
-                         ${aptBadge(r.apartment_name)}
+                          ${r.clean_ok ? "✓" : ""}
                         </button>
                       </form>
                     </td>
@@ -2451,7 +2323,7 @@ function aptColor(apartmentId) {
                 <th>${dateColTitle}</th>
                 <th>N</th>
                 <th>Guest</th>
-                <th></th>
+                <th>Lock code</th>
                 <th>Visible</th>
                 <th>Delete</th>
               </tr>
@@ -2477,7 +2349,7 @@ function aptColor(apartmentId) {
 });
 
 
-// ===================== ADMIN:  SAVE (REPLACE, NOT APPEND) =====================
+// ===================== ADMIN: LOCK CODE SAVE (REPLACE, NOT APPEND) =====================
 app.post("/staff/checkins/:id/lock", async (req, res) => {
   const id = Number(req.params.id);
 
@@ -2697,12 +2569,13 @@ app.get("/manager/settings/apartments", async (req, res) => {
 //vremenno
 // ===================== MANAGER: one page for apartments + defaults =====================
 
-// ===================== MANAGER: one page for apartments + defaults =====================
+// helper: safe value
 function safeTime(val) {
   const s = String(val || "");
   return s.length >= 5 ? s.slice(0, 5) : "";
 }
 
+// GET /manager (dropdown + form)
 app.get("/manager", async (req, res) => {
   try {
     // 1) global settings (defaults)
@@ -2724,20 +2597,20 @@ app.get("/manager", async (req, res) => {
         ? Number(selectedIdRaw)
         : (apts[0]?.id ?? null);
 
-    // load selected apt
-    let apt = null;
-    if (selectedId) {
-      const aptRes = await pool.query(
-        `
-        SELECT *
-        FROM beds24_rooms
-        WHERE id = $1
-        LIMIT 1
-        `,
-        [selectedId]
-      );
-      apt = aptRes.rows[0] || null;
-    }
+ // load selected apt
+let apt = null;
+if (selectedId) {
+  const aptRes = await pool.query(
+    `
+    SELECT *
+    FROM beds24_rooms
+    WHERE id = $1
+    LIMIT 1
+    `,
+    [selectedId]
+  );
+  apt = aptRes.rows[0] || null;
+}
 
     // dropdown html
     const optionsHtml = apts
@@ -2752,6 +2625,7 @@ app.get("/manager", async (req, res) => {
     const aptName = apt?.apartment_name ?? "";
     const aptArrive = safeTime(apt?.default_arrival_time);
     const aptDepart = safeTime(apt?.default_departure_time);
+
     const regUrl = apt?.registration_url ?? "";
     const payUrl = apt?.payment_url ?? "";
     const keysUrl = apt?.keys_instructions_url ?? "";
@@ -2798,7 +2672,7 @@ app.get("/manager", async (req, res) => {
             : `
           <form method="POST" action="/manager/apartment/save">
             <input type="hidden" name="id" value="${escapeHtml(apt.id)}" />
-
+          
             <label>Apartment name</label><br/>
             <input name="apartment_name" value="${escapeHtml(aptName)}" style="width:360px" /><br/><br/>
 
@@ -2814,15 +2688,15 @@ app.get("/manager", async (req, res) => {
 
             <label>Registration link</label><br/>
             <input name="registration_url" value="${escapeHtml(regUrl)}" style="width:100%" />
-            <br/><br/>
+            <br/><small>Можно хранить готовую ссылку под этот апарт.</small><br/><br/>
 
             <label>Payment link (template)</label><br/>
             <input name="payment_url" value="${escapeHtml(payUrl)}" style="width:100%" />
-            <br/><br/>
+            <br/><small>Шаблон. Например: https://pay.site/checkout?booking={{BOOKING}}</small><br/><br/>
 
             <label>Keys / Instructions link</label><br/>
             <input name="keys_instructions_url" value="${escapeHtml(keysUrl)}" style="width:100%" />
-            <br/><br/>
+            <br/><small>Ссылка на инструкции/ключи (пока можно пусто).</small><br/><br/>
 
             <button type="submit">Save apartment</button>
           </form>
@@ -2962,31 +2836,6 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
