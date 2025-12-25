@@ -59,7 +59,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
             </td>
             <td>
               <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" style="width:100%; margin-bottom:8px;" />
-              <textarea name="body_${s.id}" rows="5" style="width:100%;">${escapeHtml(s.body || "")}</textarea>
+              <textarea name="body_${s.id}" rows="5" style="width:100%;box-sizing:border-box;">${escapeHtml(s.body || "")}</textarea>
             </td>
           </tr>
         `;
@@ -96,7 +96,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
             <textarea name="new_body" rows="4" placeholder="Text for guests..."></textarea>
             <div style="display:flex; gap:10px; align-items:center;">
               <label class="muted">Order:</label>
-              <input name="new_sort_order" value="100" style="width:80px;" />
+              <input name="new_sort_order" value="1" style="width:80px;" />
               <label style="display:flex; gap:8px; align-items:center;">
                 <input type="checkbox" name="new_is_active" checked />
                 Active
@@ -109,12 +109,12 @@ app.get("/manager/apartment/sections", async (req, res) => {
         <div style="margin-top:12px; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
           <h2 style="margin:0 0 10px; font-size:16px;">Existing sections</h2>
 
-          <table style="width:100%; border-collapse:collapse;">
-            <thead>
+<table style="width:100%; border-collapse:collapse; table-layout:fixed;">
+<thead>
               <tr>
-                <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Order</th>
-                <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Actions</th>
-                <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Title & Text</th>
+               <th style="width:90px; text-align:left; padding:8px; border-bottom:1px solid #eee;">Order</th>
+<th style="width:180px; text-align:left; padding:8px; border-bottom:1px solid #eee;">Actions</th>
+<th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Title & Text</th>
               </tr>
             </thead>
             <tbody>
@@ -2801,6 +2801,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
