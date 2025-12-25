@@ -1026,47 +1026,7 @@ td.apartment-cell.green { background: #e7ffe7; }
     flex-wrap:nowrap !important;
     white-space:nowrap;
   }
-  /* ===== Sections table (fix shifting) ===== */
-.sections-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-.sections-table th,
-.sections-table td {
-  white-space: normal;      /* важно: не nowrap */
-  vertical-align: top;
-}
-.sections-table .td-text { min-width: 0; }
-.sections-table .sec-title,
-.sections-table .sec-body {
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  display: block;
-}
 
-  .lock-form button,
-  .vis-form button,
-  .lock-form .btn-small,
-  .vis-form .btn-small{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    white-space:nowrap;
-  }
-
-  .lock-input{
-    width:72px;
-    min-width:72px;
-  }
-  /* Только для таблиц, где нужно всё в одну строку (lock/visibility) */
-.table-compact td,
-.table-compact th,
-.lock-form,
-.vis-form{
-  white-space: nowrap;
-}
   </style>
 </head>
 <body>
@@ -2793,6 +2753,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
