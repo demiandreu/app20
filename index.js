@@ -28,15 +28,15 @@ app.get("/manager/apartment/sections", async (req, res) => {
     if (!aptRes.rows.length) return res.status(404).send("Apartment not found");
     const apt = aptRes.rows[0];
 
-    const secRes = await pool.query(
-      `
-      SELECT id, title, body, sort_order, is_active
-      FROM apartment_sections
-      WHERE apartment_id = $1
-      ORDER BY sort_order ASC, id ASC
-      `,
-      [aptId]
-    );
+   const secRes = await pool.query(
+  `
+  SELECT id, title, body, sort_order, is_active, media_type, new_media_url
+  FROM apartment_sections
+  WHERE apartment_id = $1
+  ORDER BY sort_order ASC, id ASC
+  `,
+  [aptId]
+);
 
     const rowsHtml = secRes.rows
       .map((s) => {
@@ -2860,6 +2860,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
