@@ -1624,28 +1624,29 @@ await pool.query(
       const new_media_type = String(req.body[`new_media_type_${id}`] || "none").trim();
       const new_media_url = String(req.body[`new_media_url_${id}`] || "").trim();
 
-      await pool.query(
-        `
-        UPDATE apartment_sections
-        SET title=$1,
-            body=$2,
-            sort_order=$3,
-            is_active=$4,
-            new_media_type=$5,
-            new_media_url=$6,
-            updated_at=NOW()
-        WHERE id=$7 AND apartment_id=$8
-        `,
-        [title, body, sort_order, is_active, new_media_type, new_media_url, id, apartment_id]
-      );
-    }
-
-    return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
-  } catch (e) {
-    console.error("sections save error:", e);
-    return res.status(500).send("Cannot save sections");
-  }
-});
+     await pool.query(
+  `
+  UPDATE apartment_sections
+  SET title=$1,
+      body=$2,
+      sort_order=$3,
+      is_active=$4,
+      new_media_type=$5,
+      new_media_url=$6,
+      updated_at=NOW()
+  WHERE id=$7 AND room_id=$8
+  `,
+  [
+    title,
+    body,
+    sort_order,
+    is_active,
+    new_media_type,
+    media_url,
+    id,
+    room_id
+  ]
+);
    
 // ===================== Beds24 Webhook (receiver) =====================
 
@@ -2985,6 +2986,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
