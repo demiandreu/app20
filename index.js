@@ -2186,8 +2186,6 @@ const { rows: occ2 } = await pool.query(
   `,
   [yesterday]
 );
-
-const occupiedYesterdaySet = new Set(occ2.map(r => String(r.apartment_id)));
      
 // 3) функция цвета для таблицы
 function aptColor(apartmentId) {
@@ -2819,6 +2817,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
