@@ -1481,9 +1481,6 @@ if (String(req.body.add) === "1") {
 const media_type = String(req.body.new_media_type || "none");
 const media_url = String(req.body.new_media_url || "").trim();
 
-// title вообще optional
-const body = String(req.body.new_body || "").trim();
-
 // запретим только полностью пустую секцию (вообще ничего)
 if (!title && !body && !media_url) {
   return res.status(400).send("Empty section");
@@ -2875,6 +2872,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
