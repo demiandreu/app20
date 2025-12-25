@@ -2317,14 +2317,14 @@ function aptColor(apartmentId) {
       `;
     }
 
-    const pageHtml =
-      toolbar +
-      render(arrivals, "arrivals") +
-      `<div style="height:18px;"></div>` +
-      render(departures, "departures");
+ const pageHtml =
+  toolbar +
+  renderTable(arrivals, "arrivals") +
+  `<div style="height:18px;"></div>` +
+  renderTable(departures, "departures");
 
-    // ✅ title тоже исправляем
-    res.send(renderPage("Staff • Arrivals & Departures", pageHtml));
+// ✅ title тоже исправляем
+return res.send(renderPage("Staff • Arrivals & Departures", pageHtml));
   } catch (e) {
     console.error("Staff list error:", e);
     res.status(500).send("❌ Cannot load checkins");
@@ -2819,6 +2819,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
