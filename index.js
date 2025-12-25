@@ -43,23 +43,26 @@ app.get("/manager/apartment/sections", async (req, res) => {
         const checked = s.is_active ? "checked" : "";
         return `
           <tr>
-            <td style="width:70px;">
-              <input name="sort_order_${s.id}" value="${Number(s.sort_order)}" style="width:60px;" />
+            <td class="col-order">
+              <input class="in-order" name="sort_order_${s.id}" value="${Number(s.sort_order)}" />
             </td>
-            <td style="width:140px;">
-              <label style="display:flex; gap:8px; align-items:center;">
+
+            <td class="col-actions">
+              <label class="row-active">
                 <input type="checkbox" name="is_active_${s.id}" ${checked}/>
-                Active
+                <span>Active</span>
               </label>
-              <div style="display:flex; gap:8px; margin-top:6px;">
+
+              <div class="row-buttons">
                 <button class="btn-mini" type="submit" name="move" value="up:${s.id}">↑</button>
                 <button class="btn-mini" type="submit" name="move" value="down:${s.id}">↓</button>
                 <button class="btn-mini danger" type="submit" name="delete" value="${s.id}">Delete</button>
               </div>
             </td>
-            <td>
-              <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" style="width:100%; margin-bottom:8px;" />
-              <textarea name="body_${s.id}" rows="5" style="width:100%;box-sizing:border-box;">${escapeHtml(s.body || "")}</textarea>
+
+            <td class="col-text">
+              <input class="in-title" name="title_${s.id}" value="${escapeHtml(s.title || "")}" />
+              <textarea class="in-body" name="body_${s.id}" rows="5">${escapeHtml(s.body || "")}</textarea>
             </td>
           </tr>
         `;
@@ -67,60 +70,86 @@ app.get("/manager/apartment/sections", async (req, res) => {
       .join("");
 
     const html = `
+      <style>
+        .card { margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff; }
+        .muted { color:#6b7280; }
+
+        table.sections { width:100%; border-collapse:collapse; table-layout:fixed; }
+        table.sections th { text-align:left; padding:8px; border-bottom:1px solid #eee; }
+        table.sections td { padding:8px; border-bottom:1px solid #f3f4f6; vertical-align:top; overflow:hidden; }
+
+        .col-order { width:90px; }
+        .col-actions { width:200px; }
+        .col-text { min-width:0; } /* важно для table-layout:fixed */
+
+        .in-order { width:70px; box-sizing:border-box; }
+        .row-active { display:flex; gap:8px; align-items:center; }
+        .row-buttons { display:flex; gap:8px; margin-top:6px; flex-wrap:wrap; }
+
+        .in-title { width:100%; box-sizing:border-box; margin-bottom:8px; }
+        .in-body  { width:100%; max-width:100%; box-sizing:border-box; resize:vertical; display:block; }
+      </style>
+
       <h1>Apartment Sections</h1>
-      <p class="muted">
-        Apartment: <strong>${escapeHtml(apt.apartment_name || String(apt.id))}</strong>
-      </p>
+      <p class="muted">Apartment: <strong>${escapeHtml(apt.apartment_name || String(apt.id))}</strong></p>
+      <p><a class="btn-link" href="/manager/apartment?id=${aptId}">← Back to Apartment Settings</a></p>
 
-      <p>
-        <a class="btn-link" href="/manager/apartment?id=${aptId}">← Back to Apartment Settings</a>
-      </p>
-
-      <form method="POST" action="/manager/apartment/sections/save">
+      <!-- FORM 1: ADD NEW SECTION (только добавление) -->
+      <form method="POST" action="/manager/apartment/sections/add">
         <input type="hidden" name="apartment_id" value="${aptId}" />
-<label>Media type</label><br/>
-<select name="media_type">
-  <option value="none">None</option>
-  <option value="image">Image</option>
-  <option value="video">Video</option>
-</select>
 
-<br/><br/>
-<label>Media URL (image or video link)</label><br/>
-<input name="media_url" placeholder="https://..." style="width:100%;" />
-<br/><br/>
-        <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
+        <div class="card">
           <h2 style="margin:0 0 8px; font-size:16px;">Add new section</h2>
-          <div style="display:grid; gap:8px;">
-            <input name="new_title" placeholder="Title (e.g. Primera accordion / Wi-Fi / Parking)" />
-            <textarea name="new_body" rows="4" placeholder="Text for guests..."></textarea>
-            <div style="display:flex; gap:10px; align-items:center;">
-              <label class="muted">Order:</label>
-              <input name="new_sort_order" value="1" style="width:80px;" />
-              <label style="display:flex; gap:8px; align-items:center;">
-                <input type="checkbox" name="new_is_active" checked />
-                Active
-              </label>
-              <button type="submit" name="add" value="1">Add section</button>
-            </div>
+
+          <label>Media type</label><br/>
+          <select name="media_type">
+            <option value="none">None</option>
+            <option value="image">Image</option>
+            <option value="video">Video</option>
+          </select>
+          <br/><br/>
+
+          <label>Media URL (image or video link)</label><br/>
+          <input name="media_url" placeholder="https://..." style="width:100%; box-sizing:border-box;" />
+          <br/><br/>
+
+          <input name="title" placeholder="Title (e.g. Primera accordion / Wi-Fi / Parking)" style="width:100%; box-sizing:border-box;" />
+          <br/><br/>
+          <textarea name="body" rows="4" placeholder="Text for guests..." style="width:100%; box-sizing:border-box;"></textarea>
+          <br/><br/>
+
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <label class="muted">Order:</label>
+            <input name="sort_order" value="1" style="width:80px; box-sizing:border-box;" />
+            <label style="display:flex; gap:8px; align-items:center;">
+              <input type="checkbox" name="is_active" checked />
+              Active
+            </label>
+            <button type="submit">Add section</button>
           </div>
         </div>
+      </form>
 
-        <div style="margin-top:12px; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
+      <!-- FORM 2: EXISTING SECTIONS (save/move/delete) -->
+      <form method="POST" action="/manager/apartment/sections/save">
+        <input type="hidden" name="apartment_id" value="${aptId}" />
+
+        <div class="card">
           <h2 style="margin:0 0 10px; font-size:16px;">Existing sections</h2>
 
-<table style="width:100%; border-collapse:collapse; table-layout:fixed;">
-<thead>
+          <table class="sections">
+            <thead>
               <tr>
-               <th style="width:90px; text-align:left; padding:8px; border-bottom:1px solid #eee;">Order</th>
-<th style="width:180px; text-align:left; padding:8px; border-bottom:1px solid #eee;">Actions</th>
-<th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Title & Text</th>
+                <th class="col-order">Order</th>
+                <th class="col-actions">Actions</th>
+                <th>Title & Text</th>
               </tr>
             </thead>
             <tbody>
               ${rowsHtml || `<tr><td colspan="3" class="muted" style="padding:10px;">No sections yet.</td></tr>`}
             </tbody>
           </table>
+
           <div style="margin-top:12px;">
             <button type="submit" name="save" value="1">Save all</button>
           </div>
@@ -1398,37 +1427,6 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
       return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
     }
 
-    // 3) ADD new section
-    if (req.body.add) {
-      const title = String(req.body.new_title || "").trim();
-      const body = String(req.body.new_body || "").trim();
-      const sort_order = Number(req.body.new_sort_order || 1);
-      const is_active = req.body.new_is_active ? true : false;
-
-      // media (optional)
-      const media_type = String(req.body.media_type || "none");
-      const media_url = String(req.body.media_url || "").trim();
-
-      if (!title) return res.status(400).send("Missing title");
-
-      await pool.query(
-        `
-        INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active, media_type, media_url)
-        VALUES ($1,$2,$3,$4,$5,$6,$7)
-        `,
-        [
-          apartment_id,
-          title,
-          body,
-          sort_order,
-          is_active,
-          media_type,
-          media_url,
-        ]
-      );
-
-      return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
-    }
 
     // 4) SAVE ALL edits
     // (если нажали Save all)
@@ -2801,6 +2799,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
