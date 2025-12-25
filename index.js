@@ -323,7 +323,10 @@ app.get("/manager/apartment/sections", async (req, res) => {
       ${rowsHtml}
     `;
 
-<form id="deleteForm" method="POST" action="/manager/apartment/sections/delete" style="display:none;">
+
+</script>
+   
+     <form id="deleteForm" method="POST" action="/manager/apartment/sections/delete" style="display:none;">
   <input type="hidden" name="apartment_id" id="del_apartment_id" />
   <input type="hidden" name="id" id="del_id" />
 </form>
@@ -335,7 +338,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
     document.getElementById('del_id').value = sectionId;
     document.getElementById('deleteForm').submit();
   }
-</script>
+
      
     return res.send(renderPage("Apartment Sections", html));
   } catch (e) {
@@ -3172,6 +3175,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
