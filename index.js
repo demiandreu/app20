@@ -1510,8 +1510,7 @@ await pool.query(
 
       // чтобы Save all не падал из-за пустых
   
-
-     await pool.query(
+    await pool.query(
   `
   UPDATE apartment_sections
   SET title=$1, body=$2, sort_order=$3, is_active=$4, new_media_type=$5, new_media_url=$6, updated_at=NOW()
@@ -2865,6 +2864,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
