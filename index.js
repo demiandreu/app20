@@ -1266,7 +1266,94 @@ app.get("/manager/apartment/sections", async (req, res) => {
       [aptId]
     );
 
-  
+    const rowsHtml = secRes.rows
+      .map((s) => {
+        const checked = s.is_active ? "checked" : "";
+        return `
+          <tr>
+            <td style="width:70px;">
+              <input name="sort_order_${s.id}" value="${Number(s.sort_order)}" style="width:60px;" />
+            </td>
+            <td style="width:140px;">
+              <label style="display:flex; gap:8px; align-items:center;">
+                <input type="checkbox" name="is_active_${s.id}" ${checked}/>
+                Active
+              </label>
+              <div style="display:flex; gap:8px; margin-top:6px;">
+                <button class="btn-mini" type="submit" name="move" value="up:${s.id}">↑</button>
+                <button class="btn-mini" type="submit" name="move" value="down:${s.id}">↓</button>
+                <button class="btn-mini danger" type="submit" name="delete" value="${s.id}">Delete</button>
+              </div>
+            </td>
+            <td>
+              <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" style="width:100%; margin-bottom:8px;" />
+              <textarea name="body_${s.id}" rows="5" style="width:100%;">${escapeHtml(s.body || "")}</textarea>
+            </td>
+          </tr>
+        `;
+      })
+      .join("");
+
+    const html = `
+      <h1>Apartment Sections</h1>
+      <p class="muted">
+        Apartment: <strong>${escapeHtml(apt.apartment_name || String(apt.id))}</strong>
+      </p>
+
+      <p>
+        <a class="btn-link" href="/manager/apartment?id=${aptId}">← Back to Apartment Settings</a>
+      </p>
+
+      <form method="POST" action="/manager/apartment/sections/save">
+        <input type="hidden" name="apartment_id" value="${aptId}" />
+
+        <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
+          <h2 style="margin:0 0 8px; font-size:16px;">Add new section</h2>
+          <div style="display:grid; gap:8px;">
+            <input name="new_title" placeholder="Title (e.g. Primera acordeon / Wi-Fi / Parking)" />
+            <textarea name="new_body" rows="4" placeholder="Text for guests..."></textarea>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <label class="muted">Order:</label>
+              <input name="new_sort_order" value="100" style="width:80px;" />
+              <label style="display:flex; gap:8px; align-items:center;">
+                <input type="checkbox" name="new_is_active" checked />
+                Active
+              </label>
+              <button type="submit" name="add" value="1">Add section</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
+          <h2 style="margin:0 0 10px; font-size:16px;">Existing sections</h2>
+
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Order</th>
+                <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Actions</th>
+                <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Title & Text</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml || `<tr><td colspan="3" class="muted" style="padding:10px;">No sections yet.</td></tr>`}
+            </tbody>
+          </table>
+
+          <div style="margin-top:12px;">
+            <button type="submit" name="save" value="1">Save all</button>
+          </div>
+        </div>
+      </form>
+    `;
+
+    return res.send(renderPage("Apartment Sections", html));
+  } catch (e) {
+    console.error("sections page error:", e);
+    return res.status(500).send("Error");
+  }
+});
+
 // ===== EDIT APARTMENT SETTINGS PAGE =====
 app.get("/manager/apartment", async (req, res) => {
   try {
@@ -2755,8 +2842,6 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
-
-
 
 
 
