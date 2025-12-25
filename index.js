@@ -1504,43 +1504,33 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
 
     // 3) ADD new section (только если нажали кнопку Add section)
     if (String(req.body.add) === "1") {
-      const title = String(req.body.new_title || "").trim();
-      const body = String(req.body.new_body || "").trim();
-      const sort_order = Number(req.body.new_sort_order || 1);
-      const is_active = req.body.new_is_active ? true : false;
+  const title = String(req.body.new_title || "").trim();
+  const body = String(req.body.new_body || "").trim();
+  const sort_order = Number(req.body.new_sort_order || 1);
+  const is_active = req.body.new_is_active ? true : false;
 
-      const new_media_type = String(req.body.new_media_type || "none").trim();
-      const new_media_url = String(req.body.new_media_url || "").trim();
+  // media (optional) — ИМЕНА КАК В ФОРМЕ
+const new_media_type = String(req.body.new_media_type || "none");
+const media_url = String(req.body.new_media_url || "").trim();
 
-      // запретим полностью пустую секцию (вообще ничего)
-      if (!title && !body && !new_media_url) {
-        return res.status(400).send("Empty section");
-      }
+// запретим только полностью пустую секцию (вообще ничего)
+if (!title && !body && !media_url) {
+  return res.status(400).send("Empty section");
+}
 
-      const room_id = await getRoomIdForApartment(apartment_id);
+// если url есть, но new_media_type none — подправим
+const finalMediaType = media_url ? (new_media_type === "video" ? "video" : "image") : "none";
 
-      await pool.query(
-        `
-        INSERT INTO apartment_sections
-          (apartment_id, room_id, title, body, sort_order, is_active, new_media_type, new_media_url)
-        VALUES
-          ($1,$2,$3,$4,$5,$6,$7,$8)
-        `,
-        [
-          apartment_id,
-          room_id,
-          title,
-          body,
-          sort_order,
-          is_active,
-          new_media_type,
-          new_media_url,
-        ]
-      );
+await pool.query(
+  `
+  INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active, new_media_type, new_media_url)
+  VALUES ($1,$2,$3,$4,$5,$6,$7)
+  `,
+  [apartment_id, title, body, sort_order, is_active, finalMediaType, media_url]
+);
 
-      return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
-    }
-
+  return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+}
     // 4) SAVE ALL edits
     const secRes = await pool.query(
       `SELECT id FROM apartment_sections WHERE apartment_id=$1 ORDER BY id ASC`,
@@ -1549,38 +1539,33 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
 
     for (const row of secRes.rows) {
       const id = row.id;
-
       const title = String(req.body[`title_${id}`] || "").trim();
-      const body = String(req.body[`body_${id}`] || "").trim();
+      const body = String(req.body[`body_${id}`] || "");
       const sort_order = Number(req.body[`sort_order_${id}`] || 1);
       const is_active = req.body[`is_active_${id}`] ? true : false;
+       const new_media_type = String(req.body[`new_media_type_${id}`] || "none");
+       const media_url  = String(req.body[`media_url_${id}`] || "").trim();
 
-      const new_media_type = String(req.body[`new_media_type_${id}`] || "none").trim();
-      const new_media_url = String(req.body[`new_media_url_${id}`] || "").trim();
+
+      // чтобы Save all не падал из-за пустых
+  
 
      await pool.query(
   `
   UPDATE apartment_sections
-  SET title=$1,
-      body=$2,
-      sort_order=$3,
-      is_active=$4,
-      new_media_type=$5,
-      new_media_url=$6,
-      updated_at=NOW()
-  WHERE id=$7 AND room_id=$8
+  SET title=$1, body=$2, sort_order=$3, is_active=$4, new_media_type=$5, new_media_url=$6, updated_at=NOW()
+  WHERE id=$7 AND apartment_id=$8
   `,
-  [
-    title,
-    body,
-    sort_order,
-    is_active,
-    new_media_type,
-    new_media_url,
-    id,
-    room_id
-  ]
+  [title, body, sort_order, is_active, new_media_type, media_url, id, apartment_id]
 );
+    }
+
+    return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+  } catch (e) {
+    console.error("sections save error:", e);
+    return res.status(500).send("Cannot save sections");
+  }
+});
    
 // ===================== Beds24 Webhook (receiver) =====================
 
@@ -2920,6 +2905,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
