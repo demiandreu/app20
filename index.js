@@ -1454,10 +1454,10 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
 
       await pool.query(
         `
-        INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active, media_type, media_url)
+        INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active, new_media_type, new_media_url)
         VALUES ($1,$2,$3,$4,$5,$6,$7)
         `,
-        [apartment_id, title, body, sort_order, is_active, media_type, media_url]
+        [apartment_id, title, body, sort_order, is_active, new_media_type, new_media_url]
       );
 
       return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
@@ -2793,6 +2793,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
