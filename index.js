@@ -1520,7 +1520,7 @@ await pool.query(
 
 
       // чтобы Save all не падал из-за пустых
-      if (!title) continue;
+  
 
      await pool.query(
   `
@@ -2876,6 +2876,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
