@@ -1451,7 +1451,15 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
       const new_media_type = String(req.body.new_media_type || "none");
       const new_media_url = String(req.body.new_media_url || "").trim();
 
-      if (!title) return res.status(400).send("Missing title");
+    let finalTitle = title;
+
+if (!finalTitle) {
+  if (new_media_url) {
+    finalTitle = new_media_type === "video" ? "Video" : "Image";
+  } else {
+    return res.status(400).send("Missing title");
+  }
+}
 
       await pool.query(
         `
@@ -2834,6 +2842,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
