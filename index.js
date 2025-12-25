@@ -1085,6 +1085,34 @@ td.apartment-cell.green { background: #e7ffe7; }
 </body>
 </html>`;
 }
+/* ===== Apartment sections table ===== */
+table.sections {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+table.sections th,
+table.sections td {
+  white-space: normal;        /* ВАЖНО: убирает уезд */
+  vertical-align: top;
+}
+
+table.sections .col-order {
+  width: 90px;
+}
+
+table.sections .col-actions {
+  width: 200px;
+}
+
+table.sections input,
+table.sections textarea,
+table.sections select {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;               /* критично для table-layout: fixed */
+}
 
 // =====================================================
 // ROUTES
@@ -2819,6 +2847,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
