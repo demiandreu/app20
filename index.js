@@ -323,11 +323,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
       ${rowsHtml}
     `;
 
-
-</script>
    
-
-
 // ADD section
 app.post("/manager/apartment/sections/add", async (req, res) => {
   try {
@@ -3162,6 +3158,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
