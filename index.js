@@ -30,7 +30,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
 
    const secRes = await pool.query(
   `
-  SELECT id, title, body, sort_order, is_active, media_type, new_media_url
+  SELECT id, title, body, sort_order, is_active, new_new_media_type, new_media_url
   FROM apartment_sections
   WHERE apartment_id = $1
   ORDER BY sort_order ASC, id ASC
@@ -63,10 +63,10 @@ app.get("/manager/apartment/sections", async (req, res) => {
 
   <div style="margin-top:10px; display:grid; gap:6px;">
     <label class="muted">Media type</label>
-    <select name="media_type_${s.id}">
-      <option value="none" ${String(s.media_type || "none") === "none" ? "selected" : ""}>None</option>
-      <option value="image" ${String(s.media_type || "") === "image" ? "selected" : ""}>Image</option>
-      <option value="video" ${String(s.media_type || "") === "video" ? "selected" : ""}>Video</option>
+    <select name="new_new_media_type_${s.id}">
+      <option value="none" ${String(s.new_new_media_type || "none") === "none" ? "selected" : ""}>None</option>
+      <option value="image" ${String(s.new_media_type || "") === "image" ? "selected" : ""}>Image</option>
+      <option value="video" ${String(s.new_media_type || "") === "video" ? "selected" : ""}>Video</option>
     </select>
 
     <label class="muted">Media URL</label>
@@ -98,7 +98,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
         <input type="hidden" name="apartment_id" value="${aptId}" />
 
         <label>Media type</label><br/>
-        <select name="new_media_type">
+        <select name="new_new_media_type">
           <option value="none">None</option>
           <option value="image">Image</option>
           <option value="video">Video</option>
@@ -1478,7 +1478,7 @@ if (String(req.body.add) === "1") {
   const is_active = req.body.new_is_active ? true : false;
 
   // media (optional) — ИМЕНА КАК В ФОРМЕ
-const media_type = String(req.body.new_media_type || "none");
+const new_media_type = String(req.body.new_media_type || "none");
 const media_url = String(req.body.new_media_url || "").trim();
 
 // запретим только полностью пустую секцию (вообще ничего)
@@ -1486,12 +1486,12 @@ if (!title && !body && !media_url) {
   return res.status(400).send("Empty section");
 }
 
-// если url есть, но media_type none — подправим
-const finalMediaType = media_url ? (media_type === "video" ? "video" : "image") : "none";
+// если url есть, но new_media_type none — подправим
+const finalMediaType = media_url ? (new_media_type === "video" ? "video" : "image") : "none";
 
 await pool.query(
   `
-  INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active, media_type, new_media_url)
+  INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active, new_media_type, new_media_url)
   VALUES ($1,$2,$3,$4,$5,$6,$7)
   `,
   [apartment_id, title, body, sort_order, is_active, finalMediaType, media_url]
@@ -1511,7 +1511,7 @@ await pool.query(
       const body = String(req.body[`body_${id}`] || "");
       const sort_order = Number(req.body[`sort_order_${id}`] || 1);
       const is_active = req.body[`is_active_${id}`] ? true : false;
-       const media_type = String(req.body[`media_type_${id}`] || "none");
+       const new_media_type = String(req.body[`new_media_type_${id}`] || "none");
        const media_url  = String(req.body[`media_url_${id}`] || "").trim();
 
 
@@ -1521,10 +1521,10 @@ await pool.query(
      await pool.query(
   `
   UPDATE apartment_sections
-  SET title=$1, body=$2, sort_order=$3, is_active=$4, media_type=$5, new_media_url=$6, updated_at=NOW()
+  SET title=$1, body=$2, sort_order=$3, is_active=$4, new_media_type=$5, new_media_url=$6, updated_at=NOW()
   WHERE id=$7 AND apartment_id=$8
   `,
-  [title, body, sort_order, is_active, media_type, media_url, id, apartment_id]
+  [title, body, sort_order, is_active, new_media_type, media_url, id, apartment_id]
 );
     }
 
@@ -2872,6 +2872,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
