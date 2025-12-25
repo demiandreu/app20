@@ -1449,7 +1449,7 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
         `DELETE FROM apartment_sections WHERE id=$1 AND apartment_id=$2`,
         [id, apartment_id]
       );
-      return res.redirect(`/manager/apartment/sections?id=${room_id}`);
+      return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
     }
 
     // 2) MOVE up/down
@@ -1491,13 +1491,20 @@ const finalMediaType = media_url ? (new_media_type === "video" ? "video" : "imag
 
 await pool.query(
   `
-  INSERT INTO apartment_sections
-    (room_id, title, body, is_active, sort_order, new_media_type, new_media_url)
-  VALUES
-    ($1, $2, $3, $4, $5, $6, $7)
+  INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active, new_media_type, new_media_url)
+  VALUES ($1,$2,$3,$4,$5,$6,$7)
   `,
-  [room_id, title, body, is_active, sort_order, finalMediaType, media_url]
+  [apartment_id, title, body, sort_order, is_active, finalMediaType, media_url]
 );
+
+  return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+}
+    // 4) SAVE ALL edits
+    const secRes = await pool.query(
+      `SELECT id FROM apartment_sections WHERE apartment_id=$1 ORDER BY id ASC`,
+      [apartment_id]
+    );
+
     for (const row of secRes.rows) {
       const id = row.id;
       const title = String(req.body[`title_${id}`] || "").trim();
@@ -1510,20 +1517,23 @@ await pool.query(
 
       // чтобы Save all не падал из-за пустых
   
-await pool.query(
+
+     await pool.query(
   `
   UPDATE apartment_sections
-  SET title=$1,
-      body=$2,
-      sort_order=$3,
-      is_active=$4,
-      new_media_type=$5,
-      new_media_url=$6
+  SET title=$1, body=$2, sort_order=$3, is_active=$4, new_media_type=$5, new_media_url=$6, updated_at=NOW()
   WHERE id=$7 AND apartment_id=$8
   `,
   [title, body, sort_order, is_active, new_media_type, media_url, id, apartment_id]
 );
-       
+    }
+
+    return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+  } catch (e) {
+    console.error("sections save error:", e);
+    return res.status(500).send("Cannot save sections");
+  }
+});
 // ===================== Beds24 Webhook (receiver) =====================
 
 
@@ -2862,12 +2872,6 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
-
-
-
-
-
-
 
 
 
