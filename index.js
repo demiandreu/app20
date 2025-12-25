@@ -290,17 +290,40 @@ app.get("/manager/apartment/sections", async (req, res) => {
       <p><a class="btn-link" href="/manager/apartment?id=${aptId}">← Back to Apartment Settings</a></p>
 
       <h2 style="margin-top:16px;">Add new section</h2>
-      <form method="POST" action="/manager/apartment/sections/add">
-        <input type="hidden" name="apartment_id" value="${aptId}" />
-        <input name="title" placeholder="Title (e.g. Wi-Fi / Parking / Keys)" style="width:100%; margin-bottom:8px;" />
-        <textarea name="body" placeholder="Text for guests..." rows="4" style="width:100%;"></textarea>
+     <form method="POST" action="/manager/apartment/sections/save">
+  <input type="hidden" name="apartment_id" value="${aptId}" />
 
-        <div style="margin-top:8px; display:flex; gap:10px; align-items:center;">
-          <label>Order: <input name="sort_order" value="100" style="width:80px;" /></label>
-          <label><input type="checkbox" name="is_active" checked /> Active</label>
-          <button type="submit">Add section</button>
-        </div>
-      </form>
+  <h2>Add new section</h2>
+
+  <label>Title</label><br/>
+  <input name="title" placeholder="Title..." /><br/><br/>
+
+  <label>Text</label><br/>
+  <textarea name="body" rows="4" placeholder="Text for guests..."></textarea><br/><br/>
+
+  <label>Order</label><br/>
+  <input name="sort_order" value="100" style="width:80px;" /><br/><br/>
+
+  <label>
+    <input type="checkbox" name="is_active" checked />
+    Active
+  </label>
+  <br/><br/>
+
+  <label>Media type</label><br/>
+  <select name="media_type">
+    <option value="none">None</option>
+    <option value="image">Image</option>
+    <option value="video">Video</option>
+  </select>
+  <br/><br/>
+
+  <label>Media URL</label><br/>
+  <input name="media_url" placeholder="https://..." style="width:100%;" />
+  <br/><br/>
+
+  <button type="submit">Add section</button>
+</form>
 
       <h2 style="margin-top:18px;">Existing sections</h2>
       ${rowsHtml}
@@ -3141,6 +3164,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
