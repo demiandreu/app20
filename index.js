@@ -1026,6 +1026,47 @@ td.apartment-cell.green { background: #e7ffe7; }
     flex-wrap:nowrap !important;
     white-space:nowrap;
   }
+    /* ===== Sections table (fix shifting) ===== */
+.sections-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.sections-table th,
+.sections-table td {
+  white-space: normal;      /* важно: не nowrap */
+  vertical-align: top;
+}
+.sections-table .td-text { min-width: 0; }
+.sections-table .sec-title,
+.sections-table .sec-body {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  display: block;
+}
+
+  .lock-form button,
+  .vis-form button,
+  .lock-form .btn-small,
+  .vis-form .btn-small{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    white-space:nowrap;
+  }
+
+  .lock-input{
+    width:72px;
+    min-width:72px;
+  }
+  /* Только для таблиц, где нужно всё в одну строку (lock/visibility) */
+.table-compact td,
+.table-compact th,
+.lock-form,
+.vis-form{
+  white-space: nowrap;
+}
 
   </style>
 </head>
@@ -2054,6 +2095,37 @@ app.get("/staff/checkins", async (req, res) => {
     const arrivals = arrivalsRes.rows || [];
     const departures = departuresRes.rows || [];
 
+     // ===== apartment color (safe) =====
+
+// 1) квартиры с выездом СЕГОДНЯ -> red
+const depTodaySet = new Set(
+  departures
+    .filter(r => String(r.departure_date || "").slice(0, 10) === today)
+    .map(r => String(r.apartment_id))
+);
+
+// 2) квартиры, которые были заняты ВЧЕРА (чтобы понять "пусто/не пусто")
+const { rows: occ } = await pool.query(
+  `
+  SELECT DISTINCT apartment_id
+  FROM checkins
+  WHERE cancelled IS DISTINCT FROM true
+    AND arrival_date <= $1::date
+    AND departure_date > $1::date
+  `,
+  [yesterday]
+);
+const occupiedYesterdaySet = new Set(occ.map(r => String(r.apartment_id)));
+
+// 3) функция цвета для таблицы
+function aptColor(apartmentId) {
+  const id = String(apartmentId || "");
+  if (!id) return "";
+  if (depTodaySet.has(id)) return "red";
+  if (!occupiedYesterdaySet.has(id)) return "green";
+  return "";
+}
+
    // 1) какие квартиры выезжают сегодня (значит убирать) -> красный
 const departSet = new Set(departures.map(r => String(r.apartment_id)));
 
@@ -2753,6 +2825,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
