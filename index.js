@@ -1547,7 +1547,7 @@ if (String(req.body.add) === "1") {
     // ✅ берём room_id из beds24_rooms по apartment_id
     const roomRes = await pool.query(
       `SELECT beds24_room_id FROM beds24_rooms WHERE id = $1 LIMIT 1`,
-      [apartment_id]
+      [room_id]
     );
     
     if (roomRes.rows.length === 0) {
@@ -1575,7 +1575,7 @@ if (String(req.body.add) === "1") {
       ]
     );
     
-    return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+    return res.redirect(`/manager/apartment/sections?id=${room_id}`);
   } catch (error) {
     console.error("Error adding section:", error);
     return res.status(500).send("Error adding section");
@@ -2920,6 +2920,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
