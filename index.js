@@ -1581,7 +1581,7 @@ if (String(req.body.add) === "1") {
     return res.status(500).send("Error adding section");
   }
 }
-     
+     });
 // ===================== Beds24 Webhook (receiver) =====================
 
 
@@ -2920,6 +2920,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
