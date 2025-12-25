@@ -104,8 +104,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
   Title <span style="color:red">*</span>
 </label>  <input
   name="new_title"
-  placeholder="Title (required)"
-  required
+  placeholder="Title"
 />
             <textarea name="new_body" rows="4" placeholder="Text for guests..."></textarea>
             <div style="display:flex; gap:10px; align-items:center;">
@@ -2861,6 +2860,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
