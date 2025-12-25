@@ -14,22 +14,22 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
    //vremenno
-// ====== MANAGER: Apartment Sections (Accordion content) ======
+// ===================== MANAGER: SECTIONS PAGE =====================
 app.get("/manager/apartment/sections", async (req, res) => {
   try {
     const aptId = Number(req.query.id);
     if (!aptId) return res.status(400).send("Missing id");
 
     const aptRes = await pool.query(
-      `SELECT id, apartment_name FROM beds24_rooms WHERE id = $1 LIMIT 1`,
+      `SELECT id, apartment_name FROM beds24_rooms WHERE id=$1 LIMIT 1`,
       [aptId]
     );
-    if (!aptRes.rows.length) return res.status(404).send("Apartment not found");
-    const apt = aptRes.rows[0];
+    const apartmentName =
+      aptRes.rows[0]?.apartment_name || `#${aptId}`;
 
     const secRes = await pool.query(
       `
-      SELECT id, title, body, sort_order, is_active
+      SELECT id, title, body, sort_order, is_active, media_type, media_url
       FROM apartment_sections
       WHERE apartment_id = $1
       ORDER BY sort_order ASC, id ASC
@@ -37,100 +37,68 @@ app.get("/manager/apartment/sections", async (req, res) => {
       [aptId]
     );
 
-    const rowsHtml = secRes.rows
-      .map((s) => {
-        const checked = s.is_active ? "checked" : "";
-        return `
-          <tr>
-            <td style="width:70px;">
-              <input name="sort_order_${s.id}" value="${Number(s.sort_order)}" style="width:60px;" />
-            </td>
-            <td style="width:140px;">
-              <label style="display:flex; gap:8px; align-items:center;">
-                <input type="checkbox" name="is_active_${s.id}" ${checked}/>
-                Active
-              </label>
-              <div style="display:flex; gap:8px; margin-top:6px;">
-                <button class="btn-mini" type="submit" name="move" value="up:${s.id}">↑</button>
-                <button class="btn-mini" type="submit" name="move" value="down:${s.id}">↓</button>
-                <button class="btn-mini danger" type="submit" name="delete" value="${s.id}">Delete</button>
-              </div>
-            </td>
-            <td>
-              <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" style="width:100%; margin-bottom:8px;" />
-              <textarea name="body_${s.id}" rows="5" style="width:100%;">${escapeHtml(s.body || "")}</textarea>
-            </td>
-          </tr>
-        `;
-      })
-      .join("");
+    const rowsHtml =
+      secRes.rows.length === 0
+        ? `<p class="muted">No sections yet.</p>`
+        : `
+        <form method="POST" action="/manager/apartment/sections/save-all">
+          <input type="hidden" name="apartment_id" value="${aptId}" />
+          <table style="width:100%; border-collapse:collapse;">
+            <tr>
+              <th>Order</th>
+              <th>Active</th>
+              <th>Title</th>
+              <th>Text</th>
+              <th>Media</th>
+              <th>Delete</th>
+            </tr>
+            ${secRes.rows.map(s => `
+              <tr>
+                <td><input name="sort_order_${s.id}" value="${s.sort_order}" style="width:60px;" /></td>
+                <td><input type="checkbox" name="is_active_${s.id}" ${s.is_active ? "checked" : ""} /></td>
+                <td><input name="title_${s.id}" value="${escapeHtml(s.title)}" /></td>
+                <td><textarea name="body_${s.id}" rows="3">${escapeHtml(s.body)}</textarea></td>
+                <td>${escapeHtml(s.media_type || "—")}</td>
+                <td>
+                  <form method="POST" action="/manager/apartment/sections/delete">
+                    <input type="hidden" name="apartment_id" value="${aptId}" />
+                    <input type="hidden" name="id" value="${s.id}" />
+                    <button type="submit">Delete</button>
+                  </form>
+                </td>
+              </tr>
+            `).join("")}
+          </table>
+          <br/>
+          <button type="submit">Save all</button>
+        </form>
+      `;
 
     const html = `
       <h1>Apartment Sections</h1>
-      <p class="muted">
-        Apartment: <strong>${escapeHtml(apt.apartment_name || String(apt.id))}</strong>
-      </p>
+      <p class="muted">Apartment: <strong>${escapeHtml(apartmentName)}</strong></p>
+      <p><a href="/manager/apartment?id=${aptId}">← Back</a></p>
 
-      <p>
-        <a class="btn-link" href="/manager/apartment?id=${aptId}">← Back to Apartment Settings</a>
-      </p>
-
+      <h2>Add new section</h2>
       <form method="POST" action="/manager/apartment/sections/add">
         <input type="hidden" name="apartment_id" value="${aptId}" />
-<label>Media type</label><br/>
-<select name="media_type">
-  <option value="none">None</option>
-  <option value="image">Image</option>
-  <option value="video">Video</option>
-</select>
-
-<br/><br/>
-<label>Media URL (image or video link)</label><br/>
-<input name="media_url" placeholder="https://..." style="width:100%;" />
-<br/><br/>
-        <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
-          <h2 style="margin:0 0 8px; font-size:16px;">Add new section</h2>
-          <div style="display:grid; gap:8px;">
-         <input name="title" placeholder="Title (e.g. Wi-Fi / Parking)" />
-<textarea name="body" rows="4" placeholder="Text for guests..."></textarea>
-<input name="sort_order" value="100" style="width:80px;" />
-<input type="checkbox" name="is_active" checked />
-                Active
-              </label>
-              <button type="submit" name="add" value="1">Add section</button>
-            </div>
-          </div>
-        </div>
-
-        <div style="margin-top:12px; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
-          <h2 style="margin:0 0 10px; font-size:16px;">Existing sections</h2>
-
-          <table style="width:100%; border-collapse:collapse;">
-            <thead>
-              <tr>
-                <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Order</th>
-                <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Actions</th>
-                <th style="text-align:left; padding:8px; border-bottom:1px solid #eee;">Title & Text</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml || `<tr><td colspan="3" class="muted" style="padding:10px;">No sections yet.</td></tr>`}
-            </tbody>
-          </table>
-          <div style="margin-top:12px;">
-            <button type="submit" name="save" value="1">Save all</button>
-          </div>
-        </div>
+        <input name="title" placeholder="Title" /><br/><br/>
+        <textarea name="body" rows="4" placeholder="Text"></textarea><br/><br/>
+        <input name="sort_order" value="100" style="width:60px;" /><br/><br/>
+        <label><input type="checkbox" name="is_active" checked /> Active</label><br/><br/>
+        <button type="submit">Add section</button>
       </form>
+
+      <h2>Existing sections</h2>
+      ${rowsHtml}
     `;
 
     return res.send(renderPage("Apartment Sections", html));
   } catch (e) {
     console.error("sections page error:", e);
-    return res.status(500).send("Error");
+    return res.status(500).send("Manager sections error");
   }
 });
-
 /* const multer = require("multer");
 const { v2: cloudinary } = require("cloudinary");
 
@@ -3159,6 +3127,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
