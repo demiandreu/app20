@@ -1534,44 +1534,54 @@ await pool.query(
     return res.status(500).send("Cannot save sections");
   }
 });*/
-     // 3) ADD new section
+// 3) ADD new section
 if (String(req.body.add) === "1") {
-  const title = String(req.body.new_title || "").trim();
-  const body = String(req.body.new_body || "").trim();
-  const sort_order = Number(req.body.new_sort_order || 1);
-  const is_active = req.body.new_is_active ? true : false;
-
-  const new_media_type = String(req.body.new_media_type || "none");
-  const new_media_url = String(req.body.new_media_url || "").trim();
-
-  // ✅ берём room_id из beds24_rooms по apartment_id
-  const roomRes = await pool.query(
-    `SELECT beds24_room_id FROM beds24_rooms WHERE id = $1 LIMIT 1`,
-    [apartment_id]
-  );
-  const room_id = String(roomRes.rows[0]?.beds24_room_id || "").trim();
-
-  await pool.query(
-    `
-    INSERT INTO apartment_sections
-      (apartment_id, room_id, title, body, sort_order, is_active, new_media_type, new_media_url)
-    VALUES
-      ($1,$2,$3,$4,$5,$6,$7,$8)
-    `,
-    [
-      apartment_id,
-      room_id,
-      title,
-      body,
-      sort_order,
-      is_active,
-      new_media_type,
-      new_media_url,
-    ]
-  );
-
-  return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+  try {
+    const title = String(req.body.new_title || "").trim();
+    const body = String(req.body.new_body || "").trim();
+    const sort_order = Number(req.body.new_sort_order || 1);
+    const is_active = req.body.new_is_active ? true : false;
+    const new_media_type = String(req.body.new_media_type || "none");
+    const new_media_url = String(req.body.new_media_url || "").trim();
+    
+    // ✅ берём room_id из beds24_rooms по apartment_id
+    const roomRes = await pool.query(
+      `SELECT beds24_room_id FROM beds24_rooms WHERE id = $1 LIMIT 1`,
+      [apartment_id]
+    );
+    
+    if (roomRes.rows.length === 0) {
+      return res.status(404).send("Room not found for this apartment");
+    }
+    
+    const room_id = String(roomRes.rows[0].beds24_room_id || "").trim();
+    
+    await pool.query(
+      `
+      INSERT INTO apartment_sections
+        (apartment_id, room_id, title, body, sort_order, is_active, new_media_type, new_media_url)
+      VALUES
+        ($1,$2,$3,$4,$5,$6,$7,$8)
+      `,
+      [
+        apartment_id,
+        room_id,
+        title,
+        body,
+        sort_order,
+        is_active,
+        new_media_type,
+        new_media_url,
+      ]
+    );
+    
+    return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+  } catch (error) {
+    console.error("Error adding section:", error);
+    return res.status(500).send("Error adding section");
+  }
 }
+     
 // ===================== Beds24 Webhook (receiver) =====================
 
 
@@ -2910,6 +2920,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
