@@ -248,13 +248,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
 
                         <div style="margin-top:10px; padding:10px; border:1px solid #eee; border-radius:10px;">
                           <div style="font-weight:700; margin-bottom:6px;">Upload image</div>
-                          <form method="POST" action="/manager/apartment/sections/upload" enctype="multipart/form-data">
-                            <input type="hidden" name="apartment_id" value="${aptId}" />
-                            <input type="hidden" name="section_id" value="${s.id}" />
-                            <input type="file" name="image" accept="image/*" />
-                            <button type="submit">Upload</button>
-                          </form>
-
+                        
                           <div style="margin-top:10px;">
                             <div style="font-weight:700; margin-bottom:6px;">Video link</div>
                             <input name="video_url_${s.id}" value="${
@@ -269,8 +263,8 @@ app.get("/manager/apartment/sections", async (req, res) => {
                         <form method="POST" action="/manager/apartment/sections/delete" onsubmit="return confirm('Delete section?');">
                           <input type="hidden" name="apartment_id" value="${aptId}" />
                           <input type="hidden" name="id" value="${s.id}" />
-                          <button type="submit">Delete</button>
-                        </form>
+<button type="button" onclick="deleteSection(${aptId}, ${s.id})">Delete</button>
+</form>
                       </td>
                     </tr>
                   `;
@@ -329,6 +323,20 @@ app.get("/manager/apartment/sections", async (req, res) => {
       ${rowsHtml}
     `;
 
+<form id="deleteForm" method="POST" action="/manager/apartment/sections/delete" style="display:none;">
+  <input type="hidden" name="apartment_id" id="del_apartment_id" />
+  <input type="hidden" name="id" id="del_id" />
+</form>
+
+<script>
+  function deleteSection(apartmentId, sectionId) {
+    if (!confirm('Delete section?')) return;
+    document.getElementById('del_apartment_id').value = apartmentId;
+    document.getElementById('del_id').value = sectionId;
+    document.getElementById('deleteForm').submit();
+  }
+</script>
+     
     return res.send(renderPage("Apartment Sections", html));
   } catch (e) {
     console.error("sections page error:", e);
@@ -1612,7 +1620,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
         <a class="btn-link" href="/manager/apartment?id=${aptId}">← Back to Apartment Settings</a>
       </p>
 
-      <form method="POST" action="/manager/apartment/sections/save">
+      <form method="POST" action="/manager/apartment/sections/add">
         <input type="hidden" name="apartment_id" value="${aptId}" />
 
         <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
@@ -3164,6 +3172,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
