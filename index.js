@@ -134,7 +134,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
   }
 });
 
-const multer = require("multer");
+/* const multer = require("multer");
 const { v2: cloudinary } = require("cloudinary");
 
 // ---- Cloudinary config ----
@@ -148,7 +148,7 @@ cloudinary.config({
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-});
+}); */
 
 // helper: HTML escape (если у тебя уже есть — не дублируй)
 function escapeHtml(s) {
@@ -3191,6 +3191,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
