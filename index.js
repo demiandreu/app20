@@ -1365,32 +1365,102 @@ app.post("/manager/apartment", async (req, res) => {
 // CREATE new section (from manager page)
 app.post("/manager/apartment/sections/save", async (req, res) => {
   try {
-    const apartmentId = Number(req.body.apartment_id || req.query.id || req.body.id);
+    const apartment_id = Number(req.body.apartment_id);
+    if (!apartment_id) return res.status(400).send("Missing apartment_id");
 
-    const title = String(req.body.new_title || req.body.title || "").trim();
-    const body = String(req.body.new_body || req.body.body || "").trim();
-    const sortOrder = Number(req.body.new_sort_order || req.body.sort_order || 100);
-    const isActive = req.body.new_is_active ? true : (req.body.is_active ? true : false);
+    // 1) DELETE
+    if (req.body.delete) {
+      const id = Number(req.body.delete);
+      if (!id) return res.status(400).send("Missing id");
+      await pool.query(
+        `DELETE FROM apartment_sections WHERE id=$1 AND apartment_id=$2`,
+        [id, apartment_id]
+      );
+      return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+    }
 
-    const mediaType = String(req.body.media_type || "none");
-    const mediaUrl  = String(req.body.media_url || "").trim();
+    // 2) MOVE up/down
+    if (req.body.move) {
+      const [dir, idStr] = String(req.body.move).split(":");
+      const id = Number(idStr);
+      if (!id || (dir !== "up" && dir !== "down")) {
+        return res.status(400).send("Bad move");
+      }
 
-    if (!apartmentId) return res.status(400).send("Missing apartment_id");
-    if (!title) return res.status(400).send("Missing title");
+      // очень простая логика: меняем sort_order на +/- 1
+      await pool.query(
+        `UPDATE apartment_sections
+         SET sort_order = GREATEST(1, sort_order + $1), updated_at = NOW()
+         WHERE id = $2 AND apartment_id = $3`,
+        [dir === "up" ? -1 : 1, id, apartment_id]
+      );
 
-    await pool.query(
-      `
-      INSERT INTO apartment_sections
-        (apartment_id, title, body, sort_order, is_active, media_type, media_url)
-      VALUES ($1,$2,$3,$4,$5,$6,$7)
-      `,
-      [apartmentId, title, body, sortOrder, isActive, mediaType, mediaUrl]
+      return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+    }
+
+    // 3) ADD new section
+    if (req.body.add) {
+      const title = String(req.body.new_title || "").trim();
+      const body = String(req.body.new_body || "").trim();
+      const sort_order = Number(req.body.new_sort_order || 1);
+      const is_active = req.body.new_is_active ? true : false;
+
+      // media (optional)
+      const media_type = String(req.body.media_type || "none");
+      const media_url = String(req.body.media_url || "").trim();
+
+      if (!title) return res.status(400).send("Missing title");
+
+      await pool.query(
+        `
+        INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active, media_type, media_url)
+        VALUES ($1,$2,$3,$4,$5,$6,$7)
+        `,
+        [
+          apartment_id,
+          title,
+          body,
+          sort_order,
+          is_active,
+          media_type,
+          media_url,
+        ]
+      );
+
+      return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+    }
+
+    // 4) SAVE ALL edits
+    // (если нажали Save all)
+    const secRes = await pool.query(
+      `SELECT id FROM apartment_sections WHERE apartment_id=$1 ORDER BY id ASC`,
+      [apartment_id]
     );
 
-    return res.redirect(`/manager/apartment/sections?id=${apartmentId}`);
+    for (const row of secRes.rows) {
+      const id = row.id;
+      const title = String(req.body[`title_${id}`] || "").trim();
+      const body = String(req.body[`body_${id}`] || "");
+      const sort_order = Number(req.body[`sort_order_${id}`] || 1);
+      const is_active = req.body[`is_active_${id}`] ? true : false;
+
+      // не заставляем title быть обязательным при save-all, но лучше не пустить совсем пустой
+      if (!title) continue;
+
+      await pool.query(
+        `
+        UPDATE apartment_sections
+        SET title=$1, body=$2, sort_order=$3, is_active=$4, updated_at=NOW()
+        WHERE id=$5 AND apartment_id=$6
+        `,
+        [title, body, sort_order, is_active, id, apartment_id]
+      );
+    }
+
+    return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
   } catch (e) {
-    console.error("❌ sections/save error:", e);
-    return res.status(500).send("Cannot save section");
+    console.error("sections save error:", e);
+    return res.status(500).send("Cannot save sections");
   }
 });
 
@@ -2731,6 +2801,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
