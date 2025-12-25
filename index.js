@@ -2329,6 +2329,23 @@ return res.send(renderPage("Staff • Arrivals & Departures", pageHtml));
   }
 });
 
+// --- DELETE checkin ---
+app.post("/staff/checkins/:id/delete", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).send("Missing id");
+
+    // куда возвращаться после удаления (мы это поле уже отправляем из формы)
+    const returnTo = String(req.body.returnTo || "/staff/checkins");
+
+    await pool.query(`DELETE FROM checkins WHERE id = $1`, [id]);
+
+    return res.redirect(returnTo);
+  } catch (e) {
+    console.error("delete checkin error:", e);
+    return res.status(500).send("Cannot delete checkin");
+  }
+});
 
 // ===================== ADMIN: LOCK CODE SAVE (REPLACE, NOT APPEND) =====================
 app.post("/staff/checkins/:id/lock", async (req, res) => {
@@ -2817,6 +2834,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
