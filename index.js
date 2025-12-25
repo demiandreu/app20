@@ -30,7 +30,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
 
    const secRes = await pool.query(
   `
-  SELECT id, title, body, sort_order, is_active, new_new_media_type, new_media_url
+  SELECT id, title, body, sort_order, is_active, new_media_type, new_media_url
   FROM apartment_sections
   WHERE apartment_id = $1
   ORDER BY sort_order ASC, id ASC
@@ -63,8 +63,8 @@ app.get("/manager/apartment/sections", async (req, res) => {
 
   <div style="margin-top:10px; display:grid; gap:6px;">
     <label class="muted">Media type</label>
-    <select name="new_new_media_type_${s.id}">
-      <option value="none" ${String(s.new_new_media_type || "none") === "none" ? "selected" : ""}>None</option>
+    <select name="new_media_type_${s.id}">
+      <option value="none" ${String(s.new_media_type || "none") === "none" ? "selected" : ""}>None</option>
       <option value="image" ${String(s.new_media_type || "") === "image" ? "selected" : ""}>Image</option>
       <option value="video" ${String(s.new_media_type || "") === "video" ? "selected" : ""}>Video</option>
     </select>
@@ -98,7 +98,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
         <input type="hidden" name="apartment_id" value="${aptId}" />
 
         <label>Media type</label><br/>
-        <select name="new_new_media_type">
+        <select name="new_media_type">
           <option value="none">None</option>
           <option value="image">Image</option>
           <option value="video">Video</option>
@@ -2872,6 +2872,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
