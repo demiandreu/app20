@@ -1491,17 +1491,13 @@ const finalMediaType = media_url ? (new_media_type === "video" ? "video" : "imag
 
 await pool.query(
   `
-INSERT INTO apartment_sections (room_id, title, body, is_active, sort_order, new_media_type, new_media_url)
-VALUES ('433806', 'mensaje', 'Текст...', true, 1, 'none', NULL);
-
-  return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
-}
-    // 4) SAVE ALL edits
-    const secRes = await pool.query(
-      `SELECT id FROM apartment_sections WHERE apartment_id=$1 ORDER BY id ASC`,
-      [apartment_id]
-    );
-
+  INSERT INTO apartment_sections
+    (room_id, title, body, is_active, sort_order, new_media_type, new_media_url)
+  VALUES
+    ($1, $2, $3, $4, $5, $6, $7)
+  `,
+  [room_id, title, body, is_active, sort_order, finalMediaType, media_url]
+);
     for (const row of secRes.rows) {
       const id = row.id;
       const title = String(req.body[`title_${id}`] || "").trim();
@@ -2869,6 +2865,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
