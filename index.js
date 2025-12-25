@@ -326,26 +326,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
 
 </script>
    
-     <form id="deleteForm" method="POST" action="/manager/apartment/sections/delete" style="display:none;">
-  <input type="hidden" name="apartment_id" id="del_apartment_id" />
-  <input type="hidden" name="id" id="del_id" />
-</form>
 
-<script>
-  function deleteSection(apartmentId, sectionId) {
-    if (!confirm('Delete section?')) return;
-    document.getElementById('del_apartment_id').value = apartmentId;
-    document.getElementById('del_id').value = sectionId;
-    document.getElementById('deleteForm').submit();
-  }
-
-     
-    return res.send(renderPage("Apartment Sections", html));
-  } catch (e) {
-    console.error("sections page error:", e);
-    return res.status(500).send("Manager sections error");
-  }
-});
 
 // ADD section
 app.post("/manager/apartment/sections/add", async (req, res) => {
@@ -3175,6 +3156,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
