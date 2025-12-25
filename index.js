@@ -2176,7 +2176,7 @@ function aptColorById(apartmentId) {
 
     
 // 2) квартиры, которые были ЗАНЯТЫ ВЧЕРА
-const { rows: occ } = await pool.query(
+const { rows: occ2 } = await pool.query(
   `
   SELECT DISTINCT apartment_id
   FROM checkins
@@ -2187,8 +2187,8 @@ const { rows: occ } = await pool.query(
   [yesterday]
 );
 
-const occupiedYesterdaySet = new Set(occ.map(r => String(r.apartment_id)));
-
+const occupiedYesterdaySet = new Set(occ2.map(r => String(r.apartment_id)));
+     
 // 3) функция цвета для таблицы
 function aptColor(apartmentId) {
   const id = String(apartmentId);
@@ -2819,6 +2819,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
