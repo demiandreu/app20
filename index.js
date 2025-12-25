@@ -66,8 +66,15 @@ app.get("/manager/apartment/sections", async (req, res) => {
       })
       .join("");
 
-    const html = `
-      <h1>Apartment Sections</h1>
+   const html = `
+  <style>
+    .muted {
+      opacity: 0.65;
+      font-size: 12px;
+    }
+  </style>
+
+  <h1>Apartment Sections</h1>
       <p class="muted">
         Apartment: <strong>${escapeHtml(apt.apartment_name || String(apt.id))}</strong>
       </p>
@@ -2854,6 +2861,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
