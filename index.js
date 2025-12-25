@@ -2174,13 +2174,7 @@ function aptColorById(apartmentId) {
       </form>
     `;
 
-     // 1) квартиры с выездом СЕГОДНЯ -> красный
-const depTodaySet = new Set(
-  departures
-    .filter(r => String(r.departure_date || "").slice(0, 10) === today)
-    .map(r => String(r.apartment_id))
-);
-
+    
 // 2) квартиры, которые были ЗАНЯТЫ ВЧЕРА
 const { rows: occ } = await pool.query(
   `
@@ -2825,6 +2819,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
