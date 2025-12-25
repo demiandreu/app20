@@ -93,7 +93,13 @@ app.get("/manager/apartment/sections", async (req, res) => {
         <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
           <h2 style="margin:0 0 8px; font-size:16px;">Add new section</h2>
           <div style="display:grid; gap:8px;">
-            <input name="new_title" placeholder="Title (e.g. Primera accordion / Wi-Fi / Parking)" />
+         <label>
+  Title <span style="color:red">*</span>
+</label>  <input
+  name="new_title"
+  placeholder="Title (required)"
+  required
+/>
             <textarea name="new_body" rows="4" placeholder="Text for guests..."></textarea>
             <div style="display:flex; gap:10px; align-items:center;">
               <label class="muted">Order:</label>
@@ -2842,6 +2848,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
