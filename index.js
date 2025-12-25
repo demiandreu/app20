@@ -2643,7 +2643,7 @@ function aptColor(apartmentId) {
                 <th>${dateColTitle}</th>
                 <th>N</th>
                 <th>Guest</th>
-                <th>Lock code</th>
+                <th></th>
                 <th>Visible</th>
                 <th>Delete</th>
               </tr>
@@ -2669,7 +2669,7 @@ function aptColor(apartmentId) {
 });
 
 
-// ===================== ADMIN: LOCK CODE SAVE (REPLACE, NOT APPEND) =====================
+// ===================== ADMIN:  SAVE (REPLACE, NOT APPEND) =====================
 app.post("/staff/checkins/:id/lock", async (req, res) => {
   const id = Number(req.params.id);
 
@@ -2960,18 +2960,17 @@ if (selectedId) {
 
       <div style="margin-bottom:16px; padding:12px; border:1px solid #ddd;">
         <b>Global defaults</b> (если в апартаменте пусто — можно использовать эти)<br/><br/>
-        <form method="POST" action="/manager/defaults/save">
-          <label>Brand name</label><br/>
-          <input name="brand_name" value="${escapeHtml(brand)}" style="width:320px" /><br/><br/>
+       <form method="POST" action="/staff/lockcode/save" style="display:inline;">
+  <input type="hidden" name="booking_id" value="${row.booking_id}" />
+  <input type="hidden" name="lock_code" value="${escapeHtml(row.lock_code || "")}" />
+  <button type="submit">Save</button>
+</form>
 
-          <label>Default arrival time</label><br/>
-          <input type="time" name="default_arrival_time" value="${escapeHtml(defArr)}" /><br/><br/>
-
-          <label>Default departure time</label><br/>
-          <input type="time" name="default_departure_time" value="${escapeHtml(defDep)}" /><br/><br/>
-
-          <button type="submit">Save defaults</button>
-        </form>
+<form method="POST" action="/staff/lockcode/save" style="display:inline; margin-left:8px;">
+  <input type="hidden" name="booking_id" value="${row.booking_id}" />
+  <input type="hidden" name="lock_code" value="" />
+  <button type="submit">Clear</button>
+</form>
       </div>
 
       <div style="margin-bottom:16px; padding:12px; border:1px solid #ddd;">
@@ -3156,6 +3155,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
