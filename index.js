@@ -113,7 +113,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
           <h2 style="margin:0 0 8px; font-size:16px;">Add new section</h2>
           <div style="display:grid; gap:8px;">
          <label>
-  Title <span style="color:red">*</span>
+  Title 
 </label>  <input
   name="new_title"
   placeholder="Title"
@@ -2912,6 +2912,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
