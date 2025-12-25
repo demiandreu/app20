@@ -1449,7 +1449,7 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
         `DELETE FROM apartment_sections WHERE id=$1 AND apartment_id=$2`,
         [id, apartment_id]
       );
-      return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+      return res.redirect(`/manager/apartment/sections?id=${room_id}`);
     }
 
     // 2) MOVE up/down
@@ -2869,6 +2869,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
