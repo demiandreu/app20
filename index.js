@@ -985,11 +985,11 @@ td.apartment-cell.green { background: #e7ffe7; }
     font-size:12px;
   }
   td{
-    padding:6px 8px;
-    border-bottom:1px solid #f1f5f9;
-    white-space:nowrap;
-    vertical-align:middle;
-  }
+  padding:6px 8px;
+  border-bottom:1px solid #f1f5f9;
+  vertical-align:top;          /* лучше для textarea */
+  white-space:normal;          /* ✅ главное: разрешаем перенос */
+}
   tr:hover td{ background:#f9fafb; }
 
   /* компактнее статус-пилюли */
@@ -1001,6 +1001,26 @@ td.apartment-cell.green { background: #e7ffe7; }
     font-size:11px;
     line-height:1;
   }
+  /* компактные таблицы — ТОЛЬКО там, где реально нужно */
+.table-compact td,
+.table-compact th {
+  white-space: nowrap;
+}
+
+/* секции: поле с текстом должно быть гибким */
+.sections-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.sections-table .td-text,
+.sections-table .td-text input,
+.sections-table .td-text textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
   .pill-yes{ background:#dcfce7; color:#166534; }
   .pill-no{ background:#fee2e2; color:#991b1b; }
 
@@ -2299,9 +2319,9 @@ function aptColor(apartmentId) {
 
     const pageHtml =
       toolbar +
-      renderTable(arrivals, "arrivals") +
+      render(arrivals, "arrivals") +
       `<div style="height:18px;"></div>` +
-      renderTable(departures, "departures");
+      render(departures, "departures");
 
     // ✅ title тоже исправляем
     res.send(renderPage("Staff • Arrivals & Departures", pageHtml));
@@ -2509,7 +2529,7 @@ app.get("/manager/settings/apartments", async (req, res) => {
     res.send(`
       ${top}
       <h2>Apartments (synced) from your channel manager</h2>
-      <table border="1" cellpadding="8" cellspacing="0">
+      < border="1" cellpadding="8" cellspacing="0">
         <thead>
           <tr>
             <th>Property key</th>
@@ -2522,7 +2542,7 @@ app.get("/manager/settings/apartments", async (req, res) => {
         <tbody>
           ${listHtml}
         </tbody>
-      </table>
+      </>
     `);
   } catch (err) {
     console.error("❌ manager apartments page error:", err);
