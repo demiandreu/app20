@@ -422,55 +422,7 @@ app.post("/manager/apartment/sections/delete", async (req, res) => {
   }
 });
 
-// UPLOAD image -> Cloudinary -> save URL
-app.post(
-  "/manager/apartment/sections/upload",
-  upload.single("image"),
-  async (req, res) => {
-    try {
-      const apartment_id = Number(req.body.apartment_id);
-      const section_id = Number(req.body.section_id);
 
-      if (!apartment_id || !section_id) return res.status(400).send("Missing ids");
-      if (!req.file) return res.status(400).send("No file");
-
-      // лимит 10 картинок на апарт (как ты хотел)
-      const imgCnt = await pool.query(
-        `
-        SELECT COUNT(*)::int AS c
-        FROM apartment_sections
-        WHERE apartment_id=$1 AND media_type='image' AND COALESCE(media_url,'') <> ''
-        `,
-        [apartment_id]
-      );
-      if ((imgCnt.rows[0]?.c || 0) >= 10) {
-        return res.status(400).send("Limit reached: max 10 images per apartment.");
-      }
-
-      const b64 = req.file.buffer.toString("base64");
-      const dataUri = `data:${req.file.mimetype};base64,${b64}`;
-
-      const up = await cloudinary.uploader.upload(dataUri, {
-        folder: `rcs/apartments/${apartment_id}`,
-        resource_type: "image",
-      });
-
-      await pool.query(
-        `
-        UPDATE apartment_sections
-        SET media_type='image', media_url=$1, updated_at=NOW()
-        WHERE id=$2 AND apartment_id=$3
-        `,
-        [String(up.secure_url || ""), section_id, apartment_id]
-      );
-
-      return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
-    } catch (e) {
-      console.error("upload image error:", e);
-      return res.status(500).send("Cannot upload image");
-    }
-  }
-);
 
 // ===================== MANAGER: Debug =====================
 app.get("/manager/channels/debug", (req, res) => {
@@ -3191,6 +3143,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
