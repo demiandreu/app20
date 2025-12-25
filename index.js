@@ -1310,7 +1310,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
         <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
           <h2 style="margin:0 0 8px; font-size:16px;">Add new section</h2>
           <div style="display:grid; gap:8px;">
-            <input name="new_title" placeholder="Title (e.g. Primera гармошка / Wi-Fi / Parking)" />
+            <input name="new_title" placeholder="Title (e.g. Primera acordeon / Wi-Fi / Parking)" />
             <textarea name="new_body" rows="4" placeholder="Text for guests..."></textarea>
             <div style="display:flex; gap:10px; align-items:center;">
               <label class="muted">Order:</label>
@@ -1473,23 +1473,29 @@ app.post("/manager/apartment", async (req, res) => {
 
 
 // ========== POST: create new accordion section ==========
+// CREATE new section (from manager page)
 app.post("/manager/apartment/sections/save", async (req, res) => {
   try {
     const apartmentId = Number(req.body.apartment_id || req.query.id || req.body.id);
-    const title = String(req.body.title || "").trim();
-    const body = String(req.body.body || "").trim();
-    const sortOrder = Number(req.body.sort_order || 100);
-    const isActive = req.body.is_active ? true : false;
+
+    const title = String(req.body.new_title || req.body.title || "").trim();
+    const body = String(req.body.new_body || req.body.body || "").trim();
+    const sortOrder = Number(req.body.new_sort_order || req.body.sort_order || 100);
+    const isActive = req.body.new_is_active ? true : (req.body.is_active ? true : false);
+
+    const mediaType = String(req.body.media_type || "none");
+    const mediaUrl  = String(req.body.media_url || "").trim();
 
     if (!apartmentId) return res.status(400).send("Missing apartment_id");
     if (!title) return res.status(400).send("Missing title");
 
     await pool.query(
       `
-      INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO apartment_sections
+        (apartment_id, title, body, sort_order, is_active, media_type, media_url)
+      VALUES ($1,$2,$3,$4,$5,$6,$7)
       `,
-      [apartmentId, title, body, sortOrder, isActive]
+      [apartmentId, title, body, sortOrder, isActive, mediaType, mediaUrl]
     );
 
     return res.redirect(`/manager/apartment/sections?id=${apartmentId}`);
@@ -2836,6 +2842,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
