@@ -137,10 +137,16 @@ app.get("/manager/apartment/sections", async (req, res) => {
     `;
 
     return res.send(renderPage("Apartment Sections", html));
-  } catch (e) {
-    console.error("sections page error:", e);
-    return res.status(500).send("Error");
-  }
+     } catch (e) {
+  console.error("sections save error:", e);
+  return res
+    .status(500)
+    .send("Cannot save sections: " + (e.detail || e.message || String(e)));
+}
+ // } catch (e) {
+ //   console.error("sections page error:", e);
+ //   return res.status(500).send("Error");
+//  }
 });
 
 // ===================== MANAGER: Debug =====================
@@ -2858,6 +2864,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
