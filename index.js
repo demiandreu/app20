@@ -1407,21 +1407,42 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
       if (!id || (dir !== "up" && dir !== "down")) {
         return res.status(400).send("Bad move");
       }
-
-      // очень простая логика: меняем sort_order на +/- 1
       await pool.query(
-        `UPDATE apartment_sections
-         SET sort_order = GREATEST(1, sort_order + $1), updated_at = NOW()
-         WHERE id = $2 AND apartment_id = $3`,
+        `
+        UPDATE apartment_sections
+        SET sort_order = GREATEST(1, sort_order + $1), updated_at = NOW()
+        WHERE id = $2 AND apartment_id = $3
+        `,
         [dir === "up" ? -1 : 1, id, apartment_id]
+      );
+      return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+    }
+
+    // 3) ADD new section (только если нажали кнопку Add section)
+    if (String(req.body.add) === "1") {
+      const title = String(req.body.new_title || "").trim();
+      const body = String(req.body.new_body || "").trim();
+      const sort_order = Number(req.body.new_sort_order || 1);
+      const is_active = req.body.new_is_active ? true : false;
+
+      // media (optional) — ИМЕНА КАК В ФОРМЕ
+      const media_type = String(req.body.new_media_type || "none");
+      const media_url = String(req.body.new_media_url || "").trim();
+
+      if (!title) return res.status(400).send("Missing title");
+
+      await pool.query(
+        `
+        INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active, media_type, media_url)
+        VALUES ($1,$2,$3,$4,$5,$6,$7)
+        `,
+        [apartment_id, title, body, sort_order, is_active, media_type, media_url]
       );
 
       return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
     }
 
-
     // 4) SAVE ALL edits
-    // (если нажали Save all)
     const secRes = await pool.query(
       `SELECT id FROM apartment_sections WHERE apartment_id=$1 ORDER BY id ASC`,
       [apartment_id]
@@ -1434,7 +1455,7 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
       const sort_order = Number(req.body[`sort_order_${id}`] || 1);
       const is_active = req.body[`is_active_${id}`] ? true : false;
 
-      // не заставляем title быть обязательным при save-all, но лучше не пустить совсем пустой
+      // чтобы Save all не падал из-за пустых
       if (!title) continue;
 
       await pool.query(
@@ -1451,46 +1472,6 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
   } catch (e) {
     console.error("sections save error:", e);
     return res.status(500).send("Cannot save sections");
-  }
-});
-
-
-// ===== SAVE APARTMENT SETTINGS =====
-app.post("/manager/apartment/save", async (req, res) => {
-  try {
-    const id = Number(req.body.id);
-
-    const supportPhone = String(req.body.support_phone || "").trim();
-
-    await pool.query(
-      `
-      UPDATE beds24_rooms
-      SET
-        apartment_name = $2,
-        support_phone = $3,
-        default_arrival_time = NULLIF($4,''),
-        default_departure_time = NULLIF($5,''),
-        registration_url = $6,
-        payment_url = $7,
-        keys_instructions_url = $8
-      WHERE id = $1
-      `,
-      [
-        id,
-        req.body.apartment_name || "",
-        supportPhone,
-        String(req.body.default_arrival_time || ""),
-        String(req.body.default_departure_time || ""),
-        req.body.registration_url || "",
-        req.body.payment_url || "",
-        req.body.keys_instructions_url || "",
-      ]
-    );
-
-    return res.redirect(`/manager/apartment?id=${id}`);
-  } catch (e) {
-    console.error("❌ /manager/apartment/save error:", e);
-    return res.status(500).send("Error");
   }
 });
 // ===================== Beds24 Webhook (receiver) =====================
@@ -2791,6 +2772,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
