@@ -91,13 +91,10 @@ app.get("/manager/apartment/sections", async (req, res) => {
         <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
           <h2 style="margin:0 0 8px; font-size:16px;">Add new section</h2>
           <div style="display:grid; gap:8px;">
-            <input name="new_title" placeholder="Title (e.g. Primera accordion / Wi-Fi / Parking)" />
-            <textarea name="new_body" rows="4" placeholder="Text for guests..."></textarea>
-            <div style="display:flex; gap:10px; align-items:center;">
-              <label class="muted">Order:</label>
-              <input name="new_sort_order" value="100" style="width:80px;" />
-              <label style="display:flex; gap:8px; align-items:center;">
-                <input type="checkbox" name="new_is_active" checked />
+         <input name="title" placeholder="Title (e.g. Wi-Fi / Parking)" />
+<textarea name="body" rows="4" placeholder="Text for guests..."></textarea>
+<input name="sort_order" value="100" style="width:80px;" />
+<input type="checkbox" name="is_active" checked />
                 Active
               </label>
               <button type="submit" name="add" value="1">Add section</button>
@@ -1764,13 +1761,15 @@ app.post("/manager/apartment", async (req, res) => {
 app.post("/manager/apartment/sections/save", async (req, res) => {
   try {
     const apartmentId = Number(req.body.apartment_id || req.query.id || req.body.id);
-    const title = String(req.body.title || "").trim();
-    const body = String(req.body.body || "").trim();
+
+    // title/body могут быть пустыми при создании — ставим дефолт
+    const title = String(req.body.title || "").trim() || "New section";
+    const body = String(req.body.body || "").trim(); // body можно пустым
+
     const sortOrder = Number(req.body.sort_order || 100);
     const isActive = req.body.is_active ? true : false;
 
     if (!apartmentId) return res.status(400).send("Missing apartment_id");
-    if (!title) return res.status(400).send("Missing title");
 
     await pool.query(
       `
@@ -1786,7 +1785,6 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
     return res.status(500).send("Cannot save section");
   }
 });
-
 
 // ===== SAVE APARTMENT SETTINGS =====
 app.post("/manager/apartment/save", async (req, res) => {
@@ -3143,6 +3141,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
