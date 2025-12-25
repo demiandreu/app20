@@ -1518,12 +1518,12 @@ await pool.query(
       sort_order=$3,
       is_active=$4,
       new_media_type=$5,
-      new_media_url=$6,
-      updated_at=NOW()
-  WHERE id=$7 AND room_id=$8
+      new_media_url=$6
+  WHERE id=$7 AND apartment_id=$8
   `,
-  [title, body, sort_order, is_active, new_media_type, media_url, id, room_id]
+  [title, body, sort_order, is_active, new_media_type, media_url, id, apartment_id]
 );
+       
 // ===================== Beds24 Webhook (receiver) =====================
 
 
@@ -2862,6 +2862,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
