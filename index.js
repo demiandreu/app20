@@ -2572,7 +2572,7 @@ function aptColor(apartmentId) {
                           class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}"
                           title="${r.clean_ok ? "Clean" : "Not clean"}"
                         >
-                          ${r.clean_ok ? "✓" : ""}
+                         ${aptBadge(r.apartment_name)}
                         </button>
                       </form>
                     </td>
@@ -3162,6 +3162,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
