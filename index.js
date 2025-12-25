@@ -1447,8 +1447,8 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
       const is_active = req.body.new_is_active ? true : false;
 
       // media (optional) — ИМЕНА КАК В ФОРМЕ
-      const media_type = String(req.body.new_media_type || "none");
-      const media_url = String(req.body.new_media_url || "").trim();
+      const new_media_type = String(req.body.new_media_type || "none");
+      const new_media_url = String(req.body.new_media_url || "").trim();
 
       if (!title) return res.status(400).send("Missing title");
 
@@ -2793,6 +2793,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
