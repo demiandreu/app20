@@ -1482,7 +1482,6 @@ const media_type = String(req.body.new_media_type || "none");
 const media_url = String(req.body.new_media_url || "").trim();
 
 // title вообще optional
-const title = String(req.body.new_title || "").trim();
 const body = String(req.body.new_body || "").trim();
 
 // запретим только полностью пустую секцию (вообще ничего)
@@ -2876,6 +2875,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
