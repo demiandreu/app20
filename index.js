@@ -776,11 +776,6 @@ function renderPage(title, innerHtml) {
     white-space:nowrap;
   }
 
-  td{
-    white-space:nowrap;
-    vertical-align:middle;
-  }
-
   td form{ white-space:nowrap; }
 
   th.sticky-col, td.sticky-col{
@@ -874,7 +869,7 @@ td.apartment-cell.green { background: #e7ffe7; }
   }
 
   table {
-    min-width: 1100px;
+    min-width: 100%;
     border-collapse: collapse;
   }
 
@@ -1065,6 +1060,13 @@ td.apartment-cell.green { background: #e7ffe7; }
     width:72px;
     min-width:72px;
   }
+  /* Только для таблиц, где нужно всё в одну строку (lock/visibility) */
+.table-compact td,
+.table-compact th,
+.lock-form,
+.vis-form{
+  white-space: nowrap;
+}
   </style>
 </head>
 <body>
@@ -2791,6 +2793,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
