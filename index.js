@@ -1031,6 +1031,25 @@ td.apartment-cell.green { background: #e7ffe7; }
     flex-wrap:nowrap !important;
     white-space:nowrap;
   }
+  /* ===== Sections table (fix shifting) ===== */
+.sections-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.sections-table th,
+.sections-table td {
+  white-space: normal;      /* важно: не nowrap */
+  vertical-align: top;
+}
+.sections-table .td-text { min-width: 0; }
+.sections-table .sec-title,
+.sections-table .sec-body {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  display: block;
+}
 
   .lock-form button,
   .vis-form button,
@@ -2772,6 +2791,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
