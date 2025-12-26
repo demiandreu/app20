@@ -1738,31 +1738,31 @@ app.get("/guest/:roomId/:token", async (req, res) => {
   try {
     const { rows } = await pool.query(
       `
-      SELECT
-        id,
-        booking_token,
-        beds24_booking_id,
-        beds24_room_id,
-        apartment_name,
-        full_name,
-        email,
-        phone,
-        arrival_date,
-        arrival_time,
-        departure_date,
-        departure_time,
-        adults,
-        children,
-        lock_code,
-        lock_visible
-      FROM checkins
-      WHERE beds24_room_id::text = $1
-        AND (
-          booking_token = $2
-          OR beds24_booking_id::text = $2
-        )
-      ORDER BY id DESC
-      LIMIT 1
+     SELECT
+    id,
+    booking_token,
+    beds24_booking_id,
+    room_id,
+    apartment_name,
+    full_name,
+    email,
+    phone,
+    arrival_date,
+    arrival_time,
+    departure_date,
+    departure_time,
+    adults,
+    children,
+    lock_code,
+    lock_visible
+  FROM checkins
+  WHERE room_id::text = $1
+    AND (
+      booking_token = $2
+      OR beds24_booking_id::text = $2
+    )
+  ORDER BY id DESC
+  LIMIT 1
       `,
       [String(roomId), String(token)]
     );
@@ -1779,44 +1779,77 @@ app.get("/guest/:roomId/:token", async (req, res) => {
     const r = rows[0];
      const show = req.query.show === "1";
 
-    const secRes = await pool.query(
-      `
-      SELECT title, body, new_media_type, new_media_url
-      FROM apartment_sections
-      WHERE room_id::text = $1
-        AND is_active = true
-      ORDER BY sort_order ASC, id ASC
-      `,
-      [String(r.beds24_room_id)]
-    );
+   const secRes = await pool.query(
+  `
+  SELECT id, title, body, new_media_type, new_media_url
+  FROM apartment_sections
+  WHERE room_id::text = $1
+    AND is_active = true
+  ORDER BY sort_order ASC, id ASC
+  `,
+  [String(r.room_id)]
+);
 
     const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
 
-    const sectionsHtml =
-      secRes.rows.length === 0
-        ? `<div class="muted">No information sections for this apartment yet.</div>`
-        : secRes.rows
-            .map((s) => {
-              const media =
-                s.new_media_type === "image" && s.new_media_url
-                  ? `<div style="margin-top:10px;"><img src="${escapeHtml(
-                      s.new_media_url
-                    )}" style="max-width:100%;border-radius:12px;" /></div>`
-                  : s.new_media_type === "video" && s.new_media_url
-                  ? `<div style="margin-top:10px;"><a class="btn-link" href="${escapeHtml(
-                      s.new_media_url
-                    )}" target="_blank" rel="noopener">Open video</a></div>`
-                  : "";
+const sectionsHtml =
+  secRes.rows.length === 0
+    ? `<div class="muted">No information sections for this apartment yet.</div>`
+    : `
+      <h2 style="margin-top:18px;">Guest info</h2>
+      <div id="guest-accordion">
+        ${secRes.rows
+          .map((s) => {
+            const title = escapeHtml(s.title || "");
+            const body = escapeHtml(String(s.body || "")).replace(/\n/g, "<br/>");
 
-              return `
-                <section style="margin:16px 0;padding:14px;border:1px solid #e5e7eb;border-radius:14px;background:#fff;">
-                  <h2 style="margin:0 0 8px;">${escapeHtml(s.title || "")}</h2>
-                  <div>${s.body || ""}</div>
+            const mediaType = String(s.new_media_type || "").toLowerCase().trim();
+            const mediaUrlRaw = String(s.new_media_url || "").trim();
+            const mediaUrl = escapeHtml(mediaUrlRaw);
+
+            let media = "";
+            if (mediaUrlRaw) {
+              if (mediaType === "image") {
+                media = `<div style="margin-top:10px;"><img src="${mediaUrl}" style="max-width:100%;border-radius:12px;" /></div>`;
+              } else if (mediaType === "video") {
+                media = `<div style="margin-top:10px;"><a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">Open video</a></div>`;
+              } else {
+                media = `<div style="margin-top:10px;"><a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">Open link</a></div>`;
+              }
+            }
+
+            const panelId = `acc_${s.id}`;
+
+            return `
+              <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
+                <button type="button"
+                  data-acc-btn="${panelId}"
+                  style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;">
+                  ${title}
+                </button>
+                <div id="${panelId}" style="display:none;padding:12px 14px;">
+                  <div>${body}</div>
                   ${media}
-                </section>
-              `;
-            })
-            .join("");
+                </div>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+
+      <script>
+        (function(){
+          document.querySelectorAll("[data-acc-btn]").forEach(function(btn){
+            btn.addEventListener("click", function(){
+              var id = btn.getAttribute("data-acc-btn");
+              var panel = document.getElementById(id);
+              if (!panel) return;
+              panel.style.display = (panel.style.display === "block") ? "none" : "block";
+            });
+          });
+        })();
+      </script>
+    `;
 
 const lockCodeHtml =
   r.lock_visible && r.lock_code
@@ -2755,6 +2788,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
