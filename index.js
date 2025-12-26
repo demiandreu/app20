@@ -2020,6 +2020,7 @@ const lockCodeHtml =
         <hr/>
         
         ${lockCodeHtml}
+         <hr/>
         ${sectionsHtml}
 
       </div>
@@ -2915,6 +2916,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
