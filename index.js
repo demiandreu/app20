@@ -1756,7 +1756,7 @@ app.get("/guest/:roomId/:token", async (req, res) => {
     lock_code,
     lock_visible
   FROM checkins
-  WHERE room_id::text = $1
+  WHERE beds24_room_id::text = $1
     AND (
       booking_token = $2
       OR beds24_booking_id::text = $2
@@ -2788,6 +2788,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
