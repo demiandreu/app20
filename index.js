@@ -1945,27 +1945,7 @@ app.get("/guest/:roomId/:token", async (req, res) => {
       `,
       [String(r.beds24_room_id)]
     );
-     const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
 
-const html = `
-  <div class="card">
-    <h1>Guest Dashboard</h1>
-
-    <div class="muted">Apartment: <strong>${escapeHtml(r.apartment_name || "")}</strong></div>
-    <div class="muted">Booking ID: <strong>${escapeHtml(String(r.beds24_booking_id || r.booking_token || ""))}</strong></div>
-    <div class="muted">Room ID: <strong>${escapeHtml(String(r.beds24_room_id || ""))}</strong></div>
-
-    <hr/>
-
-    <div>Arrival: <strong>${fmtDate(r.arrival_date)}${r.arrival_time ? " " + fmtTime(r.arrival_time) : ""}</strong></div>
-    <div>Departure: <strong>${fmtDate(r.departure_date)}${r.departure_time ? " " + fmtTime(r.departure_time) : ""}</strong></div>
-    <div>Guests: <strong>${totalGuests}</strong> (adults: ${Number(r.adults) || 0}, children: ${Number(r.children) || 0})</div>
-
-    <hr/>
-
-    ${/* дальше секции и код */""}
-  </div>
-`;
 
     const sectionsHtml =
       secRes.rows.length > 0
@@ -2891,6 +2871,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
