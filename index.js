@@ -21,7 +21,6 @@ app.get("/manager/apartment/sections", async (req, res) => {
     const roomId = String(req.query.room_id || "").trim();
     if (!roomId) return res.status(400).send("Missing room_id");
 
-    // Optional: load apartment name for header (by room id)
     const aptRes = await pool.query(
       `
       SELECT id, apartment_name, beds24_room_id
@@ -31,7 +30,6 @@ app.get("/manager/apartment/sections", async (req, res) => {
       `,
       [roomId]
     );
-
     const apt = aptRes.rows[0] || null;
 
     const secRes = await pool.query(
@@ -44,26 +42,13 @@ app.get("/manager/apartment/sections", async (req, res) => {
       [roomId]
     );
 
-    // дальше твой render HTML:
-    // - показывай apt?.apartment_name если есть
-    // - во всех формах/кнопках используй hidden room_id = roomId
-    // - все ссылки "back" или "refresh" тоже через ?room_id=${roomId}
-
-  } catch (e) {
-    console.error("Sections page error:", e);
-    return res.status(500).send("Cannot load sections: " + (e.detail || e.message || String(e)));
-  }
-});
-
-
-
     const rowsHtml = secRes.rows
       .map((s) => {
         const checked = s.is_active ? "checked" : "";
         return `
           <tr>
             <td style="width:90px;">
-              <input name="sort_order_${s.id}" value="${Number(s.sort_order)}" style="width:70px; box-sizing:border-box;" />
+              <input name="sort_order_${s.id}" value="${Number(s.sort_order) || 0}" style="width:70px; box-sizing:border-box;" />
             </td>
             <td style="width:180px;">
               <label style="display:flex; gap:8px; align-items:center;">
@@ -79,6 +64,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
             <td class="td-text">
               <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" class="sec-title" placeholder="(optional title)" />
               <textarea name="body_${s.id}" rows="5" class="sec-body" placeholder="Text...">${escapeHtml(s.body || "")}</textarea>
+
               <div style="margin-top:10px; display:grid; gap:6px;">
                 <label class="muted">Media type</label>
                 <select name="new_media_type_${s.id}">
@@ -86,6 +72,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
                   <option value="image" ${String(s.new_media_type || "") === "image" ? "selected" : ""}>Image</option>
                   <option value="video" ${String(s.new_media_type || "") === "video" ? "selected" : ""}>Video</option>
                 </select>
+
                 <label class="muted">Media URL</label>
                 <input name="new_media_url_${s.id}" value="${escapeHtml(s.new_media_url || "")}" placeholder="https://..." style="width:100%;" />
               </div>
@@ -98,41 +85,48 @@ app.get("/manager/apartment/sections", async (req, res) => {
     const html = `
       <style>
         .muted { opacity: 0.65; font-size: 12px; }
+        .sections-table { width:100%; border-collapse: collapse; }
+        .sections-table th, .sections-table td { border-top: 1px solid #e5e7eb; padding: 10px; vertical-align: top; }
+        .sec-title { width: 100%; box-sizing: border-box; margin-bottom: 8px; }
+        .sec-body { width: 100%; box-sizing: border-box; }
+        .btn-mini { padding: 6px 10px; }
+        .danger { background: #fee2e2; }
       </style>
 
       <h1>Apartment Sections</h1>
+
       <p class="muted">
-        Apartment: <strong>${escapeHtml(apt.apartment_name || String(apt.id))}</strong>
+        Apartment: <strong>${escapeHtml(apt?.apartment_name || "Unknown")}</strong>
       </p>
       <p class="muted">
-        room_id: <strong>${escapeHtml(room_id)}</strong>
+        room_id: <strong>${escapeHtml(roomId)}</strong>
       </p>
 
       <p>
-        <a class="btn-link" href="/manager/apartment?id=${aptId}">← Back to Apartment Settings</a>
+        <a class="btn-link" href="/manager/settings/apartments">← Back</a>
       </p>
 
       <form method="POST" action="/manager/apartment/sections/save">
-        <input type="hidden" name="room_id" value="${room_id}" />
-
-        <label>Media type</label><br/>
-        <select name="new_media_type">
-          <option value="none">None</option>
-          <option value="image">Image</option>
-          <option value="video">Video</option>
-        </select>
-        <br/><br/>
-
-        <label>Media URL (image or video link)</label><br/>
-        <input name="new_media_url" placeholder="https://..." style="width:100%;" />
-        <br/><br/>
+        <input type="hidden" name="room_id" value="${escapeHtml(roomId)}" />
 
         <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
           <h2 style="margin:0 0 8px; font-size:16px;">Add new section</h2>
           <div style="display:grid; gap:8px;">
             <label>Title</label>
             <input name="new_title" placeholder="Title" />
+
+            <label>Text</label>
             <textarea name="new_body" rows="4" placeholder="Text for guests..."></textarea>
+
+            <label class="muted">Media type</label>
+            <select name="new_media_type">
+              <option value="none" selected>None</option>
+              <option value="image">Image</option>
+              <option value="video">Video</option>
+            </select>
+
+            <label class="muted">Media URL</label>
+            <input name="new_media_url" placeholder="https://..." style="width:100%;" />
 
             <div style="display:flex; gap:10px; align-items:center;">
               <label class="muted">Order:</label>
@@ -148,6 +142,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
 
         <div style="margin-top:12px; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
           <h2 style="margin:0 0 10px; font-size:16px;">Existing sections</h2>
+
           <table class="sections-table">
             <thead>
               <tr>
@@ -171,11 +166,12 @@ app.get("/manager/apartment/sections", async (req, res) => {
     return res.send(renderPage("Apartment Sections", html));
   } catch (e) {
     console.error("sections page error:", e);
-    return res
-      .status(500)
-      .send("Cannot load sections: " + (e.detail || e.message || String(e)));
+    return res.status(500).send(
+      "Cannot load sections: " + (e.detail || e.message || String(e))
+    );
   }
 });
+
 
 // ===================== MANAGER: Debug =====================
 app.get("/manager/channels/debug", (req, res) => {
@@ -2920,6 +2916,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
