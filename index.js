@@ -1856,47 +1856,47 @@ if (mediaUrlRaw) {
   if (mediaType === "image") {
     const images = mediaUrlRaw
       .split(/\r?\n/)
-      .map(u => u.trim())
+      .map((u) => u.trim())
       .filter(Boolean);
 
-    media = images.map(url => `
-      <div style="margin-top:10px;">
-        <img
-          src="${escapeHtml(url)}"
-          style="max-width:100%;border-radius:12px;display:block;"
-          loading="lazy"
-        />
-      </div>
-    `).join("");
-  }
-
-  else if (mediaType === "video") {
+    media = images
+      .map(
+        (url) => `
+          <div style="margin-top:10px;">
+            <img
+              src="${escapeHtml(url)}"
+              style="max-width:100%;border-radius:12px;display:block;"
+              loading="lazy"
+            />
+          </div>
+        `
+      )
+      .join("");
+  } else if (mediaType === "video") {
     const lower = mediaUrlRaw.toLowerCase();
 
     if (lower.endsWith(".mp4")) {
       media = `
         <div style="margin-top:10px;">
           <video controls playsinline style="width:100%;border-radius:12px;">
-            <source src="${mediaUrl}" type="video/mp4">
+            <source src="${escapeHtml(mediaUrlRaw)}" type="video/mp4">
           </video>
         </div>
       `;
     } else {
       media = `
         <div style="margin-top:10px;">
-          <a href="${mediaUrl}" target="_blank" rel="noopener" class="btn-link">
+          <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
             ▶ Abrir video
           </a>
         </div>
       `;
     }
-  }
-
-  else {
-    // 🔥 ВОТ ОНО — ССЫЛКА
+  } else {
+    // link / any other type
     media = `
       <div style="margin-top:10px;">
-        <a href="${mediaUrl}" target="_blank" rel="noopener" class="btn-link">
+        <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
           🔗 Abrir enlace
         </a>
       </div>
@@ -2858,6 +2858,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
