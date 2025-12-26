@@ -1551,6 +1551,12 @@ if (!room_id) {
       const body = String(req.body[`body_${id}`] || "");
       const sort_order = Number(req.body[`sort_order_${id}`] || 1);
       const is_active = req.body[`is_active_${id}`] ? true : false;
+       const room_id = await getRoomIdForApartment(apartment_id);
+console.log("DEBUG SAVE ALL:", { apartment_id, room_id });
+
+if (!room_id) {
+  return res.status(400).send("Room ID not found for this apartment");
+}
 
       const new_media_type_in = String(req.body[`new_media_type_${id}`] || "none").trim();
       const new_media_url = String(req.body[`new_media_url_${id}`] || "").trim();
@@ -2920,6 +2926,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
