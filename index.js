@@ -1896,27 +1896,26 @@ app.get("/guest/:roomId/:token", async (req, res) => {
         const vm = toVimeoEmbed(mediaUrlRaw);
         const embed = yt || vm;
 
-        media = embed
-          ? `
-            <div style="margin-top:10px;">
-              <iframe
-                src="${escapeHtml(embed)}"
-                style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowfullscreen
-              ></iframe>
-            </div>`
-          : `
-            <div style="margin-top:10px;">
-              <a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener noreferrer">Open video</a>
-            </div>`;
-      }
-    } else {
-      // link / url / cualquier otro tipo: siempre clickable
-      media = `
-        <div style="margin-top:10px;">
-          <a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener noreferrer">Open link</a>
-        </div>`;
+       if (embed) {
+  media = `
+    <div style="margin-top:10px;">
+      <iframe
+        src="${escapeHtml(embed)}"
+        style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope;"
+        allowfullscreen
+      ></iframe>
+    </div>
+  `;
+} else {
+  media = `
+    <div style="margin-top:10px;">
+      <a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">
+        Open video
+      </a>
+    </div>
+  `;
+}
     }
   }
 
@@ -2866,6 +2865,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
