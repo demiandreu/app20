@@ -1746,7 +1746,6 @@ console.log("DB DEBUG /guest:", dbg.rows[0]);
     id,
     booking_token,
     beds24_booking_id,
-    room_id,
     apartment_name,
     full_name,
     email,
@@ -1760,7 +1759,7 @@ console.log("DB DEBUG /guest:", dbg.rows[0]);
     lock_code,
     lock_visible
   FROM checkins
-  WHERE beds24_room_id::text = $1
+  WHERE room_id::text = $1
     AND (
       booking_token = $2
       OR beds24_booking_id::text = $2
@@ -2792,6 +2791,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
