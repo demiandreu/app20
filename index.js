@@ -1838,6 +1838,12 @@ function toVimeoEmbed(url) {
           <div id="guest-accordion">
             ${secRes.rows
               .map((s) => {
+                const title = escapeHtml(s.title || "");
+const body = escapeHtml(String(s.body || "")).replace(/\n/g, "<br/>");
+
+const mediaType = String(s.new_media_type || "").toLowerCase().trim();
+const mediaUrlRaw = String(s.new_media_url || "").trim();
+const mediaUrl = escapeHtml(mediaUrlRaw);
                if (mediaUrlRaw) {
   if (mediaType === "image") {
     media = `
@@ -2842,6 +2848,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
