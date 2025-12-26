@@ -1845,7 +1845,14 @@ app.get("/guest/:roomId/:token", async (req, res) => {
            ${secRes.rows
   .map((s) => {
     const title = escapeHtml(s.title || "");
-    const bodyHtml = escapeHtml(String(s.body || "")).replace(/\n/g, "<br/>");
+    const rawBody = String(s.body || "");
+
+const bodyHtml = escapeHtml(rawBody)
+  .replace(/\n/g, "<br/>")
+  .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+    const safeUrl = escapeHtml(url);
+    return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
+  });
 
     const mediaType = String(s.new_media_type || "").toLowerCase().trim();
     const mediaUrlRaw = String(s.new_media_url || "").trim();
@@ -2861,6 +2868,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
