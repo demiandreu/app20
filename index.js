@@ -18,26 +18,42 @@ app.use(express.json());
 // ====== MANAGER: Apartment Sections (Accordion content) ======
 app.get("/manager/apartment/sections", async (req, res) => {
   try {
-    const aptId = Number(req.query.id);
-    if (!aptId) return res.status(400).send("Missing id");
+    const roomId = String(req.query.room_id || "").trim();
+    if (!roomId) return res.status(400).send("Missing room_id");
 
-    // Load unit info (UI uses aptId). We also need room_id for sections.
+    // Optional: load apartment name for header (by room id)
     const aptRes = await pool.query(
-      `SELECT id, apartment_name, beds24_room_id
-       FROM beds24_rooms
-       WHERE id = $1
-       LIMIT 1`,
-      [aptId]
+      `
+      SELECT id, apartment_name, beds24_room_id
+      FROM beds24_rooms
+      WHERE beds24_room_id::text = $1
+      LIMIT 1
+      `,
+      [roomId]
     );
 
-    if (!aptRes.rows.length) return res.status(404).send("Apartment not found");
-    const apt = aptRes.rows[0];
+    const apt = aptRes.rows[0] || null;
 
-    const room_id = String(apt.beds24_room_id || "").trim();
-    if (!room_id) {
-      return res.status(500).send("Missing room_id for this apartment");
-    }
+    const secRes = await pool.query(
+      `
+      SELECT id, title, body, sort_order, is_active, new_media_type, new_media_url
+      FROM apartment_sections
+      WHERE room_id::text = $1
+      ORDER BY sort_order ASC, id ASC
+      `,
+      [roomId]
+    );
 
+    // дальше твой render HTML:
+    // - показывай apt?.apartment_name если есть
+    // - во всех формах/кнопках используй hidden room_id = roomId
+    // - все ссылки "back" или "refresh" тоже через ?room_id=${roomId}
+
+  } catch (e) {
+    console.error("Sections page error:", e);
+    return res.status(500).send("Cannot load sections: " + (e.detail || e.message || String(e)));
+  }
+});
     // ✅ Load sections by room_id (not apartment_id)
     const secRes = await pool.query(
       `
@@ -2912,6 +2928,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
