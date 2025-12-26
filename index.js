@@ -1884,15 +1884,31 @@ app.get("/guest/:roomId/:token", async (req, res) => {
   try {
     const { rows } = await pool.query(
       `
-      SELECT *
-  FROM checkins
-  WHERE beds24_room_id = $1
-    AND (
-      booking_token = $2
-      OR beds24_booking_id = $2::bigint
-    )
-  ORDER BY id DESC
-  LIMIT 1
+    SELECT
+  id,
+  booking_token,
+  beds24_booking_id,
+  beds24_room_id,
+  apartment_name,
+  full_name,
+  email,
+  phone,
+  arrival_date,
+  arrival_time,
+  departure_date,
+  departure_time,
+  adults,
+  children,
+  lock_code,
+  lock_visible
+FROM checkins
+WHERE beds24_room_id = $1
+AND (
+  booking_token = $2
+  OR beds24_booking_id = $2::bigint
+)
+ORDER BY id DESC
+LIMIT 1
       `,
       [String(roomId), String(token)]
     );
@@ -2809,6 +2825,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
