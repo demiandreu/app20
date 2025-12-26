@@ -105,7 +105,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
       </p>
 
       <form method="POST" action="/manager/apartment/sections/save">
-        <input type="hidden" name="room_id" value="${aptId}" />
+        <input type="hidden" name="room_id" value="${room_id}" />
 
         <label>Media type</label><br/>
         <select name="new_media_type">
@@ -2853,6 +2853,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
