@@ -1441,14 +1441,37 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
     const apartment_id = Number(req.body.apartment_id);
     if (!apartment_id) return res.status(400).send("Missing apartment_id");
 
+    async function getRoomIdForApartment(apartmentId) {
+      const q1 = await pool.query(
+        `SELECT beds24_room_id
+           FROM beds24_rooms
+          WHERE apartment_id = $1
+          LIMIT 1`,
+        [apartmentId]
+      );
+      if (q1.rows?.[0]?.beds24_room_id) return String(q1.rows[0].beds24_room_id).trim();
+
+      const q2 = await pool.query(
+        `SELECT beds24_room_id
+           FROM beds24_rooms
+          WHERE id = $1
+          LIMIT 1`,
+        [apartmentId]
+      );
+      return String(q2.rows?.[0]?.beds24_room_id || "").trim();
+    }
+
+    const room_id = await getRoomIdForApartment(apartment_id);
+    if (!room_id) return res.status(400).send("Missing room_id mapping");
+
     // 1) DELETE
     if (req.body.delete) {
       const id = Number(req.body.delete);
       if (!id) return res.status(400).send("Missing id");
 
       await pool.query(
-        `DELETE FROM apartment_sections WHERE id=$1 AND apartment_id=$2`,
-        [id, apartment_id]
+        `DELETE FROM apartment_sections WHERE id = $1 AND room_id = $2`,
+        [id, room_id]
       );
 
       return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
@@ -1458,7 +1481,6 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
     if (req.body.move) {
       const [dir, idStr] = String(req.body.move).split(":");
       const id = Number(idStr);
-
       if (!id || (dir !== "up" && dir !== "down")) {
         return res.status(400).send("Bad move");
       }
@@ -1468,116 +1490,80 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
         UPDATE apartment_sections
         SET sort_order = GREATEST(1, sort_order + $1),
             updated_at = NOW()
-        WHERE id = $2 AND apartment_id = $3
+        WHERE id = $2 AND room_id = $3
         `,
-        [dir === "up" ? -1 : 1, id, apartment_id]
+        [dir === "up" ? -1 : 1, id, room_id]
       );
 
       return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
     }
 
-// helper: получить room_id (beds24_room_id) для текущего apartment_id
-    async function getRoomIdForApartment(apartmentId) {
-      // Попробуем 2 варианта: beds24_rooms.apartment_id или beds24_rooms.id
-      const q1 = await pool.query(
-        `SELECT beds24_room_id
-           FROM beds24_rooms
-          WHERE apartment_id = $1
-          LIMIT 1`,
-        [apartmentId]
-      );
+    // 3) ADD new section
+    if (String(req.body.add) === "1") {
+      const title = String(req.body.new_title || "").trim();
+      const body = String(req.body.new_body || "").trim();
+      const sort_order = Number(req.body.new_sort_order || 1);
+      const is_active = req.body.new_is_active ? true : false;
 
-      if (q1.rows?.[0]?.beds24_room_id) {
-        return String(q1.rows[0].beds24_room_id).trim();
+      const new_media_url = String(req.body.new_media_url || "").trim();
+      const new_media_type_in = String(req.body.new_media_type || "none").trim();
+
+      if (!title && !body && !new_media_url) {
+        return res.status(400).send("Empty section");
       }
 
-      const q2 = await pool.query(
-        `SELECT beds24_room_id
-           FROM beds24_rooms
-          WHERE id = $1
-          LIMIT 1`,
-        [apartmentId]
+      const new_media_type = new_media_url
+        ? (new_media_type_in === "video" ? "video" : "image")
+        : "none";
+
+      await pool.query(
+        `
+        INSERT INTO apartment_sections
+          (apartment_id, room_id, title, body, sort_order, is_active, new_media_type, new_media_url)
+        VALUES
+          ($1,$2,$3,$4,$5,$6,$7,$8)
+        `,
+        [apartment_id, room_id, title, body, sort_order, is_active, new_media_type, new_media_url]
       );
 
-      return String(q2.rows?.[0]?.beds24_room_id || "").trim();
+      return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
     }
 
-    // 3) ADD new section (только если нажали кнопку Add section)
-  if (String(req.body.add) === "1") {
-  const title = String(req.body.new_title || "").trim();
-  const body = String(req.body.new_body || "").trim();
-  const sort_order = Number(req.body.new_sort_order || 1);
-  const is_active = req.body.new_is_active ? true : false;
-
-  const new_media_type = String(req.body.new_media_type || "none").trim();
-  const new_media_url = String(req.body.new_media_url || "").trim();
-
-  if (!title && !body && !new_media_url) {
-    return res.status(400).send("Empty section");
-  }
-
-  const final_media_type = new_media_url
-    ? (new_media_type === "video" ? "video" : "image")
-    : "none";
-
-  const room_id = await getRoomIdForApartment(apartment_id);
-  if (!room_id) return res.status(400).send("Missing room_id mapping");
-
-  await pool.query(
-    `
-    INSERT INTO apartment_sections
-      (apartment_id, room_id, title, body, sort_order, is_active, new_media_type, new_media_url)
-    VALUES
-      ($1,$2,$3,$4,$5,$6,$7,$8)
-    `,
-    [apartment_id, room_id, title, body, sort_order, is_active, final_media_type, new_media_url]
-  );
-
-  return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
-}
     // 4) SAVE ALL edits
     const secRes = await pool.query(
-      `SELECT id FROM apartment_sections WHERE apartment_id=$1 ORDER BY id ASC`,
-      [apartment_id]
+      `SELECT id FROM apartment_sections WHERE room_id = $1 ORDER BY id ASC`,
+      [room_id]
     );
 
     for (const row of secRes.rows) {
       const id = row.id;
+
       const title = String(req.body[`title_${id}`] || "").trim();
       const body = String(req.body[`body_${id}`] || "");
       const sort_order = Number(req.body[`sort_order_${id}`] || 1);
       const is_active = req.body[`is_active_${id}`] ? true : false;
-       const new_media_type = String(req.body[`new_media_type_${id}`] || "none");
-       const new_media_url  = String(req.body[`new_media_url_${id}`] || "").trim();
 
+      const new_media_type_in = String(req.body[`new_media_type_${id}`] || "none").trim();
+      const new_media_url = String(req.body[`new_media_url_${id}`] || "").trim();
 
-      // чтобы Save all не падал из-за пустых
-  
+      const new_media_type = new_media_url
+        ? (new_media_type_in === "video" ? "video" : "image")
+        : "none";
 
-     await pool.query(
-  `
-   UPDATE apartment_sections
-        SET title=$1,
-            body=$2,
-            sort_order=$3,
-            is_active=$4,
-            new_media_type=$5,
-            new_media_url=$6,
-            updated_at=NOW()
-        WHERE id=$7 AND apartment_id=$8 AND room_id=$9
+      await pool.query(
+        `
+        UPDATE apartment_sections
+        SET title = $1,
+            body = $2,
+            sort_order = $3,
+            is_active = $4,
+            new_media_type = $5,
+            new_media_url = $6,
+            updated_at = NOW()
+        WHERE id = $7 AND room_id = $8
         `,
-        [
-          title,
-          body,
-          sort_order,
-          is_active,
-          new_media_type,
-          new_media_url,
-          id,
-          apartment_id,
-          room_id,
-        ]
-);
+        [title, body, sort_order, is_active, new_media_type, new_media_url, id, room_id]
+      );
     }
 
     return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
@@ -2925,6 +2911,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
