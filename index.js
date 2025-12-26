@@ -1779,11 +1779,11 @@ app.get("/guest/:roomId/:token", async (req, res) => {
     const r = rows[0];
      const show = req.query.show === "1";
 
-   const secRes = await pool.query(
+  const secRes = await pool.query(
   `
-  SELECT id, title, body, new_media_type, new_media_url
+  SELECT title, body, new_media_type, new_media_url
   FROM apartment_sections
-  WHERE room_id::text = $1
+  WHERE beds24_room_id::text = $1
     AND is_active = true
   ORDER BY sort_order ASC, id ASC
   `,
@@ -2788,6 +2788,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
