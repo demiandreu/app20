@@ -492,9 +492,6 @@ Después escribe: PAYOK
 3️⃣ Llaves:
 ${showKeys ? (keysLink || "—") : "🔒 Se mostrarán después de completar REGISTRO y PAGO"}
 
-👨‍💬  Soporte humano:
-${supportLink}
-
 Cuando lo tengas listo, escribe: LISTO`
       );
 
@@ -2868,6 +2865,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
