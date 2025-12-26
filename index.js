@@ -2001,9 +2001,6 @@ const lockCodeHtml =
         <div class="muted">Booking ID: <strong>${escapeHtml(
           String(r.beds24_booking_id || r.booking_token || "")
         )}</strong></div>
-        <div class="muted">Room ID: <strong>${escapeHtml(
-          String(r.beds24_room_id || "")
-        )}</strong></div>
 
         <hr/>
 
@@ -2915,6 +2912,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
