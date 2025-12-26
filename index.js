@@ -1907,6 +1907,8 @@ app.get("/guest/:roomId/:token", async (req, res) => {
     }
 
     const r = rows[0];
+     console.log("DEBUG r:", r);
+console.log("DEBUG beds24_room_id:", r.beds24_room_id);
 
     const secRes = await pool.query(
       `
@@ -2807,6 +2809,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
