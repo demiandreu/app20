@@ -1171,24 +1171,27 @@ app.get("/manager/apartment", async (req, res) => {
 
     const { rows } = await pool.query(
       `
-      SELECT
-        id,
-        apartment_name,
-        support_phone,
-        default_arrival_time,
-        default_departure_time,
-        registration_url,
-        payment_url,
-        keys_instructions_url
-      FROM beds24_rooms
-      WHERE id = $1
-      LIMIT 1
+     SELECT
+  id,
+  apartment_name,
+  beds24_room_id,
+  support_phone,
+  default_arrival_time,
+  default_departure_time,
+  registration_url,
+  payment_url,
+  keys_instructions_url
+FROM beds24_rooms
+WHERE id = $1
+LIMIT 1
       `,
       [id]
     );
 
     if (!rows.length) return res.status(404).send("Apartment not found");
     const a = rows[0];
+    
+const roomId = String(a.beds24_room_id || "").trim();
 
     const html = `
       <h1>Apartment Settings</h1>
@@ -1231,7 +1234,12 @@ app.get("/manager/apartment", async (req, res) => {
         <button type="submit">Save</button>
       </form>
       <p style="margin-top:10px;">
-  <a class="btn-link" href="/manager/apartment/sections?room_id=${a.beds24_room_id}">🪗 Manage guest accordion sections</a>
+ ${roomId
+  ? `<a class="btn-link" href="/manager/apartment/sections?room_id=${encodeURIComponent(roomId)}">
+       🪗 Manage guest accordion sections
+     </a>`
+  : `<span class="muted">⚠ Missing room_id for this apartment</span>`
+}
 </p>
     `;
 
@@ -2747,6 +2755,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
