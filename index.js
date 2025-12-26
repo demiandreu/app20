@@ -1946,7 +1946,7 @@ app.get("/guest/:roomId/:token", async (req, res) => {
       [String(r.beds24_room_id)]
     );
 
-     const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
+          const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
 
 const html = `
   <div class="card">
@@ -2893,6 +2893,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
