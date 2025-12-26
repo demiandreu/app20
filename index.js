@@ -1246,6 +1246,7 @@ app.post("/manager/apartment", async (req, res) => {
   const {
     id,
     apartment_name,
+    beds_room_id,
      support_phone,
     default_arrival_time,
     default_departure_time,
@@ -1259,13 +1260,13 @@ app.post("/manager/apartment", async (req, res) => {
     SET
       apartment_name = $1,
       support_phone = $2,
-      default_arrival_time = $2,
-      default_departure_time = $3,
-      registration_url = $4,
-      payment_url = $5,
-      keys_instructions_url = $6,
+      default_arrival_time = $3,
+      default_departure_time = $4,
+      registration_url = $5,
+      payment_url = $6,
+      keys_instructions_url = $7,
       updated_at = now()
-    WHERE id = $7
+    WHERE id = $8
   `, [
     apartment_name,
     support_phone,
@@ -2746,6 +2747,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
