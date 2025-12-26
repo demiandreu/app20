@@ -1884,31 +1884,31 @@ app.get("/guest/:roomId/:token", async (req, res) => {
   try {
     const { rows } = await pool.query(
       `
-    SELECT
-  id,
-  booking_token,
-  beds24_booking_id,
-  beds24_room_id,
-  apartment_name,
-  full_name,
-  email,
-  phone,
-  arrival_date,
-  arrival_time,
-  departure_date,
-  departure_time,
-  adults,
-  children,
-  lock_code,
-  lock_visible
-FROM checkins
-WHERE beds24_room_id = $1
-AND (
-  booking_token = $2
-  OR beds24_booking_id = $2::bigint
-)
-ORDER BY id DESC
-LIMIT 1
+      SELECT
+        id,
+        booking_token,
+        beds24_booking_id,
+        beds24_room_id,
+        apartment_name,
+        full_name,
+        email,
+        phone,
+        arrival_date,
+        arrival_time,
+        departure_date,
+        departure_time,
+        adults,
+        children,
+        lock_code,
+        lock_visible
+      FROM checkins
+      WHERE beds24_room_id::text = $1
+        AND (
+          booking_token = $2
+          OR beds24_booking_id::text = $2
+        )
+      ORDER BY id DESC
+      LIMIT 1
       `,
       [String(roomId), String(token)]
     );
@@ -1924,41 +1924,59 @@ LIMIT 1
 
     const r = rows[0];
 
-     console.log("STEP 1: got checkin record");
+    const secRes = await pool.query(
+      `
+      SELECT title, body, new_media_type, new_media_url
+      FROM apartment_sections
+      WHERE room_id::text = $1
+        AND is_active = true
+      ORDER BY sort_order ASC, id ASC
+      `,
+      [String(r.beds24_room_id)]
+    );
 
-console.log("STEP 2: before sections query, roomId param:", roomId);
-console.log("STEP 2: before sections query, r.beds24_room_id:", r.beds24_room_id);
+    const sectionsHtml =
+      secRes.rows.length > 0
+        ? secRes.rows
+            .map((s) => {
+              const media =
+                s.new_media_type === "image" && s.new_media_url
+                  ? `<div style="margin:12px 0"><img src="${escapeHtml(s.new_media_url)}" style="max-width:100%;border-radius:12px" /></div>`
+                  : s.new_media_type === "video" && s.new_media_url
+                  ? `<div style="margin:12px 0"><a class="btn-link" href="${escapeHtml(s.new_media_url)}" target="_blank" rel="noopener">▶ Open video</a></div>`
+                  : "";
 
-const roomIdInt = Number(roomId); // IMPORTANT
+              return `
+                <section style="margin:16px 0;padding:14px;border:1px solid #e5e7eb;border-radius:14px;background:#fff">
+                  <h2 style="margin:0 0 8px">${escapeHtml(s.title || "")}</h2>
+                  ${media}
+                  <div>${s.body || ""}</div>
+                </section>
+              `;
+            })
+            .join("\n")
+        : `<p class="muted">No information sections for this apartment yet.</p>`;
 
-console.log("STEP 3: roomIdInt for sections:", roomIdInt);
+    const html = `
+      <h1>Guest Dashboard</h1>
 
-const secRes = await pool.query(
-  `
-  SELECT title, body, new_media_type, new_media_url
-  FROM apartment_sections
-  WHERE room_id = $1 AND is_active = true
-  ORDER BY sort_order ASC, id ASC
-  `,
-  [roomIdInt]
-);
+      <p class="muted">
+        Apartment: <strong>${escapeHtml(r.apartment_name || "")}</strong><br/>
+        Booking ID: <strong>${escapeHtml(String(r.beds24_booking_id || ""))}</strong><br/>
+        Room ID: <strong>${escapeHtml(String(r.beds24_room_id || ""))}</strong>
+      </p>
 
-console.log("STEP 4: sections loaded, count:", secRes.rows.length);
+      ${sectionsHtml}
+    `;
 
-// перед самым res.send:
-console.log("STEP 5: rendering page now");
-     console.log("DEBUG r:", r);
-console.log("DEBUG beds24_room_id:", r.beds24_room_id);
-
-   
-
-    // дальше твой рендер html...
+    return res.send(renderPage("Guest Dashboard", html));
   } catch (e) {
     console.error("Guest dashboard error:", e);
-    return res.status(500).send("Cannot load guest dashboard: " + (e.detail || e.message || String(e)));
+    return res
+      .status(500)
+      .send("Cannot load guest dashboard: " + (e.detail || e.message || String(e)));
   }
 });
-
 // --- LIST + FILTER ---
 app.get("/staff/checkins", async (req, res) => {
   try {
@@ -2841,6 +2859,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
