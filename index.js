@@ -1196,6 +1196,12 @@ const roomId = String(a.beds24_room_id || "").trim();
     const html = `
       <h1>Apartment Settings</h1>
       <p><a href="/manager">← Back to Manager</a></p>
+       ${roomId
+  ? `<a class="btn-link" href="/manager/apartment/sections?room_id=${encodeURIComponent(roomId)}">
+       🪗 Manage guest accordion sections
+     </a>`
+  : `<span class="muted">⚠ Missing room_id for this apartment</span>`
+}
 
       <form method="POST" action="/manager/apartment/save">
         <input type="hidden" name="id" value="${a.id}" />
@@ -1234,12 +1240,7 @@ const roomId = String(a.beds24_room_id || "").trim();
         <button type="submit">Save</button>
       </form>
       <p style="margin-top:10px;">
- ${roomId
-  ? `<a class="btn-link" href="/manager/apartment/sections?room_id=${encodeURIComponent(roomId)}">
-       🪗 Manage guest accordion sections
-     </a>`
-  : `<span class="muted">⚠ Missing room_id for this apartment</span>`
-}
+
 </p>
     `;
 
@@ -2844,6 +2845,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
