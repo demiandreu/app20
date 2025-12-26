@@ -22,19 +22,23 @@ app.get("/manager/apartment/sections", async (req, res) => {
     if (!roomId) return res.status(400).send("Missing room_id");
 
     const aptRes = await pool.query(
-      `SELECT id, apartment_name, beds24_room_id
-       FROM beds24_rooms
-       WHERE beds24_room_id::text = $1
-       LIMIT 1`,
+      `
+      SELECT id, apartment_name, beds24_room_id
+      FROM beds24_rooms
+      WHERE beds24_room_id::text = $1
+      LIMIT 1
+      `,
       [roomId]
     );
     const apt = aptRes.rows[0] || null;
 
     const secRes = await pool.query(
-      `SELECT id, title, body, sort_order, is_active, new_media_type, new_media_url
-       FROM apartment_sections
-       WHERE room_id::text = $1
-       ORDER BY sort_order ASC, id ASC`,
+      `
+      SELECT id, title, body, sort_order, is_active, new_media_type, new_media_url
+      FROM apartment_sections
+      WHERE room_id::text = $1
+      ORDER BY sort_order ASC, id ASC
+      `,
       [roomId]
     );
 
@@ -44,7 +48,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
         return `
           <tr>
             <td style="width:90px;">
-              <input name="sort_order_${s.id}" value="${Number(s.sort_order)}" style="width:70px; box-sizing:border-box;" />
+              <input name="sort_order_${s.id}" value="${Number(s.sort_order) || 0}" style="width:70px; box-sizing:border-box;" />
             </td>
             <td style="width:180px;">
               <label style="display:flex; gap:8px; align-items:center;">
@@ -60,6 +64,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
             <td class="td-text">
               <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" class="sec-title" placeholder="(optional title)" />
               <textarea name="body_${s.id}" rows="5" class="sec-body" placeholder="Text...">${escapeHtml(s.body || "")}</textarea>
+
               <div style="margin-top:10px; display:grid; gap:6px;">
                 <label class="muted">Media type</label>
                 <select name="new_media_type_${s.id}">
@@ -67,6 +72,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
                   <option value="image" ${String(s.new_media_type || "") === "image" ? "selected" : ""}>Image</option>
                   <option value="video" ${String(s.new_media_type || "") === "video" ? "selected" : ""}>Video</option>
                 </select>
+
                 <label class="muted">Media URL</label>
                 <input name="new_media_url_${s.id}" value="${escapeHtml(s.new_media_url || "")}" placeholder="https://..." style="width:100%;" />
               </div>
@@ -77,199 +83,93 @@ app.get("/manager/apartment/sections", async (req, res) => {
       .join("");
 
     const html = `
-      <!-- стили и заголовок -->
+      <style>
+        .muted { opacity: 0.65; font-size: 12px; }
+        .sections-table { width:100%; border-collapse: collapse; }
+        .sections-table th, .sections-table td { border-top: 1px solid #e5e7eb; padding: 10px; vertical-align: top; }
+        .sec-title { width: 100%; box-sizing: border-box; margin-bottom: 8px; }
+        .sec-body { width: 100%; box-sizing: border-box; }
+        .btn-mini { padding: 6px 10px; }
+        .danger { background: #fee2e2; }
+      </style>
+
       <h1>Apartment Sections</h1>
+
       <p class="muted">
         Apartment: <strong>${escapeHtml(apt?.apartment_name || "Unknown")}</strong>
       </p>
       <p class="muted">
         room_id: <strong>${escapeHtml(roomId)}</strong>
       </p>
+
       <p>
-        <a class="btn-link" href="/manager/apartment?room_id=${encodeURIComponent(roomId)}">← Back to Apartment Settings</a>
+        <a class="btn-link" href="/manager/settings/apartments">← Back</a>
       </p>
+
       <form method="POST" action="/manager/apartment/sections/save">
         <input type="hidden" name="room_id" value="${escapeHtml(roomId)}" />
-        <!-- остальная форма -->
-        ${rowsHtml ? rowsHtml : `<tr><td colspan="3" class="muted" style="padding:10px;">No sections yet.</td></tr>`}
-        <!-- кнопка Save all -->
+
+        <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
+          <h2 style="margin:0 0 8px; font-size:16px;">Add new section</h2>
+          <div style="display:grid; gap:8px;">
+            <label>Title</label>
+            <input name="new_title" placeholder="Title" />
+
+            <label>Text</label>
+            <textarea name="new_body" rows="4" placeholder="Text for guests..."></textarea>
+
+            <label class="muted">Media type</label>
+            <select name="new_media_type">
+              <option value="none" selected>None</option>
+              <option value="image">Image</option>
+              <option value="video">Video</option>
+            </select>
+
+            <label class="muted">Media URL</label>
+            <input name="new_media_url" placeholder="https://..." style="width:100%;" />
+
+            <div style="display:flex; gap:10px; align-items:center;">
+              <label class="muted">Order:</label>
+              <input name="new_sort_order" value="1" style="width:80px;" />
+              <label style="display:flex; gap:8px; align-items:center;">
+                <input type="checkbox" name="new_is_active" checked />
+                Active
+              </label>
+              <button type="submit" name="add" value="1">Add section</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
+          <h2 style="margin:0 0 10px; font-size:16px;">Existing sections</h2>
+
+          <table class="sections-table">
+            <thead>
+              <tr>
+                <th style="width:90px;">Order</th>
+                <th style="width:180px;">Actions</th>
+                <th>Title & Text</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml || `<tr><td colspan="3" class="muted" style="padding:10px;">No sections yet.</td></tr>`}
+            </tbody>
+          </table>
+
+          <div style="margin-top:12px;">
+            <button type="submit" name="save" value="1">Save all</button>
+          </div>
+        </div>
       </form>
     `;
 
     return res.send(renderPage("Apartment Sections", html));
   } catch (e) {
-    console.error("Sections page error:", e);
-    return res.status(500).send("Cannot load sections: " + (e.detail || e.message || String(e)));
+    console.error("sections page error:", e);
+    return res.status(500).send(
+      "Cannot load sections: " + (e.detail || e.message || String(e))
+    );
   }
-});
-
-
-// ===================== MANAGER: Debug =====================
-app.get("/manager/channels/debug", (req, res) => {
-  res.send(`
-    <h1>Debug</h1>
-    <p>OK</p>
-    <ul>
-      <li><a href="/manager/channels/sync">Sync</a></li>
-      <li><a href="/manager/settings/apartments">Apartments</a></li>
-    </ul>
-  `);
-});
-    //vremenno
-// ===================== MANAGER: Sync Bookings =====================
-app.get("/manager/channels/bookingssync", async (req, res) => {
-  try {
-    const from = String(req.query.from || "2025-01-01");
-    const to = String(req.query.to || "2026-12-31");
-
-    // берём все активные квартиры с prop key
-    const aptsRes = await pool.query(`
-      SELECT beds24_room_id, beds24_prop_key, apartment_name
-      FROM beds24_rooms
-      WHERE is_active = true AND beds24_prop_key IS NOT NULL
-      ORDER BY apartment_name ASC
-    `);
-    const apts = aptsRes.rows || [];
-    if (!apts.length) {
-      return res.send("No active apartments with channel key (beds24_prop_key).");
-    }
-
-    let totalFetched = 0;
-    let totalUpserted = 0;
-    const perApt = [];
-
-    for (const apt of apts) {
-      // получаем брони по этой квартире
-      const resp = await beds24PostJson(
-        "https://api.beds24.com/json/getBookings",
-        { from, to },
-        apt.beds24_prop_key
-      );
-
-      // пытаемся достать массив броней (формат бывает разный)
-      const bookings =
-        resp?.data?.getBookings ||
-        resp?.data?.bookings ||
-        resp?.getBookings ||
-        resp?.bookings ||
-        [];
-
-      const list = Array.isArray(bookings) ? bookings : [];
-      totalFetched += list.length;
-
-      // здесь пока просто считаем, апсерт сделаем следующим шагом (чтобы не сломать)
-      perApt.push({
-        name: apt.apartment_name,
-        roomId: apt.beds24_room_id,
-        count: list.length,
-      });
-
-      // TODO: upsert в checkins (сделаем отдельным шагом)
-      // totalUpserted += ...
-    }
-
-    const rowsHtml = perApt
-      .map(
-        (x) =>
-          `<tr><td>${escapeHtml(x.name || "")}</td><td>${escapeHtml(x.roomId || "")}</td><td>${x.count}</td></tr>`
-      )
-      .join("");
-
-    return res.send(renderPage("Sync Bookings", `
-      <p style="margin:0 0 12px;"><a class="btn-link" href="/manager">← Manager</a></p>
-      <h2>Sync Bookings</h2>
-      <p class="muted">from=${escapeHtml(from)} to=${escapeHtml(to)}</p>
-      <p>Total fetched: <strong>${totalFetched}</strong></p>
-      <table border="1" cellpadding="8" cellspacing="0">
-        <thead><tr><th>Apartment</th><th>Room ID</th><th>Bookings</th></tr></thead>
-        <tbody>${rowsHtml || ""}</tbody>
-      </table>
-    `));
-  } catch (e) {
-    console.error("bookingssync error:", e);
-    return res.status(500).send("Sync Bookings failed: " + (e.message || String(e)));
-  }
-});
-
-app.get("/manager/channels/sync", async (req, res) => {
-  try {
-    const from = String(req.query.from || "2025-01-01");
-    const to = String(req.query.to || "2026-12-31");
-
-    const { rows: rooms } = await pool.query(`
-      SELECT beds24_room_id, beds24_prop_key, apartment_name
-      FROM beds24_rooms
-      WHERE is_active = true AND beds24_prop_key IS NOT NULL
-      ORDER BY apartment_name ASC
-    `);
-
-    let totalBookings = 0;
-    let saved = 0;
-    let skipped = 0;
-    const errors = [];
-
-    for (const r of rooms) {
-      try {
-        const resp = await beds24PostJson(
-          "https://api.beds24.com/json/getBookings",
-          { from, to },
-          r.beds24_prop_key
-        );
-
-        const list = Array.isArray(resp) ? resp : (resp?.data || resp?.bookings || []);
-        totalBookings += Array.isArray(list) ? list.length : 0;
-
-        for (const b of list) {
-          const row = mapBeds24BookingToRow(b, r.apartment_name, r.beds24_room_id);
-          const result = await upsertCheckinFromBeds24(row);
-          if (result?.skipped) skipped++;
-          else saved++;
-        }
-      } catch (e) {
-        errors.push({ roomId: r.beds24_room_id, message: String(e.message || e) });
-      }
-    }
-
-    return res.send(`
-      <h1>Sync done</h1>
-      <p>from=${escapeHtml(from)} to=${escapeHtml(to)}</p>
-      <p>rooms=${rooms.length}</p>
-      <p>totalBookings=${totalBookings}</p>
-      <p>saved=${saved}</p>
-      <p>skipped=${skipped}</p>
-      <pre style="white-space:pre-wrap">${escapeHtml(JSON.stringify(errors, null, 2))}</pre>
-    `);
-  } catch (e) {
-    console.error("❌ sync error:", e);
-    return res.status(500).send("Sync failed: " + escapeHtml(e.message || String(e)));
-  }
-});
-//vremenno
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-//vremenno
-
-const PORT = process.env.PORT || 3000;
-
-// ===================== DB: ENV CHECK =====================
-if (!process.env.DATABASE_URL) {
-  console.error("❌ DATABASE_URL is missing in env");
-  process.exit(1);
-}
-
-const isLocalDb =
-  process.env.DATABASE_URL.includes("localhost") ||
-  process.env.DATABASE_URL.includes("127.0.0.1");
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: isLocalDb ? false : { rejectUnauthorized: false },
 });
 
 // ===================== DB INIT / MIGRATIONS =====================
@@ -2847,6 +2747,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
