@@ -2018,10 +2018,10 @@ const lockCodeHtml =
         }, children: ${Number(r.children) || 0})</div>
 
         <hr/>
-
+        
+        ${lockCodeHtml}
         ${sectionsHtml}
 
-        ${lockCodeHtml}
       </div>
     `;
 
@@ -2915,6 +2915,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
