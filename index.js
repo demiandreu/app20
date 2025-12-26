@@ -1915,7 +1915,7 @@ app.get("/guest/:roomId/:token", async (req, res) => {
       WHERE room_id = $1 AND is_active = true
       ORDER BY sort_order ASC, id ASC
       `,
-      [String(r.room_id)]
+      [String(r.beds24_room_id)]
     );
 
     // дальше твой рендер html...
@@ -2807,6 +2807,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
