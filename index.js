@@ -1823,7 +1823,7 @@ app.get("/guest/:roomId/:token", async (req, res) => {
         ? show
           ? `
             <hr/>
-            <div>Code: <strong style="font-size:22px;letter-spacing:2px;">${escapeHtml(
+            <div>Lock Code: <strong style="font-size:22px;letter-spacing:2px;">${escapeHtml(
               String(r.lock_code)
             )}</strong></div>
           `
@@ -2883,6 +2883,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
