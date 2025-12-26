@@ -1926,6 +1926,10 @@ LIMIT 1
      console.log("DEBUG r:", r);
 console.log("DEBUG beds24_room_id:", r.beds24_room_id);
 
+     if (!r.beds24_room_id) {
+  throw new Error("beds24_room_id missing in checkins record");
+}
+
     const secRes = await pool.query(
       `
       SELECT title, body, new_media_type, new_media_url
@@ -2825,6 +2829,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
