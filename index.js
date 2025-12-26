@@ -1734,6 +1734,20 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 // We show last submitted record for this booking token.
 app.get("/guest/:roomId/:token", async (req, res) => {
   const { roomId, token } = req.params;
+  function toYouTubeEmbed(url) {
+  const u = String(url || "");
+  const m1 = u.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/);
+  const m2 = u.match(/v=([A-Za-z0-9_-]{6,})/);
+  const id = (m1 && m1[1]) || (m2 && m2[1]);
+  return id ? `https://www.youtube.com/embed/${id}` : null;
+}
+
+function toVimeoEmbed(url) {
+  const u = String(url || "");
+  const m = u.match(/vimeo\.com\/(\d+)/);
+  const id = m && m[1];
+  return id ? `https://player.vimeo.com/video/${id}` : null;
+}
 
   try {
     // 1) Load check-in record
@@ -1826,22 +1840,55 @@ app.get("/guest/:roomId/:token", async (req, res) => {
           <div id="guest-accordion">
             ${secRes.rows
               .map((s) => {
-                const title = escapeHtml(s.title || "");
-                const bodyHtml = String(s.body || ""); // body is trusted HTML from manager editor
-                const mediaType = String(s.new_media_type || "").toLowerCase().trim();
-                const mediaUrlRaw = String(s.new_media_url || "").trim();
-                const mediaUrl = escapeHtml(mediaUrlRaw);
+               if (mediaUrlRaw) {
+  if (mediaType === "image") {
+    media = `
+      <div style="margin-top:10px;">
+        <img src="${mediaUrl}" style="max-width:100%;border-radius:12px;display:block;" loading="lazy" />
+      </div>`;
+  } 
+  else if (mediaType === "video") {
+    const lower = mediaUrlRaw.toLowerCase();
 
-                let media = "";
-                if (mediaUrlRaw) {
-                  if (mediaType === "image") {
-                    media = `<div style="margin-top:10px;"><img src="${mediaUrl}" style="max-width:100%;border-radius:12px;" /></div>`;
-                  } else if (mediaType === "video") {
-                    media = `<div style="margin-top:10px;"><a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">Open video</a></div>`;
-                  } else {
-                    media = `<div style="margin-top:10px;"><a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">Open link</a></div>`;
-                  }
-                }
+    // 🎬 Прямой mp4
+    if (lower.endsWith(".mp4")) {
+      media = `
+        <div style="margin-top:10px;">
+          <video controls playsinline style="width:100%;border-radius:12px;">
+            <source src="${mediaUrl}" type="video/mp4">
+          </video>
+        </div>`;
+    } 
+    else {
+      // ▶️ YouTube / Vimeo
+      const yt = toYouTubeEmbed(mediaUrlRaw);
+      const vm = toVimeoEmbed(mediaUrlRaw);
+      const embed = yt || vm;
+
+      media = embed
+        ? `
+          <div style="margin-top:10px;">
+            <iframe
+              src="${embed}"
+              style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+            ></iframe>
+          </div>`
+        : `
+          <div style="margin-top:10px;">
+            <a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">Open video</a>
+          </div>`;
+    }
+  } 
+  else {
+    media = `
+      <div style="margin-top:10px;">
+        <a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">Open link</a>
+      </div>`;
+  }
+}
+
 
                 const panelId = `acc_${s.id}`;
 
@@ -2797,6 +2844,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
