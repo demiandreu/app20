@@ -1503,14 +1503,14 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
     }
 
     // 3) ADD new section (только если нажали кнопку Add section)
-   if (String(req.body.add) === "1") {
+  if (String(req.body.add) === "1") {
   const title = String(req.body.new_title || "").trim();
   const body = String(req.body.new_body || "").trim();
   const sort_order = Number(req.body.new_sort_order || 1);
   const is_active = req.body.new_is_active ? true : false;
 
   const new_media_type = String(req.body.new_media_type || "none").trim();
-  const new_media_url  = String(req.body.new_media_url || "").trim();
+  const new_media_url = String(req.body.new_media_url || "").trim();
 
   if (!title && !body && !new_media_url) {
     return res.status(400).send("Empty section");
@@ -1520,6 +1520,9 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
     ? (new_media_type === "video" ? "video" : "image")
     : "none";
 
+  const room_id = await getRoomIdForApartment(apartment_id);
+  if (!room_id) return res.status(400).send("Missing room_id mapping");
+
   await pool.query(
     `
     INSERT INTO apartment_sections
@@ -1527,16 +1530,7 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
     VALUES
       ($1,$2,$3,$4,$5,$6,$7,$8)
     `,
-    [
-      apartment_id,
-      room_id,
-      title,
-      body,
-      sort_order,
-      is_active,
-      final_media_type,
-      new_media_url
-    ]
+    [apartment_id, room_id, title, body, sort_order, is_active, final_media_type, new_media_url]
   );
 
   return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
@@ -2931,6 +2925,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
