@@ -21,22 +21,33 @@ app.get("/manager/apartment/sections", async (req, res) => {
     const aptId = Number(req.query.id);
     if (!aptId) return res.status(400).send("Missing id");
 
+    // Load unit info (UI uses aptId). We also need room_id for sections.
     const aptRes = await pool.query(
-      `SELECT id, apartment_name FROM beds24_rooms WHERE id = $1 LIMIT 1`,
+      `SELECT id, apartment_name, beds24_room_id
+       FROM beds24_rooms
+       WHERE id = $1
+       LIMIT 1`,
       [aptId]
     );
+
     if (!aptRes.rows.length) return res.status(404).send("Apartment not found");
     const apt = aptRes.rows[0];
 
-   const secRes = await pool.query(
-  `
-  SELECT id, title, body, sort_order, is_active, new_media_type, new_media_url
-  FROM apartment_sections
-  WHERE apartment_id = $1
-  ORDER BY sort_order ASC, id ASC
-  `,
-  [aptId]
-);
+    const room_id = String(apt.beds24_room_id || "").trim();
+    if (!room_id) {
+      return res.status(500).send("Missing room_id for this apartment");
+    }
+
+    // ✅ Load sections by room_id (not apartment_id)
+    const secRes = await pool.query(
+      `
+      SELECT id, title, body, sort_order, is_active, new_media_type, new_media_url
+      FROM apartment_sections
+      WHERE room_id = $1
+      ORDER BY sort_order ASC, id ASC
+      `,
+      [room_id]
+    );
 
     const rowsHtml = secRes.rows
       .map((s) => {
@@ -57,39 +68,38 @@ app.get("/manager/apartment/sections", async (req, res) => {
                 <button class="btn-mini danger" type="submit" name="delete" value="${s.id}">Delete</button>
               </div>
             </td>
-          <td class="td-text">
-  <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" class="sec-title" placeholder="(optional title)" />
-  <textarea name="body_${s.id}" rows="5" class="sec-body" placeholder="Text...">${escapeHtml(s.body || "")}</textarea>
-
-  <div style="margin-top:10px; display:grid; gap:6px;">
-    <label class="muted">Media type</label>
-    <select name="new_media_type_${s.id}">
-      <option value="none" ${String(s.new_media_type || "none") === "none" ? "selected" : ""}>None</option>
-      <option value="image" ${String(s.new_media_type || "") === "image" ? "selected" : ""}>Image</option>
-      <option value="video" ${String(s.new_media_type || "") === "video" ? "selected" : ""}>Video</option>
-    </select>
-
-    <label class="muted">Media URL</label>
-    <input name="new_media_url_${s.id}" value="${escapeHtml(s.new_media_url || "")}" placeholder="https://..." style="width:100%;" />
-  </div>
-</td>
+            <td class="td-text">
+              <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" class="sec-title" placeholder="(optional title)" />
+              <textarea name="body_${s.id}" rows="5" class="sec-body" placeholder="Text...">${escapeHtml(s.body || "")}</textarea>
+              <div style="margin-top:10px; display:grid; gap:6px;">
+                <label class="muted">Media type</label>
+                <select name="new_media_type_${s.id}">
+                  <option value="none" ${String(s.new_media_type || "none") === "none" ? "selected" : ""}>None</option>
+                  <option value="image" ${String(s.new_media_type || "") === "image" ? "selected" : ""}>Image</option>
+                  <option value="video" ${String(s.new_media_type || "") === "video" ? "selected" : ""}>Video</option>
+                </select>
+                <label class="muted">Media URL</label>
+                <input name="new_media_url_${s.id}" value="${escapeHtml(s.new_media_url || "")}" placeholder="https://..." style="width:100%;" />
+              </div>
+            </td>
           </tr>
         `;
       })
       .join("");
 
-   const html = `
-  <style>
-    .muted {
-      opacity: 0.65;
-      font-size: 12px;
-    }
-  </style>
+    const html = `
+      <style>
+        .muted { opacity: 0.65; font-size: 12px; }
+      </style>
 
-  <h1>Apartment Sections</h1>
+      <h1>Apartment Sections</h1>
       <p class="muted">
         Apartment: <strong>${escapeHtml(apt.apartment_name || String(apt.id))}</strong>
       </p>
+      <p class="muted">
+        room_id: <strong>${escapeHtml(room_id)}</strong>
+      </p>
+
       <p>
         <a class="btn-link" href="/manager/apartment?id=${aptId}">← Back to Apartment Settings</a>
       </p>
@@ -112,13 +122,10 @@ app.get("/manager/apartment/sections", async (req, res) => {
         <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
           <h2 style="margin:0 0 8px; font-size:16px;">Add new section</h2>
           <div style="display:grid; gap:8px;">
-         <label>
-  Title 
-</label>  <input
-  name="new_title"
-  placeholder="Title"
-/>
+            <label>Title</label>
+            <input name="new_title" placeholder="Title" />
             <textarea name="new_body" rows="4" placeholder="Text for guests..."></textarea>
+
             <div style="display:flex; gap:10px; align-items:center;">
               <label class="muted">Order:</label>
               <input name="new_sort_order" value="1" style="width:80px;" />
@@ -133,7 +140,6 @@ app.get("/manager/apartment/sections", async (req, res) => {
 
         <div style="margin-top:12px; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
           <h2 style="margin:0 0 10px; font-size:16px;">Existing sections</h2>
-
           <table class="sections-table">
             <thead>
               <tr>
@@ -155,16 +161,12 @@ app.get("/manager/apartment/sections", async (req, res) => {
     `;
 
     return res.send(renderPage("Apartment Sections", html));
-     } catch (e) {
-  console.error("sections save error:", e);
-  return res
-    .status(500)
-    .send("Cannot save sections: " + (e.detail || e.message || String(e)));
-}
- // } catch (e) {
- //   console.error("sections page error:", e);
- //   return res.status(500).send("Error");
-//  }
+  } catch (e) {
+    console.error("sections page error:", e);
+    return res
+      .status(500)
+      .send("Cannot load sections: " + (e.detail || e.message || String(e)));
+  }
 });
 
 // ===================== MANAGER: Debug =====================
@@ -1519,11 +1521,11 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
       await pool.query(
         `
         INSERT INTO apartment_sections
-          (apartment_id, room_id, title, body, sort_order, is_active, new_media_type, new_media_url)
+          ( room_id, title, body, sort_order, is_active, new_media_type, new_media_url)
         VALUES
-          ($1,$2,$3,$4,$5,$6,$7,$8)
+          ($1,$2,$3,$4,$5,$6,$7,)
         `,
-        [apartment_id, room_id, title, body, sort_order, is_active, new_media_type, new_media_url]
+        [room_id, title, body, sort_order, is_active, new_media_type, new_media_url]
       );
 
       return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
@@ -2911,6 +2913,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
