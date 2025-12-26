@@ -292,6 +292,19 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       );
       return q.rows[0] || null;
     };
+    const getSessionCheckin = async (phone) => {
+  const q = await pool.query(
+    `
+    SELECT c.*
+    FROM whatsapp_sessions ws
+    JOIN checkins c ON c.id = ws.checkin_id
+    WHERE ws.phone = $1
+    LIMIT 1
+    `,
+    [phone]
+  );
+  return q.rows[0] || null;
+};
 
     // ✅ helper: получить ссылки/дефолты из beds24_rooms по apartment_id
     const getRoomSettings = async (apartmentId) => {
@@ -320,7 +333,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
 
     // ----------------- REGOK -----------------
     if (textUpper === "REGOK") {
-      const last = await getLastCheckinByPhone();
+      const last = await getSessionCheckin();
       if (!last) {
         await sendWhatsApp(from, "No encuentro tu reserva. Envía primero: START_XXXX");
         return res.status(200).send("OK");
@@ -342,7 +355,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
 
     // ----------------- PAYOK -----------------
     if (textUpper === "PAYOK") {
-      const last = await getLastCheckinByPhone();
+     const last = await getSessionCheckin();
       if (!last) {
         await sendWhatsApp(from, "No encuentro tu reserva. Envía primero: START_XXXX");
         return res.status(200).send("OK");
@@ -406,12 +419,25 @@ START_${bookingId}`
       }
 
       const r = bookingResult.rows[0];
+      // после того как нашли r (checkin)
+await pool.query(
+  `
+  INSERT INTO whatsapp_sessions (phone, checkin_id)
+  VALUES ($1, $2)
+  ON CONFLICT (phone)
+  DO UPDATE SET
+    checkin_id = EXCLUDED.checkin_id,
+    updated_at = NOW()
+  `,
+  [phone, r.id]
+);
        // привязать телефон к найденной записи
-const upd = await pool.query(
-  `UPDATE checkins
-   SET phone = $1
-   WHERE id = $2
-   RETURNING id, phone`,
+await pool.query(
+  `
+  UPDATE checkins
+  SET phone = COALESCE(NULLIF(phone,''), $1)
+  WHERE id = $2
+  `,
   [phone, r.id]
 );
 
@@ -500,7 +526,7 @@ Cuando lo tengas listo, escribe: LISTO`
 
     // ----------------- LISTO -----------------
     if (textUpper === "LISTO") {
-      const last = await getLastCheckinByPhone();
+      const last = await getSessionCheckin();
 
       if (!last) {
         await sendWhatsApp(from, "No encuentro tu reserva. Envía primero: START_XXXX");
@@ -2865,6 +2891,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
