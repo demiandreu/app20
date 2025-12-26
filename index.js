@@ -1386,7 +1386,7 @@ app.get("/manager/apartment", async (req, res) => {
         <button type="submit">Save</button>
       </form>
       <p style="margin-top:10px;">
-  <a class="btn-link" href="/manager/apartment/sections?id=${a.id}">🪗 Manage guest accordion sections</a>
+  <a class="btn-link" href="/manager/apartment/sections?room_id=${a.id}">🪗 Manage guest accordion sections</a>
 </p>
     `;
 
@@ -1438,58 +1438,26 @@ app.post("/manager/apartment", async (req, res) => {
 
 // ========== POST: create new accordion section ==========
 // CREATE new section (from manager page)
+
 app.post("/manager/apartment/sections/save", async (req, res) => {
   try {
-    const apartment_id = Number(req.body.apartment_id);
-    if (!apartment_id) return res.status(400).send("Missing apartment_id");
-
-    // Helper: resolve room_id for this apartment_id (apartment_id == rooms table primary key)
-    async function getRoomIdForApartment(apartmentId) {
-      const q = await pool.query(
-        `
-        SELECT beds24_room_id
-        FROM beds24_rooms
-        WHERE id = $1
-        LIMIT 1
-        `,
-        [apartmentId]
-      );
-      return String(q.rows?.[0]?.beds24_room_id || "").trim();
-    }
-
-    const room_id = await getRoomIdForApartment(apartment_id);
-    if (!room_id) return res.status(400).send("Room not found for this apartment_id");
+    const room_id = String(req.body.room_id || "").trim();
+    if (!room_id) return res.status(400).send("Missing room_id");
 
     // 1) DELETE
     if (req.body.delete) {
-      const id = Number(req.body.delete);
-      if (!id) return res.status(400).send("Missing id");
-
+      const deleteId = Number(req.body.delete);
       await pool.query(
-        `DELETE FROM apartment_sections WHERE id=$1 AND apartment_id=$2`,
-        [id, apartment_id]
+        `DELETE FROM apartment_sections WHERE id=$1 AND room_id=$2`,
+        [deleteId, room_id]
       );
-      return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+      return res.redirect(`/manager/apartment/sections?room_id=${encodeURIComponent(room_id)}`);
     }
 
-    // 2) MOVE up/down
+    // 2) MOVE (up/down) — optional, if you already have logic keep it but use room_id in WHERE
     if (req.body.move) {
-      const [dir, idStr] = String(req.body.move).split(":");
-      const id = Number(idStr);
-      if (!id || (dir !== "up" && dir !== "down")) {
-        return res.status(400).send("Bad move");
-      }
-
-      await pool.query(
-        `
-        UPDATE apartment_sections
-        SET sort_order = GREATEST(1, sort_order + $1),
-            updated_at = NOW()
-        WHERE id = $2 AND apartment_id = $3
-        `,
-        [dir === "up" ? -1 : 1, id, apartment_id]
-      );
-      return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+      // Keep your existing move logic, but every query must filter by room_id, not apartment_id.
+      // Example: SELECT id, sort_order FROM apartment_sections WHERE room_id=$1 ...
     }
 
     // 3) ADD new section
@@ -1497,15 +1465,17 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
       const title = String(req.body.new_title || "").trim();
       const body = String(req.body.new_body || "").trim();
       const sort_order = Number(req.body.new_sort_order || 1);
-      const is_active = !!req.body.new_is_active;
+      const is_active = req.body.new_is_active ? true : false;
 
-      const new_media_type = String(req.body.new_media_type || "none");
+      const new_media_type = String(req.body.new_media_type || "none").trim();
       const new_media_url = String(req.body.new_media_url || "").trim();
 
+      // Prevent fully empty section
       if (!title && !body && !new_media_url) {
         return res.status(400).send("Empty section");
       }
 
+      // If URL exists but type is none -> normalize
       const final_media_type = new_media_url
         ? (new_media_type === "video" ? "video" : "image")
         : "none";
@@ -1513,50 +1483,58 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
       await pool.query(
         `
         INSERT INTO apartment_sections
-          (apartment_id, room_id, title, body, sort_order, is_active, new_media_type, new_media_url)
+          (room_id, title, body, sort_order, is_active, new_media_type, new_media_url)
         VALUES
-          ($1,$2,$3,$4,$5,$6,$7,$8)
+          ($1,$2,$3,$4,$5,$6,$7)
         `,
-        [apartment_id, room_id, title, body, sort_order, is_active, final_media_type, new_media_url]
+        [room_id, title, body, sort_order, is_active, final_media_type, new_media_url]
       );
 
-      return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+      return res.redirect(`/manager/apartment/sections?room_id=${encodeURIComponent(room_id)}`);
     }
 
     // 4) SAVE ALL edits
-    const secRes = await pool.query(
-      `SELECT id FROM apartment_sections WHERE apartment_id=$1 ORDER BY id ASC`,
-      [apartment_id]
-    );
-
-    for (const row of secRes.rows) {
-      const id = row.id;
-
-      const title = String(req.body[`title_${id}`] || "").trim();
-      const body = String(req.body[`body_${id}`] || "");
-      const sort_order = Number(req.body[`sort_order_${id}`] || 1);
-      const is_active = !!req.body[`is_active_${id}`];
-
-      const new_media_type = String(req.body[`new_media_type_${id}`] || "none");
-      const new_media_url = String(req.body[`new_media_url_${id}`] || "").trim();
-
-      await pool.query(
-        `
-        UPDATE apartment_sections
-        SET title=$1,
-            body=$2,
-            sort_order=$3,
-            is_active=$4,
-            new_media_type=$5,
-            new_media_url=$6,
-            updated_at=NOW()
-        WHERE id=$7 AND apartment_id=$8
-        `,
-        [title, body, sort_order, is_active, new_media_type, new_media_url, id, apartment_id]
+    if (req.body.save) {
+      const secRes = await pool.query(
+        `SELECT id FROM apartment_sections WHERE room_id=$1 ORDER BY id ASC`,
+        [room_id]
       );
+
+      for (const row of secRes.rows) {
+        const id = row.id;
+
+        const title = String(req.body[`title_${id}`] || "").trim();
+        const body = String(req.body[`body_${id}`] || "");
+        const sort_order = Number(req.body[`sort_order_${id}`] || 1);
+        const is_active = req.body[`is_active_${id}`] ? true : false;
+
+        const new_media_type = String(req.body[`new_media_type_${id}`] || "none").trim();
+        const new_media_url = String(req.body[`new_media_url_${id}`] || "").trim();
+
+        const final_media_type = new_media_url
+          ? (new_media_type === "video" ? "video" : "image")
+          : "none";
+
+        await pool.query(
+          `
+          UPDATE apartment_sections
+          SET title=$1,
+              body=$2,
+              sort_order=$3,
+              is_active=$4,
+              new_media_type=$5,
+              new_media_url=$6,
+              updated_at=NOW()
+          WHERE id=$7 AND room_id=$8
+          `,
+          [title, body, sort_order, is_active, final_media_type, new_media_url, id, room_id]
+        );
+      }
+
+      return res.redirect(`/manager/apartment/sections?room_id=${encodeURIComponent(room_id)}`);
     }
 
-    return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
+    return res.redirect(`/manager/apartment/sections?room_id=${encodeURIComponent(room_id)}`);
   } catch (e) {
     console.error("sections save error:", e);
     return res.status(500).send("Cannot save sections: " + (e.detail || e.message || String(e)));
@@ -1900,24 +1878,20 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 // ===================== GUEST DASHBOARD =====================
 // Guest opens: /guest/:aptId/:token
 // We show last submitted record for this booking token.
-app.get("/guest/:aptId/:token", async (req, res) => {
-  const { aptId, token } = req.params;
+app.get("/guest/:roomId/:token", async (req, res) => {
+  const { roomId, token } = req.params;
+
   try {
     const { rows } = await pool.query(
       `
-      SELECT
-        id, apartment_id, apartment_name, booking_token,
-        full_name, email, phone,
-        arrival_date, arrival_time,
-        departure_date, departure_time,
-        adults, children,
-        lock_code, lock_visible
+      SELECT *
       FROM checkins
-      WHERE id = $1 AND booking_token = $2
+      WHERE room_id = $1
+        AND (booking_token = $2 OR beds24_booking_id = $2)
       ORDER BY id DESC
       LIMIT 1
       `,
-      [aptId, token]
+      [String(roomId), String(token)]
     );
 
     if (!rows.length) {
@@ -1931,101 +1905,21 @@ app.get("/guest/:aptId/:token", async (req, res) => {
 
     const r = rows[0];
 
-     const secRes = await pool.query(
-  `
-  SELECT title, body
-  FROM apartment_sections
-  WHERE apartment_id = $1 AND is_active = true
-  ORDER BY sort_order ASC, id ASC
-  `,
-  [aptId]
-);
-
-const accordionHtml = secRes.rows.map((s, idx) => `
-  <details style="border:1px solid #e5e7eb; border-radius:14px; padding:10px 12px; background:#fff; margin-top:10px;">
-    <summary style="cursor:pointer; font-weight:700;">
-      ${escapeHtml(s.title || `Section ${idx + 1}`)}
-    </summary>
-    <div style="margin-top:10px; white-space:pre-wrap; line-height:1.45;">
-      ${escapeHtml(s.body || "")}
-    </div>
-  </details>
-`).join("");
-
-    // ✅ apartment name (fallback to aptId if empty)
-    const aptName = String(r.apartment_name || "").trim() || String(aptId);
-
-    // ✅ guests line
-    const adults = Number(r.adults ?? 0);
-    const children = Number(r.children ?? 0);
-
-    let guestsLine = "—";
-    if (adults || children) {
-      const parts = [];
-      if (adults) parts.push(`${adults} adulto${adults === 1 ? "" : "s"}`);
-      if (children) parts.push(`${children} niño${children === 1 ? "" : "s"}`);
-      guestsLine = parts.join(", ");
-    }
-
-    // Spain date for "today"
-    const todayES = ymdInTz(new Date(), "Europe/Madrid");
-
-    const arrivalYmd = String(r.arrival_date).slice(0, 10);
-    const canShowCode = Boolean(r.lock_visible) && r.lock_code;
-
-    const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time).slice(0, 5)}`;
-    const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time).slice(0, 5)}`;
-
-    const codeBlock = canShowCode
-      ? `
-        <div style="margin-top:14px; padding:14px; border:1px solid #bbf7d0; background:#f0fdf4; border-radius:14px;">
-          <h2 style="margin:0 0 6px; font-size:16px;">Key box code</h2>
-          <p class="muted" style="margin-bottom:10px;">Keep it private.</p>
-          <div style="font-size:28px; font-weight:900; letter-spacing:0.18em;">${String(r.lock_code)}</div>
-        </div>
+    const secRes = await pool.query(
       `
-      : `
-        <div style="margin-top:14px; padding:14px; border:1px solid #e5e7eb; background:#f9fafb; border-radius:14px;">
-          <h2 style="margin:0 0 6px; font-size:16px;">Key box code</h2>
-          <p class="muted" style="margin:0;">
-            The code will appear here on the arrival day after all steps are completed.
-          </p>
-        </div>
-      `;
+      SELECT title, body, new_media_type, new_media_url
+      FROM apartment_sections
+      WHERE room_id = $1 AND is_active = true
+      ORDER BY sort_order ASC, id ASC
+      `,
+      [String(r.room_id)]
+    );
 
-    const html = `
-      <h1>Guest Dashboard</h1>
-      <p class="muted">Booking: <strong>${token}</strong> • Apartment: <strong>${aptName}</strong></p>
-
-      <div style="margin-top:12px; padding:14px; border:1px solid #e5e7eb; background:#fff; border-radius:14px;">
-        <h2 style="margin:0 0 10px; font-size:16px;">Your stay</h2>
-        <p style="margin:0 0 6px;"><strong>Arrival:</strong> ${arrive}</p>
-        <p style="margin:0 0 6px;"><strong>Departure:</strong> ${depart}</p>
-        <p style="margin:0;"><strong>Guests:</strong> ${guestsLine}</p>
-      </div>
-
-      ${codeBlock}
-      ${accordionHtml}
-
-      <p style="margin-top:16px;">
-        <a class="btn-link" href="/">← Back</a>
-      </p>
-    `;
-
-    res.send(renderPage("Guest Dashboard", html));
- } catch (e) {
-  console.error("guest dashboard error:", {
-    message: e?.message,
-    detail: e?.detail,
-    code: e?.code,
-    where: e?.where,
-    stack: e?.stack,
-  });
-
-  return res
-    .status(500)
-    .send("Cannot load guest dashboard: " + (e.detail || e.message || String(e)));
-}
+    // дальше твой рендер html...
+  } catch (e) {
+    console.error("Guest dashboard error:", e);
+    return res.status(500).send("Cannot load guest dashboard: " + (e.detail || e.message || String(e)));
+  }
 });
 
 // --- LIST + FILTER ---
@@ -2910,6 +2804,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
