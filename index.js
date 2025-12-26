@@ -1934,6 +1934,7 @@ app.get("/guest/:roomId/:token", async (req, res) => {
     }
 
     const r = rows[0];
+     const show = req.query.show === "1";
 
     const secRes = await pool.query(
       `
@@ -1974,17 +1975,21 @@ app.get("/guest/:roomId/:token", async (req, res) => {
             })
             .join("");
 
-    const lockCodeHtml = r.lock_visible
+const lockCodeHtml =
+  r.lock_visible && r.lock_code
+    ? show
       ? `
         <hr/>
-        <button onclick="document.getElementById('lockCode').style.display='block'">
-          Show code
-        </button>
-        <div id="lockCode" style="display:none;margin-top:10px;">
-          <strong>${escapeHtml(r.lock_code || "")}</strong>
-        </div>
+        <div>Code: <strong style="font-size:22px;letter-spacing:2px;">${escapeHtml(String(r.lock_code))}</strong></div>
       `
-      : "";
+      : `
+        <hr/>
+        <a class="btn-link" href="/guest/${encodeURIComponent(String(roomId))}/${encodeURIComponent(String(token))}?show=1">
+          Show code
+        </a>
+      `
+    : "";
+
 
     const html = `
       <div class="card">
@@ -2910,6 +2915,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
