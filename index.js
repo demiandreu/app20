@@ -1444,14 +1444,15 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
     if (!apartment_id) return res.status(400).send("Missing apartment_id");
 
     async function getRoomIdForApartment(apartmentId) {
-      const q1 = await pool.query(
-        `SELECT beds24_room_id
-           FROM beds24_rooms
-          WHERE apartment_id = $1
-          LIMIT 1`,
-        [apartmentId]
-      );
-      if (q1.rows?.[0]?.beds24_room_id) return String(q1.rows[0].beds24_room_id).trim();
+  const q = await pool.query(
+    `SELECT beds24_room_id
+     FROM beds24_rooms
+     WHERE id = $1
+     LIMIT 1`,
+    [apartmentId]
+  );
+
+  return String(q.rows?.[0]?.beds24_room_id || "").trim();
 
       const q2 = await pool.query(
         `SELECT beds24_room_id
@@ -2913,6 +2914,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
