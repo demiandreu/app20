@@ -1840,85 +1840,80 @@ app.get("/guest/:roomId/:token", async (req, res) => {
             ${secRes.rows
              .map((s) => {
   const title = escapeHtml(s.title || "");
+const bodyHtml = escapeHtml(String(s.body || "")).replace(/\n/g, "<br/>");
 
-  // Body: safe text -> HTML with line breaks + auto-link URLs
-  const rawBody = String(s.body || "");
-  const escapedBody = escapeHtml(rawBody).replace(/\n/g, "<br/>");
-  const bodyHtml = escapedBody.replace(
-    /(https?:\/\/[^\s<]+)/g,
-    (url) =>
-      `<a class="btn-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`
-  );
+const mediaType = String(s.new_media_type || "").toLowerCase().trim();
+const mediaUrlRaw = String(s.new_media_url || "").trim();
 
-  // Normalize media type (supports ES + EN)
-  const mtRaw = String(s.new_media_type || "").toLowerCase().trim();
-  const mediaType =
-    mtRaw === "imagen" || mtRaw === "image" || mtRaw === "img" ? "image" :
-    mtRaw === "vídeo" || mtRaw === "video" ? "video" :
-    mtRaw === "enlace" || mtRaw === "link" || mtRaw === "url" ? "link" :
-    mtRaw;
+let media = "";
 
-  const mediaUrlRaw = String(s.new_media_url || "").trim();
-  const mediaUrl = escapeHtml(mediaUrlRaw);
+if (mediaUrlRaw) {
+  if (mediaType === "image") {
+    // ✅ Multiple images: one URL per line
+    const images = mediaUrlRaw
+      .split(/\r?\n/)
+      .map((u) => u.trim())
+      .filter(Boolean);
 
-  let media = "";
-  if (mediaUrlRaw) {
-   if (mediaType === "image") {
-  const images = mediaUrlRaw
-    .split(/\r?\n/)
-    .map(u => u.trim())
-    .filter(Boolean);
+    media = images
+      .map(
+        (u) => `
+          <div style="margin-top:10px;">
+            <img
+              src="${escapeHtml(u)}"
+              style="max-width:100%;border-radius:12px;display:block;"
+              loading="lazy"
+            />
+          </div>
+        `
+      )
+      .join("");
+  } else if (mediaType === "video") {
+    const lower = mediaUrlRaw.toLowerCase();
 
-  media = images
-    .map(url => `
-      <div style="margin-top:10px;">
-        <img
-          src="${escapeHtml(url)}"
-          style="max-width:100%;border-radius:12px;display:block;"
-          loading="lazy"
-        />
-      </div>
-    `)
-    .join("");
-}
-    } else if (mediaType === "video") {
-      const lower = mediaUrlRaw.toLowerCase();
+    // ✅ direct mp4 (Cloudinary often adds ?... so we use includes)
+    if (lower.endsWith(".mp4") || lower.includes(".mp4?") || lower.includes(".mp4&")) {
+      media = `
+        <div style="margin-top:10px;">
+          <video controls playsinline preload="metadata" style="width:100%;border-radius:12px;">
+            <source src="${escapeHtml(mediaUrlRaw)}" type="video/mp4">
+          </video>
+        </div>
+      `;
+    } else {
+      // ✅ YouTube / Vimeo embed
+      const yt = toYouTubeEmbed(mediaUrlRaw);
+      const vm = toVimeoEmbed(mediaUrlRaw);
+      const embed = yt || vm;
 
-      if (lower.endsWith(".mp4")) {
+      if (embed) {
         media = `
           <div style="margin-top:10px;">
-            <video controls playsinline style="width:100%;border-radius:12px;">
-              <source src="${mediaUrl}" type="video/mp4">
-            </video>
-          </div>`;
+            <iframe
+              src="${escapeHtml(embed)}"
+              style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+            ></iframe>
+          </div>
+        `;
       } else {
-        const yt = toYouTubeEmbed(mediaUrlRaw);
-        const vm = toVimeoEmbed(mediaUrlRaw);
-        const embed = yt || vm;
-
-       if (embed) {
-  media = `
-    <div style="margin-top:10px;">
-      <iframe
-        src="${escapeHtml(embed)}"
-        style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope;"
-        allowfullscreen
-      ></iframe>
-    </div>
-  `;
-} else {
-  media = `
-    <div style="margin-top:10px;">
-      <a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">
-        Open video
-      </a>
-    </div>
-  `;
-}
+        media = `
+          <div style="margin-top:10px;">
+            <a class="btn-link" href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener">Open video</a>
+          </div>
+        `;
+      }
     }
+  } else {
+    // ✅ Link (always clickable)
+    media = `
+      <div style="margin-top:10px;">
+        <a class="btn-link" href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener">Open link</a>
+      </div>
+    `;
   }
-
+}
   const panelId = `acc_${s.id}`;
   return `
     <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
@@ -2865,6 +2860,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
