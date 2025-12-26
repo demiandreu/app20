@@ -1838,85 +1838,92 @@ app.get("/guest/:roomId/:token", async (req, res) => {
           <h2 style="margin-top:18px;">Guest info</h2>
           <div id="guest-accordion">
             ${secRes.rows
-              .map((s) => {
-                const title = escapeHtml(s.title || "");
+             .map((s) => {
+  const title = escapeHtml(s.title || "");
 
-                // Option A (recommended): display as plain text with line breaks
-                const bodyHtml = escapeHtml(String(s.body || "")).replace(/\n/g, "<br/>");
+  // Body: safe text -> HTML with line breaks + auto-link URLs
+  const rawBody = String(s.body || "");
+  const escapedBody = escapeHtml(rawBody).replace(/\n/g, "<br/>");
+  const bodyHtml = escapedBody.replace(
+    /(https?:\/\/[^\s<]+)/g,
+    (url) =>
+      `<a class="btn-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a>`
+  );
 
-                // If you ever want to allow HTML from your manager editor, use this instead:
-                // const bodyHtml = String(s.body || "");
+  // Normalize media type (supports ES + EN)
+  const mtRaw = String(s.new_media_type || "").toLowerCase().trim();
+  const mediaType =
+    mtRaw === "imagen" || mtRaw === "image" || mtRaw === "img" ? "image" :
+    mtRaw === "vídeo" || mtRaw === "video" ? "video" :
+    mtRaw === "enlace" || mtRaw === "link" || mtRaw === "url" ? "link" :
+    mtRaw;
 
-                const mediaType = String(s.new_media_type || "").toLowerCase().trim();
-                const mediaUrlRaw = String(s.new_media_url || "").trim();
-                const mediaUrl = escapeHtml(mediaUrlRaw);
+  const mediaUrlRaw = String(s.new_media_url || "").trim();
+  const mediaUrl = escapeHtml(mediaUrlRaw);
 
-                let media = "";
+  let media = "";
+  if (mediaUrlRaw) {
+    if (mediaType === "image") {
+      media = `
+        <div style="margin-top:10px;">
+          <img src="${mediaUrl}" style="max-width:100%;border-radius:12px;display:block;" loading="lazy" />
+        </div>`;
+    } else if (mediaType === "video") {
+      const lower = mediaUrlRaw.toLowerCase();
 
-                if (mediaUrlRaw) {
-                  if (mediaType === "image") {
-                    media = `
-                      <div style="margin-top:10px;">
-                        <img src="${mediaUrl}" style="max-width:100%;border-radius:12px;display:block;" loading="lazy" />
-                      </div>`;
-                  } else if (mediaType === "video") {
-                    const lower = mediaUrlRaw.toLowerCase();
+      if (lower.endsWith(".mp4")) {
+        media = `
+          <div style="margin-top:10px;">
+            <video controls playsinline style="width:100%;border-radius:12px;">
+              <source src="${mediaUrl}" type="video/mp4">
+            </video>
+          </div>`;
+      } else {
+        const yt = toYouTubeEmbed(mediaUrlRaw);
+        const vm = toVimeoEmbed(mediaUrlRaw);
+        const embed = yt || vm;
 
-                    // Direct mp4 link
-                    if (lower.endsWith(".mp4")) {
-                      media = `
-                        <div style="margin-top:10px;">
-                          <video controls playsinline style="width:100%;border-radius:12px;">
-                            <source src="${mediaUrl}" type="video/mp4" />
-                          </video>
-                        </div>`;
-                    } else {
-                      // YouTube / Vimeo embed
-                      const yt = toYouTubeEmbed(mediaUrlRaw);
-                      const vm = toVimeoEmbed(mediaUrlRaw);
-                      const embed = yt || vm;
+        media = embed
+          ? `
+            <div style="margin-top:10px;">
+              <iframe
+                src="${escapeHtml(embed)}"
+                style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+              ></iframe>
+            </div>`
+          : `
+            <div style="margin-top:10px;">
+              <a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener noreferrer">Open video</a>
+            </div>`;
+      }
+    } else {
+      // link / url / cualquier otro tipo: siempre clickable
+      media = `
+        <div style="margin-top:10px;">
+          <a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener noreferrer">Open link</a>
+        </div>`;
+    }
+  }
 
-                      media = embed
-                        ? `
-                          <div style="margin-top:10px;">
-                            <iframe
-                              src="${escapeHtml(embed)}"
-                              style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowfullscreen
-                            ></iframe>
-                          </div>`
-                        : `
-                          <div style="margin-top:10px;">
-                            <a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">Open video</a>
-                          </div>`;
-                    }
-                  } else {
-                    media = `
-                      <div style="margin-top:10px;">
-                        <a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">Open link</a>
-                      </div>`;
-                  }
-                }
-
-                const panelId = `acc_${s.id}`;
-
-                return `
-                  <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
-                    <button
-                      type="button"
-                      data-acc-btn="${panelId}"
-                      style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;"
-                    >
-                      ${title}
-                    </button>
-                    <div id="${panelId}" style="display:none;padding:12px 14px;">
-                      <div>${bodyHtml}</div>
-                      ${media}
-                    </div>
-                  </div>
-                `;
-              })
+  const panelId = `acc_${s.id}`;
+  return `
+    <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
+      <button
+        type="button"
+        data-acc-btn="${panelId}"
+        style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;"
+      >
+        ${title}
+      </button>
+      <div id="${panelId}" style="display:none;padding:12px 14px;">
+        <div>${bodyHtml}</div>
+        ${media}
+      </div>
+    </div>
+  `;
+})
               .join("")}
           </div>
 
@@ -2846,6 +2853,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
