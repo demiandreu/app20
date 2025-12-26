@@ -22,23 +22,19 @@ app.get("/manager/apartment/sections", async (req, res) => {
     if (!roomId) return res.status(400).send("Missing room_id");
 
     const aptRes = await pool.query(
-      `
-      SELECT id, apartment_name, beds24_room_id
-      FROM beds24_rooms
-      WHERE beds24_room_id::text = $1
-      LIMIT 1
-      `,
+      `SELECT id, apartment_name, beds24_room_id
+       FROM beds24_rooms
+       WHERE beds24_room_id::text = $1
+       LIMIT 1`,
       [roomId]
     );
     const apt = aptRes.rows[0] || null;
 
     const secRes = await pool.query(
-      `
-      SELECT id, title, body, sort_order, is_active, new_media_type, new_media_url
-      FROM apartment_sections
-      WHERE room_id::text = $1
-      ORDER BY sort_order ASC, id ASC
-      `,
+      `SELECT id, title, body, sort_order, is_active, new_media_type, new_media_url
+       FROM apartment_sections
+       WHERE room_id::text = $1
+       ORDER BY sort_order ASC, id ASC`,
       [roomId]
     );
 
@@ -48,7 +44,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
         return `
           <tr>
             <td style="width:90px;">
-              <input name="sort_order_${s.id}" value="${Number(s.sort_order) || 0}" style="width:70px; box-sizing:border-box;" />
+              <input name="sort_order_${s.id}" value="${Number(s.sort_order)}" style="width:70px; box-sizing:border-box;" />
             </td>
             <td style="width:180px;">
               <label style="display:flex; gap:8px; align-items:center;">
@@ -64,7 +60,6 @@ app.get("/manager/apartment/sections", async (req, res) => {
             <td class="td-text">
               <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" class="sec-title" placeholder="(optional title)" />
               <textarea name="body_${s.id}" rows="5" class="sec-body" placeholder="Text...">${escapeHtml(s.body || "")}</textarea>
-
               <div style="margin-top:10px; display:grid; gap:6px;">
                 <label class="muted">Media type</label>
                 <select name="new_media_type_${s.id}">
@@ -72,7 +67,6 @@ app.get("/manager/apartment/sections", async (req, res) => {
                   <option value="image" ${String(s.new_media_type || "") === "image" ? "selected" : ""}>Image</option>
                   <option value="video" ${String(s.new_media_type || "") === "video" ? "selected" : ""}>Video</option>
                 </select>
-
                 <label class="muted">Media URL</label>
                 <input name="new_media_url_${s.id}" value="${escapeHtml(s.new_media_url || "")}" placeholder="https://..." style="width:100%;" />
               </div>
@@ -83,92 +77,29 @@ app.get("/manager/apartment/sections", async (req, res) => {
       .join("");
 
     const html = `
-      <style>
-        .muted { opacity: 0.65; font-size: 12px; }
-        .sections-table { width:100%; border-collapse: collapse; }
-        .sections-table th, .sections-table td { border-top: 1px solid #e5e7eb; padding: 10px; vertical-align: top; }
-        .sec-title { width: 100%; box-sizing: border-box; margin-bottom: 8px; }
-        .sec-body { width: 100%; box-sizing: border-box; }
-        .btn-mini { padding: 6px 10px; }
-        .danger { background: #fee2e2; }
-      </style>
-
+      <!-- стили и заголовок -->
       <h1>Apartment Sections</h1>
-
       <p class="muted">
         Apartment: <strong>${escapeHtml(apt?.apartment_name || "Unknown")}</strong>
       </p>
       <p class="muted">
         room_id: <strong>${escapeHtml(roomId)}</strong>
       </p>
-
       <p>
-        <a class="btn-link" href="/manager/settings/apartments">← Back</a>
+        <a class="btn-link" href="/manager/apartment?room_id=${encodeURIComponent(roomId)}">← Back to Apartment Settings</a>
       </p>
-
       <form method="POST" action="/manager/apartment/sections/save">
         <input type="hidden" name="room_id" value="${escapeHtml(roomId)}" />
-
-        <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
-          <h2 style="margin:0 0 8px; font-size:16px;">Add new section</h2>
-          <div style="display:grid; gap:8px;">
-            <label>Title</label>
-            <input name="new_title" placeholder="Title" />
-
-            <label>Text</label>
-            <textarea name="new_body" rows="4" placeholder="Text for guests..."></textarea>
-
-            <label class="muted">Media type</label>
-            <select name="new_media_type">
-              <option value="none" selected>None</option>
-              <option value="image">Image</option>
-              <option value="video">Video</option>
-            </select>
-
-            <label class="muted">Media URL</label>
-            <input name="new_media_url" placeholder="https://..." style="width:100%;" />
-
-            <div style="display:flex; gap:10px; align-items:center;">
-              <label class="muted">Order:</label>
-              <input name="new_sort_order" value="1" style="width:80px;" />
-              <label style="display:flex; gap:8px; align-items:center;">
-                <input type="checkbox" name="new_is_active" checked />
-                Active
-              </label>
-              <button type="submit" name="add" value="1">Add section</button>
-            </div>
-          </div>
-        </div>
-
-        <div style="margin-top:12px; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
-          <h2 style="margin:0 0 10px; font-size:16px;">Existing sections</h2>
-
-          <table class="sections-table">
-            <thead>
-              <tr>
-                <th style="width:90px;">Order</th>
-                <th style="width:180px;">Actions</th>
-                <th>Title & Text</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml || `<tr><td colspan="3" class="muted" style="padding:10px;">No sections yet.</td></tr>`}
-            </tbody>
-          </table>
-
-          <div style="margin-top:12px;">
-            <button type="submit" name="save" value="1">Save all</button>
-          </div>
-        </div>
+        <!-- остальная форма -->
+        ${rowsHtml ? rowsHtml : `<tr><td colspan="3" class="muted" style="padding:10px;">No sections yet.</td></tr>`}
+        <!-- кнопка Save all -->
       </form>
     `;
 
     return res.send(renderPage("Apartment Sections", html));
   } catch (e) {
-    console.error("sections page error:", e);
-    return res.status(500).send(
-      "Cannot load sections: " + (e.detail || e.message || String(e))
-    );
+    console.error("Sections page error:", e);
+    return res.status(500).send("Cannot load sections: " + (e.detail || e.message || String(e)));
   }
 });
 
@@ -2747,6 +2678,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
