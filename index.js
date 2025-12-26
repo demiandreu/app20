@@ -2038,10 +2038,19 @@ const accordionHtml = secRes.rows.map((s, idx) => `
     `;
 
     res.send(renderPage("Guest Dashboard", html));
-  } catch (e) {
-    console.error("Guest dashboard error:", e);
-    res.status(500).send("❌ Cannot load guest dashboard");
-  }
+ } catch (e) {
+  console.error("guest dashboard error:", {
+    message: e?.message,
+    detail: e?.detail,
+    code: e?.code,
+    where: e?.where,
+    stack: e?.stack,
+  });
+
+  return res
+    .status(500)
+    .send("Cannot load guest dashboard: " + (e.detail || e.message || String(e)));
+}
 });
 
 // --- LIST + FILTER ---
@@ -2926,6 +2935,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
