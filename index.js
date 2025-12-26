@@ -1503,42 +1503,41 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
     }
 
     // 3) ADD new section (только если нажали кнопку Add section)
-    if (String(req.body.add) === "1") {
+   if (String(req.body.add) === "1") {
   const title = String(req.body.new_title || "").trim();
   const body = String(req.body.new_body || "").trim();
   const sort_order = Number(req.body.new_sort_order || 1);
   const is_active = req.body.new_is_active ? true : false;
 
-  // media (optional) — ИМЕНА КАК В ФОРМЕ
-const new_media_type = String(req.body.new_media_type || "none");
-const new_media_url = String(req.body.new_media_url || "").trim();
+  const new_media_type = String(req.body.new_media_type || "none").trim();
+  const new_media_url  = String(req.body.new_media_url || "").trim();
 
-// запретим только полностью пустую секцию (вообще ничего)
-if (!title && !body && !new_media_url) {
-  return res.status(400).send("Empty section");
-}
+  if (!title && !body && !new_media_url) {
+    return res.status(400).send("Empty section");
+  }
 
-// если url есть, но new_media_type none — подправим
-const new_media_url = new_media_url ? (new_media_type === "video" ? "video" : "image") : "none";
+  const final_media_type = new_media_url
+    ? (new_media_type === "video" ? "video" : "image")
+    : "none";
 
-await pool.query(
-  `
-      INSERT INTO apartment_sections
-          (apartment_id, room_id, title, body, sort_order, is_active, new_media_type, new_media_url)
-        VALUES
-          ($1,$2,$3,$4,$5,$6,$7,$8)
-        `,
-        [
-          apartment_id,
-          room_id,
-          title,
-          body,
-          sort_order,
-          is_active,
-          final_media_type,
-          new_media_url,
-        ]
-);
+  await pool.query(
+    `
+    INSERT INTO apartment_sections
+      (apartment_id, room_id, title, body, sort_order, is_active, new_media_type, new_media_url)
+    VALUES
+      ($1,$2,$3,$4,$5,$6,$7,$8)
+    `,
+    [
+      apartment_id,
+      room_id,
+      title,
+      body,
+      sort_order,
+      is_active,
+      final_media_type,
+      new_media_url
+    ]
+  );
 
   return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
 }
@@ -2932,6 +2931,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
