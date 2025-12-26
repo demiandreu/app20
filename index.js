@@ -1950,19 +1950,7 @@ console.log("STEP 5: rendering page now");
      console.log("DEBUG r:", r);
 console.log("DEBUG beds24_room_id:", r.beds24_room_id);
 
-     if (!r.beds24_room_id) {
-  throw new Error("beds24_room_id missing in checkins record");
-}
-
-    const secRes = await pool.query(
-      `
-      SELECT title, body, new_media_type, new_media_url
-      FROM apartment_sections
-      WHERE room_id = $1 AND is_active = true
-      ORDER BY sort_order ASC, id ASC
-      `,
-      [String(r.beds24_room_id)]
-    );
+   
 
     // дальше твой рендер html...
   } catch (e) {
@@ -2853,6 +2841,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
