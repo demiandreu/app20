@@ -1511,22 +1511,33 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
 
   // media (optional) — ИМЕНА КАК В ФОРМЕ
 const new_media_type = String(req.body.new_media_type || "none");
-const media_url = String(req.body.new_media_url || "").trim();
+const new_media_url = String(req.body.new_media_url || "").trim();
 
 // запретим только полностью пустую секцию (вообще ничего)
-if (!title && !body && !media_url) {
+if (!title && !body && !new_media_url) {
   return res.status(400).send("Empty section");
 }
 
 // если url есть, но new_media_type none — подправим
-const finalMediaType = media_url ? (new_media_type === "video" ? "video" : "image") : "none";
+const new_media_url = new_media_url ? (new_media_type === "video" ? "video" : "image") : "none";
 
 await pool.query(
   `
-  INSERT INTO apartment_sections (apartment_id, title, body, sort_order, is_active, new_media_type, new_media_url)
-  VALUES ($1,$2,$3,$4,$5,$6,$7)
-  `,
-  [apartment_id, title, body, sort_order, is_active, finalMediaType, media_url]
+      INSERT INTO apartment_sections
+          (apartment_id, room_id, title, body, sort_order, is_active, new_media_type, new_media_url)
+        VALUES
+          ($1,$2,$3,$4,$5,$6,$7,$8)
+        `,
+        [
+          apartment_id,
+          room_id,
+          title,
+          body,
+          sort_order,
+          is_active,
+          final_media_type,
+          new_media_url,
+        ]
 );
 
   return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
@@ -1544,7 +1555,7 @@ await pool.query(
       const sort_order = Number(req.body[`sort_order_${id}`] || 1);
       const is_active = req.body[`is_active_${id}`] ? true : false;
        const new_media_type = String(req.body[`new_media_type_${id}`] || "none");
-       const media_url  = String(req.body[`media_url_${id}`] || "").trim();
+       const new_media_url  = String(req.body[`new_media_url_${id}`] || "").trim();
 
 
       // чтобы Save all не падал из-за пустых
@@ -1552,11 +1563,27 @@ await pool.query(
 
      await pool.query(
   `
-  UPDATE apartment_sections
-  SET title=$1, body=$2, sort_order=$3, is_active=$4, new_media_type=$5, new_media_url=$6, updated_at=NOW()
-  WHERE id=$7 AND apartment_id=$8
-  `,
-  [title, body, sort_order, is_active, new_media_type, media_url, id, apartment_id]
+   UPDATE apartment_sections
+        SET title=$1,
+            body=$2,
+            sort_order=$3,
+            is_active=$4,
+            new_media_type=$5,
+            new_media_url=$6,
+            updated_at=NOW()
+        WHERE id=$7 AND apartment_id=$8 AND room_id=$9
+        `,
+        [
+          title,
+          body,
+          sort_order,
+          is_active,
+          new_media_type,
+          new_media_url,
+          id,
+          apartment_id,
+          room_id,
+        ]
 );
     }
 
@@ -2905,6 +2932,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
