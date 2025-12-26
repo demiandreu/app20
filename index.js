@@ -1734,43 +1734,41 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 // We show last submitted record for this booking token.
 app.get("/guest/:roomId/:token", async (req, res) => {
   const { roomId, token } = req.params;
-  const dbg = await pool.query(
-  "SELECT current_database() AS db, current_schema() AS schema, inet_server_addr() AS server_ip"
-);
-console.log("DB DEBUG /guest:", dbg.rows[0]);
 
   try {
-    const { rows } = await pool.query(
+    // 1) Load check-in record
+    const checkinRes = await pool.query(
       `
-     SELECT
-    id,
-    booking_token,
-    beds24_booking_id,
-    apartment_name,
-    full_name,
-    email,
-    phone,
-    arrival_date,
-    arrival_time,
-    departure_date,
-    departure_time,
-    adults,
-    children,
-    lock_code,
-    lock_visible
-  FROM checkins
-  WHERE room_id::text = $1
-    AND (
-      booking_token = $2
-      OR beds24_booking_id::text = $2
-    )
-  ORDER BY id DESC
-  LIMIT 1
+      SELECT
+        id,
+        booking_token,
+        beds24_booking_id,
+        beds24_room_id,
+        apartment_name,
+        full_name,
+        email,
+        phone,
+        arrival_date,
+        arrival_time,
+        departure_date,
+        departure_time,
+        adults,
+        children,
+        lock_code,
+        lock_visible
+      FROM checkins
+      WHERE beds24_room_id::text = $1
+        AND (
+          booking_token = $2
+          OR beds24_booking_id::text = $2
+        )
+      ORDER BY id DESC
+      LIMIT 1
       `,
       [String(roomId), String(token)]
     );
 
-    if (!rows.length) {
+    if (!checkinRes.rows.length) {
       const html = `
         <h1>Guest Dashboard</h1>
         <p class="muted">No check-in record found for this booking.</p>
@@ -1779,125 +1777,133 @@ console.log("DB DEBUG /guest:", dbg.rows[0]);
       return res.send(renderPage("Guest Dashboard", html));
     }
 
-    const r = rows[0];
-     const show = req.query.show === "1";
+    const r = checkinRes.rows[0];
 
-  const secRes = await pool.query(
-  `
-  SELECT title, body, new_media_type, new_media_url
-  FROM apartment_sections
-  WHERE beds24_room_id::text = $1
-    AND is_active = true
-  ORDER BY sort_order ASC, id ASC
-  `,
-  [String(r.beds24_room_id)]
-);
+    // 2) Load apartment sections (IMPORTANT: in DB column is room_id)
+    const secRes = await pool.query(
+      `
+      SELECT
+        id,
+        title,
+        body,
+        new_media_type,
+        new_media_url
+      FROM apartment_sections
+      WHERE room_id::text = $1
+        AND is_active = true
+      ORDER BY sort_order ASC, id ASC
+      `,
+      [String(roomId)]
+    );
 
     const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
 
-const sectionsHtml =
-  secRes.rows.length === 0
-    ? `<div class="muted">No information sections for this apartment yet.</div>`
-    : `
-      <h2 style="margin-top:18px;">Guest info</h2>
-      <div id="guest-accordion">
-        ${secRes.rows
-          .map((s) => {
-            const title = escapeHtml(s.title || "");
-            const body = escapeHtml(String(s.body || "")).replace(/\n/g, "<br/>");
+    // 3) Lock code visibility via ?show=1
+    const show = req.query.show === "1";
+    const lockCodeHtml =
+      r.lock_visible && r.lock_code
+        ? show
+          ? `
+            <hr/>
+            <div>Code: <strong style="font-size:22px;letter-spacing:2px;">${escapeHtml(
+              String(r.lock_code)
+            )}</strong></div>
+          `
+          : `
+            <hr/>
+            <a class="btn-link" href="/guest/${encodeURIComponent(String(roomId))}/${encodeURIComponent(
+              String(token)
+            )}?show=1">Show code</a>
+          `
+        : "";
 
-            const mediaType = String(s.new_media_type || "").toLowerCase().trim();
-            const mediaUrlRaw = String(s.new_media_url || "").trim();
-            const mediaUrl = escapeHtml(mediaUrlRaw);
+    // 4) Accordion sections
+    const sectionsHtml =
+      secRes.rows.length === 0
+        ? `<div class="muted">No information sections for this apartment yet.</div>`
+        : `
+          <h2 style="margin-top:18px;">Guest info</h2>
+          <div id="guest-accordion">
+            ${secRes.rows
+              .map((s) => {
+                const title = escapeHtml(s.title || "");
+                const bodyHtml = String(s.body || ""); // body is trusted HTML from manager editor
+                const mediaType = String(s.new_media_type || "").toLowerCase().trim();
+                const mediaUrlRaw = String(s.new_media_url || "").trim();
+                const mediaUrl = escapeHtml(mediaUrlRaw);
 
-            let media = "";
-            if (mediaUrlRaw) {
-              if (mediaType === "image") {
-                media = `<div style="margin-top:10px;"><img src="${mediaUrl}" style="max-width:100%;border-radius:12px;" /></div>`;
-              } else if (mediaType === "video") {
-                media = `<div style="margin-top:10px;"><a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">Open video</a></div>`;
-              } else {
-                media = `<div style="margin-top:10px;"><a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">Open link</a></div>`;
-              }
-            }
+                let media = "";
+                if (mediaUrlRaw) {
+                  if (mediaType === "image") {
+                    media = `<div style="margin-top:10px;"><img src="${mediaUrl}" style="max-width:100%;border-radius:12px;" /></div>`;
+                  } else if (mediaType === "video") {
+                    media = `<div style="margin-top:10px;"><a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">Open video</a></div>`;
+                  } else {
+                    media = `<div style="margin-top:10px;"><a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">Open link</a></div>`;
+                  }
+                }
 
-            const panelId = `acc_${s.id}`;
+                const panelId = `acc_${s.id}`;
 
-            return `
-              <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
-                <button type="button"
-                  data-acc-btn="${panelId}"
-                  style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;">
-                  ${title}
-                </button>
-                <div id="${panelId}" style="display:none;padding:12px 14px;">
-                  <div>${body}</div>
-                  ${media}
-                </div>
-              </div>
-            `;
-          })
-          .join("")}
-      </div>
+                return `
+                  <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
+                    <button
+                      type="button"
+                      data-acc-btn="${panelId}"
+                      style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;"
+                    >
+                      ${title}
+                    </button>
+                    <div id="${panelId}" style="display:none;padding:12px 14px;">
+                      <div>${bodyHtml}</div>
+                      ${media}
+                    </div>
+                  </div>
+                `;
+              })
+              .join("")}
+          </div>
 
-      <script>
-        (function(){
-          document.querySelectorAll("[data-acc-btn]").forEach(function(btn){
-            btn.addEventListener("click", function(){
-              var id = btn.getAttribute("data-acc-btn");
-              var panel = document.getElementById(id);
-              if (!panel) return;
-              panel.style.display = (panel.style.display === "block") ? "none" : "block";
-            });
-          });
-        })();
-      </script>
-    `;
+          <script>
+            (function () {
+              var buttons = document.querySelectorAll("[data-acc-btn]");
+              buttons.forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                  var id = btn.getAttribute("data-acc-btn");
+                  var panel = document.getElementById(id);
+                  if (!panel) return;
+                  panel.style.display = (panel.style.display === "block") ? "none" : "block";
+                });
+              });
+            })();
+          </script>
+        `;
 
-const lockCodeHtml =
-  r.lock_visible && r.lock_code
-    ? show
-      ? `
-        <hr/>
-        <div>Code: <strong style="font-size:22px;letter-spacing:2px;">${escapeHtml(String(r.lock_code))}</strong></div>
-      `
-      : `
-        <hr/>
-        <a class="btn-link" href="/guest/${encodeURIComponent(String(roomId))}/${encodeURIComponent(String(token))}?show=1">
-          Show code
-        </a>
-      `
-    : "";
-
-
+    // 5) Page HTML
     const html = `
       <div class="card">
         <h1>Guest Dashboard</h1>
 
-        <div class="muted">Apartment: <strong>${escapeHtml(
-          r.apartment_name || ""
-        )}</strong></div>
+        <div class="muted">Apartment: <strong>${escapeHtml(r.apartment_name || "")}</strong></div>
         <div class="muted">Booking ID: <strong>${escapeHtml(
           String(r.beds24_booking_id || r.booking_token || "")
         )}</strong></div>
 
         <hr/>
-
         <div>Arrival: <strong>${fmtDate(r.arrival_date)}${
           r.arrival_time ? " " + fmtTime(r.arrival_time) : ""
         }</strong></div>
+
         <div>Departure: <strong>${fmtDate(r.departure_date)}${
           r.departure_time ? " " + fmtTime(r.departure_time) : ""
         }</strong></div>
-        <div>Guests: <strong>${totalGuests}</strong> (adults: ${
-          Number(r.adults) || 0
-        }, children: ${Number(r.children) || 0})</div>
 
-        <hr/>
-        
+        <div>Guests: <strong>${totalGuests}</strong> (adults: ${Number(r.adults) || 0}, children: ${
+          Number(r.children) || 0
+        })</div>
+
         ${lockCodeHtml}
         ${sectionsHtml}
-
       </div>
     `;
 
@@ -2791,6 +2797,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
