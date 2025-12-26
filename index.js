@@ -1946,7 +1946,41 @@ app.get("/guest/:roomId/:token", async (req, res) => {
       [String(r.beds24_room_id)]
     );
 
-          const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
+      const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
+
+const sectionsHtml =
+  secRes.rows.length === 0
+    ? `<div class="muted">No information sections for this apartment yet.</div>`
+    : secRes.rows
+        .map((s) => {
+          const media =
+            s.new_media_type === "image" && s.new_media_url
+              ? `<div style="margin-top:10px;"><img src="${escapeHtml(s.new_media_url)}" style="max-width:100%;border-radius:12px;" /></div>`
+              : s.new_media_type === "video" && s.new_media_url
+              ? `<div style="margin-top:10px;"><a class="btn-link" href="${escapeHtml(s.new_media_url)}" target="_blank" rel="noopener">Open video</a></div>`
+              : "";
+
+          return `
+            <section style="margin:16px 0;padding:14px;border:1px solid #e5e7eb;border-radius:14px;background:#fff;">
+              <h2 style="margin:0 0 8px;">${escapeHtml(s.title || "")}</h2>
+              <div>${s.body || ""}</div>
+              ${media}
+            </section>
+          `;
+        })
+        .join("");
+
+const lockCodeHtml = r.lock_visible
+  ? `
+    <hr/>
+    <button onclick="document.getElementById('lockCode').style.display='block'">
+      Show code
+    </button>
+    <div id="lockCode" style="display:none;margin-top:10px;">
+      <strong>${escapeHtml(r.lock_code || "")}</strong>
+    </div>
+  `
+  : "";
 
 const html = `
   <div class="card">
@@ -1964,9 +1998,13 @@ const html = `
 
     <hr/>
 
-    ${/* дальше секции и код */""}
+    ${sectionsHtml}
+
+    ${lockCodeHtml}
   </div>
 `;
+
+return res.send(renderPage("Guest Dashboard", html));
 
 
     const sectionsHtml =
@@ -2893,6 +2931,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
