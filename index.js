@@ -1863,11 +1863,24 @@ app.get("/guest/:roomId/:token", async (req, res) => {
 
   let media = "";
   if (mediaUrlRaw) {
-    if (mediaType === "image") {
-      media = `
-        <div style="margin-top:10px;">
-          <img src="${mediaUrl}" style="max-width:100%;border-radius:12px;display:block;" loading="lazy" />
-        </div>`;
+   if (mediaType === "image") {
+  const images = mediaUrlRaw
+    .split(/\r?\n/)
+    .map(u => u.trim())
+    .filter(Boolean);
+
+  media = images
+    .map(url => `
+      <div style="margin-top:10px;">
+        <img
+          src="${escapeHtml(url)}"
+          style="max-width:100%;border-radius:12px;display:block;"
+          loading="lazy"
+        />
+      </div>
+    `)
+    .join("");
+}
     } else if (mediaType === "video") {
       const lower = mediaUrlRaw.toLowerCase();
 
@@ -2853,6 +2866,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
