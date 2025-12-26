@@ -68,19 +68,16 @@ async function initDb() {
 // ====== MANAGER: Apartment Sections (Accordion content) ======
 app.get("/manager/apartment/sections", async (req, res) => {
   try {
-    const roomId = String(req.query.room_id || "").trim();
-    if (!roomId) return res.status(400).send("Missing room_id");
+  const roomId = String(req.query.room_id || "").trim();
 
-    const aptRes = await pool.query(
-      `
-      SELECT id, apartment_name, beds24_room_id
-      FROM beds24_rooms
-      WHERE beds24_room_id::text = $1
-      LIMIT 1
-      `,
-      [roomId]
-    );
-    const apt = aptRes.rows[0] || null;
+const aptRes = await pool.query(
+  `SELECT id, apartment_name FROM beds24_rooms WHERE beds24_room_id::text = $1 LIMIT 1`,
+  [roomId]
+);
+
+const apt = aptRes.rows[0] || null;
+
+const backHref = apt ? `/manager/apartment?id=${apt.id}` : `/manager`;
 
     const secRes = await pool.query(
       `
@@ -153,7 +150,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
       </p>
 
       <p>
-        <a class="btn-link" href="/manager/settings/apartments">← Back</a>
+      <a class="btn-link" href="${backHref}">← Back</a>
       </p>
 
       <form method="POST" action="/manager/apartment/sections/save">
@@ -2845,6 +2842,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
