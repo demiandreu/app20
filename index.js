@@ -1443,16 +1443,12 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
     const apartment_id = Number(req.body.apartment_id);
     if (!apartment_id) return res.status(400).send("Missing apartment_id");
 
-    async function getRoomIdForApartment(apartmentId) {
-  const q = await pool.query(
-    `SELECT beds24_room_id
-     FROM beds24_rooms
-     WHERE id = $1
-     LIMIT 1`,
+ async function getRoomIdForApartment(apartmentId) {
+  const roomRes = await pool.query(
+    `SELECT beds24_room_id FROM beds24_rooms WHERE id = $1 LIMIT 1`,
     [apartmentId]
   );
-
-  return String(q.rows?.[0]?.beds24_room_id || "").trim();
+  return String(roomRes.rows?.[0]?.beds24_room_id || "").trim();
 
       const q2 = await pool.query(
         `SELECT beds24_room_id
@@ -1502,41 +1498,46 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
     }
 
     // 3) ADD new section
-    if (String(req.body.add) === "1") {
-      const title = String(req.body.new_title || "").trim();
-      const body = String(req.body.new_body || "").trim();
-      const sort_order = Number(req.body.new_sort_order || 1);
-      const is_active = req.body.new_is_active ? true : false;
-       const room_id = await getRoomIdForApartment(apartment_id);
-console.log("DEBUG ADD:", { apartment_id, room_id });
+   if (String(req.body.add) === "1") {
+  const title = String(req.body.new_title || "").trim();
+  const body = String(req.body.new_body || "").trim();
+  const sort_order = Number(req.body.new_sort_order || 1);
+  const is_active = req.body.new_is_active ? true : false;
 
-if (!room_id) {
-  return res.status(400).send("Room ID not found for this apartment");
+  const new_media_type = String(req.body.new_media_type || "none").trim();
+  const new_media_url = String(req.body.new_media_url || "").trim();
+
+  if (!title && !body && !new_media_url) {
+    return res.status(400).send("Empty section");
+  }
+
+  const room_id = await getRoomIdForApartment(apartment_id);
+
+  const final_media_type = new_media_url
+    ? (new_media_type === "video" ? "video" : "image")
+    : "none";
+
+  await pool.query(
+    `
+    INSERT INTO apartment_sections
+      (apartment_id, room_id, title, body, sort_order, is_active, new_media_type, new_media_url)
+    VALUES
+      ($1,$2,$3,$4,$5,$6,$7,$8)
+    `,
+    [
+      apartment_id,
+      room_id,
+      title,
+      body,
+      sort_order,
+      is_active,
+      final_media_type,
+      new_media_url,
+    ]
+  );
+
+  return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
 }
-
-      const new_media_url = String(req.body.new_media_url || "").trim();
-      const new_media_type_in = String(req.body.new_media_type || "none").trim();
-
-      if (!title && !body && !new_media_url) {
-        return res.status(400).send("Empty section");
-      }
-
-      const new_media_type = new_media_url
-        ? (new_media_type_in === "video" ? "video" : "image")
-        : "none";
-
-      await pool.query(
-        `
-        INSERT INTO apartment_sections
-          ( room_id, title, body, sort_order, is_active, new_media_type, new_media_url)
-        VALUES
-          ($1,$2,$3,$4,$5,$6,$7,)
-        `,
-        [room_id, title, body, sort_order, is_active, new_media_type, new_media_url]
-      );
-
-      return res.redirect(`/manager/apartment/sections?id=${apartment_id}`);
-    }
 
     // 4) SAVE ALL edits
     const secRes = await pool.query(
@@ -2935,6 +2936,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
