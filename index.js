@@ -121,7 +121,12 @@ const backHref = apt ? `/manager/apartment?id=${apt.id}` : `/manager`;
                 </select>
 
                 <label class="muted">Media URL</label>
-                <input name="new_media_url_${s.id}" value="${escapeHtml(s.new_media_url || "")}" placeholder="https://..." style="width:100%;" />
+                <textarea
+  name="new_media_url_${s.id}"
+  rows="3"
+  placeholder="One URL per line"
+  style="width:100%;"
+>${escapeHtml(s.new_media_url || "")}</textarea>
               </div>
             </td>
           </tr>
@@ -2860,6 +2865,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
