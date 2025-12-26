@@ -13,6 +13,7 @@ const twilio = require("twilio");
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+const PORT = process.env.PORT || 3000;
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
@@ -2751,6 +2752,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
