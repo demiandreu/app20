@@ -1923,6 +1923,30 @@ LIMIT 1
     }
 
     const r = rows[0];
+
+     console.log("STEP 1: got checkin record");
+
+console.log("STEP 2: before sections query, roomId param:", roomId);
+console.log("STEP 2: before sections query, r.beds24_room_id:", r.beds24_room_id);
+
+const roomIdInt = Number(roomId); // IMPORTANT
+
+console.log("STEP 3: roomIdInt for sections:", roomIdInt);
+
+const secRes = await pool.query(
+  `
+  SELECT title, body, new_media_type, new_media_url
+  FROM apartment_sections
+  WHERE room_id = $1 AND is_active = true
+  ORDER BY sort_order ASC, id ASC
+  `,
+  [roomIdInt]
+);
+
+console.log("STEP 4: sections loaded, count:", secRes.rows.length);
+
+// перед самым res.send:
+console.log("STEP 5: rendering page now");
      console.log("DEBUG r:", r);
 console.log("DEBUG beds24_room_id:", r.beds24_room_id);
 
@@ -2829,6 +2853,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
