@@ -1787,7 +1787,7 @@ app.get("/guest/:roomId/:token", async (req, res) => {
     AND is_active = true
   ORDER BY sort_order ASC, id ASC
   `,
-  [String(r.room_id)]
+  [String(r.beds24_room_id)]
 );
 
     const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
@@ -2788,6 +2788,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
