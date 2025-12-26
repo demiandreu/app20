@@ -55,16 +55,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
   }
 });
 
-    // ✅ Load sections by room_id (not apartment_id)
-    const secRes = await pool.query(
-      `
-      SELECT id, title, body, sort_order, is_active, new_media_type, new_media_url
-      FROM apartment_sections
-      WHERE room_id = $1
-      ORDER BY sort_order ASC, id ASC
-      `,
-      [room_id]
-    );
+
 
     const rowsHtml = secRes.rows
       .map((s) => {
@@ -2929,6 +2920,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
