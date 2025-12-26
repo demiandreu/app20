@@ -224,12 +224,6 @@ app.get("/manager/apartment/sections", async (req, res) => {
 
 
 
-// ===================== APP SETTINGS / DATA =====================
-const PARTEE_LINKS = {
-  apt1: "https://u.partee.es/3636642/Cd78OQqWOB63wMJLFmB0JzdLL",
-  // apt2: "...",
-};
-
 // ===================== HELPERS =====================
 function ymd(d) {
   const yyyy = d.getFullYear();
@@ -2752,6 +2746,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
