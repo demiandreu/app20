@@ -1507,6 +1507,12 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
       const body = String(req.body.new_body || "").trim();
       const sort_order = Number(req.body.new_sort_order || 1);
       const is_active = req.body.new_is_active ? true : false;
+       const room_id = await getRoomIdForApartment(apartment_id);
+console.log("DEBUG ADD:", { apartment_id, room_id });
+
+if (!room_id) {
+  return res.status(400).send("Room ID not found for this apartment");
+}
 
       const new_media_url = String(req.body.new_media_url || "").trim();
       const new_media_type_in = String(req.body.new_media_type || "none").trim();
@@ -2914,6 +2920,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
