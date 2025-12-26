@@ -1732,20 +1732,21 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 // We show last submitted record for this booking token.
 app.get("/guest/:roomId/:token", async (req, res) => {
   const { roomId, token } = req.params;
-  function toYouTubeEmbed(url) {
-  const u = String(url || "");
-  const m1 = u.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/);
-  const m2 = u.match(/v=([A-Za-z0-9_-]{6,})/);
-  const id = (m1 && m1[1]) || (m2 && m2[1]);
-  return id ? `https://www.youtube.com/embed/${id}` : null;
-}
 
-function toVimeoEmbed(url) {
-  const u = String(url || "");
-  const m = u.match(/vimeo\.com\/(\d+)/);
-  const id = m && m[1];
-  return id ? `https://player.vimeo.com/video/${id}` : null;
-}
+  function toYouTubeEmbed(url) {
+    const u = String(url || "");
+    const m1 = u.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/);
+    const m2 = u.match(/[?&]v=([A-Za-z0-9_-]{6,})/);
+    const id = (m1 && m1[1]) || (m2 && m2[1]);
+    return id ? `https://www.youtube.com/embed/${id}` : null;
+  }
+
+  function toVimeoEmbed(url) {
+    const u = String(url || "");
+    const m = u.match(/vimeo\.com\/(\d+)/);
+    const id = m && m[1];
+    return id ? `https://player.vimeo.com/video/${id}` : null;
+  }
 
   try {
     // 1) Load check-in record
@@ -1791,7 +1792,7 @@ function toVimeoEmbed(url) {
 
     const r = checkinRes.rows[0];
 
-    // 2) Load apartment sections (IMPORTANT: in DB column is room_id)
+    // 2) Load apartment sections
     const secRes = await pool.query(
       `
       SELECT
@@ -1823,9 +1824,9 @@ function toVimeoEmbed(url) {
           `
           : `
             <hr/>
-            <a class="btn-link" href="/guest/${encodeURIComponent(String(roomId))}/${encodeURIComponent(
-              String(token)
-            )}?show=1">Show code</a>
+            <a class="btn-link" href="/guest/${encodeURIComponent(
+              String(roomId)
+            )}/${encodeURIComponent(String(token))}?show=1">Show code</a>
           `
         : "";
 
@@ -1839,60 +1840,64 @@ function toVimeoEmbed(url) {
             ${secRes.rows
               .map((s) => {
                 const title = escapeHtml(s.title || "");
-const body = escapeHtml(String(s.body || "")).replace(/\n/g, "<br/>");
 
-const mediaType = String(s.new_media_type || "").toLowerCase().trim();
-const mediaUrlRaw = String(s.new_media_url || "").trim();
-const mediaUrl = escapeHtml(mediaUrlRaw);
-               if (mediaUrlRaw) {
-  if (mediaType === "image") {
-    media = `
-      <div style="margin-top:10px;">
-        <img src="${mediaUrl}" style="max-width:100%;border-radius:12px;display:block;" loading="lazy" />
-      </div>`;
-  } 
-  else if (mediaType === "video") {
-    const lower = mediaUrlRaw.toLowerCase();
+                // Option A (recommended): display as plain text with line breaks
+                const bodyHtml = escapeHtml(String(s.body || "")).replace(/\n/g, "<br/>");
 
-    // 🎬 Прямой mp4
-    if (lower.endsWith(".mp4")) {
-      media = `
-        <div style="margin-top:10px;">
-          <video controls playsinline style="width:100%;border-radius:12px;">
-            <source src="${mediaUrl}" type="video/mp4">
-          </video>
-        </div>`;
-    } 
-    else {
-      // ▶️ YouTube / Vimeo
-      const yt = toYouTubeEmbed(mediaUrlRaw);
-      const vm = toVimeoEmbed(mediaUrlRaw);
-      const embed = yt || vm;
+                // If you ever want to allow HTML from your manager editor, use this instead:
+                // const bodyHtml = String(s.body || "");
 
-      media = embed
-        ? `
-          <div style="margin-top:10px;">
-            <iframe
-              src="${embed}"
-              style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-            ></iframe>
-          </div>`
-        : `
-          <div style="margin-top:10px;">
-            <a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">Open video</a>
-          </div>`;
-    }
-  } 
-  else {
-    media = `
-      <div style="margin-top:10px;">
-        <a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">Open link</a>
-      </div>`;
-  }
-}
+                const mediaType = String(s.new_media_type || "").toLowerCase().trim();
+                const mediaUrlRaw = String(s.new_media_url || "").trim();
+                const mediaUrl = escapeHtml(mediaUrlRaw);
 
+                let media = "";
+
+                if (mediaUrlRaw) {
+                  if (mediaType === "image") {
+                    media = `
+                      <div style="margin-top:10px;">
+                        <img src="${mediaUrl}" style="max-width:100%;border-radius:12px;display:block;" loading="lazy" />
+                      </div>`;
+                  } else if (mediaType === "video") {
+                    const lower = mediaUrlRaw.toLowerCase();
+
+                    // Direct mp4 link
+                    if (lower.endsWith(".mp4")) {
+                      media = `
+                        <div style="margin-top:10px;">
+                          <video controls playsinline style="width:100%;border-radius:12px;">
+                            <source src="${mediaUrl}" type="video/mp4" />
+                          </video>
+                        </div>`;
+                    } else {
+                      // YouTube / Vimeo embed
+                      const yt = toYouTubeEmbed(mediaUrlRaw);
+                      const vm = toVimeoEmbed(mediaUrlRaw);
+                      const embed = yt || vm;
+
+                      media = embed
+                        ? `
+                          <div style="margin-top:10px;">
+                            <iframe
+                              src="${escapeHtml(embed)}"
+                              style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowfullscreen
+                            ></iframe>
+                          </div>`
+                        : `
+                          <div style="margin-top:10px;">
+                            <a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">Open video</a>
+                          </div>`;
+                    }
+                  } else {
+                    media = `
+                      <div style="margin-top:10px;">
+                        <a class="btn-link" href="${mediaUrl}" target="_blank" rel="noopener">Open link</a>
+                      </div>`;
+                  }
+                }
 
                 const panelId = `acc_${s.id}`;
 
@@ -1934,25 +1939,20 @@ const mediaUrl = escapeHtml(mediaUrlRaw);
     const html = `
       <div class="card">
         <h1>Guest Dashboard</h1>
-
         <div class="muted">Apartment: <strong>${escapeHtml(r.apartment_name || "")}</strong></div>
         <div class="muted">Booking ID: <strong>${escapeHtml(
           String(r.beds24_booking_id || r.booking_token || "")
         )}</strong></div>
-
         <hr/>
         <div>Arrival: <strong>${fmtDate(r.arrival_date)}${
           r.arrival_time ? " " + fmtTime(r.arrival_time) : ""
         }</strong></div>
-
         <div>Departure: <strong>${fmtDate(r.departure_date)}${
           r.departure_time ? " " + fmtTime(r.departure_time) : ""
         }</strong></div>
-
         <div>Guests: <strong>${totalGuests}</strong> (adults: ${Number(r.adults) || 0}, children: ${
           Number(r.children) || 0
         })</div>
-
         ${lockCodeHtml}
         ${sectionsHtml}
       </div>
@@ -1961,9 +1961,7 @@ const mediaUrl = escapeHtml(mediaUrlRaw);
     return res.send(renderPage("Guest Dashboard", html));
   } catch (e) {
     console.error("Guest dashboard error:", e);
-    return res
-      .status(500)
-      .send("Cannot load guest dashboard: " + (e.detail || e.message || String(e)));
+    return res.status(500).send("Cannot load guest dashboard: " + (e.detail || e.message || String(e)));
   }
 });
 // --- LIST + FILTER ---
@@ -2848,6 +2846,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
