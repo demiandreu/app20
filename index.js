@@ -1734,6 +1734,10 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 // We show last submitted record for this booking token.
 app.get("/guest/:roomId/:token", async (req, res) => {
   const { roomId, token } = req.params;
+  const dbg = await pool.query(
+  "SELECT current_database() AS db, current_schema() AS schema, inet_server_addr() AS server_ip"
+);
+console.log("DB DEBUG /guest:", dbg.rows[0]);
 
   try {
     const { rows } = await pool.query(
@@ -2788,6 +2792,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
