@@ -1237,7 +1237,7 @@ app.get("/manager/apartment", async (req, res) => {
         <button type="submit">Save</button>
       </form>
       <p style="margin-top:10px;">
-  <a class="btn-link" href="/manager/apartment/sections?room_id=${a.room_id}">🪗 Manage guest accordion sections</a>
+  <a class="btn-link" href="/manager/apartment/sections?room_id=${a.beds24_room_id}">🪗 Manage guest accordion sections</a>
 </p>
     `;
 
@@ -2752,6 +2752,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
