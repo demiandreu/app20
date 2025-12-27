@@ -761,9 +761,14 @@ function renderPage(title, innerHtml) {
   }
   
 .apartment-cell.needs-clean {
-  background: #e5e7eb !important; /* чуть темнее */
+  background: #f5f5f5 !important;
   font-weight: 600;
-  border-left: 3px solid #f59e0b !important; /* оранжевая полоска слева */
+}
+
+/* Override sticky-col background when needs cleaning */
+td.sticky-col.needs-clean,
+td.apartment-cell.needs-clean {
+  background: #f5f5f5 !important;
 }
   .clean-btn:focus{ outline:none; }
   .clean-btn.pill-yes{ color:#1a7f37; }
@@ -2757,6 +2762,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
