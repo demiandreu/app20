@@ -2281,19 +2281,6 @@ const arrivalsRes = await pool.query(
   wArr.params
 );
 
-// En departures query (igual)
-const departuresRes = await pool.query(
-  `
-  SELECT ...
-  FROM checkins
-  WHERE cancelled IS DISTINCT FROM true  -- NUEVA LÍNEA
-    ${wDep.whereSql}
-  ORDER BY departure_date ASC, departure_time ASC, id DESC
-  LIMIT 300
-  `,
-  wDep.params
-);
-
     // ----------------------------
     // DEPARTURES query (departure_date)
     // ----------------------------
@@ -2936,6 +2923,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
