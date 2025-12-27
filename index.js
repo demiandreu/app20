@@ -1212,12 +1212,10 @@ app.get("/debug/beds24", async (req, res) => {
 });
 app.get("/manager/channels/bookingssync", async (req, res) => {
   try {
-    const propertyId = "203178"; // o el que corresponda, o sácalo de todas las connections
+    const propertyId = "203178"; // tu property_external_id
 
-    // Obtener access token
     const accessToken = await getBeds24AccessToken(propertyId);
 
-    // Llamar a bookings (puedes filtrar por fechas o modifiedSince para no traer todo siempre)
     const bookingsResp = await fetch("https://beds24.com/api/v2/bookings", {
       headers: {
         accept: "application/json",
@@ -1227,29 +1225,50 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
 
     if (!bookingsResp.ok) {
       const text = await bookingsResp.text();
-      throw new Error(`Beds24 bookings error ${bookingsResp.status}: ${text.slice(0, 300)}`);
+      throw new Error(`Error Beds24: ${bookingsResp.status} - ${text.slice(0, 300)}`);
     }
 
-    const bookings = await bookingsResp.json();
+    const data = await bookingsResp.json();
+
+    // FIX: maneja array directo o {bookings: [...]}
+    const bookings = Array.isArray(data) ? data : (data.bookings || []);
+
+    if (bookings.length === 0) {
+      return res.send(renderPage("Sync Bookings", `
+        <div class="card">
+          <h1>ℹ️ No hay reservas nuevas</h1>
+          <p>Todo está sincronizado o no hay bookings en Beds24.</p>
+          <p><a href="/manager" class="btn-link">← Volver</a></p>
+        </div>
+      `));
+    }
 
     let synced = 0;
     for (const b of bookings) {
-      // Reutiliza tu función existente
       const row = mapBeds24BookingToRow(b, b.roomName || "", b.roomId || "");
       await upsertCheckinFromBeds24(row);
       synced++;
     }
 
     res.send(renderPage("Sync Bookings", `
-      <h1>✅ Sync completado</h1>
-      <p>Se procesaron <strong>${synced}</strong> reservas de Beds24.</p>
-      
-      <p><a href="/staff/checkins">Ver lista de check-ins</a></p>
-      <p><a href="/manager">← Volver al manager</a></p>
+      <div class="card">
+        <h1 style="color:#16a34a;">✅ Sync completado</h1>
+        <p>Se procesaron <strong>${synced}</strong> reservas de Beds24.</p>
+        <p>Fecha: ${new Date().toLocaleString('es-ES')}</p>
+        <hr/>
+        <p><a href="/staff/checkins" class="btn-primary">Ver lista actualizada</a></p>
+        <p><a href="/manager" class="btn-link">← Volver al Manager</a></p>
+      </div>
     `));
   } catch (e) {
     console.error("Sync error:", e);
-    res.status(500).send("Error en sync: " + e.message);
+    res.status(500).send(renderPage("Error Sync", `
+      <div class="card">
+        <h1 style="color:#991b1b;">❌ Error</h1>
+        <p>${escapeHtml(e.message || String(e))}</p>
+        <p><a href="/manager" class="btn-link">← Volver</a></p>
+      </div>
+    `));
   }
 });
 // ===================== MANAGER: Menu =====================
@@ -2902,6 +2921,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
