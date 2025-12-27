@@ -1089,11 +1089,13 @@ async function beds24PostJson(url, body, apiKeyOverride) {
 }
 app.get("/debug/beds24", async (req, res) => {
   try {
-    const propertyId = "203178"; // ← твой Property ID из Beds24
+    const propertyId = "203178";
 
-    const r = await pool.query(
+    const row = await pool.query(
       `
-      SELECT credentials->>'token' AS token
+      SELECT
+        credentials->>'refresh_token' AS refresh_token,
+        credentials->>'token' AS token
       FROM provider_connections
       WHERE provider = 'beds24'
         AND property_external_id = $1
@@ -1103,56 +1105,55 @@ app.get("/debug/beds24", async (req, res) => {
       [propertyId]
     );
 
-    const token = r.rows?.[0]?.token;
-    if (!token) {
-      return res.send("❌ Token not found in DB");
+    const refreshToken = row.rows?.[0]?.refresh_token;
+    if (!refreshToken) {
+      return res.status(400).json({
+        success: false,
+        error: "refresh_token not found in DB (credentials->>'refresh_token')",
+      });
     }
 
-    const resp = await fetch("https://api.beds24.com/v2/bookings", {
+    // 1) get short-lived access token using refresh token
+    const authResp = await fetch("https://beds24.com/api/v2/authentication/token", {
+      method: "GET",
       headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: "application/json",
+        accept: "application/json",
+        refreshToken: refreshToken, // Beds24 expects this header name in v2
       },
     });
 
-    const text = await resp.text();
+    const authJson = await authResp.json().catch(() => null);
+    if (!authResp.ok) {
+      return res.status(authResp.status).json({
+        success: false,
+        step: "authentication/token",
+        authJson,
+      });
+    }
 
-    return res.send(`
-      <h2>Beds24 API test</h2>
-      <p>Status: ${resp.status}</p>
-      <pre>${text}</pre>
-    `);
-  } catch (e) {
-    return res.send("❌ ERROR: " + e.message);
-  }
-});
-//vremenno
-app.get("/manager/channels/beds24key", (req, res) => {
-  const k = String(process.env.BEDS24_API_KEY || "").trim();
-  const masked = k.length <= 8 ? k : `${k.slice(0, 4)}…${k.slice(-4)}`;
-  res.send({
-    hasKey: Boolean(k),
-    keyLen: k.length,
-    keyMasked: masked,
-  });
-});
+    const accessToken = authJson?.token;
+    if (!accessToken) {
+      return res.status(500).json({
+        success: false,
+        error: "No token returned from authentication/token",
+        authJson,
+      });
+    }
 
-//vremenno
-app.get("/debug/rooms", async (req, res) => {
-  try {
-    const a = await pool.query(`
-      SELECT count(*)::int AS cnt FROM beds24_rooms
-    `);
-    const b = await pool.query(`
-      SELECT id, apartment_name, beds24_room_id,
-             CASE WHEN beds24_prop_key IS NULL THEN 'NULL' ELSE 'SET' END AS prop_key
-      FROM beds24_rooms
-      ORDER BY apartment_name ASC
-      LIMIT 20
-    `);
-    res.json({ count: a.rows[0].cnt, sample: b.rows });
-  } catch (e) {
-    res.status(500).json({ error: String(e.message || e) });
+    // 2) call bookings
+    const bookingsResp = await fetch("https://beds24.com/api/v2/bookings?filter=arrivals", {
+      method: "GET",
+      headers: {
+        accept: "application/json",
+        token: accessToken, // ✅ correct header for Beds24 v2
+      },
+    });
+
+    const text = await bookingsResp.text();
+    return res.status(bookingsResp.status).send(text);
+  } catch (err) {
+    console.error("Beds24 debug error:", err);
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -2937,6 +2938,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
