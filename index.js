@@ -1212,32 +1212,44 @@ app.get("/debug/beds24", async (req, res) => {
 });
 app.get("/manager/channels/bookingssync", async (req, res) => {
   try {
-    const propertyId = "203178"; // o saca de query o de todas las properties
-    const bookings = await beds24Get("/bookings", {
-      // filters útiles:
-      // modifiedSince: "2025-01-01",  // solo modificados desde fecha
-      // includeCancelled: true,
-      // includeInvoiceItems: true,
-    }, propertyId);
+    const propertyId = "203178"; // o el que corresponda, o sácalo de todas las connections
+
+    // Obtener access token
+    const accessToken = await getBeds24AccessToken(propertyId);
+
+    // Llamar a bookings (puedes filtrar por fechas o modifiedSince para no traer todo siempre)
+    const bookingsResp = await fetch("https://beds24.com/api/v2/bookings", {
+      headers: {
+        accept: "application/json",
+        token: accessToken,
+      },
+    });
+
+    if (!bookingsResp.ok) {
+      const text = await bookingsResp.text();
+      throw new Error(`Beds24 bookings error ${bookingsResp.status}: ${text.slice(0, 300)}`);
+    }
+
+    const bookings = await bookingsResp.json();
 
     let synced = 0;
     for (const b of bookings) {
+      // Reutiliza tu función existente
       const row = mapBeds24BookingToRow(b, b.roomName || "", b.roomId || "");
       await upsertCheckinFromBeds24(row);
       synced++;
     }
 
-    res.send(`✅ Sync OK: ${synced} bookings procesados para property ${propertyId}`);
+    res.send(renderPage("Sync Bookings", `
+      <h1>✅ Sync completado</h1>
+      <p>Se procesaron <strong>${synced}</strong> reservas de Beds24.</p>
+      <p><a href="/staff/checkins">Ver lista de check-ins</a></p>
+      <p><a href="/manager">← Volver al manager</a></p>
+    `));
   } catch (e) {
-    console.error(e);
-    res.status(500).send("Error sync: " + e.message);
+    console.error("Sync error:", e);
+    res.status(500).send("Error en sync: " + e.message);
   }
-});
-app.get("/manager/channels/roomssync", async (req, res) => {
-  const propertyId = "203178";
-  const properties = await beds24Get("/properties", {}, propertyId);
-  // properties tiene rooms con id, name, etc.
-  // Puedes insertar/upsert en beds24_rooms
 });
 // ===================== MANAGER: Menu =====================
 // ===== MANAGER HOME: select apartment =====
@@ -3020,6 +3032,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
