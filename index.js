@@ -2518,8 +2518,8 @@ const secRes = await pool.query(
           : `
             <hr/>
             <a class="btn-link" href="/guest/${encodeURIComponent(
-              String(roomId)
-            )}/${encodeURIComponent(String(token))}?show=1">Show code</a>
+  String(r.beds24_room_id || r.apartment_id || roomId)
+)}/${encodeURIComponent(String(r.beds24_booking_id || r.booking_token || token))}?show=1">Show code</a>
           `
         : "";
 
@@ -3256,6 +3256,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
