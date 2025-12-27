@@ -1087,6 +1087,45 @@ async function beds24PostJson(url, body, apiKeyOverride) {
   }
   return json;
 }
+app.get("/debug/beds24", async (req, res) => {
+  try {
+    const propertyId = "203178"; // ← твой Property ID из Beds24
+
+    const r = await pool.query(
+      `
+      SELECT credentials->>'token' AS token
+      FROM provider_connections
+      WHERE provider = 'beds24'
+        AND property_external_id = $1
+        AND is_enabled = true
+      LIMIT 1
+      `,
+      [propertyId]
+    );
+
+    const token = r.rows?.[0]?.token;
+    if (!token) {
+      return res.send("❌ Token not found in DB");
+    }
+
+    const resp = await fetch("https://api.beds24.com/v2/bookings", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+      },
+    });
+
+    const text = await resp.text();
+
+    return res.send(`
+      <h2>Beds24 API test</h2>
+      <p>Status: ${resp.status}</p>
+      <pre>${text}</pre>
+    `);
+  } catch (e) {
+    return res.send("❌ ERROR: " + e.message);
+  }
+});
 //vremenno
 app.get("/manager/channels/beds24key", (req, res) => {
   const k = String(process.env.BEDS24_API_KEY || "").trim();
@@ -2898,6 +2937,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
