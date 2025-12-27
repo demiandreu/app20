@@ -2476,9 +2476,15 @@ const checkinRes = await pool.query(
 
     const r = checkinRes.rows[0];
 
-    // 2) Load apartment sections
-   // 2) Load apartment sections (use r.apartment_id or r.beds24_room_id safely)
-const sectionsRoomId = String(r.apartment_id || r.beds24_room_id || roomId);
+   // 2) Load apartment sections (room_id in apartment_sections is tied to the Beds24 room_id)
+// Fallback order: beds24_room_id -> external_room_id -> URL roomId -> apartment_id
+const sectionsRoomId = String(
+  r.beds24_room_id ||
+  r.external_room_id ||
+  roomId ||
+  r.apartment_id ||
+  ""
+);
 
 const secRes = await pool.query(
   `
@@ -3250,6 +3256,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
