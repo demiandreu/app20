@@ -2303,14 +2303,18 @@ app.get("/staff/checkins", async (req, res) => {
       occupiedYesterdayRows.map(r => String(r.apartment_id))
     );
 
-    function aptColorClass(apartmentId) {
-      const id = String(apartmentId || "");
-      if (!id) return "";
-      if (occupiedYesterdaySet.has(id)) {
-        return "needs-clean";
-      }
-      return "";
-    }
+ function aptColorClass(apartmentId) {
+  const id = String(apartmentId || "");
+  
+  // ✅ DEBUG: покажи что проверяем
+  console.log("Checking apartment:", id, "in set:", occupiedYesterdaySet.has(id));
+  
+  if (!id) return "";
+  if (occupiedYesterdaySet.has(id)) {
+    return "needs-clean";
+  }
+  return "";
+}
 
     // Toolbar
     const toolbar = `
@@ -2362,9 +2366,7 @@ app.get("/staff/checkins", async (req, res) => {
                 </button>
               </form>
             </td>
-            <td class="apartment-cell ${aptColorClass(r.apartment_id)}">
-              ${escapeHtml(r.apartment_name || "Sin nombre")}
-            </td>
+           <td class="apartment-cell ${aptColorClass(r.apartment_id)}" data-apt-id="${r.apartment_id}">
             <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
             <td>${mainDate}</td>
             <td>${calcNights(r.arrival_date, r.departure_date)}</td>
@@ -2805,6 +2807,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
