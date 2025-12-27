@@ -2425,13 +2425,10 @@ const checkinRes = await pool.query(
   `
   SELECT
     id,
-    booking_token,
-    booking_id,
-    booking_id_from_start,
-    beds24_booking_id,
-    beds24_room_id,
     apartment_id,
     apartment_name,
+    beds24_room_id,
+    booking_token,
     full_name,
     email,
     phone,
@@ -2442,28 +2439,16 @@ const checkinRes = await pool.query(
     adults,
     children,
     lock_code,
-    lock_visible,
-    cancelled
+    lock_visible
   FROM checkins
   WHERE cancelled IS DISTINCT FROM true
-    AND (
-      beds24_room_id::text = $1
-      OR apartment_id::text = $1
-      OR external_room_id::text = $1
-    )
-    AND (
-      booking_token = $2
-      OR booking_id_from_start = $2
-      OR booking_id = $2
-      OR beds24_booking_id::text = $2
-      OR provider_booking_id = $2
-      OR external_booking_id = $2
-    )
+    AND beds24_room_id::text = $1
+    AND booking_token = $2
   ORDER BY id DESC
   LIMIT 1
   `,
   [String(roomId), String(token)]
-);
+)
 
     if (!checkinRes.rows.length) {
       const html = `
@@ -2863,9 +2848,7 @@ const guestToken =
     ""
   );
 
-const guestPortalUrl = guestRoomId && guestToken
-  ? `/guest/${encodeURIComponent(guestRoomId)}/${encodeURIComponent(guestToken)}`
-  : "#";
+const guestPortalUrl = `/guest/${r.beds24_room_id}/${r.booking_token}`;
           <tr>
             <td class="sticky-col">
               <form method="POST" action="/staff/bookings/${r.id}/clean">
@@ -3267,6 +3250,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
