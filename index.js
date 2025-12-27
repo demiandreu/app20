@@ -2266,10 +2266,6 @@ app.get("/staff/checkins", async (req, res) => {
       // Lógica de colores según tu explicación
     const yesterdayStr = yesterday; // "2025-12-26" por ejemplo
 
-    // Apartamentos que ayer estaban ocupados (había reserva que cubría ayer)
- // Lógica de colores según tu sistema original
-    const yesterdayStr = yesterday; // formato "2025-12-26"
-
     // Apartamentos que ayer estaban ocupados (reserva que cubría ayer)
     const occupiedYesterdaySet = new Set(
       [...arrivals, ...departures]
@@ -2764,6 +2760,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
