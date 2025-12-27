@@ -482,14 +482,6 @@ await pool.query(
   `,
   [phone, r.id]
 );
-
-console.log("📌 phone bind result:", {
-  bookingRowId: r.id,
-  phone,
-  rowCount: upd.rowCount,
-  returned: upd.rows[0],
-});
-
       // settings
       const room = await getRoomSettings(r.apartment_id);
 
@@ -2933,6 +2925,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
