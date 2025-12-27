@@ -2754,34 +2754,43 @@ app.get("/staff/checkins", async (req, res) => {
     const arrivals = arrivalsRes.rows || [];
     const departures = departuresRes.rows || [];
 
-    // Color logic
-    const yesterdayStr = yesterday;
+   // Color logic: grey ONLY if (occupied yesterday) AND (has checkout today)
+const yesterdayStr = yesterday;
+const todayStr = today;
 
-    const { rows: occupiedYesterdayRows } = await pool.query(
-      `
-      SELECT DISTINCT a.id as apartment_id
-      FROM bookings b
-      JOIN apartments a ON a.id = b.apartment_id
-      WHERE b.is_cancelled = false
-        AND b.checkin_date <= $1::date
-        AND b.checkout_date > $1::date
-      `,
-      [yesterdayStr]
-    );
+// 1) apartments occupied yesterday (someone slept there)
+const { rows: occupiedYesterdayRows } = await pool.query(
+  `
+  SELECT DISTINCT b.apartment_id
+  FROM bookings b
+  WHERE b.is_cancelled = false
+    AND b.checkin_date <= $1::date
+    AND b.checkout_date > $1::date
+  `,
+  [yesterdayStr]
+);
+const occupiedYesterdaySet = new Set(occupiedYesterdayRows.map(r => String(r.apartment_id)));
 
-    const occupiedYesterdaySet = new Set(
-      occupiedYesterdayRows.map(r => String(r.apartment_id))
-    );
+// 2) apartments that have a departure today (need cleaning today)
+const { rows: departuresTodayRows } = await pool.query(
+  `
+  SELECT DISTINCT b.apartment_id
+  FROM bookings b
+  WHERE b.is_cancelled = false
+    AND b.checkout_date = $1::date
+  `,
+  [todayStr]
+);
+const departuresTodaySet = new Set(departuresTodayRows.map(r => String(r.apartment_id)));
 
-    function aptColorClass(apartmentId) {
-      const id = String(apartmentId || "");
-      if (!id) return "";
-      if (occupiedYesterdaySet.has(id)) {
-        return "needs-clean";
-      }
-      return "";
-    }
-
+function aptColorClass(apartmentId) {
+  const id = String(apartmentId || "");
+  if (!id) return "";
+  if (occupiedYesterdaySet.has(id) && departuresTodaySet.has(id)) {
+    return "needs-clean";
+  }
+  return "";
+}
     // Toolbar
     const toolbar = `
       <h1>Staff · Llegadas y Salidas</h1>
@@ -3225,6 +3234,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
