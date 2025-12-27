@@ -760,16 +760,13 @@ function renderPage(title, innerHtml) {
     cursor:pointer;
   }
   
-       .apartment-cell.needs-clean {
-        background: #f0f0f0 !important; /* gris clarito - necesita limpieza (ayer ocupado) */
-        font-weight: 600;
-      }
-      .apartment-cell.clean-ready {
-        background: #e8f5e8 !important; /* verde clarito - ya limpio (ayer vacío) */
+            .apartment-cell.needs-clean {
+        background: #f5f5f5 !important; /* gris muy clarito, como en tu captura */
         font-weight: 600;
       }
       .apartment-cell {
-        font-weight: 500;
+        background: #ffffff; /* blanco normal para los limpios */
+        transition: background 0.2s;
       }
 
   .clean-btn:focus{ outline:none; }
@@ -2270,12 +2267,15 @@ app.get("/staff/checkins", async (req, res) => {
     const yesterdayStr = yesterday; // "2025-12-26" por ejemplo
 
     // Apartamentos que ayer estaban ocupados (había reserva que cubría ayer)
+ // Lógica de colores según tu sistema original
+    const yesterdayStr = yesterday; // formato "2025-12-26"
+
+    // Apartamentos que ayer estaban ocupados (reserva que cubría ayer)
     const occupiedYesterdaySet = new Set(
       [...arrivals, ...departures]
         .filter(r => {
           const arrive = String(r.arrival_date || "").slice(0, 10);
           const depart = String(r.departure_date || "").slice(0, 10);
-          // Estaba ocupado ayer si: llegada <= ayer AND salida > ayer
           return arrive <= yesterdayStr && depart > yesterdayStr;
         })
         .map(r => String(r.apartment_id))
@@ -2286,11 +2286,10 @@ app.get("/staff/checkins", async (req, res) => {
       if (!id) return "";
 
       if (occupiedYesterdaySet.has(id)) {
-        return "needs-clean"; // gris claro - ayer ocupado → necesita limpieza hoy
+        return "needs-clean"; // gris clarito - ayer ocupado → necesita limpieza hoy
       }
 
-      // Si ayer NO estaba ocupado → verde claro (ya limpio)
-      return "clean-ready";
+      return ""; // blanco normal - ayer vacío → ya limpio
     }
 
     // Toolbar en español
@@ -2340,7 +2339,7 @@ app.get("/staff/checkins", async (req, res) => {
               </form>
             </td>
             <td>${r.booking_token || ""}</td>
-                        <td class="apartment-cell ${aptColorClass(r.apartment_id)}">
+                                   <td class="apartment-cell ${aptColorClass(r.apartment_id)}">
               ${escapeHtml(r.apartment_name || r.apartment_id || "Sin nombre")}
             </td>
                        <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
@@ -2765,6 +2764,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
