@@ -2477,21 +2477,24 @@ const checkinRes = await pool.query(
     const r = checkinRes.rows[0];
 
     // 2) Load apartment sections
-    const secRes = await pool.query(
-      `
-      SELECT
-        id,
-        title,
-        body,
-        new_media_type,
-        new_media_url
-      FROM apartment_sections
-      WHERE room_id::text = $1
-        AND is_active = true
-      ORDER BY sort_order ASC, id ASC
-      `,
-      [String(roomId)]
-    );
+   // 2) Load apartment sections (use r.apartment_id or r.beds24_room_id safely)
+const sectionsRoomId = String(r.apartment_id || r.beds24_room_id || roomId);
+
+const secRes = await pool.query(
+  `
+  SELECT
+    id,
+    title,
+    body,
+    new_media_type,
+    new_media_url
+  FROM apartment_sections
+  WHERE room_id::text = $1
+    AND is_active = true
+  ORDER BY sort_order ASC, id ASC
+  `,
+  [sectionsRoomId]
+);
 
     const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
 
@@ -3247,6 +3250,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
