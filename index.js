@@ -451,7 +451,7 @@ START ${bookingId}`
   );
 
   // ⬇️ дальше твой код отправки сообщения (без изменений)
-}
+// }
      // const r = bookingResult.rows[0];
 
  /*     if (!r || !r.id) {
@@ -2933,6 +2933,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
