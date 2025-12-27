@@ -255,73 +255,44 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
   console.log("🔥 TWILIO HIT", req.body);
 
   try {
-    // ✅ 1) СНАЧАЛА всегда объявляем всё, что будем использовать
     const from = String(req.body.From || ""); // "whatsapp:+34..."
     const body = String(req.body.Body || "").trim();
     const phone = from.replace("whatsapp:", "").trim(); // "+34..."
-    const textUpper = body.toUpperCase();
-    // ✅ session helpers: phone -> last linked checkin
-const getSessionCheckin = async () => {
-  const q = await pool.query(
-    `
-    SELECT c.*
-    FROM whatsapp_sessions ws
-    JOIN checkins c ON c.id = ws.checkin_id
-    WHERE ws.phone = $1
-    ORDER BY ws.updated_at DESC
-    LIMIT 1
-    `,
-    [phone]
-  );
-  return q.rows[0] || null;
-};
-
-const setSessionCheckin = async (checkinId) => {
-  await pool.query(
-    `
-    INSERT INTO whatsapp_sessions (phone, checkin_id, created_at, updated_at)
-    VALUES ($1, $2, NOW(), NOW())
-    ON CONFLICT (phone)
-    DO UPDATE SET
-      checkin_id = EXCLUDED.checkin_id,
-      updated_at = NOW()
-    `,
-    [phone, checkinId]
-  );
-};
+    const textUpper = body.toUpperCase().trim();
 
     console.log("📩 Twilio WhatsApp inbound:", { from, body });
 
-    // ✅ helper: получить последнюю бронь по телефону (для REGOK / PAYOK / LISTO)
-/*const getLastCheckinByPhone = async () => {
-  const q = await pool.query(
-    `
-    SELECT c.*
-    FROM whatsapp_sessions ws
-    JOIN checkins c ON c.id = ws.checkin_id
-    WHERE ws.phone = $1
-    LIMIT 1
-    `,
-    [phone]
-  );
-  return q.rows[0] || null;
-};*/
-   
-    const getSessionCheckin = async (phone) => {
-  const q = await pool.query(
-    `
-    SELECT c.*
-    FROM whatsapp_sessions ws
-    JOIN checkins c ON c.id = ws.checkin_id
-    WHERE ws.phone = $1
-    LIMIT 1
-    `,
-    [phone]
-  );
-  return q.rows[0] || null;
-};
+    // ===== Session helpers (phone -> checkin) =====
+    const getSessionCheckin = async () => {
+      const q = await pool.query(
+        `
+        SELECT c.*
+        FROM whatsapp_sessions ws
+        JOIN checkins c ON c.id = ws.checkin_id
+        WHERE ws.phone = $1
+        ORDER BY ws.updated_at DESC
+        LIMIT 1
+        `,
+        [phone]
+      );
+      return q.rows[0] || null;
+    };
 
-    // ✅ helper: получить ссылки/дефолты из beds24_rooms по apartment_id
+    const setSessionCheckin = async (checkinId) => {
+      await pool.query(
+        `
+        INSERT INTO whatsapp_sessions (phone, checkin_id, created_at, updated_at)
+        VALUES ($1, $2, NOW(), NOW())
+        ON CONFLICT (phone)
+        DO UPDATE SET
+          checkin_id = EXCLUDED.checkin_id,
+          updated_at = NOW()
+        `,
+        [phone, checkinId]
+      );
+    };
+
+    // ===== Room settings =====
     const getRoomSettings = async (apartmentId) => {
       const roomRes = await pool.query(
         `
@@ -330,8 +301,7 @@ const setSessionCheckin = async (checkinId) => {
           payment_url,
           keys_instructions_url,
           default_arrival_time,
-          default_departure_time,
-          support_phone
+          default_departure_time
         FROM beds24_rooms
         WHERE beds24_room_id = $1
            OR id::text = $1
@@ -342,15 +312,14 @@ const setSessionCheckin = async (checkinId) => {
       return roomRes.rows[0] || {};
     };
 
-    // ✅ helper: подстановка [BOOKID]
     const applyTpl = (tpl, bookId) =>
       String(tpl || "").replace(/\[BOOKID\]/g, String(bookId || ""));
 
-    // ----------------- REGOK -----------------
+    // ================== REGOK ==================
     if (textUpper === "REGOK") {
       const last = await getSessionCheckin();
       if (!last) {
-        await sendWhatsApp(from, "No encuentro tu reserva. Envía primero: START_XXXX");
+        await sendWhatsApp(from, "No encuentro tu reserva. Envía primero: START 123456");
         return res.status(200).send("OK");
       }
 
@@ -368,11 +337,11 @@ const setSessionCheckin = async (checkinId) => {
       return res.status(200).send("OK");
     }
 
-    // ----------------- PAYOK -----------------
+    // ================== PAYOK ==================
     if (textUpper === "PAYOK") {
-     const last = await getSessionCheckin();
+      const last = await getSessionCheckin();
       if (!last) {
-        await sendWhatsApp(from, "No encuentro tu reserva. Envía primero: START_XXXX");
+        await sendWhatsApp(from, "No encuentro tu reserva. Envía primero: START 123456");
         return res.status(200).send("OK");
       }
 
@@ -390,157 +359,62 @@ const setSessionCheckin = async (checkinId) => {
       return res.status(200).send("OK");
     }
 
-    // ----------------- START_<ID> -----------------
-// ----------------- START (any format) -----------------
-/* const startMatch = textUpper.match(/^START[\s_:-]*([A-Z0-9]+)\s*$/);
-if (startMatch) {
-  const bookingId = String(startMatch[1] || "").trim();
-  console.log("🟢 START bookingId:", bookingId);
+    // ================== START (accept START 123 / START_123 / start-123) ==================
+    const startMatch = textUpper.match(/^START[\s_:-]*([0-9]+)\s*$/);
+    if (startMatch) {
+      const bookingId = String(startMatch[1] || "").trim();
+      console.log("🟢 START bookingId:", bookingId);
 
-  const bookingResult = await pool.query(
-    `
-    SELECT
-      apartment_id,
-      apartment_name,
-      booking_token,
-      full_name,
-      arrival_date,
-      arrival_time,
-      departure_date,
-      departure_time,
-      adults,
-      children,
-      beds24_booking_id,
-      booking_id_from_start,
-      reg_done,
-      pay_done
-    FROM checkins
-    WHERE booking_token = $1
-       OR booking_id_from_start = $1
-       OR beds24_booking_id::text = $1
-    ORDER BY id DESC
-    LIMIT 1
-    `,
-    [bookingId]
-  );
+      const bookingResult = await pool.query(
+        `
+        SELECT *
+        FROM checkins
+        WHERE booking_token = $1
+           OR beds24_booking_id::text = $1
+           OR booking_id_from_start = $1
+        ORDER BY id DESC
+        LIMIT 1
+        `,
+        [bookingId]
+      );
 
-  if (!bookingResult.rows.length) {
-    await sendWhatsApp(
-      from,
-      `Gracias 🙂
-No encuentro tu reserva todavía.
-Verifica el número y vuelve a enviar:
-START ${bookingId}`
-    );
-    return res.status(200).send("OK");
-  }
+      if (!bookingResult.rows.length) {
+        await sendWhatsApp(
+          from,
+          `Gracias 🙂\nNo encuentro tu reserva todavía.\nVerifica el número y vuelve a enviar:\nSTART ${bookingId}`
+        );
+        return res.status(200).send("OK");
+      }
 
-  // ... sigue tu lógica tal cual
-} */
-// ----------------- START (any format) -----------------
-const startMatch = textUpper.match(/^START[\s_:-]*([0-9]+)\s*$/);
+      const r = bookingResult.rows[0];
 
-if (startMatch) {
-  const bookingId = startMatch[1];
-  console.log("🟢 START bookingId:", bookingId);
+      // ✅ Bind session (this phone can continue REGOK/PAYOK/LISTO)
+      await setSessionCheckin(r.id);
 
-  const bookingResult = await pool.query(
-    `
-    SELECT *
-    FROM checkins
-    WHERE booking_token = $1
-       OR beds24_booking_id::text = $1
-       OR booking_id_from_start = $1
-    ORDER BY id DESC
-    LIMIT 1
-    `,
-    [bookingId]
-  );
+      // ✅ Optional: store phone only if empty (do not overwrite)
+      await pool.query(
+        `
+        UPDATE checkins
+        SET phone = COALESCE(NULLIF(phone, ''), $1)
+        WHERE id = $2
+        `,
+        [phone, r.id]
+      );
 
-  if (!bookingResult.rows.length) {
-    await sendWhatsApp(
-      from,
-      `Gracias 🙂
-No encuentro tu reserva todavía.
-Verifica el número y vuelve a enviar:
-START ${bookingId}`
-    );
-    return res.status(200).send("OK");
-  }
-
-  const r = bookingResult.rows[0];
-
-  // ✅ bind session so this phone can continue with REGOK/PAYOK/LISTO
-await setSessionCheckin(r.id);
-
-// ✅ optional: store phone only if empty (do not overwrite)
-await pool.query(
-  `
-  UPDATE checkins
-  SET phone = COALESCE(NULLIF(phone, ''), $1)
-  WHERE id = $2
-  `,
-  [phone, r.id]
-);
-
-  // 🔐 Привязываем телефон, ТОЛЬКО если его ещё нет
- 
-
-  // ⬇️ дальше твой код отправки сообщения (без изменений)
-// }
-     // const r = bookingResult.rows[0];
-
- /*     if (!r || !r.id) {
-  await sendWhatsApp(
-    from,
-    "No encuentro tu reserva todavía. Verifica el número y vuelve a enviar START_XXXX"
-  );
-  return res.status(200).send("OK");
-}
-      // после того как нашли r (checkin)
-await pool.query(
-  `
-  INSERT INTO whatsapp_sessions (phone, checkin_id, created_at, updated_at)
-  VALUES ($1, $2, NOW(), NOW())
-  ON CONFLICT (phone)
-  DO UPDATE SET
-    checkin_id = EXCLUDED.checkin_id,
-    updated_at = NOW()
-  `,
-  [phone, r.id]
-); */
-       // привязать телефон к найденной записи
-await pool.query(
-  `
-  UPDATE checkins
-  SET phone = COALESCE(NULLIF(phone,''), $1)
-  WHERE id = $2
-  `,
-  [phone, r.id]
-);
-      // settings
       const room = await getRoomSettings(r.apartment_id);
 
-      // links
       const regTpl = String(room.registration_url || "");
       const payTpl = String(room.payment_url || "");
       const keysTpl = String(room.keys_instructions_url || "");
 
-       const supportPhoneRaw = room.support_phone || "";
-const supportPhoneClean = supportPhoneRaw.replace(/\D/g, "");
-const supportLink = supportPhoneClean
-  ? `https://wa.me/${supportPhoneClean}`
-  : "—";
-
-      const bookIdForPayment = String(
+      const bookIdForLinks = String(
         r.beds24_booking_id || r.booking_id_from_start || r.booking_token || ""
       );
 
-      const regLink = applyTpl(regTpl, bookIdForPayment);
-      const payLink = applyTpl(payTpl, bookIdForPayment);
-      const keysLink = applyTpl(keysTpl, bookIdForPayment);
+      const regLink = applyTpl(regTpl, bookIdForLinks);
+      const payLink = applyTpl(payTpl, bookIdForLinks);
+      const keysLink = applyTpl(keysTpl, bookIdForLinks);
 
-      // data
       const name = r.full_name || "";
       const apt = r.apartment_name || r.apartment_id || "";
 
@@ -559,11 +433,9 @@ const supportLink = supportPhoneClean
 
       const adults = Number(r.adults || 0);
       const children = Number(r.children || 0);
-
       const guestsText =
         adults || children ? `${adults} adultos${children ? `, ${children} niños` : ""}` : "—";
 
-      // 🔒 ключи показываем только если оба true (и всё равно окончательно выдадим на LISTO)
       const showKeys = !!(r.reg_done && r.pay_done);
 
       await sendWhatsApp(
@@ -581,7 +453,7 @@ Para enviarte las instrucciones de acceso y el código de la caja de llaves, nec
 ${regLink || "—"}
 Después escribe: REGOK
 
-2️⃣ Pago (tasa turística + depósito segun la plataforma):
+2️⃣ Pago (tasa turística + depósito según la plataforma):
 ${payLink || "—"}
 Después escribe: PAYOK
 
@@ -594,38 +466,34 @@ Cuando lo tengas listo, escribe: LISTO`
       return res.status(200).send("OK");
     }
 
-    // ----------------- LISTO -----------------
+    // ================== LISTO ==================
     if (textUpper === "LISTO") {
       const last = await getSessionCheckin();
-
       if (!last) {
-        await sendWhatsApp(from, "No encuentro tu reserva. Envía primero: START_XXXX");
+        await sendWhatsApp(from, "No encuentro tu reserva. Envía primero: START 123456");
         return res.status(200).send("OK");
       }
 
-      // если не выполнены шаги — просим их сделать
       if (!last.reg_done || !last.pay_done) {
         await sendWhatsApp(
           from,
-          `Casi listo 🙂 
-Antes necesito:
-1) Registro (después escribe REGOK)
-2) Pago (después escribe PAYOK)`
+          `Casi listo 🙂\nAntes necesito:\n1) Registro (después escribe REGOK)\n2) Pago (después escribe PAYOK)`
         );
         return res.status(200).send("OK");
       }
 
-      // ✅ оба шага выполнены → отправляем ключи
       const room = await getRoomSettings(last.apartment_id);
-
       const keysTpl = String(room.keys_instructions_url || "");
-      const bookIdForPayment = String(
+
+      const bookIdForLinks = String(
         last.beds24_booking_id || last.booking_id_from_start || last.booking_token || ""
       );
-      const keysLink = applyTpl(keysTpl, bookIdForPayment);
 
-      await sendWhatsApp(from, `✅ Perfecto 🙌
+      const keysLink = applyTpl(keysTpl, bookIdForLinks);
 
+      await sendWhatsApp(
+        from,
+        `✅ Perfecto 🙌
 Aquí tienes el enlace con toda la información del apartamento:
 📘 instrucciones de llegada
 📶 Wi-Fi
@@ -633,15 +501,17 @@ Aquí tienes el enlace con toda la información del apartamento:
 🚗 parking (si aplica)
 y otros detalles importantes para tu estancia.
 
-🔐 Código de la caja de llaves  
+🔐 Código de la caja de llaves
 El código se mostrará automáticamente en este mismo enlace el día de llegada,
 ✅ siempre que el registro de huéspedes y el pago estén completados correctamente.
 
-Guarda este enlace, lo necesitarás durante tu estancia 😊 \n${keysLink || "—"}`);
+Guarda este enlace, lo necesitarás durante tu estancia 😊
+${keysLink || "—"}`
+      );
+
       return res.status(200).send("OK");
     }
 
-    // ----------------- default -----------------
     return res.status(200).send("OK");
   } catch (err) {
     console.error("❌ WhatsApp inbound error:", err);
@@ -2961,6 +2831,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
