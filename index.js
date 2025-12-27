@@ -2225,31 +2225,30 @@ app.get("/staff/checkins", async (req, res) => {
     const wDep = buildWhereFor("b.checkout_date");
 
     // ✅ НОВЫЙ SQL - работает с apartments + bookings
-    const arrivalsRes = await pool.query(
-      `
-      SELECT
-        b.id,
-        b.booking_reference,
-        a.name as apartment_name,
-        a.id as apartment_id,
-        b.guest_name as full_name,
-        b.guest_phone as phone,
-        b.checkin_date as arrival_date,
-        b.checkin_time as arrival_time,
-        b.checkout_date as departure_date,
-        b.checkout_time as departure_time,
-        b.num_adults as adults,
-        b.num_children as children,
-        b.lock_code,
-        b.lock_code_visible,
-        b.cleaning_completed as clean_ok
-      FROM bookings b
-      JOIN apartments a ON a.id = b.apartment_id
-      WHERE b.is_cancelled = false
-        ${wArr.whereSql ? " AND " + wArr.whereSql.substring(6) : ""}
-      ORDER BY b.checkin_date ASC, b.checkin_time ASC, b.id DESC
-      LIMIT 300
-      `,
+   const arrivalsRes = await pool.query(`
+  SELECT
+    b.id,
+    b.booking_reference,
+    a.name as apartment_name,        // ← ВАЖНО
+    a.id as apartment_id,             // ← ВАЖНО
+    b.guest_name as full_name,
+    b.guest_phone as phone,
+    b.checkin_date as arrival_date,
+    b.checkin_time as arrival_time,
+    b.checkout_date as departure_date,
+    b.checkout_time as departure_time,
+    b.num_adults as adults,
+    b.num_children as children,
+    b.lock_code,
+    b.lock_code_visible,
+    b.cleaning_completed as clean_ok
+  FROM bookings b
+  JOIN apartments a ON a.id = b.apartment_id   // ← ВАЖНО: JOIN
+  WHERE b.is_cancelled = false
+    ${wArr.whereSql ? " AND " + wArr.whereSql.substring(6) : ""}
+  ORDER BY b.checkin_date ASC, b.checkin_time ASC, b.id DESC
+  LIMIT 300
+`);
       wArr.params
     );
 
@@ -2807,6 +2806,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
