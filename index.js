@@ -790,126 +790,258 @@ select:focus {
   letter-spacing: 0.12em;
 }
 
-/* === BUTTONS === */
-.btn-base {
-  height: 34px;
-  min-height: 34px;
-  padding: 0 12px;
-  border-radius: 10px;
-  font-size: 13px;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: none;
-  cursor: pointer;
-  white-space: nowrap;
-}
+/* =====================================================
+   MODERN BUTTON STYLES - Replace in your CSS
+   Subtle colors, rounded corners (not fully round)
+   ===================================================== */
 
+/* === PRIMARY BUTTONS === */
 .btn-primary,
 .btn-success,
 .btn {
   display: inline-block;
-  border-radius: 999px;
-  padding: 10px 18px;
-  font-weight: 700;
+  border-radius: 8px; /* Less rounded */
+  padding: 10px 16px;
+  font-weight: 600; /* Less bold */
   font-size: 14px;
   text-decoration: none;
   border: none;
   cursor: pointer;
   margin: 10px;
+  transition: all 0.2s ease;
 }
 
 .btn-primary {
-  background: #2563eb;
+  background: #3b82f6;
   color: #fff;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .btn-success {
-  background: #16a34a;
+  background: #10b981;
   color: #fff;
 }
 
-.btn-link {
-  background: transparent;
-  color: #2563eb;
-  padding: 0;
-  font-weight: 600;
-  text-decoration: none;
+.btn-success:hover {
+  background: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
+/* === SMALL BUTTONS IN TABLE === */
 .btn-small {
-  border-radius: 999px;
-  padding: 7px 10px;
-  font-weight: 700;
+  border-radius: 6px; /* Subtle rounded */
+  padding: 6px 12px;
+  font-weight: 500;
   border: none;
   cursor: pointer;
-  background: #2563eb;
-  color: #fff;
   font-size: 12px;
-  line-height: 1;
+  line-height: 1.4;
   white-space: nowrap;
+  transition: all 0.2s ease;
 }
 
-.btn-small.danger {
-  background: #dc2626;
-  color: #fff;
-}
-
-.btn-ghost {
-  background: #eef2ff;
+/* Guardar button - subtle blue */
+.btn-small:not(.btn-ghost):not(.danger) {
+  background: #dbeafe;
   color: #1e40af;
+  border: 1px solid #93c5fd;
 }
 
-.clean-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 30px;
-  min-width: 44px;
-  padding: 0 10px;
-  border: 0;
-  outline: 0;
-  box-shadow: none;
-  appearance: none;
-  border-radius: 10px;
-  background: #f2f2f2;
+.btn-small:not(.btn-ghost):not(.danger):hover {
+  background: #bfdbfe;
+  border-color: #60a5fa;
+  transform: translateY(-1px);
+}
+
+/* Mostrar button - subtle purple */
+.btn-ghost {
+  background: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #c4b5fd;
+}
+
+.btn-ghost:hover {
+  background: #ddd6fe;
+  border-color: #a78bfa;
+  transform: translateY(-1px);
+}
+
+/* Borrar button - subtle red */
+.btn-small.danger {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.btn-small.danger:hover {
+  background: #fecaca;
+  border-color: #f87171;
+  transform: translateY(-1px);
+}
+
+/* Abrir button - subtle gray */
+.btn-small.btn-ghost {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.btn-small.btn-ghost:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+/* === ACTION BUTTONS (Guardar in forms) === */
+button[type="submit"]:not(.clean-btn):not(.btn-small) {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 500;
   font-size: 14px;
-  line-height: 1;
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.clean-btn:focus {
-  outline: none;
+button[type="submit"]:not(.clean-btn):not(.btn-small):hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
-.clean-btn.pill-yes {
-  color: #1a7f37;
-}
-
-.clean-btn.pill-no {
-  color: #b42318;
-}
-
-/* === PILLS === */
+/* === PILLS (No / Sí indicators) === */
 .pill {
   display: inline-block;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 6px; /* Less rounded */
+  font-weight: 600;
   font-size: 11px;
-  line-height: 1;
+  line-height: 1.4;
+  border: 1px solid transparent;
 }
 
 .pill-yes {
-  background: #dcfce7;
-  color: #166534;
+  background: #d1fae5;
+  color: #065f46;
+  border-color: #6ee7b7;
 }
 
 .pill-no {
   background: #fee2e2;
   color: #991b1b;
+  border-color: #fca5a5;
+}
+
+/* === CLEAN BUTTON === */
+.clean-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  min-width: 32px;
+  padding: 0 8px;
+  border: 1px solid #e5e7eb;
+  outline: 0;
+  box-shadow: none;
+  appearance: none;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clean-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  transform: scale(1.05);
+}
+
+.clean-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.clean-btn.pill-yes {
+  background: #d1fae5;
+  color: #065f46;
+  border-color: #6ee7b7;
+}
+
+.clean-btn.pill-yes:hover {
+  background: #a7f3d0;
+}
+
+.clean-btn.pill-no {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fca5a5;
+}
+
+.clean-btn.pill-no:hover {
+  background: #fecaca;
+}
+
+/* === BASE BUTTON (for filters) === */
+.btn-base {
+  height: 36px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-base:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+}
+
+.btn-base.btn-success {
+  background: #d1fae5;
+  color: #065f46;
+  border-color: #6ee7b7;
+}
+
+.btn-base.btn-success:hover {
+  background: #a7f3d0;
+  border-color: #34d399;
+}
+
+/* === LINK BUTTON === */
+.btn-link {
+  background: transparent;
+  color: #3b82f6;
+  padding: 0;
+  font-weight: 500;
+  text-decoration: none;
+  border: none;
+  transition: color 0.2s ease;
+}
+
+.btn-link:hover {
+  color: #2563eb;
+  text-decoration: underline;
 }
 
 /* === WARNINGS === */
@@ -3093,6 +3225,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
