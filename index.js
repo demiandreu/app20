@@ -760,12 +760,11 @@ function renderPage(title, innerHtml) {
     cursor:pointer;
   }
   
-            .apartment-cell.needs-clean {
-        background: #f5f5f5 !important; /* gris muy clarito, como en tu captura */
+                 .apartment-cell.needs-clean {
+        background: #f5f5f5 !important; /* gris clarito como en tu captura antigua */
         font-weight: 600;
       }
       .apartment-cell {
-        background: #ffffff; /* blanco normal para los limpios */
         transition: background 0.2s;
       }
 
@@ -2264,17 +2263,23 @@ app.get("/staff/checkins", async (req, res) => {
 
     // Para saber si ayer estuvo ocupado: miramos si había salida ayer o llegada que cubre ayer
       // Lógica de colores según tu explicación
-    const yesterdayStr = yesterday; // "2025-12-26" por ejemplo
+       // Lógica de colores: gris clarito si ayer estaba ocupado
+    const yesterdayStr = yesterday; // ej: "2025-12-26"
 
-    // Apartamentos que ayer estaban ocupados (reserva que cubría ayer)
+    // Consulta directa a la DB para saber qué apartamentos estaban ocupados AYER
+    const { rows: occupiedYesterdayRows } = await pool.query(
+      `
+      SELECT DISTINCT apartment_id
+      FROM checkins
+      WHERE cancelled IS DISTINCT FROM true
+        AND arrival_date <= $1::date
+        AND departure_date > $1::date
+      `,
+      [yesterdayStr]
+    );
+
     const occupiedYesterdaySet = new Set(
-      [...arrivals, ...departures]
-        .filter(r => {
-          const arrive = String(r.arrival_date || "").slice(0, 10);
-          const depart = String(r.departure_date || "").slice(0, 10);
-          return arrive <= yesterdayStr && depart > yesterdayStr;
-        })
-        .map(r => String(r.apartment_id))
+      occupiedYesterdayRows.map(r => String(r.apartment_id))
     );
 
     function aptColorClass(apartmentId) {
@@ -2760,6 +2765,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
