@@ -1939,36 +1939,37 @@ app.get("/guest/:roomId/:token", async (req, res) => {
 
   try {
     // 1) Load check-in record
-    const checkinRes = await pool.query(
-      `
-      SELECT
-        id,
-        booking_token,
-        beds24_booking_id,
-        beds24_room_id,
-        apartment_name,
-        full_name,
-        email,
-        phone,
-        arrival_date,
-        arrival_time,
-        departure_date,
-        departure_time,
-        adults,
-        children,
-        lock_code,
-        lock_visible
-      FROM checkins
-      WHERE beds24_room_id::text = $1
-        AND (
-          booking_token = $2
-          OR beds24_booking_id::text = $2
-        )
-      ORDER BY id DESC
-      LIMIT 1
-      `,
-      [String(roomId), String(token)]
-    );
+  const checkinRes = await pool.query(
+  `
+  SELECT
+    id,
+    booking_token,
+    beds24_booking_id,
+    beds24_room_id,
+    apartment_name,
+    full_name,
+    email,
+    phone,
+    arrival_date,
+    arrival_time,
+    departure_date,
+    departure_time,
+    adults,
+    children,
+    lock_code,
+    lock_visible
+  FROM checkins
+  WHERE beds24_room_id::text = $1
+    AND (
+      booking_token = $2
+      OR beds24_booking_id::text = $2
+    )
+    AND cancelled IS DISTINCT FROM true  -- NUEVA LÍNEA: evita mostrar canceladas al huésped
+  ORDER BY id DESC
+  LIMIT 1
+  `,
+  [String(roomId), String(token)]
+);
 
     if (!checkinRes.rows.length) {
       const html = `
@@ -2251,33 +2252,47 @@ app.get("/staff/checkins", async (req, res) => {
     // ----------------------------
     // ARRIVALS query (arrival_date)
     // ----------------------------
-    const wArr = buildWhereFor("arrival_date");
-    const arrivalsRes = await pool.query(
-      `
-      SELECT
-        id,
-        beds24_booking_id,
-        apartment_name,
-        apartment_id,
-        booking_token,
-        full_name,
-        phone,
-        arrival_date,
-        arrival_time,
-        departure_date,
-        departure_time,
-        adults,
-        children,
-        lock_code,
-        lock_visible,
-        clean_ok
-      FROM checkins
-      ${wArr.whereSql}
-      ORDER BY arrival_date ASC, arrival_time ASC, id DESC
-      LIMIT 300
-      `,
-      wArr.params
-    );
+// En arrivals query
+const arrivalsRes = await pool.query(
+  `
+  SELECT
+    id,
+    beds24_booking_id,
+    apartment_name,
+    apartment_id,
+    booking_token,
+    full_name,
+    phone,
+    arrival_date,
+    arrival_time,
+    departure_date,
+    departure_time,
+    adults,
+    children,
+    lock_code,
+    lock_visible,
+    clean_ok
+  FROM checkins
+  WHERE cancelled IS DISTINCT FROM true  -- NUEVA LÍNEA: oculta canceladas
+    ${wArr.whereSql}
+  ORDER BY arrival_date ASC, arrival_time ASC, id DESC
+  LIMIT 300
+  `,
+  wArr.params
+);
+
+// En departures query (igual)
+const departuresRes = await pool.query(
+  `
+  SELECT ...
+  FROM checkins
+  WHERE cancelled IS DISTINCT FROM true  -- NUEVA LÍNEA
+    ${wDep.whereSql}
+  ORDER BY departure_date ASC, departure_time ASC, id DESC
+  LIMIT 300
+  `,
+  wDep.params
+);
 
     // ----------------------------
     // DEPARTURES query (departure_date)
@@ -2921,6 +2936,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
