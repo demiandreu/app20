@@ -264,34 +264,19 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
     console.log("📩 Twilio WhatsApp inbound:", { from, body });
 
     // ✅ helper: получить последнюю бронь по телефону (для REGOK / PAYOK / LISTO)
-    const getLastCheckinByPhone = async () => {
-      const q = await pool.query(
-        `
-        SELECT
-          id,
-          apartment_id,
-          apartment_name,
-          booking_token,
-          full_name,
-          arrival_date,
-          arrival_time,
-          departure_date,
-          departure_time,
-          adults,
-          children,
-          beds24_booking_id,
-          booking_id_from_start,
-          reg_done,
-          pay_done
-        FROM checkins
-        WHERE phone = $1
-        ORDER BY id DESC
-        LIMIT 1
-        `,
-        [phone]
-      );
-      return q.rows[0] || null;
-    };
+const getLastCheckinByPhone = async () => {
+  const q = await pool.query(
+    `
+    SELECT c.*
+    FROM whatsapp_sessions ws
+    JOIN checkins c ON c.id = ws.checkin_id
+    WHERE ws.phone = $1
+    LIMIT 1
+    `,
+    [phone]
+  );
+  return q.rows[0] || null;
+};
     const getSessionCheckin = async (phone) => {
   const q = await pool.query(
     `
@@ -422,8 +407,8 @@ START_${bookingId}`
       // после того как нашли r (checkin)
 await pool.query(
   `
-  INSERT INTO whatsapp_sessions (phone, checkin_id)
-  VALUES ($1, $2)
+  INSERT INTO whatsapp_sessions (phone, checkin_id, created_at, updated_at)
+  VALUES ($1, $2, NOW(), NOW())
   ON CONFLICT (phone)
   DO UPDATE SET
     checkin_id = EXCLUDED.checkin_id,
@@ -2891,6 +2876,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
