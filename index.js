@@ -1019,48 +1019,49 @@ function renderPage(title, innerHtml) {
 // ROUTES
 // =====================================================
 
-function mapBeds24BookingToRow(b, apartmentName = "", apartmentId = "") {
-  const bookingId = String(b.bookId || b.id || "").trim();
-  const roomId = String(b.roomId || "").trim();
+function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
+  // Extraer nombre del apartamento de forma inteligente
+  // Extraer nombre del apartamento del payload de Beds24
+  let apartmentName = b.roomName || ""; // si Beds24 lo envía directamente
 
-  // dates
-  const arrivalDate = String(b.firstNight || b.arrival || "").slice(0, 10);
-  const departureDate = String(b.lastNight || b.departure || "").slice(0, 10);
+  if (!apartmentName && b.apiMessage) {
+    // Beds24 siempre pone "Room: Nombre del apartamento" al principio
+    const match = b.apiMessage.match(/^Room:\s*(.+?)(?:\n|$)/i);
+    if (match) {
+      apartmentName = match[1].trim();
+    }
+  }
 
-  // guests
-  const adults = Number(b.numAdult ?? b.adults ?? 0) || 0;
-  const children = Number(b.numChild ?? b.children ?? 0) || 0;
-
-  // guest info
-  const fullName = String(
-    [b.guestFirstName, b.guestName].filter(Boolean).join(" ").trim() || "Guest"
-  );
-  const email = String(b.guestEmail || "").trim() || "unknown@unknown";
-  const phone = String(b.guestPhone || b.guestMobile || "").trim() || "+000";
-
-  // times (если нет — ставим дефолт)
-  const arrivalTime = String(b.guestArrivalTime || "16:00").slice(0, 5) + ":00";
-  const departureTime = "11:00:00";
+  // Fallback bonito si no encontramos nada
+  if (!apartmentName) {
+    apartmentName = `Apartamento ${b.roomId || "sin ID"}`;
+  }
 
   return {
-    beds24_booking_id: bookingId ? Number(bookingId) : null,
-    beds24_room_id: roomId || null,
-    apartment_name: apartmentName || null,
-    apartment_id: apartmentId || roomId || "unknown",
-    booking_token: bookingId || (roomId + "-" + Date.now()),
-    full_name: fullName,
-    email,
-    phone,
-    arrival_date: arrivalDate,
-    arrival_time: arrivalTime,
-    departure_date: departureDate,
-    departure_time: departureTime,
-    adults,
-    children,
-    beds24_raw: b,
+    apartment_id: String(b.roomId || roomIdFallback || ""),
+    apartment_name: apartmentName,
+    booking_token: b.bookingToken || null,
+    full_name: `${b.firstName || ""} ${b.lastName || ""}`.trim() || "Guest",
+    email: b.email || "unknown@unknown",
+    phone: b.phone || b.mobile || "+000",
+    arrival_date: b.arrival || null,
+    arrival_time: b.arrivalTime ? b.arrivalTime.slice(0, 5) : "16:00",
+    departure_date: b.departure || null,
+    departure_time: b.departureTime ? b.departureTime.slice(0, 5) : "11:00",
+    adults: b.numAdult || 0,
+    children: b.numChild || 0,
+    beds24_booking_id: b.id ? BigInt(b.id) : null,
+    beds24_room_id: String(b.roomId || ""),
+    status: b.status || "confirmed",
+    cancelled: b.status === "cancelled",
+    lock_code: null,
+    lock_visible: false,
+    clean_ok: false,
+    beds24_raw: b, // payload completo
+    provider: "beds24",
+    // otros campos...
   };
 }
-
 async function upsertCheckinFromBeds24(row) {
   // если дат нет — пропускаем (без дат нельзя вставить в checkins)
   if (!row.arrival_date || !row.departure_date) return { skipped: true };
@@ -2350,10 +2351,9 @@ app.get("/staff/checkins", async (req, res) => {
                 </button>
               </form>
             </td>
-            <td>${r.booking_token || ""}</td>
-                                  <td class="apartment-cell ${aptColorClass(r.apartment_id)}">
-  ${escapeHtml(r.apartment_name || r.apartment_id || "Sin nombre")}
-</td>
+                       <td class="apartment-cell ${aptColorClass(r.apartment_id)}">
+              ${escapeHtml(r.apartment_name || `Apt ${r.apartment_id}` || "Sin nombre")}
+            </td>
                        <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
             <td>${mainDate}</td>
             <td>${calcNights(r.arrival_date, r.departure_date)}</td>
@@ -2808,6 +2808,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
