@@ -13,6 +13,41 @@ const twilio = require("twilio");
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
+async function getProviderToken(provider, propertyExternalId) {
+  const r = await pool.query(
+    `
+    SELECT credentials->>'token' AS token
+    FROM provider_connections
+    WHERE provider = $1
+      AND property_external_id = $2
+      AND is_enabled = true
+    LIMIT 1
+    `,
+    [String(provider), String(propertyExternalId)]
+  );
+
+  const token = r.rows?.[0]?.token || "";
+  if (!token) throw new Error(`Token not found for provider=${provider}, property=${propertyExternalId}`);
+  return token;
+}
+
+async function beds24SmokeTest(token) {
+  const resp = await fetch("https://api.beds24.com/v2/bookings", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
+  });
+
+  const text = await resp.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = { raw: text }; }
+
+  return { ok: resp.ok, status: resp.status, data };
+}
+
 const PORT = process.env.PORT || 3000;
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -1363,7 +1398,39 @@ app.post("/manager/apartment/sections/save", async (req, res) => {
    
 // ===================== Beds24 Webhook (receiver) =====================
 
+async function getProviderToken(provider, propertyExternalId) {
+  const r = await pool.query(
+    `
+    SELECT credentials->>'token' AS token
+    FROM provider_connections
+    WHERE provider = $1
+      AND property_external_id = $2
+      AND is_enabled = true
+    LIMIT 1
+    `,
+    [String(provider), String(propertyExternalId)]
+  );
 
+  const token = r.rows?.[0]?.token || "";
+  if (!token) throw new Error(`Token not found for provider=${provider}, property=${propertyExternalId}`);
+  return token;
+}
+
+async function beds24SmokeTest(token) {
+  const resp = await fetch("https://api.beds24.com/v2/bookings", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+    },
+  });
+
+  const text = await resp.text();
+  let data;
+  try { data = JSON.parse(text); } catch { data = { raw: text }; }
+
+  return { ok: resp.ok, status: resp.status, data };
+}
 
 
 app.post("/webhooks/beds24", async (req, res) => {
