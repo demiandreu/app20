@@ -362,7 +362,7 @@ const getLastCheckinByPhone = async () => {
 
     // ----------------- START_<ID> -----------------
 // ----------------- START (any format) -----------------
-const startMatch = textUpper.match(/^START[\s_:-]*([A-Z0-9]+)\s*$/);
+/* const startMatch = textUpper.match(/^START[\s_:-]*([A-Z0-9]+)\s*$/);
 if (startMatch) {
   const bookingId = String(startMatch[1] || "").trim();
   console.log("🟢 START bookingId:", bookingId);
@@ -406,8 +406,52 @@ START ${bookingId}`
   }
 
   // ... sigue tu lógica tal cual
-}
+} */
+// ----------------- START (any format) -----------------
+const startMatch = textUpper.match(/^START[\s_:-]*([0-9]+)\s*$/);
 
+if (startMatch) {
+  const bookingId = startMatch[1];
+  console.log("🟢 START bookingId:", bookingId);
+
+  const bookingResult = await pool.query(
+    `
+    SELECT *
+    FROM checkins
+    WHERE booking_token = $1
+       OR beds24_booking_id::text = $1
+       OR booking_id_from_start = $1
+    ORDER BY id DESC
+    LIMIT 1
+    `,
+    [bookingId]
+  );
+
+  if (!bookingResult.rows.length) {
+    await sendWhatsApp(
+      from,
+      `Gracias 🙂
+No encuentro tu reserva todavía.
+Verifica el número y vuelve a enviar:
+START ${bookingId}`
+    );
+    return res.status(200).send("OK");
+  }
+
+  const r = bookingResult.rows[0];
+
+  // 🔐 Привязываем телефон, ТОЛЬКО если его ещё нет
+  await pool.query(
+    `
+    UPDATE checkins
+    SET phone = COALESCE(NULLIF(phone, ''), $1)
+    WHERE id = $2
+    `,
+    [phone, r.id]
+  );
+
+  // ⬇️ дальше твой код отправки сообщения (без изменений)
+}
       const r = bookingResult.rows[0];
 
       if (!r || !r.id) {
@@ -2889,6 +2933,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
