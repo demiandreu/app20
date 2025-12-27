@@ -2174,41 +2174,25 @@ const bodyHtml = escapeHtml(rawBody)
 // --- LIST + FILTER ---
 app.get("/staff/checkins", async (req, res) => {
   try {
-    // --- read query ---
     const { from, to, quick: quickRaw } = req.query;
 
-    // --- timezone helpers for Spain ---
     const tz = "Europe/Madrid";
     const today = ymdInTz(new Date(), tz);
     const tomorrow = ymdInTz(new Date(Date.now() + 86400000), tz);
     const yesterday = ymdInTz(new Date(Date.now() - 86400000), tz);
 
-    // Default: mostrar "hoy" si no hay filtro
     const hasAnyFilter = Boolean(from || to || quickRaw);
     const quickCandidate = hasAnyFilter ? quickRaw : "today";
-    const quick =
-      quickCandidate === "yesterday" ||
-      quickCandidate === "today" ||
-      quickCandidate === "tomorrow"
-        ? quickCandidate
-        : "";
+    const quick = ["yesterday", "today", "tomorrow"].includes(quickCandidate) ? quickCandidate : "";
 
     let fromDate = from;
     let toDate = to;
     if (quick) {
-      if (quick === "yesterday") {
-        fromDate = yesterday;
-        toDate = yesterday;
-      } else if (quick === "today") {
-        fromDate = today;
-        toDate = today;
-      } else if (quick === "tomorrow") {
-        fromDate = tomorrow;
-        toDate = tomorrow;
-      }
+      if (quick === "yesterday") { fromDate = yesterday; toDate = yesterday; }
+      else if (quick === "today") { fromDate = today; toDate = today; }
+      else if (quick === "tomorrow") { fromDate = tomorrow; toDate = tomorrow; }
     }
 
-    // helpers: build WHERE for field
     function buildWhereFor(fieldName) {
       const where = [];
       const params = [];
@@ -2224,64 +2208,36 @@ app.get("/staff/checkins", async (req, res) => {
       return { whereSql, params };
     }
 
-    // ----------------------------
-    // ARRIVALS query
-    // ----------------------------
+    // DEFINIR wArr y wDep ANTES de usarlos
     const wArr = buildWhereFor("arrival_date");
+    const wDep = buildWhereFor("departure_date");
+
+    // ARRIVALS
     const arrivalsRes = await pool.query(
       `
       SELECT
-        id,
-        beds24_booking_id,
-        apartment_name,
-        apartment_id,
-        booking_token,
-        full_name,
-        phone,
-        arrival_date,
-        arrival_time,
-        departure_date,
-        departure_time,
-        adults,
-        children,
-        lock_code,
-        lock_visible,
-        clean_ok
+        id, beds24_booking_id, apartment_name, apartment_id, booking_token,
+        full_name, phone, arrival_date, arrival_time, departure_date, departure_time,
+        adults, children, lock_code, lock_visible, clean_ok
       FROM checkins
       WHERE cancelled IS DISTINCT FROM true
-        ${wArr.whereSql ? "AND " + wArr.whereSql : ""}
+        ${wArr.whereSql ? " AND " + wArr.whereSql.substring(6) : ""}
       ORDER BY arrival_date ASC, arrival_time ASC, id DESC
       LIMIT 300
       `,
       wArr.params
     );
 
-    // ----------------------------
-    // DEPARTURES query
-    // ----------------------------
-    const wDep = buildWhereFor("departure_date");
+    // DEPARTURES
     const departuresRes = await pool.query(
       `
       SELECT
-        id,
-        beds24_booking_id,
-        apartment_name,
-        apartment_id,
-        booking_token,
-        full_name,
-        phone,
-        arrival_date,
-        arrival_time,
-        departure_date,
-        departure_time,
-        adults,
-        children,
-        lock_code,
-        lock_visible,
-        clean_ok
+        id, beds24_booking_id, apartment_name, apartment_id, booking_token,
+        full_name, phone, arrival_date, arrival_time, departure_date, departure_time,
+        adults, children, lock_code, lock_visible, clean_ok
       FROM checkins
       WHERE cancelled IS DISTINCT FROM true
-        ${wDep.whereSql ? "AND " + wDep.whereSql : ""}
+        ${wDep.whereSql ? " AND " + wDep.whereSql.substring(6) : ""}
       ORDER BY departure_date ASC, departure_time ASC, id DESC
       LIMIT 300
       `,
@@ -2291,28 +2247,22 @@ app.get("/staff/checkins", async (req, res) => {
     const arrivals = arrivalsRes.rows || [];
     const departures = departuresRes.rows || [];
 
-    // Color apartamentos: rojo = salida hoy, verde = libre hoy
-    const departTodaySet = new Set(
-      departures
-        .filter((r) => String(r.departure_date || "").slice(0, 10) === today)
-        .map((r) => String(r.apartment_id))
-    );
-    const arriveTodaySet = new Set(
-      arrivals.map((r) => String(r.apartment_id))
-    );
+    // Colores
+    const departTodaySet = new Set(departures.filter(r => String(r.departure_date || "").slice(0, 10) === today).map(r => String(r.apartment_id)));
+    const arriveTodaySet = new Set(arrivals.map(r => String(r.apartment_id)));
 
     function aptColorClass(apartmentId) {
       const id = String(apartmentId || "");
-      if (departTodaySet.has(id)) return "red";    // salida hoy → necesita limpieza
-      if (!arriveTodaySet.has(id)) return "green"; // sin llegada hoy → limpio y libre
+      if (departTodaySet.has(id)) return "red";
+      if (!arriveTodaySet.has(id)) return "green";
       return "";
     }
 
     // Toolbar en español
     const toolbar = `
       <h1>Staff · Llegadas y Salidas</h1>
-      <p class="muted">Zona horaria: España (${tz})</p>
-      <form method="GET" action="/staff/checkins" style="margin:16px 0;">
+      <p class="muted">Zona horaria: España (Europe/Madrid)</p>
+      <form method="GET" action="/staff/checkins" style="margin:20px 0;">
         <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
           <div>
             <label>Desde</label>
@@ -2322,10 +2272,8 @@ app.get("/staff/checkins", async (req, res) => {
             <label>Hasta</label>
             <input type="date" name="to" value="${toDate || ""}" />
           </div>
-          <div>
-            <button type="submit" class="btn-primary">Filtrar</button>
-            <a href="/staff/checkins" class="btn-link">Reset</a>
-          </div>
+          <button type="submit" class="btn-primary">Filtrar</button>
+          <a href="/staff/checkins" class="btn-link">Resetear</a>
         </div>
         <div style="margin-top:12px;">
           <p class="muted" style="margin:0 0 8px;">Filtros rápidos</p>
@@ -2338,69 +2286,57 @@ app.get("/staff/checkins", async (req, res) => {
       </form>
     `;
 
-    // Render table (en español)
     function renderTable(rows, mode) {
-      const title = mode === "departures" 
-        ? `Salidas <span class="muted">(${rows.length})</span>`
-        : `Llegadas <span class="muted">(${rows.length})</span>`;
+      const title = mode === "departures" ? `Salidas <span class="muted">(${rows.length})</span>` : `Llegadas <span class="muted">(${rows.length})</span>`;
       const dateColTitle = mode === "departures" ? "Salida" : "Llegada";
 
-      const tbody = rows.length
-        ? rows
-            .map((r) => {
-              const mainDate = mode === "departures"
-                ? `${fmtDate(r.departure_date)} ${fmtTime(r.departure_time)}`
-                : `${fmtDate(r.arrival_date)} ${fmtTime(r.arrival_time)}`;
+      const tbody = rows.length ? rows.map(r => {
+        const mainDate = mode === "departures" 
+          ? `${fmtDate(r.departure_date)} ${fmtTime(r.departure_time)}`
+          : `${fmtDate(r.arrival_date)} ${fmtTime(r.arrival_time)}`;
 
-              return `
-                <tr>
-                  <td class="sticky-col">
-                    <form method="POST" action="/staff/checkins/${r.id}/clean">
-                      <button type="submit" class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}">
-                        ${r.clean_ok ? "✓" : ""}
-                      </button>
-                    </form>
-                  </td>
-                  <td>${r.booking_token || ""}</td>
-                  <td class="apartment-cell ${aptColorClass(r.apartment_id)}">${escapeHtml(r.apartment_name || "")}</td>
-                  <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
-                  <td>${mainDate}</td>
-                  <td>${calcNights(r.arrival_date, r.departure_date)}</td>
-                  <td>
-                    <a class="btn-small btn-ghost" href="/guest/${r.apartment_id}/${r.booking_token}" target="_blank">
-                      Abrir
-                    </a>
-                  </td>
-                  <td>
-                    <form method="POST" action="/staff/checkins/${r.id}/lock" class="lock-form">
-                      <input class="lock-input" name="lock_code" value="${r.lock_code || ""}" placeholder="0000" />
-                      <button type="submit" class="btn-small">Guardar</button>
-                    </form>
-                  </td>
-                  <td>
-                    <form method="POST" action="/staff/checkins/${r.id}/visibility" class="vis-form">
-                      <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "Sí" : "No"}</span>
-                      <button type="submit" class="btn-small ${r.lock_visible ? "btn-ghost" : ""}">
-                        ${r.lock_visible ? "Ocultar" : "Mostrar"}
-                      </button>
-                    </form>
-                  </td>
-                  <td>
-                    <form method="POST" action="/staff/checkins/${r.id}/delete"
-                          onsubmit="return confirm('¿Borrar esta reserva?');">
-                      <button type="submit" class="btn-small danger">Borrar</button>
-                    </form>
-                  </td>
-                </tr>
-              `;
-            })
-            .join("")
-        : `<tr><td colspan="10" class="muted">No hay registros</td></tr>`;
+        return `
+          <tr>
+            <td class="sticky-col">
+              <form method="POST" action="/staff/checkins/${r.id}/clean">
+                <button type="submit" class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}">
+                  ${r.clean_ok ? "✓" : ""}
+                </button>
+              </form>
+            </td>
+            <td>${r.booking_token || ""}</td>
+            <td class="apartment-cell ${aptColorClass(r.apartment_id)}">${escapeHtml(r.apartment_name || "")}</td>
+            <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
+            <td>${mainDate}</td>
+            <td>${calcNights(r.arrival_date, r.departure_date)}</td>
+            <td><a class="btn-small btn-ghost" href="/guest/${r.apartment_id}/${r.booking_token}" target="_blank">Abrir</a></td>
+            <td>
+              <form method="POST" action="/staff/checkins/${r.id}/lock" class="lock-form">
+                <input class="lock-input" name="lock_code" value="${r.lock_code || ""}" placeholder="0000" />
+                <button type="submit" class="btn-small">Guardar</button>
+              </form>
+            </td>
+            <td>
+              <form method="POST" action="/staff/checkins/${r.id}/visibility" class="vis-form">
+                <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "Sí" : "No"}</span>
+                <button type="submit" class="btn-small ${r.lock_visible ? "btn-ghost" : ""}">
+                  ${r.lock_visible ? "Ocultar" : "Mostrar"}
+                </button>
+              </form>
+            </td>
+            <td>
+              <form method="POST" action="/staff/checkins/${r.id}/delete" onsubmit="return confirm('¿Borrar esta reserva?');">
+                <button type="submit" class="btn-small danger">Borrar</button>
+              </form>
+            </td>
+          </tr>
+        `;
+      }).join("") : `<tr><td colspan="10" class="muted">No hay registros</td></tr>`;
 
       return `
         <h2 style="margin:24px 0 12px;">${title}</h2>
         <div class="table-wrap">
-          <table class="table-compact">
+          <table>
             <thead>
               <tr>
                 <th class="sticky-col">Limpieza</th>
@@ -2410,7 +2346,7 @@ app.get("/staff/checkins", async (req, res) => {
                 <th>${dateColTitle}</th>
                 <th>Noches</th>
                 <th>Huésped</th>
-                <th>Código caja</th>
+                <th>Código</th>
                 <th>Visible</th>
                 <th>Acciones</th>
               </tr>
@@ -2421,39 +2357,18 @@ app.get("/staff/checkins", async (req, res) => {
       `;
     }
 
-    const pageHtml = toolbar +
-      renderTable(arrivals, "arrivals") +
-      `<div style="height:24px;"></div>` +
-      renderTable(departures, "departures");
+    const pageHtml = toolbar + renderTable(arrivals, "arrivals") + `<div style="height:24px;"></div>` + renderTable(departures, "departures");
 
     res.send(renderPage("Staff · Llegadas y Salidas", pageHtml));
   } catch (e) {
-    console.error("Staff list error:", e);
+    console.error("Error en staff/checkins:", e);
     res.status(500).send(renderPage("Error", `
       <div class="card">
-        <h1 style="color:#991b1b;">❌ No se pudieron cargar los check-ins</h1>
+        <h1 style="color:#991b1b;">❌ Error al cargar la lista</h1>
         <p>${escapeHtml(e.message || String(e))}</p>
         <p><a href="/staff/checkins" class="btn-link">Recargar</a></p>
       </div>
     `));
-  }
-});
-
-// --- DELETE checkin ---
-app.post("/staff/checkins/:id/delete", async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    if (!id) return res.status(400).send("Missing id");
-
-    // куда возвращаться после удаления (мы это поле уже отправляем из формы)
-    const returnTo = String(req.body.returnTo || "/staff/checkins");
-
-    await pool.query(`DELETE FROM checkins WHERE id = $1`, [id]);
-
-    return res.redirect(returnTo);
-  } catch (e) {
-    console.error("delete checkin error:", e);
-    return res.status(500).send("Cannot delete checkin");
   }
 });
 
@@ -2813,6 +2728,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
