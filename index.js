@@ -1220,12 +1220,19 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
 
     const accessToken = await getBeds24AccessToken(propertyId);
 
-    const bookingsResp = await fetch("https://beds24.com/api/v2/bookings", {
-      headers: {
-        accept: "application/json",
-        token: accessToken,
-      },
-    });
+    // Traemos reservas desde 2024 hasta 2027 (para cubrir antiguas y futuras)
+    const fromDate = "2024-01-01";
+    const toDate = "2027-12-31";
+
+    const bookingsResp = await fetch(
+      `https://beds24.com/api/v2/bookings?from=${fromDate}&to=${toDate}&includeCancelled=true`,
+      {
+        headers: {
+          accept: "application/json",
+          token: accessToken,
+        },
+      }
+    );
 
     if (!bookingsResp.ok) {
       const text = await bookingsResp.text();
@@ -1234,33 +1241,37 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
 
     const data = await bookingsResp.json();
 
-    // FIX: maneja array directo o {bookings: [...]}
-    const bookings = Array.isArray(data) ? data : (data.bookings || []);
+    const bookings = Array.isArray(data) ? data : (data.bookings || data.data || []);
 
     if (bookings.length === 0) {
       return res.send(renderPage("Sync Bookings", `
         <div class="card">
-          <h1>ℹ️ No hay reservas nuevas</h1>
-          <p>Todo está sincronizado o no hay bookings en Beds24.</p>
+          <h1>ℹ️ No hay reservas en el rango</h1>
+          <p>No se encontraron bookings entre ${fromDate} y ${toDate}.</p>
           <p><a href="/manager" class="btn-link">← Volver</a></p>
         </div>
       `));
     }
 
     let synced = 0;
+    let updated = 0;
+    let newOnes = 0;
+
     for (const b of bookings) {
       const row = mapBeds24BookingToRow(b, b.roomName || "", b.roomId || "");
-      await upsertCheckinFromBeds24(row);
+      const result = await upsertCheckinFromBeds24(row);
       synced++;
+      if (result.ok) newOnes++;
+      else updated++;
     }
 
     res.send(renderPage("Sync Bookings", `
       <div class="card">
         <h1 style="color:#16a34a;">✅ Sync completado</h1>
-        <p>Se procesaron <strong>${synced}</strong> reservas de Beds24.</p>
-        <p>Fecha: ${new Date().toLocaleString('es-ES')}</p>
+        <p>Se procesaron <strong>${synced}</strong> reservas de Beds24 (desde ${fromDate}).</p>
+        <p>Nuevas: ${newOnes} | Actualizadas: ${updated}</p>
         <hr/>
-        <p><a href="/staff/checkins" class="btn-primary">Ver lista actualizada</a></p>
+        <p><a href="/staff/checkins" class="btn-primary">Ver lista completa</a></p>
         <p><a href="/manager" class="btn-link">← Volver al Manager</a></p>
       </div>
     `));
@@ -2765,6 +2776,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
