@@ -454,7 +454,7 @@ START ${bookingId}`
 }
      // const r = bookingResult.rows[0];
 
-      if (!r || !r.id) {
+ /*     if (!r || !r.id) {
   await sendWhatsApp(
     from,
     "No encuentro tu reserva todavía. Verifica el número y vuelve a enviar START_XXXX"
@@ -472,7 +472,7 @@ await pool.query(
     updated_at = NOW()
   `,
   [phone, r.id]
-);
+); */
        // привязать телефон к найденной записи
 await pool.query(
   `
@@ -2933,6 +2933,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
