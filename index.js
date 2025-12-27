@@ -760,9 +760,10 @@ function renderPage(title, innerHtml) {
     cursor:pointer;
   }
   
-  .apartment-cell.needs-clean {
-  background: #f5f5f5 !important; /* серый фон */
+.apartment-cell.needs-clean {
+  background: #e5e7eb !important; /* чуть темнее */
   font-weight: 600;
+  border-left: 3px solid #f59e0b !important; /* оранжевая полоска слева */
 }
   .clean-btn:focus{ outline:none; }
   .clean-btn.pill-yes{ color:#1a7f37; }
@@ -2756,6 +2757,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
