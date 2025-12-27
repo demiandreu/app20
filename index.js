@@ -2373,9 +2373,11 @@ app.get("/staff/checkins", async (req, res) => {
               </form>
             </td>
             <td>
-              <form method="POST" action="/staff/checkins/${r.id}/delete" onsubmit="return confirm('¿Borrar esta reserva?');">
-                <button type="submit" class="btn-small danger">Borrar</button>
-              </form>
+              <form method="POST" action="/staff/checkins/${r.id}/delete"
+      onsubmit="return confirm('¿Seguro que quieres borrar esta reserva?');">
+  <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+  <button type="submit" class="btn-small danger">Borrar</button>
+</form>
             </td>
           </tr>
         `;
@@ -2419,7 +2421,37 @@ app.get("/staff/checkins", async (req, res) => {
     `));
   }
 });
+// ===================== BORRAR RESERVA DESDE STAFF =====================
+app.post("/staff/checkins/:id/delete", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id || isNaN(id)) {
+      return res.status(400).send("ID inválido");
+    }
 
+    // Opcional: confirmar que la reserva existe
+    const check = await pool.query(`SELECT id FROM checkins WHERE id = $1`, [id]);
+    if (check.rowCount === 0) {
+      return res.status(404).send("Reserva no encontrada");
+    }
+
+    // Borrar la reserva
+    await pool.query(`DELETE FROM checkins WHERE id = $1`, [id]);
+
+    // Redirigir de vuelta a la lista (o a donde venía)
+    const returnTo = req.body.returnTo || req.get("referer") || "/staff/checkins";
+    res.redirect(returnTo);
+  } catch (e) {
+    console.error("Error borrando reserva:", e);
+    res.status(500).send(renderPage("Error", `
+      <div class="card">
+        <h1 style="color:#991b1b;">❌ Error al borrar</h1>
+        <p>No se pudo borrar la reserva.</p>
+        <p><a href="/staff/checkins" class="btn-link">Volver a la lista</a></p>
+      </div>
+    `));
+  }
+});
 // ===================== ADMIN: LOCK CODE SAVE (REPLACE, NOT APPEND) =====================
 app.post("/staff/checkins/:id/lock", async (req, res) => {
   const id = Number(req.params.id);
@@ -2776,6 +2808,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
