@@ -260,11 +260,40 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
     const body = String(req.body.Body || "").trim();
     const phone = from.replace("whatsapp:", "").trim(); // "+34..."
     const textUpper = body.toUpperCase();
+    // ✅ session helpers: phone -> last linked checkin
+const getSessionCheckin = async () => {
+  const q = await pool.query(
+    `
+    SELECT c.*
+    FROM whatsapp_sessions ws
+    JOIN checkins c ON c.id = ws.checkin_id
+    WHERE ws.phone = $1
+    ORDER BY ws.updated_at DESC
+    LIMIT 1
+    `,
+    [phone]
+  );
+  return q.rows[0] || null;
+};
+
+const setSessionCheckin = async (checkinId) => {
+  await pool.query(
+    `
+    INSERT INTO whatsapp_sessions (phone, checkin_id, created_at, updated_at)
+    VALUES ($1, $2, NOW(), NOW())
+    ON CONFLICT (phone)
+    DO UPDATE SET
+      checkin_id = EXCLUDED.checkin_id,
+      updated_at = NOW()
+    `,
+    [phone, checkinId]
+  );
+};
 
     console.log("📩 Twilio WhatsApp inbound:", { from, body });
 
     // ✅ helper: получить последнюю бронь по телефону (для REGOK / PAYOK / LISTO)
-const getLastCheckinByPhone = async () => {
+/*const getLastCheckinByPhone = async () => {
   const q = await pool.query(
     `
     SELECT c.*
@@ -276,7 +305,8 @@ const getLastCheckinByPhone = async () => {
     [phone]
   );
   return q.rows[0] || null;
-};
+};*/
+   
     const getSessionCheckin = async (phone) => {
   const q = await pool.query(
     `
@@ -440,15 +470,21 @@ START ${bookingId}`
 
   const r = bookingResult.rows[0];
 
+  // ✅ bind session so this phone can continue with REGOK/PAYOK/LISTO
+await setSessionCheckin(r.id);
+
+// ✅ optional: store phone only if empty (do not overwrite)
+await pool.query(
+  `
+  UPDATE checkins
+  SET phone = COALESCE(NULLIF(phone, ''), $1)
+  WHERE id = $2
+  `,
+  [phone, r.id]
+);
+
   // 🔐 Привязываем телефон, ТОЛЬКО если его ещё нет
-  await pool.query(
-    `
-    UPDATE checkins
-    SET phone = COALESCE(NULLIF(phone, ''), $1)
-    WHERE id = $2
-    `,
-    [phone, r.id]
-  );
+ 
 
   // ⬇️ дальше твой код отправки сообщения (без изменений)
 // }
@@ -2925,6 +2961,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
