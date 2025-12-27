@@ -404,6 +404,14 @@ START_${bookingId}`
       }
 
       const r = bookingResult.rows[0];
+
+      if (!r || !r.id) {
+  await sendWhatsApp(
+    from,
+    "No encuentro tu reserva todavía. Verifica el número y vuelve a enviar START_XXXX"
+  );
+  return res.status(200).send("OK");
+}
       // после того как нашли r (checkin)
 await pool.query(
   `
@@ -2876,6 +2884,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
