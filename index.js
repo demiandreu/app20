@@ -2351,9 +2351,9 @@ app.get("/staff/checkins", async (req, res) => {
                 </button>
               </form>
             </td>
-                       <td class="apartment-cell ${aptColorClass(r.apartment_id)}">
-              ${escapeHtml(r.apartment_name || `Apt ${r.apartment_id}` || "Sin nombre")}
-            </td>
+                     <td class="apartment-cell ${aptColorClass(r.apartment_id)}">
+  ${escapeHtml(r.apartment_name || `Apt ${r.apartment_id}` || "Apartamento sin nombre")}
+</td>
                        <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
             <td>${mainDate}</td>
             <td>${calcNights(r.arrival_date, r.departure_date)}</td>
@@ -2808,6 +2808,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
