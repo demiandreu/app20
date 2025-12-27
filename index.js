@@ -2478,12 +2478,10 @@ const checkinRes = await pool.query(
 
    // 2) Load apartment sections (room_id in apartment_sections is tied to the Beds24 room_id)
 // Fallback order: beds24_room_id -> external_room_id -> URL roomId -> apartment_id
+// 2) Load apartment sections (room_id = apartments.id)
 const sectionsRoomId = String(
-  r.beds24_room_id ||
-  r.external_room_id ||
-  roomId ||
-  r.apartment_id ||
-  ""
+  (r.apartment_id && String(r.apartment_id).trim()) ||
+  String(roomId).trim()
 );
 
 const secRes = await pool.query(
@@ -2495,7 +2493,7 @@ const secRes = await pool.query(
     new_media_type,
     new_media_url
   FROM apartment_sections
-  WHERE room_id::text = $1
+  WHERE room_id = $1::int
     AND is_active = true
   ORDER BY sort_order ASC, id ASC
   `,
@@ -2852,9 +2850,22 @@ function aptColorClass(apartmentId) {
           ? `${fmtDate(r.departure_date)} ${fmtTime(r.departure_time)}`
           : `${fmtDate(r.arrival_date)} ${fmtTime(r.arrival_time)}`;
 
-        const guestPortalUrl = `/guest/${r.apartment_id}/${r.booking_reference}`;
+       const guestRoomId = String(r.apartment_id || "");
+const guestToken =
+  String(
+    r.guest_token ||
+    r.guest_booking_id_from_start ||
+    r.guest_booking_id ||
+    r.guest_provider_booking_id ||
+    r.guest_external_booking_id ||
+    (r.guest_beds24_booking_id != null ? String(r.guest_beds24_booking_id) : "") ||
+    r.booking_reference ||
+    ""
+  );
 
-        return `
+const guestPortalUrl = guestRoomId && guestToken
+  ? `/guest/${encodeURIComponent(guestRoomId)}/${encodeURIComponent(guestToken)}`
+  : "#";
           <tr>
             <td class="sticky-col">
               <form method="POST" action="/staff/bookings/${r.id}/clean">
@@ -3256,6 +3267,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
