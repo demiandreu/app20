@@ -1131,217 +1131,219 @@ td form {
   box-sizing: border-box;
   display: block;
 }
-  </style>
+</style>
 </head>
 <body>
-
-<script>
-(function() {
-  'use strict';
-
-  const STORAGE_KEY = 'rcs_table_column_order';
-  let draggedColumn = null;
-  let draggedIndex = null;
-
-  function getColumnOrder() {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : null;
-    } catch (e) {
-      console.error('Failed to load column order:', e);
-      return null;
-    }
-  }
-
-  function saveColumnOrder(order) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
-    } catch (e) {
-      console.error('Failed to save column order:', e);
-    }
-  }
-
-  function getCurrentOrder(table) {
-    const headers = Array.from(table.querySelectorAll('thead th'));
-    return headers.map(th => ({
-      text: th.textContent.trim(),
-      index: Array.from(th.parentNode.children).indexOf(th)
-    }));
-  }
-
-  function reorderColumns(table, order) {
-    const headerRow = table.querySelector('thead tr');
-    const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
-    
-    if (!headerRow) return;
-
-    const oldToNew = {};
-    order.forEach((col, newIdx) => {
-      oldToNew[col.index] = newIdx;
-    });
-
-    const newHeaders = new Array(order.length);
-    Array.from(headerRow.children).forEach((th, oldIdx) => {
-      const newIdx = oldToNew[oldIdx];
-      if (newIdx !== undefined) {
-        newHeaders[newIdx] = th;
-      }
-    });
-    
-    headerRow.innerHTML = '';
-    newHeaders.forEach(th => th && headerRow.appendChild(th));
-
-    bodyRows.forEach(row => {
-      const newCells = new Array(order.length);
-      Array.from(row.children).forEach((td, oldIdx) => {
-        const newIdx = oldToNew[oldIdx];
-        if (newIdx !== undefined) {
-          newCells[newIdx] = td;
-        }
-      });
-      
-      row.innerHTML = '';
-      newCells.forEach(td => td && row.appendChild(td));
-    });
-  }
-
-  function initDragDrop(table) {
-    const headers = table.querySelectorAll('thead th');
-    
-    headers.forEach((th, index) => {
-      if (th.classList.contains('sticky-col')) {
-        return;
-      }
-
-      th.setAttribute('draggable', 'true');
-
-      th.addEventListener('dragstart', function(e) {
-        draggedColumn = this;
-        draggedIndex = Array.from(this.parentNode.children).indexOf(this);
-        this.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', this.innerHTML);
-      });
-
-      th.addEventListener('dragover', function(e) {
-        if (e.preventDefault) {
-          e.preventDefault();
-        }
-        
-        if (this.classList.contains('sticky-col')) {
-          return false;
-        }
-
-        e.dataTransfer.dropEffect = 'move';
-        
-        if (draggedColumn !== this) {
-          this.classList.add('drag-over');
-        }
-        
-        return false;
-      });
-
-      th.addEventListener('dragenter', function(e) {
-        if (!this.classList.contains('sticky-col') && draggedColumn !== this) {
-          this.classList.add('drag-over');
-        }
-      });
-
-      th.addEventListener('dragleave', function(e) {
-        this.classList.remove('drag-over');
-      });
-
-      th.addEventListener('drop', function(e) {
-        if (e.stopPropagation) {
-          e.stopPropagation();
-        }
-
-        if (this.classList.contains('sticky-col')) {
-          return false;
-        }
-
-        this.classList.remove('drag-over');
-
-        if (draggedColumn !== this) {
-          const dropIndex = Array.from(this.parentNode.children).indexOf(this);
-          const allRows = Array.from(table.querySelectorAll('tbody tr'));
-
-          if (draggedIndex < dropIndex) {
-            this.parentNode.insertBefore(draggedColumn, this.nextSibling);
-          } else {
-            this.parentNode.insertBefore(draggedColumn, this);
-          }
-
-          allRows.forEach(row => {
-            const cells = Array.from(row.children);
-            const draggedCell = cells[draggedIndex];
-            const dropCell = cells[dropIndex];
-
-            if (draggedCell && dropCell) {
-              if (draggedIndex < dropIndex) {
-                row.insertBefore(draggedCell, dropCell.nextSibling);
-              } else {
-                row.insertBefore(draggedCell, dropCell);
-              }
-            }
-          });
-
-          const newOrder = getCurrentOrder(table);
-          saveColumnOrder(newOrder);
-        }
-
-        return false;
-      });
-
-      th.addEventListener('dragend', function(e) {
-        this.classList.remove('dragging');
-        
-        headers.forEach(header => {
-          header.classList.remove('drag-over');
-        });
-
-        draggedColumn = null;
-        draggedIndex = null;
-      });
-    });
-  }
-
-  function init() {
-    const tables = document.querySelectorAll('table');
-    
-    tables.forEach(table => {
-      const savedOrder = getColumnOrder();
-      if (savedOrder && savedOrder.length > 0) {
-        try {
-          reorderColumns(table, savedOrder);
-        } catch (e) {
-          console.error('Failed to apply saved column order:', e);
-        }
-      }
-
-      initDragDrop(table);
-    });
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-
-  window.resetColumnOrder = function() {
-    localStorage.removeItem(STORAGE_KEY);
-    location.reload();
-  };
-
-  console.log('✅ Draggable columns initialized');
-})();
-</script>
   <div class="page">
     <div class="card">
       ${innerHtml}
     </div>
   </div>
+
+  <!-- Script AFTER content -->
+  <script>
+  (function() {
+    'use strict';
+
+    const STORAGE_KEY = 'rcs_table_column_order';
+    let draggedColumn = null;
+    let draggedIndex = null;
+
+    function getColumnOrder() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        return stored ? JSON.parse(stored) : null;
+      } catch (e) {
+        console.error('Failed to load column order:', e);
+        return null;
+      }
+    }
+
+    function saveColumnOrder(order) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+      } catch (e) {
+        console.error('Failed to save column order:', e);
+      }
+    }
+
+    function getCurrentOrder(table) {
+      const headers = Array.from(table.querySelectorAll('thead th'));
+      return headers.map(th => ({
+        text: th.textContent.trim(),
+        index: Array.from(th.parentNode.children).indexOf(th)
+      }));
+    }
+
+    function reorderColumns(table, order) {
+      const headerRow = table.querySelector('thead tr');
+      const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
+      
+      if (!headerRow) return;
+
+      const oldToNew = {};
+      order.forEach((col, newIdx) => {
+        oldToNew[col.index] = newIdx;
+      });
+
+      const newHeaders = new Array(order.length);
+      Array.from(headerRow.children).forEach((th, oldIdx) => {
+        const newIdx = oldToNew[oldIdx];
+        if (newIdx !== undefined) {
+          newHeaders[newIdx] = th;
+        }
+      });
+      
+      headerRow.innerHTML = '';
+      newHeaders.forEach(th => th && headerRow.appendChild(th));
+
+      bodyRows.forEach(row => {
+        const newCells = new Array(order.length);
+        Array.from(row.children).forEach((td, oldIdx) => {
+          const newIdx = oldToNew[oldIdx];
+          if (newIdx !== undefined) {
+            newCells[newIdx] = td;
+          }
+        });
+        
+        row.innerHTML = '';
+        newCells.forEach(td => td && row.appendChild(td));
+      });
+    }
+
+    function initDragDrop(table) {
+      const headers = table.querySelectorAll('thead th');
+      
+      headers.forEach((th, index) => {
+        if (th.classList.contains('sticky-col')) {
+          return;
+        }
+
+        th.setAttribute('draggable', 'true');
+
+        th.addEventListener('dragstart', function(e) {
+          draggedColumn = this;
+          draggedIndex = Array.from(this.parentNode.children).indexOf(this);
+          this.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/html', this.innerHTML);
+        });
+
+        th.addEventListener('dragover', function(e) {
+          if (e.preventDefault) {
+            e.preventDefault();
+          }
+          
+          if (this.classList.contains('sticky-col')) {
+            return false;
+          }
+
+          e.dataTransfer.dropEffect = 'move';
+          
+          if (draggedColumn !== this) {
+            this.classList.add('drag-over');
+          }
+          
+          return false;
+        });
+
+        th.addEventListener('dragenter', function(e) {
+          if (!this.classList.contains('sticky-col') && draggedColumn !== this) {
+            this.classList.add('drag-over');
+          }
+        });
+
+        th.addEventListener('dragleave', function(e) {
+          this.classList.remove('drag-over');
+        });
+
+        th.addEventListener('drop', function(e) {
+          if (e.stopPropagation) {
+            e.stopPropagation();
+          }
+
+          if (this.classList.contains('sticky-col')) {
+            return false;
+          }
+
+          this.classList.remove('drag-over');
+
+          if (draggedColumn !== this) {
+            const dropIndex = Array.from(this.parentNode.children).indexOf(this);
+            const allRows = Array.from(table.querySelectorAll('tbody tr'));
+
+            if (draggedIndex < dropIndex) {
+              this.parentNode.insertBefore(draggedColumn, this.nextSibling);
+            } else {
+              this.parentNode.insertBefore(draggedColumn, this);
+            }
+
+            allRows.forEach(row => {
+              const cells = Array.from(row.children);
+              const draggedCell = cells[draggedIndex];
+              const dropCell = cells[dropIndex];
+
+              if (draggedCell && dropCell) {
+                if (draggedIndex < dropIndex) {
+                  row.insertBefore(draggedCell, dropCell.nextSibling);
+                } else {
+                  row.insertBefore(draggedCell, dropCell);
+                }
+              }
+            });
+
+            const newOrder = getCurrentOrder(table);
+            saveColumnOrder(newOrder);
+          }
+
+          return false;
+        });
+
+        th.addEventListener('dragend', function(e) {
+          this.classList.remove('dragging');
+          
+          headers.forEach(header => {
+            header.classList.remove('drag-over');
+          });
+
+          draggedColumn = null;
+          draggedIndex = null;
+        });
+      });
+    }
+
+    function init() {
+      const tables = document.querySelectorAll('table');
+      
+      tables.forEach(table => {
+        const savedOrder = getColumnOrder();
+        if (savedOrder && savedOrder.length > 0) {
+          try {
+            reorderColumns(table, savedOrder);
+          } catch (e) {
+            console.error('Failed to apply saved column order:', e);
+          }
+        }
+
+        initDragDrop(table);
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+
+    window.resetColumnOrder = function() {
+      localStorage.removeItem(STORAGE_KEY);
+      location.reload();
+    };
+
+    console.log('✅ Draggable columns initialized');
+  })();
+  </script>
+
 </body>
 </html>`;
 }
@@ -3091,6 +3093,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
