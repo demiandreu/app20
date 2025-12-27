@@ -1243,6 +1243,7 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     res.send(renderPage("Sync Bookings", `
       <h1>✅ Sync completado</h1>
       <p>Se procesaron <strong>${synced}</strong> reservas de Beds24.</p>
+      
       <p><a href="/staff/checkins">Ver lista de check-ins</a></p>
       <p><a href="/manager">← Volver al manager</a></p>
     `));
@@ -2605,56 +2606,59 @@ app.post("/staff/checkins/:id/clean", async (req, res) => {
 });
 
 // ===================== MANAGER SETTINGS =====================
-app.get("/manager/channels/bookings", async (req, res) => {
+// ===================== MANAGER: Sync Bookings manual =====================
+app.get("/manager/channels/bookingssync", async (req, res) => {
   try {
-    const from = String(req.query.from || "2025-01-01");
-    const to = String(req.query.to || "2026-12-31");
+    // Cambia '203178' por tu property_external_id si tienes varios
+    const propertyId = "203178";
 
-    const roomId = String(req.query.roomId || "").trim();
+    const accessToken = await getBeds24AccessToken(propertyId);
 
-    const q = roomId
-      ? `
-        SELECT beds24_room_id, beds24_prop_key, apartment_name
-        FROM beds24_rooms
-        WHERE beds24_room_id = $1 AND beds24_prop_key IS NOT NULL
-        LIMIT 1
-      `
-      : `
-        SELECT beds24_room_id, beds24_prop_key, apartment_name
-        FROM beds24_rooms
-        WHERE is_active = true AND beds24_prop_key IS NOT NULL
-        ORDER BY apartment_name ASC
-        LIMIT 1
-      `;
+    // Puedes agregar filtros: ?modifiedSince=2025-01-01 o ?includeCancelled=true
+    const bookingsResp = await fetch("https://beds24.com/api/v2/bookings", {
+      headers: {
+        accept: "application/json",
+        token: accessToken,
+      },
+    });
 
-    const params = roomId ? [roomId] : [];
-    const { rows } = await pool.query(q, params);
-
-    if (!rows.length) {
-      return res.send("❌ No apartment found with beds24_prop_key (set it in /manager/settings/apartments)");
+    if (!bookingsResp.ok) {
+      const text = await bookingsResp.text();
+      throw new Error(`Error al obtener bookings: ${bookingsResp.status} - ${text.slice(0, 300)}`);
     }
 
-    const apt = rows[0];
-    const propKey = apt.beds24_prop_key;
+    const bookings = await bookingsResp.json();
 
-    const resp = await beds24PostJson(
-      "https://api.beds24.com/json/getBookings",
-      { from, to },
-      propKey
-    );
+    let synced = 0;
+    for (const b of bookings) {
+      const row = mapBeds24BookingToRow(b, b.roomName || "", b.roomId || "");
+      await upsertCheckinFromBeds24(row);
+      synced++;
+    }
 
-    return res.send(`
-      <h2>Bookings</h2>
-      <p>Apartment: ${escapeHtml(apt.apartment_name || "")} (roomId=${escapeHtml(apt.beds24_room_id || "")})</p>
-      <p>from=${escapeHtml(from)} to=${escapeHtml(to)}</p>
-      <pre style="white-space:pre-wrap">${escapeHtml(JSON.stringify(resp, null, 2))}</pre>
-    `);
+    const html = `
+      <div class="card">
+        <h1 style="color:#16a34a;">✅ Sync completado</h1>
+        <p>Se sincronizaron <strong>${synced}</strong> reservas desde Beds24.</p>
+        <p>Fecha: ${new Date().toLocaleString('es-ES')}</p>
+        <hr/>
+        <p><a href="/staff/checkins" class="btn-primary">Ver check-ins actualizados</a></p>
+        <p><a href="/manager" class="btn-link">← Volver al Manager</a></p>
+      </div>
+    `;
+    res.send(renderPage("Sync Bookings", html));
   } catch (e) {
-    console.error("❌ bookings debug error:", e);
-    return res.status(500).send("Bookings failed: " + escapeHtml(e.message || String(e)));
+    console.error("❌ Sync bookings error:", e);
+    const html = `
+      <div class="card">
+        <h1 style="color:#991b1b;">❌ Error en sync</h1>
+        <p>${escapeHtml(e.message || String(e))}</p>
+        <p><a href="/manager" class="btn-link">← Volver</a></p>
+      </div>
+    `;
+    res.status(500).send(renderPage("Error Sync", html));
   }
 });
-
 //vremenno45
 
 app.get("/manager/channels/bookings-all", async (req, res) => {
@@ -2777,7 +2781,6 @@ app.get("/manager", async (req, res) => {
     // 1) global settings (defaults)
     const sRes = await pool.query(`SELECT * FROM app_settings WHERE id = 1 LIMIT 1`);
     const s = sRes.rows[0] || {};
-
     // 2) apartments list
     const listRes = await pool.query(`
       SELECT id, apartment_name, beds24_room_id
@@ -2785,14 +2788,12 @@ app.get("/manager", async (req, res) => {
       ORDER BY apartment_name ASC
     `);
     const apts = listRes.rows || [];
-
     // which apt is selected?
     const selectedIdRaw = req.query.aptId;
     const selectedId =
       selectedIdRaw != null && String(selectedIdRaw).trim() !== ""
         ? Number(selectedIdRaw)
         : (apts[0]?.id ?? null);
-
  // load selected apt
 let apt = null;
 if (selectedId) {
@@ -2807,7 +2808,6 @@ if (selectedId) {
   );
   apt = aptRes.rows[0] || null;
 }
-
     // dropdown html
     const optionsHtml = apts
       .map((r) => {
@@ -2816,16 +2816,13 @@ if (selectedId) {
         return `<option value="${escapeHtml(r.id)}" ${sel}>${escapeHtml(label)}</option>`;
       })
       .join("");
-
     // current values (apt overrides or empty)
     const aptName = apt?.apartment_name ?? "";
     const aptArrive = safeTime(apt?.default_arrival_time);
     const aptDepart = safeTime(apt?.default_departure_time);
-
     const regUrl = apt?.registration_url ?? "";
     const payUrl = apt?.payment_url ?? "";
     const keysUrl = apt?.keys_instructions_url ?? "";
-
     // global defaults (shown for reference)
     const brand = s.brand_name ?? "";
     const defArr = safeTime(s.default_arrival_time) || "17:00";
@@ -2833,71 +2830,88 @@ if (selectedId) {
 
     res.send(`
       <h1>Manager</h1>
-
       <div style="margin-bottom:16px; padding:12px; border:1px solid #ddd;">
         <b>Global defaults</b> (если в апартаменте пусто — можно использовать эти)<br/><br/>
         <form method="POST" action="/manager/defaults/save">
           <label>Brand name</label><br/>
           <input name="brand_name" value="${escapeHtml(brand)}" style="width:320px" /><br/><br/>
-
           <label>Default arrival time</label><br/>
           <input type="time" name="default_arrival_time" value="${escapeHtml(defArr)}" /><br/><br/>
-
           <label>Default departure time</label><br/>
           <input type="time" name="default_departure_time" value="${escapeHtml(defDep)}" /><br/><br/>
-
           <button type="submit">Save defaults</button>
         </form>
       </div>
-
       <div style="margin-bottom:16px; padding:12px; border:1px solid #ddd;">
         <b>Apartment settings</b><br/><br/>
-
         <form method="GET" action="/manager">
           <label>Select apartment</label><br/>
           <select name="aptId" onchange="this.form.submit()" style="width:360px">
             ${optionsHtml}
           </select>
         </form>
-
         <hr style="margin:16px 0;" />
-
         ${
           !apt
             ? `<div>Нет апартаментов в базе (beds24_rooms пустая).</div>`
             : `
           <form method="POST" action="/manager/apartment/save">
             <input type="hidden" name="id" value="${escapeHtml(apt.id)}" />
-          
+         
             <label>Apartment name</label><br/>
             <input name="apartment_name" value="${escapeHtml(aptName)}" style="width:360px" /><br/><br/>
-
             <label>Arrival time (optional)</label><br/>
             <input type="time" name="default_arrival_time" value="${escapeHtml(aptArrive)}" />
             <small style="margin-left:8px;">(если пусто — будет ${escapeHtml(defArr)})</small>
             <br/><br/>
-
             <label>Departure time (optional)</label><br/>
             <input type="time" name="default_departure_time" value="${escapeHtml(aptDepart)}" />
             <small style="margin-left:8px;">(если пусто — будет ${escapeHtml(defDep)})</small>
             <br/><br/>
-
             <label>Registration link</label><br/>
             <input name="registration_url" value="${escapeHtml(regUrl)}" style="width:100%" />
             <br/><small>Можно хранить готовую ссылку под этот апарт.</small><br/><br/>
-
             <label>Payment link (template)</label><br/>
             <input name="payment_url" value="${escapeHtml(payUrl)}" style="width:100%" />
             <br/><small>Шаблон. Например: https://pay.site/checkout?booking={{BOOKING}}</small><br/><br/>
-
             <label>Keys / Instructions link</label><br/>
             <input name="keys_instructions_url" value="${escapeHtml(keysUrl)}" style="width:100%" />
             <br/><small>Ссылка на инструкции/ключи (пока можно пусто).</small><br/><br/>
-
             <button type="submit">Save apartment</button>
           </form>
         `
         }
+      </div>
+
+      <!-- NUEVA SECCIÓN: Quick links -->
+      <div style="margin-top:24px; padding:16px; border:1px solid #ddd; border-radius:12px; background:#f9fafb;">
+        <h3 style="margin:0 0 12px 0;">🔗 Quick links</h3>
+        <ul style="margin:0; padding-left:20px; list-style:none;">
+          <li style="margin:8px 0;">
+            <a href="/manager/apartment/sections?room_id=${apt?.beds24_room_id || ''}" 
+               style="color:#2563eb; text-decoration:none; font-weight:600;">
+               🪗 Manage guest accordion sections ${apt ? `(${escapeHtml(apt.apartment_name)})` : ''}
+            </a>
+          </li>
+          <li style="margin:8px 0;">
+            <a href="/manager/channels/bookingssync" 
+               style="color:#16a34a; text-decoration:none; font-weight:600;">
+               🔄 Sync Bookings (manual)
+            </a>
+          </li>
+          <li style="margin:8px 0;">
+            <a href="/staff/checkins" 
+               style="color:#2563eb; text-decoration:none; font-weight:600;">
+               📋 Staff · Check-ins list
+            </a>
+          </li>
+          <li style="margin:8px 0;">
+            <a href="/debug/beds24" target="_blank"
+               style="color:#9333ea; text-decoration:none; font-weight:600;">
+               🛠 Debug Beds24 API
+            </a>
+          </li>
+        </ul>
       </div>
     `);
   } catch (err) {
@@ -3032,6 +3046,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
