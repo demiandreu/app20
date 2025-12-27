@@ -2224,34 +2224,36 @@ app.get("/staff/checkins", async (req, res) => {
     const wArr = buildWhereFor("b.checkin_date");
     const wDep = buildWhereFor("b.checkout_date");
 
-    // ✅ НОВЫЙ SQL - работает с apartments + bookings
-   const arrivalsRes = await pool.query(`
-  SELECT
-    b.id,
-    b.booking_reference,
-    a.name as apartment_name,        // ← ВАЖНО
-    a.id as apartment_id,             // ← ВАЖНО
-    b.guest_name as full_name,
-    b.guest_phone as phone,
-    b.checkin_date as arrival_date,
-    b.checkin_time as arrival_time,
-    b.checkout_date as departure_date,
-    b.checkout_time as departure_time,
-    b.num_adults as adults,
-    b.num_children as children,
-    b.lock_code,
-    b.lock_code_visible,
-    b.cleaning_completed as clean_ok
-  FROM bookings b
-  JOIN apartments a ON a.id = b.apartment_id   // ← ВАЖНО: JOIN
-  WHERE b.is_cancelled = false
-    ${wArr.whereSql ? " AND " + wArr.whereSql.substring(6) : ""}
-  ORDER BY b.checkin_date ASC, b.checkin_time ASC, b.id DESC
-  LIMIT 300
-`);
+    // Arrivals query
+    const arrivalsRes = await pool.query(
+      `
+      SELECT
+        b.id,
+        b.booking_reference,
+        a.name as apartment_name,
+        a.id as apartment_id,
+        b.guest_name as full_name,
+        b.guest_phone as phone,
+        b.checkin_date as arrival_date,
+        b.checkin_time as arrival_time,
+        b.checkout_date as departure_date,
+        b.checkout_time as departure_time,
+        b.num_adults as adults,
+        b.num_children as children,
+        b.lock_code,
+        b.lock_code_visible,
+        b.cleaning_completed as clean_ok
+      FROM bookings b
+      JOIN apartments a ON a.id = b.apartment_id
+      WHERE b.is_cancelled = false
+        ${wArr.whereSql ? " AND " + wArr.whereSql.substring(6) : ""}
+      ORDER BY b.checkin_date ASC, b.checkin_time ASC, b.id DESC
+      LIMIT 300
+      `,
       wArr.params
     );
 
+    // Departures query
     const departuresRes = await pool.query(
       `
       SELECT
@@ -2278,11 +2280,12 @@ app.get("/staff/checkins", async (req, res) => {
       LIMIT 300
       `,
       wDep.params
+    );
 
     const arrivals = arrivalsRes.rows || [];
     const departures = departuresRes.rows || [];
 
-    // Lógica de colores
+    // Color logic
     const yesterdayStr = yesterday;
 
     const { rows: occupiedYesterdayRows } = await pool.query(
@@ -2301,18 +2304,14 @@ app.get("/staff/checkins", async (req, res) => {
       occupiedYesterdayRows.map(r => String(r.apartment_id))
     );
 
- function aptColorClass(apartmentId) {
-  const id = String(apartmentId || "");
-  
-  // ✅ DEBUG: покажи что проверяем
-  console.log("Checking apartment:", id, "in set:", occupiedYesterdaySet.has(id));
-  
-  if (!id) return "";
-  if (occupiedYesterdaySet.has(id)) {
-    return "needs-clean";
-  }
-  return "";
-}
+    function aptColorClass(apartmentId) {
+      const id = String(apartmentId || "");
+      if (!id) return "";
+      if (occupiedYesterdaySet.has(id)) {
+        return "needs-clean";
+      }
+      return "";
+    }
 
     // Toolbar
     const toolbar = `
@@ -2364,7 +2363,9 @@ app.get("/staff/checkins", async (req, res) => {
                 </button>
               </form>
             </td>
-           <td class="apartment-cell ${aptColorClass(r.apartment_id)}" data-apt-id="${r.apartment_id}">
+            <td class="apartment-cell ${aptColorClass(r.apartment_id)}">
+              ${escapeHtml(r.apartment_name || "Sin nombre")}
+            </td>
             <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
             <td>${mainDate}</td>
             <td>${calcNights(r.arrival_date, r.departure_date)}</td>
@@ -2392,7 +2393,7 @@ app.get("/staff/checkins", async (req, res) => {
             </td>
           </tr>
         `;
-      }).join("") : `<tr><td colspan="10" class="muted">No hay registros</td></tr>`;
+      }).join("") : `<tr><td colspan="9" class="muted">No hay registros</td></tr>`;
 
       return `
         <h2 style="margin:24px 0 12px;">${title}</h2>
@@ -2431,56 +2432,6 @@ app.get("/staff/checkins", async (req, res) => {
     `));
   }
 });
-// ===================== BORRAR RESERVA DESDE STAFF =====================
-app.post("/staff/bookings/:id/delete", async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    if (!id || isNaN(id)) {
-      return res.status(400).send("ID inválido");
-    }
-
-    const check = await pool.query(`SELECT id FROM bookings WHERE id = $1`, [id]);
-    if (check.rowCount === 0) {
-      return res.status(404).send("Reserva no encontrada");
-    }
-
-    await pool.query(`DELETE FROM bookings WHERE id = $1`, [id]);
-
-    const returnTo = req.body.returnTo || req.get("referer") || "/staff/checkins";
-    res.redirect(returnTo);
-  } catch (e) {
-    console.error("Error borrando reserva:", e);
-    res.status(500).send(renderPage("Error", `
-      <div class="card">
-        <h1 style="color:#991b1b;">❌ Error al borrar</h1>
-        <p>No se pudo borrar la reserva.</p>
-        <p><a href="/staff/checkins" class="btn-link">Volver a la lista</a></p>
-      </div>
-    `));
-  }
-});
-// ===================== ADMIN: LOCK CODE SAVE (REPLACE, NOT APPEND) =====================
-app.post("/staff/bookings/:id/lock", async (req, res) => {
-  const id = Number(req.params.id);
-  const raw = req.body.lock_code;
-  const last = Array.isArray(raw) ? raw[raw.length - 1] : raw;
-  let lockCode = String(last ?? "").trim();
-  if (req.body.clear === "1") lockCode = "";
-  lockCode = lockCode.replace(/\D/g, "").slice(0, 4);
-
-  try {
-    await pool.query(`UPDATE bookings SET lock_code = $1 WHERE id = $2`, [
-      lockCode || null,
-      id,
-    ]);
-    const back = req.body.returnTo || req.get("referer") || "/staff/checkins";
-    res.redirect(back);
-  } catch (e) {
-    console.error("Lock code update error:", e);
-    res.status(500).send("❌ Cannot update lock code");
-  }
-});
-
 // ===================== ADMIN: SET VISIBILITY =====================
 app.post("/staff/bookings/:id/visibility", async (req, res) => {
   const id = Number(req.params.id);
@@ -2805,6 +2756,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
