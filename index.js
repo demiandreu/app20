@@ -2183,10 +2183,9 @@ app.get("/staff/checkins", async (req, res) => {
     const tomorrow = ymdInTz(new Date(Date.now() + 86400000), tz);
     const yesterday = ymdInTz(new Date(Date.now() - 86400000), tz);
 
-    // ✅ Default: if opened without filters, show "today"
+    // Default: mostrar "hoy" si no hay filtro
     const hasAnyFilter = Boolean(from || to || quickRaw);
     const quickCandidate = hasAnyFilter ? quickRaw : "today";
-
     const quick =
       quickCandidate === "yesterday" ||
       quickCandidate === "today" ||
@@ -2194,10 +2193,8 @@ app.get("/staff/checkins", async (req, res) => {
         ? quickCandidate
         : "";
 
-    // ✅ Приоритет: если quick выбран — он главнее дат
     let fromDate = from;
     let toDate = to;
-
     if (quick) {
       if (quick === "yesterday") {
         fromDate = yesterday;
@@ -2211,13 +2208,10 @@ app.get("/staff/checkins", async (req, res) => {
       }
     }
 
-    // ----------------------------
     // helpers: build WHERE for field
-    // ----------------------------
     function buildWhereFor(fieldName) {
       const where = [];
       const params = [];
-
       if (fromDate) {
         params.push(fromDate);
         where.push(`${fieldName} >= $${params.length}`);
@@ -2226,63 +2220,44 @@ app.get("/staff/checkins", async (req, res) => {
         params.push(toDate);
         where.push(`${fieldName} <= $${params.length}`);
       }
-
       const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
       return { whereSql, params };
     }
 
-     function aptColor(apartmentId) {
-  // временно ничего не красим для arrivals — только для departures сделаем отдельно
-  return "";
-}
-     function aptColorById(apartmentId) {
-  const id = String(apartmentId || "");
-  if (!id) return "";
-
-  // если сегодня есть выезд — красный (уборка нужна)
-  if (departSet.has(id)) return "red";
-
-  // если сегодня НЕТ выезда и НЕТ заезда — считаем “вчера пусто” -> зелёный
-  // (это приближение. идеальную проверку “вчера пусто” сделаем следующим шагом через запрос на вчерашние брони)
-  if (!arriveSet.has(id)) return "green";
-
-  return "";
-}
+    // ----------------------------
+    // ARRIVALS query
+    // ----------------------------
+    const wArr = buildWhereFor("arrival_date");
+    const arrivalsRes = await pool.query(
+      `
+      SELECT
+        id,
+        beds24_booking_id,
+        apartment_name,
+        apartment_id,
+        booking_token,
+        full_name,
+        phone,
+        arrival_date,
+        arrival_time,
+        departure_date,
+        departure_time,
+        adults,
+        children,
+        lock_code,
+        lock_visible,
+        clean_ok
+      FROM checkins
+      WHERE cancelled IS DISTINCT FROM true
+        ${wArr.whereSql ? "AND " + wArr.whereSql : ""}
+      ORDER BY arrival_date ASC, arrival_time ASC, id DESC
+      LIMIT 300
+      `,
+      wArr.params
+    );
 
     // ----------------------------
-    // ARRIVALS query (arrival_date)
-    // ----------------------------
-// En arrivals query
-const arrivalsRes = await pool.query(
-  `
-  SELECT
-    id,
-    beds24_booking_id,
-    apartment_name,
-    apartment_id,
-    booking_token,
-    full_name,
-    phone,
-    arrival_date,
-    arrival_time,
-    departure_date,
-    departure_time,
-    adults,
-    children,
-    lock_code,
-    lock_visible,
-    clean_ok
-  FROM checkins
-  WHERE cancelled IS DISTINCT FROM true  -- NUEVA LÍNEA: oculta canceladas
-    ${wArr.whereSql}
-  ORDER BY arrival_date ASC, arrival_time ASC, id DESC
-  LIMIT 300
-  `,
-  wArr.params
-);
-
-    // ----------------------------
-    // DEPARTURES query (departure_date)
+    // DEPARTURES query
     // ----------------------------
     const wDep = buildWhereFor("departure_date");
     const departuresRes = await pool.query(
@@ -2305,7 +2280,8 @@ const arrivalsRes = await pool.query(
         lock_visible,
         clean_ok
       FROM checkins
-      ${wDep.whereSql}
+      WHERE cancelled IS DISTINCT FROM true
+        ${wDep.whereSql ? "AND " + wDep.whereSql : ""}
       ORDER BY departure_date ASC, departure_time ASC, id DESC
       LIMIT 300
       `,
@@ -2315,218 +2291,128 @@ const arrivalsRes = await pool.query(
     const arrivals = arrivalsRes.rows || [];
     const departures = departuresRes.rows || [];
 
-     // ===== apartment color (safe) =====
+    // Color apartamentos: rojo = salida hoy, verde = libre hoy
+    const departTodaySet = new Set(
+      departures
+        .filter((r) => String(r.departure_date || "").slice(0, 10) === today)
+        .map((r) => String(r.apartment_id))
+    );
+    const arriveTodaySet = new Set(
+      arrivals.map((r) => String(r.apartment_id))
+    );
 
-// 1) квартиры с выездом СЕГОДНЯ -> red
-const depTodaySet = new Set(
-  departures
-    .filter(r => String(r.departure_date || "").slice(0, 10) === today)
-    .map(r => String(r.apartment_id))
-);
+    function aptColorClass(apartmentId) {
+      const id = String(apartmentId || "");
+      if (departTodaySet.has(id)) return "red";    // salida hoy → necesita limpieza
+      if (!arriveTodaySet.has(id)) return "green"; // sin llegada hoy → limpio y libre
+      return "";
+    }
 
-// 2) квартиры, которые были заняты ВЧЕРА (чтобы понять "пусто/не пусто")
-const { rows: occ } = await pool.query(
-  `
-  SELECT DISTINCT apartment_id
-  FROM checkins
-  WHERE cancelled IS DISTINCT FROM true
-    AND arrival_date <= $1::date
-    AND departure_date > $1::date
-  `,
-  [yesterday]
-);
-const occupiedYesterdaySet = new Set(occ.map(r => String(r.apartment_id)));
-
-// 3) функция цвета для таблицы
-function aptColor(apartmentId) {
-  const id = String(apartmentId || "");
-  if (!id) return "";
-  if (depTodaySet.has(id)) return "red";
-  if (!occupiedYesterdaySet.has(id)) return "green";
-  return "";
-}
-
-   // 1) какие квартиры выезжают сегодня (значит убирать) -> красный
-const departSet = new Set(departures.map(r => String(r.apartment_id)));
-
-// 2) какие квартиры приезжают сегодня
-const arriveSet = new Set(arrivals.map(r => String(r.apartment_id)));
-
-function aptColorById(apartmentId) {
-  const id = String(apartmentId || "");
-  if (departSet.has(id)) return "red";          // есть выезд -> красный
-  if (!arriveSet.has(id)) return "green";       // нет заезда (и нет выезда) -> зелёный
-  return "";
-}
-
-    // ----------------------------
-    // UI Toolbar (общий диапазон дат)
-    // ----------------------------
+    // Toolbar en español
     const toolbar = `
-      <h1>Staff • Arrivals & Departures</h1>
-      <p class="muted">Choose date range (Spain timezone)</p>
-
-      <form class="toolbar" method="GET" action="/staff/checkins">
-        <div>
-          <label>Date range (from → to)</label>
-          <div style="display:flex; gap:6px; align-items:center;">
-            <input type="date" name="from" value="${fromDate || ""}" style="max-width:140px;" />
-            <span style="opacity:0.6;">→</span>
-            <input type="date" name="to" value="${toDate || ""}" style="max-width:140px;" />
+      <h1>Staff · Llegadas y Salidas</h1>
+      <p class="muted">Zona horaria: España (${tz})</p>
+      <form method="GET" action="/staff/checkins" style="margin:16px 0;">
+        <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
+          <div>
+            <label>Desde</label>
+            <input type="date" name="from" value="${fromDate || ""}" />
+          </div>
+          <div>
+            <label>Hasta</label>
+            <input type="date" name="to" value="${toDate || ""}" />
+          </div>
+          <div>
+            <button type="submit" class="btn-primary">Filtrar</button>
+            <a href="/staff/checkins" class="btn-link">Reset</a>
           </div>
         </div>
-
-        <div style="display:flex; gap:10px; align-items:flex-end;">
-          <button class="btn-base" type="submit">Show</button>
-          <a class="btn-link" href="/staff/checkins">Reset</a>
-        </div>
-
-        <div style="flex-basis:100%; height:8px;"></div>
-
-        <div>
-          <p class="muted" style="margin:0 0 8px;">Quick filters</p>
+        <div style="margin-top:12px;">
+          <p class="muted" style="margin:0 0 8px;">Filtros rápidos</p>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <a class="btn-base ${quick === "yesterday" ? "btn-ghost" : ""}" href="/staff/checkins?quick=yesterday">Yesterday</a>
-            <a class="btn-base ${quick === "today" ? "btn-ghost" : ""}" href="/staff/checkins?quick=today">Today</a>
-            <a class="btn-base ${quick === "tomorrow" ? "btn-ghost" : ""}" href="/staff/checkins?quick=tomorrow">Tomorrow</a>
+            <a href="?quick=yesterday" class="btn-base ${quick === "yesterday" ? "btn-success" : ""}">Ayer</a>
+            <a href="?quick=today" class="btn-base ${quick === "today" ? "btn-success" : ""}">Hoy</a>
+            <a href="?quick=tomorrow" class="btn-base ${quick === "tomorrow" ? "btn-success" : ""}">Mañana</a>
           </div>
         </div>
       </form>
     `;
 
-    
-// 2) квартиры, которые были ЗАНЯТЫ ВЧЕРА
-const { rows: occ2 } = await pool.query(
-  `
-  SELECT DISTINCT apartment_id
-  FROM checkins
-  WHERE cancelled IS DISTINCT FROM true
-    AND arrival_date <= $1::date
-    AND departure_date > $1::date
-  `,
-  [yesterday]
-);
-     
-// 3) функция цвета для таблицы
-function aptColor(apartmentId) {
-  const id = String(apartmentId);
-
-  if (depTodaySet.has(id)) return "red";
-  if (!occupiedYesterdaySet.has(id)) return "green";
-  return "";
-}
-
-
-    // ----------------------------
-    // Table renderer (одна функция для обеих таблиц)
-    // mode: "arrivals" | "departures"
-    // ----------------------------
+    // Render table (en español)
     function renderTable(rows, mode) {
-      const title =
-        mode === "departures"
-          ? `Departures <span class="muted">(${rows.length})</span>`
-          : `Arrivals <span class="muted">(${rows.length})</span>`;
+      const title = mode === "departures" 
+        ? `Salidas <span class="muted">(${rows.length})</span>`
+        : `Llegadas <span class="muted">(${rows.length})</span>`;
+      const dateColTitle = mode === "departures" ? "Salida" : "Llegada";
 
-      const dateColTitle = mode === "departures" ? "Depart" : "Arrive";
+      const tbody = rows.length
+        ? rows
+            .map((r) => {
+              const mainDate = mode === "departures"
+                ? `${fmtDate(r.departure_date)} ${fmtTime(r.departure_time)}`
+                : `${fmtDate(r.arrival_date)} ${fmtTime(r.arrival_time)}`;
 
-      const tbody =
-        rows.length
-          ? rows
-              .map((r) => {
-                const arrive = `${String(r.arrival_date).slice(0, 10)} ${String(r.arrival_time).slice(0, 5)}`;
-                const depart = `${String(r.departure_date).slice(0, 10)} ${String(r.departure_time).slice(0, 5)}`;
-                const mainDate = mode === "departures" ? depart : arrive;
-
-                return `
-                  <tr>
-                    <td class="sticky-col">
-                      <form method="POST" action="/staff/checkins/${r.id}/clean">
-                        <button
-                          type="submit"
-                          class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}"
-                          title="${r.clean_ok ? "Clean" : "Not clean"}"
-                        >
-                          ${r.clean_ok ? "✓" : ""}
-                        </button>
-                      </form>
-                    </td>
-
-                    <td>${r.booking_token ?? ""}</td>
-                    <td class="apartment-cell ${aptColorById(r.apartment_id)}">
-  ${r.apartment_name ?? ""}
-</td>
-                    <td>${(r.adults ?? 0)}|${(r.children ?? 0)}</td>
-                    <td>${mainDate}</td>
-
-<td>${calcNights(r.arrival_date, r.departure_date)}</td> <!-- N -->
-
-<td>
-
-  <a class="btn-small btn-ghost"
-
-     href="/guest/${r.apartment_id}/${r.booking_token}"
-
-     target="_blank">
-
-    Open
-
-  </a>
-
-</td>               
-
-                    <td>
-                      <form method="POST" action="/staff/checkins/${r.id}/lock" class="lock-form">
-                        <input
-                          class="lock-input"
-                          name="lock_code"
-                          value="${r.lock_code ?? ""}"
-                          inputmode="numeric"
-                          pattern="\\d{4}"
-                          maxlength="4"
-                          placeholder=""
-                        />
-                        <button class="btn-base" type="submit">Save</button>
-                      </form>
-                    </td>
-
-                    <td>
-                      <form method="POST" action="/staff/checkins/${r.id}/visibility" class="vis-form">
-                        <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "🔓 YES" : "🔒 NO"}</span>
-                        <button class="btn-small ${r.lock_visible ? "btn-ghost" : ""}" type="submit" name="makeVisible" value="${r.lock_visible ? "0" : "1"}">
-                          ${r.lock_visible ? "Hide" : "Show"}
-                        </button>
-                      </form>
-                    </td>
-
-                    <td>
-                      <form method="POST" action="/staff/checkins/${r.id}/delete"
-                        onsubmit="return confirm('Are you sure you want to delete this booking?');">
-                        <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
-                        <button class="btn-small btn-ghost" type="submit">Delete</button>
-                      </form>
-                    </td>
-                  </tr>
-                `;
-              })
-              .join("")
-          : `<tr><td colspan="12" class="muted">No records</td></tr>`;
+              return `
+                <tr>
+                  <td class="sticky-col">
+                    <form method="POST" action="/staff/checkins/${r.id}/clean">
+                      <button type="submit" class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}">
+                        ${r.clean_ok ? "✓" : ""}
+                      </button>
+                    </form>
+                  </td>
+                  <td>${r.booking_token || ""}</td>
+                  <td class="apartment-cell ${aptColorClass(r.apartment_id)}">${escapeHtml(r.apartment_name || "")}</td>
+                  <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
+                  <td>${mainDate}</td>
+                  <td>${calcNights(r.arrival_date, r.departure_date)}</td>
+                  <td>
+                    <a class="btn-small btn-ghost" href="/guest/${r.apartment_id}/${r.booking_token}" target="_blank">
+                      Abrir
+                    </a>
+                  </td>
+                  <td>
+                    <form method="POST" action="/staff/checkins/${r.id}/lock" class="lock-form">
+                      <input class="lock-input" name="lock_code" value="${r.lock_code || ""}" placeholder="0000" />
+                      <button type="submit" class="btn-small">Guardar</button>
+                    </form>
+                  </td>
+                  <td>
+                    <form method="POST" action="/staff/checkins/${r.id}/visibility" class="vis-form">
+                      <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "Sí" : "No"}</span>
+                      <button type="submit" class="btn-small ${r.lock_visible ? "btn-ghost" : ""}">
+                        ${r.lock_visible ? "Ocultar" : "Mostrar"}
+                      </button>
+                    </form>
+                  </td>
+                  <td>
+                    <form method="POST" action="/staff/checkins/${r.id}/delete"
+                          onsubmit="return confirm('¿Borrar esta reserva?');">
+                      <button type="submit" class="btn-small danger">Borrar</button>
+                    </form>
+                  </td>
+                </tr>
+              `;
+            })
+            .join("")
+        : `<tr><td colspan="10" class="muted">No hay registros</td></tr>`;
 
       return `
-        <h2 style="margin:18px 0 10px;">${title}</h2>
+        <h2 style="margin:24px 0 12px;">${title}</h2>
         <div class="table-wrap">
-          <table>
+          <table class="table-compact">
             <thead>
               <tr>
-                <th class="sticky-col">Clean</th>
-                <th>Id</th>
-                <th>Apartment</th>
+                <th class="sticky-col">Limpieza</th>
+                <th>ID</th>
+                <th>Apartamento</th>
                 <th>A|C</th>
                 <th>${dateColTitle}</th>
-                <th>N</th>
-                <th>Guest</th>
-                <th>Lock code</th>
+                <th>Noches</th>
+                <th>Huésped</th>
+                <th>Código caja</th>
                 <th>Visible</th>
-                <th>Delete</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>${tbody}</tbody>
@@ -2535,17 +2421,21 @@ function aptColor(apartmentId) {
       `;
     }
 
- const pageHtml =
-  toolbar +
-  renderTable(arrivals, "arrivals") +
-  `<div style="height:18px;"></div>` +
-  renderTable(departures, "departures");
+    const pageHtml = toolbar +
+      renderTable(arrivals, "arrivals") +
+      `<div style="height:24px;"></div>` +
+      renderTable(departures, "departures");
 
-// ✅ title тоже исправляем
-return res.send(renderPage("Staff • Arrivals & Departures", pageHtml));
+    res.send(renderPage("Staff · Llegadas y Salidas", pageHtml));
   } catch (e) {
     console.error("Staff list error:", e);
-    res.status(500).send("❌ Cannot load checkins");
+    res.status(500).send(renderPage("Error", `
+      <div class="card">
+        <h1 style="color:#991b1b;">❌ No se pudieron cargar los check-ins</h1>
+        <p>${escapeHtml(e.message || String(e))}</p>
+        <p><a href="/staff/checkins" class="btn-link">Recargar</a></p>
+      </div>
+    `));
   }
 });
 
@@ -2923,6 +2813,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
