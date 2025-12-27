@@ -452,7 +452,7 @@ START ${bookingId}`
 
   // ⬇️ дальше твой код отправки сообщения (без изменений)
 }
-      const r = bookingResult.rows[0];
+     // const r = bookingResult.rows[0];
 
       if (!r || !r.id) {
   await sendWhatsApp(
@@ -2933,6 +2933,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
