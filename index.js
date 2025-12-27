@@ -2188,6 +2188,7 @@ const bodyHtml = escapeHtml(rawBody)
   }
 });
 // --- LIST + FILTER ---
+// ===================== STAFF: CHECKINS LIST (FIXED) =====================
 app.get("/staff/checkins", async (req, res) => {
   try {
     const { from, to, quick: quickRaw } = req.query;
@@ -2224,37 +2225,61 @@ app.get("/staff/checkins", async (req, res) => {
       return { whereSql, params };
     }
 
-    // DEFINIR wArr y wDep ANTES de usarlos
-    const wArr = buildWhereFor("arrival_date");
-    const wDep = buildWhereFor("departure_date");
+    const wArr = buildWhereFor("b.checkin_date");
+    const wDep = buildWhereFor("b.checkout_date");
 
-    // ARRIVALS
+    // ✅ НОВЫЙ SQL - работает с apartments + bookings
     const arrivalsRes = await pool.query(
       `
       SELECT
-        id, beds24_booking_id, apartment_name, apartment_id, booking_token,
-        full_name, phone, arrival_date, arrival_time, departure_date, departure_time,
-        adults, children, lock_code, lock_visible, clean_ok
-      FROM checkins
-      WHERE cancelled IS DISTINCT FROM true
+        b.id,
+        b.booking_reference,
+        a.name as apartment_name,
+        a.id as apartment_id,
+        b.guest_name as full_name,
+        b.guest_phone as phone,
+        b.checkin_date as arrival_date,
+        b.checkin_time as arrival_time,
+        b.checkout_date as departure_date,
+        b.checkout_time as departure_time,
+        b.num_adults as adults,
+        b.num_children as children,
+        b.lock_code,
+        b.lock_code_visible,
+        b.cleaning_completed as clean_ok
+      FROM bookings b
+      JOIN apartments a ON a.id = b.apartment_id
+      WHERE b.is_cancelled = false
         ${wArr.whereSql ? " AND " + wArr.whereSql.substring(6) : ""}
-      ORDER BY arrival_date ASC, arrival_time ASC, id DESC
+      ORDER BY b.checkin_date ASC, b.checkin_time ASC, b.id DESC
       LIMIT 300
       `,
       wArr.params
     );
 
-    // DEPARTURES
     const departuresRes = await pool.query(
       `
       SELECT
-        id, beds24_booking_id, apartment_name, apartment_id, booking_token,
-        full_name, phone, arrival_date, arrival_time, departure_date, departure_time,
-        adults, children, lock_code, lock_visible, clean_ok
-      FROM checkins
-      WHERE cancelled IS DISTINCT FROM true
+        b.id,
+        b.booking_reference,
+        a.name as apartment_name,
+        a.id as apartment_id,
+        b.guest_name as full_name,
+        b.guest_phone as phone,
+        b.checkin_date as arrival_date,
+        b.checkin_time as arrival_time,
+        b.checkout_date as departure_date,
+        b.checkout_time as departure_time,
+        b.num_adults as adults,
+        b.num_children as children,
+        b.lock_code,
+        b.lock_code_visible,
+        b.cleaning_completed as clean_ok
+      FROM bookings b
+      JOIN apartments a ON a.id = b.apartment_id
+      WHERE b.is_cancelled = false
         ${wDep.whereSql ? " AND " + wDep.whereSql.substring(6) : ""}
-      ORDER BY departure_date ASC, departure_time ASC, id DESC
+      ORDER BY b.checkout_date ASC, b.checkout_time ASC, b.id DESC
       LIMIT 300
       `,
       wDep.params
@@ -2263,29 +2288,17 @@ app.get("/staff/checkins", async (req, res) => {
     const arrivals = arrivalsRes.rows || [];
     const departures = departuresRes.rows || [];
 
-    // Colores
-       // Lógica de colores para apartamentos
-    // - Salida hoy → fondo gris clarito (necesita limpieza)
-    // - Sin salida ayer → fondo blanco (ya está limpio)
-    // - Llegada hoy → normal (ocupado)
-    const departTodaySet = new Set(
-      departures.filter(r => String(r.departure_date || "").slice(0, 10) === today)
-        .map(r => String(r.apartment_id))
-    );
+    // Lógica de colores
+    const yesterdayStr = yesterday;
 
-    // Para saber si ayer estuvo ocupado: miramos si había salida ayer o llegada que cubre ayer
-      // Lógica de colores según tu explicación
-       // Lógica de colores: gris clarito si ayer estaba ocupado
-    const yesterdayStr = yesterday; // ej: "2025-12-26"
-
-    // Consulta directa a la DB para saber qué apartamentos estaban ocupados AYER
     const { rows: occupiedYesterdayRows } = await pool.query(
       `
-      SELECT DISTINCT apartment_id
-      FROM checkins
-      WHERE cancelled IS DISTINCT FROM true
-        AND arrival_date <= $1::date
-        AND departure_date > $1::date
+      SELECT DISTINCT a.id as apartment_id
+      FROM bookings b
+      JOIN apartments a ON a.id = b.apartment_id
+      WHERE b.is_cancelled = false
+        AND b.checkin_date <= $1::date
+        AND b.checkout_date > $1::date
       `,
       [yesterdayStr]
     );
@@ -2297,15 +2310,13 @@ app.get("/staff/checkins", async (req, res) => {
     function aptColorClass(apartmentId) {
       const id = String(apartmentId || "");
       if (!id) return "";
-
       if (occupiedYesterdaySet.has(id)) {
-        return "needs-clean"; // gris clarito - ayer ocupado → necesita limpieza hoy
+        return "needs-clean";
       }
-
-      return ""; // blanco normal - ayer vacío → ya limpio
+      return "";
     }
 
-    // Toolbar en español
+    // Toolbar
     const toolbar = `
       <h1>Staff · Llegadas y Salidas</h1>
       <p class="muted">Zona horaria: España (Europe/Madrid)</p>
@@ -2334,7 +2345,9 @@ app.get("/staff/checkins", async (req, res) => {
     `;
 
     function renderTable(rows, mode) {
-      const title = mode === "departures" ? `Salidas <span class="muted">(${rows.length})</span>` : `Llegadas <span class="muted">(${rows.length})</span>`;
+      const title = mode === "departures" 
+        ? `Salidas <span class="muted">(${rows.length})</span>` 
+        : `Llegadas <span class="muted">(${rows.length})</span>`;
       const dateColTitle = mode === "departures" ? "Salida" : "Llegada";
 
       const tbody = rows.length ? rows.map(r => {
@@ -2342,42 +2355,44 @@ app.get("/staff/checkins", async (req, res) => {
           ? `${fmtDate(r.departure_date)} ${fmtTime(r.departure_time)}`
           : `${fmtDate(r.arrival_date)} ${fmtTime(r.arrival_time)}`;
 
+        const guestPortalUrl = `/guest/${r.apartment_id}/${r.booking_reference}`;
+
         return `
           <tr>
             <td class="sticky-col">
-              <form method="POST" action="/staff/checkins/${r.id}/clean">
+              <form method="POST" action="/staff/bookings/${r.id}/clean">
                 <button type="submit" class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}">
                   ${r.clean_ok ? "✓" : ""}
                 </button>
               </form>
             </td>
-                     <td class="apartment-cell ${aptColorClass(r.apartment_id)}">
-  ${escapeHtml(r.apartment_name || `Apt ${r.apartment_id}` || "Apartamento sin nombre")}
-</td>
-                       <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
+            <td class="apartment-cell ${aptColorClass(r.apartment_id)}">
+              ${escapeHtml(r.apartment_name || "Sin nombre")}
+            </td>
+            <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
             <td>${mainDate}</td>
             <td>${calcNights(r.arrival_date, r.departure_date)}</td>
-            <td><a class="btn-small btn-ghost" href="/guest/${r.apartment_id}/${r.booking_token}" target="_blank">Abrir</a></td>
+            <td><a class="btn-small btn-ghost" href="${guestPortalUrl}" target="_blank">Abrir</a></td>
             <td>
-              <form method="POST" action="/staff/checkins/${r.id}/lock" class="lock-form">
+              <form method="POST" action="/staff/bookings/${r.id}/lock" class="lock-form">
                 <input class="lock-input" name="lock_code" value="${r.lock_code || ""}" placeholder="0000" />
                 <button type="submit" class="btn-small">Guardar</button>
               </form>
             </td>
             <td>
-              <form method="POST" action="/staff/checkins/${r.id}/visibility" class="vis-form">
-                <span class="pill ${r.lock_visible ? "pill-yes" : "pill-no"}">${r.lock_visible ? "Sí" : "No"}</span>
-                <button type="submit" class="btn-small ${r.lock_visible ? "btn-ghost" : ""}">
-                  ${r.lock_visible ? "Ocultar" : "Mostrar"}
+              <form method="POST" action="/staff/bookings/${r.id}/visibility" class="vis-form">
+                <span class="pill ${r.lock_code_visible ? "pill-yes" : "pill-no"}">${r.lock_code_visible ? "Sí" : "No"}</span>
+                <button type="submit" class="btn-small ${r.lock_code_visible ? "btn-ghost" : ""}">
+                  ${r.lock_code_visible ? "Ocultar" : "Mostrar"}
                 </button>
               </form>
             </td>
             <td>
-              <form method="POST" action="/staff/checkins/${r.id}/delete"
-      onsubmit="return confirm('¿Seguro que quieres borrar esta reserva?');">
-  <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
-  <button type="submit" class="btn-small danger">Borrar</button>
-</form>
+              <form method="POST" action="/staff/bookings/${r.id}/delete"
+                    onsubmit="return confirm('¿Seguro que quieres borrar esta reserva?');">
+                <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+                <button type="submit" class="btn-small danger">Borrar</button>
+              </form>
             </td>
           </tr>
         `;
@@ -2390,7 +2405,6 @@ app.get("/staff/checkins", async (req, res) => {
             <thead>
               <tr>
                 <th class="sticky-col">Limpieza</th>
-                <th>ID</th>
                 <th>Apartamento</th>
                 <th>A|C</th>
                 <th>${dateColTitle}</th>
@@ -2422,23 +2436,20 @@ app.get("/staff/checkins", async (req, res) => {
   }
 });
 // ===================== BORRAR RESERVA DESDE STAFF =====================
-app.post("/staff/checkins/:id/delete", async (req, res) => {
+app.post("/staff/bookings/:id/delete", async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!id || isNaN(id)) {
       return res.status(400).send("ID inválido");
     }
 
-    // Opcional: confirmar que la reserva existe
-    const check = await pool.query(`SELECT id FROM checkins WHERE id = $1`, [id]);
+    const check = await pool.query(`SELECT id FROM bookings WHERE id = $1`, [id]);
     if (check.rowCount === 0) {
       return res.status(404).send("Reserva no encontrada");
     }
 
-    // Borrar la reserva
-    await pool.query(`DELETE FROM checkins WHERE id = $1`, [id]);
+    await pool.query(`DELETE FROM bookings WHERE id = $1`, [id]);
 
-    // Redirigir de vuelta a la lista (o a donde venía)
     const returnTo = req.body.returnTo || req.get("referer") || "/staff/checkins";
     res.redirect(returnTo);
   } catch (e) {
@@ -2453,21 +2464,16 @@ app.post("/staff/checkins/:id/delete", async (req, res) => {
   }
 });
 // ===================== ADMIN: LOCK CODE SAVE (REPLACE, NOT APPEND) =====================
-app.post("/staff/checkins/:id/lock", async (req, res) => {
+app.post("/staff/bookings/:id/lock", async (req, res) => {
   const id = Number(req.params.id);
-
-  // ✅ sometimes body can become array; take last
   const raw = req.body.lock_code;
   const last = Array.isArray(raw) ? raw[raw.length - 1] : raw;
-
   let lockCode = String(last ?? "").trim();
   if (req.body.clear === "1") lockCode = "";
-
-  // ✅ digits only + max 4
   lockCode = lockCode.replace(/\D/g, "").slice(0, 4);
 
   try {
-    await pool.query(`UPDATE checkins SET lock_code = $1 WHERE id = $2`, [
+    await pool.query(`UPDATE bookings SET lock_code = $1 WHERE id = $2`, [
       lockCode || null,
       id,
     ]);
@@ -2480,15 +2486,11 @@ app.post("/staff/checkins/:id/lock", async (req, res) => {
 });
 
 // ===================== ADMIN: SET VISIBILITY =====================
-app.post("/staff/checkins/:id/visibility", async (req, res) => {
+app.post("/staff/bookings/:id/visibility", async (req, res) => {
   const id = Number(req.params.id);
-  const makeVisible = String(req.body.makeVisible) === "1";
-
   try {
-    await pool.query(`UPDATE checkins SET lock_visible = $1 WHERE id = $2`, [
-      makeVisible,
-      id,
-    ]);
+    // Toggle visibility
+    await pool.query(`UPDATE bookings SET lock_code_visible = NOT lock_code_visible WHERE id = $1`, [id]);
     const back = req.body.returnTo || req.get("referer") || "/staff/checkins";
     res.redirect(back);
   } catch (e) {
@@ -2498,11 +2500,10 @@ app.post("/staff/checkins/:id/visibility", async (req, res) => {
 });
 
 // ===================== ADMIN: CLEAN TOGGLE =====================
-app.post("/staff/checkins/:id/clean", async (req, res) => {
+app.post("/staff/bookings/:id/clean", async (req, res) => {
   const id = Number(req.params.id);
-
   try {
-    await pool.query(`UPDATE checkins SET clean_ok = NOT clean_ok WHERE id = $1`, [id]);
+    await pool.query(`UPDATE bookings SET cleaning_completed = NOT cleaning_completed WHERE id = $1`, [id]);
     const back = req.body.returnTo || req.get("referer") || "/staff/checkins";
     res.redirect(back);
   } catch (e) {
@@ -2808,6 +2809,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
