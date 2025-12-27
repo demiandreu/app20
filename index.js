@@ -1,4 +1,4 @@
-// =====================================================
+// ====================================================
 // RCS Guest Portal — Stable organized single-file version
 // (same logic, only reorganized and labeled)
 // =====================================================
@@ -2921,6 +2921,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
