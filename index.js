@@ -2278,7 +2278,6 @@ app.get("/staff/checkins", async (req, res) => {
       LIMIT 300
       `,
       wDep.params
-    );
 
     const arrivals = arrivalsRes.rows || [];
     const departures = departuresRes.rows || [];
@@ -2806,6 +2805,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
