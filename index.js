@@ -760,9 +760,17 @@ function renderPage(title, innerHtml) {
     cursor:pointer;
   }
   
-  /* подсветка ячейки Apartment */
-td.apartment-cell.red { background: #f0f0f0; }
-td.apartment-cell.green { background: #e7ffe7; }
+  .apartment-cell.needs-clean {
+        background: #f0f0f0 !important; /* gris clarito - necesita limpieza */
+        font-weight: 600;
+      }
+      .apartment-cell.clean-ready {
+        background: #e8f5e8 !important; /* verde muy clarito - ya limpio */
+        font-weight: 600;
+      }
+      .apartment-cell {
+        font-weight: 500;
+      }
 
   .clean-btn:focus{ outline:none; }
   .clean-btn.pill-yes{ color:#1a7f37; }
@@ -2248,14 +2256,40 @@ app.get("/staff/checkins", async (req, res) => {
     const departures = departuresRes.rows || [];
 
     // Colores
-    const departTodaySet = new Set(departures.filter(r => String(r.departure_date || "").slice(0, 10) === today).map(r => String(r.apartment_id)));
-    const arriveTodaySet = new Set(arrivals.map(r => String(r.apartment_id)));
+       // Lógica de colores para apartamentos
+    // - Salida hoy → fondo gris clarito (necesita limpieza)
+    // - Sin salida ayer → fondo blanco (ya está limpio)
+    // - Llegada hoy → normal (ocupado)
+    const departTodaySet = new Set(
+      departures.filter(r => String(r.departure_date || "").slice(0, 10) === today)
+        .map(r => String(r.apartment_id))
+    );
+
+    // Para saber si ayer estuvo ocupado: miramos si había salida ayer o llegada que cubre ayer
+    const yesterdayStr = yesterday;
+    const occupiedYesterdaySet = new Set(
+      [...arrivals, ...departures]
+        .filter(r => {
+          const arrive = String(r.arrival_date || "").slice(0, 10);
+          const depart = String(r.departure_date || "").slice(0, 10);
+          return arrive <= yesterdayStr && depart > yesterdayStr;
+        })
+        .map(r => String(r.apartment_id))
+    );
 
     function aptColorClass(apartmentId) {
       const id = String(apartmentId || "");
-      if (departTodaySet.has(id)) return "red";
-      if (!arriveTodaySet.has(id)) return "green";
-      return "";
+      if (!id) return "";
+
+      if (departTodaySet.has(id)) {
+        return "needs-clean"; // gris clarito - necesita limpieza hoy
+      }
+
+      if (!occupiedYesterdaySet.has(id)) {
+        return "clean-ready"; // blanco o verde claro - ya está limpio desde ayer
+      }
+
+      return ""; // normal
     }
 
     // Toolbar en español
@@ -2305,8 +2339,9 @@ app.get("/staff/checkins", async (req, res) => {
               </form>
             </td>
             <td>${r.booking_token || ""}</td>
-            <td class="apartment-cell ${aptColorClass(r.apartment_id)}">${escapeHtml(r.apartment_name || "")}</td>
-            <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
+            <td class="apartment-cell ${aptColorClass(r.apartment_id)}">
+              ${escapeHtml(r.apartment_name || r.apartment_id || "Sin nombre")}
+            </td>            <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
             <td>${mainDate}</td>
             <td>${calcNights(r.arrival_date, r.departure_date)}</td>
             <td><a class="btn-small btn-ghost" href="/guest/${r.apartment_id}/${r.booking_token}" target="_blank">Abrir</a></td>
@@ -2728,6 +2763,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
