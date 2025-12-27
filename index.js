@@ -692,230 +692,384 @@ function renderPage(title, innerHtml) {
   <title>${title}</title>
 
   <style>
-  /* === FORCE ONE-LINE CONTROLS IN TABLE === */
-  .lock-form{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    flex-wrap:nowrap;
-    white-space:nowrap;
-  }
+/* =====================================================
+   RCS GUEST PORTAL - CLEAN CSS
+   No duplicates, proper SaaS architecture
+   ===================================================== */
 
-  .lock-form .btn-small,
-  .lock-form .btn-small.btn-ghost,
-  .lock-form button{
-    white-space:nowrap;
-  }
+/* === ROOT & RESET === */
+:root {
+  color-scheme: light;
+}
 
-  td form{ white-space:nowrap; }
+* {
+  box-sizing: border-box;
+}
 
-  th.sticky-col, td.sticky-col{
-    background: #fff;
-    z-index: 2;
-  }
-  thead th.sticky-col{
-    z-index: 3;
-  }
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f6f7fb;
+  color: #111827;
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
 
-  .table-wrap{
-    overflow-x: auto;
-    position: relative;
-  }
-  table{
-    border-collapse: separate;
-    border-spacing: 0;
-  }
-  .btn-base {
-    height: 34px;
-    min-height: 34px;
-    padding: 0 12px;
-    border-radius: 10px;
-    font-size: 13px;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    border: none;
-    cursor: pointer;
-    white-space: nowrap;
-  }
+/* === LAYOUT === */
+.page {
+  width: 100%;
+  max-width: 1100px;
+  padding: 16px;
+}
 
-  /* Clean button — same style as other small buttons */
-  .clean-btn{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    height:30px;
-    min-width:44px;
-    padding:0 10px;
-    border:0;
-    outline:0;
-    box-shadow:none;
-    appearance:none;
-    border-radius:10px;
-    background:#f2f2f2;
-    font-size:14px;
-    line-height:1;
-    cursor:pointer;
-  }
-  
+.card {
+  background: #fff;
+  border-radius: 18px;
+  padding: 20px 18px 22px;
+  box-shadow: 0 10px 28px rgba(17, 24, 39, 0.08);
+  border: 1px solid #e5e7eb;
+}
+
+/* === TYPOGRAPHY === */
+h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+p {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.muted {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+label {
+  font-size: 13px;
+  display: block;
+  margin-bottom: 4px;
+  color: #374151;
+}
+
+/* === FORM CONTROLS === */
+input,
+select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #111827;
+  font-size: 14px;
+}
+
+input:focus,
+select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.lock-input {
+  width: 72px;
+  min-width: 72px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+}
+
+/* === BUTTONS === */
+.btn-base {
+  height: 34px;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-primary,
+.btn-success,
+.btn {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-weight: 700;
+  font-size: 14px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  margin: 10px;
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.btn-success {
+  background: #16a34a;
+  color: #fff;
+}
+
+.btn-link {
+  background: transparent;
+  color: #2563eb;
+  padding: 0;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.btn-small {
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  background: #2563eb;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.btn-small.danger {
+  background: #dc2626;
+  color: #fff;
+}
+
+.btn-ghost {
+  background: #eef2ff;
+  color: #1e40af;
+}
+
+.clean-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  min-width: 44px;
+  padding: 0 10px;
+  border: 0;
+  outline: 0;
+  box-shadow: none;
+  appearance: none;
+  border-radius: 10px;
+  background: #f2f2f2;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.clean-btn:focus {
+  outline: none;
+}
+
+.clean-btn.pill-yes {
+  color: #1a7f37;
+}
+
+.clean-btn.pill-no {
+  color: #b42318;
+}
+
+/* === PILLS === */
+.pill {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.pill-yes {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.pill-no {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+/* === WARNINGS === */
+.warnings {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  color: #9a3412;
+  font-size: 13px;
+  text-align: left;
+}
+
+.warnings p {
+  margin: 4px 0;
+  color: #9a3412;
+}
+
+/* === LAYOUT HELPERS === */
+.row {
+  display: flex;
+  gap: 10px;
+}
+
+.row > div {
+  flex: 1;
+}
+
+/* === TABLES === */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  width: 100%;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: #f9fafb;
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+  color: #374151;
+  font-size: 12px;
+}
+
+td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+  white-space: normal;
+}
+
+tr:hover td {
+  background: #f9fafb;
+}
+
+/* === STICKY COLUMNS === */
+th.sticky-col,
+td.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+thead th.sticky-col {
+  z-index: 3;
+}
+
+/* Default background for sticky columns (non-cleaning) */
+th.sticky-col:not(.needs-clean),
+td.sticky-col:not(.needs-clean) {
+  background: #fff;
+}
+
+/* Hover state for sticky columns */
+tr:hover td.sticky-col:not(.needs-clean) {
+  background: #f9fafb;
+}
+
+/* === APARTMENT CELL STATES === */
+
+/* Default apartment cell */
+.apartment-cell {
+  transition: background 0.2s;
+}
+
+/* Apartment needs cleaning (occupied yesterday) */
 .apartment-cell.needs-clean {
   background: #f5f5f5 !important;
   font-weight: 600;
 }
 
-/* Override sticky-col background when needs cleaning */
-td.sticky-col.needs-clean,
-td.apartment-cell.needs-clean {
+/* Sticky column when needs cleaning */
+td.sticky-col.needs-clean {
   background: #f5f5f5 !important;
 }
-  .clean-btn:focus{ outline:none; }
-  .clean-btn.pill-yes{ color:#1a7f37; }
-  .clean-btn.pill-no{ color:#b42318; }
 
-  th.sticky-col,
-  td.sticky-col {
-    position: sticky;
-    left: 0;
-    z-index: 2;
-    background: #fff;
-  }
-
-  thead th.sticky-col {
-    z-index: 3;
-  }
-
-  :root { color-scheme: light; }
-  * { box-sizing: border-box; }
-  body{
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background:#f6f7fb;
-    color:#111827;
-    margin:0;
-    min-height:100vh;
-    display:flex;
-    justify-content:center;
-    align-items:flex-start;
-  }
-
-  .table-wrap {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  table {
-    min-width: 100%;
-    border-collapse: collapse;
-  }
-
-  .page{ width:100%; max-width:1100px; padding:16px; }
-  .card{
-    background:#fff;
-    border-radius:18px;
-    padding:20px 18px 22px;
-    box-shadow:0 10px 28px rgba(17,24,39,0.08);
-    border:1px solid #e5e7eb;
-  }
-
-  h1{ margin:0 0 8px; font-size:22px; }
-  h2{ margin:0 0 8px; font-size:16px; }
-  p{ margin:0 0 10px; font-size:14px; color:#4b5563; }
-  .muted{ font-size:12px; color:#6b7280; }
-  label{ font-size:13px; display:block; margin-bottom:4px; color:#374151; }
-
-  input, select{
-    width:100%;
-    padding:10px 12px;
-    border-radius:12px;
-    border:1px solid #d1d5db;
-    background:#fff;
-    color:#111827;
-    font-size:14px;
-  }
-  input:focus, select:focus{
-    outline:none;
-    border-color:#2563eb;
-    box-shadow:0 0 0 4px rgba(37,99,235,0.12);
-  }
-
-  .row{ display:flex; gap:10px; }
-  .row > div{ flex:1; }
-
-  .btn-primary, .btn-success, .btn-link, .btn{
-    display:inline-block;
-    border-radius:999px;
-    padding:10px 18px;
-    font-weight:700;
-    font-size:14px;
-    text-decoration:none;
-    border:none;
-    cursor:pointer;
-    margin: 10px;
-  }
-  .btn-primary{ background:#2563eb; color:#fff; }
-  .btn-success{ background:#16a34a; color:#fff; }
-  .btn-link{
-    background:transparent;
-    color:#2563eb;
-    padding:0;
-    font-weight:600;
-  }
-
-  .warnings{
-    background:#fff7ed;
-    border:1px solid #fed7aa;
-    border-radius:12px;
-    padding:10px 12px;
-    margin-bottom:12px;
-    color:#9a3412;
-    font-size:13px;
-    text-align:left;
-  }
-  .warnings p{ margin:4px 0; color:#9a3412; }
-
-  /* компактнее таблица */
-  table{ width:100%; border-collapse:collapse; font-size:12px; }
-  th{
-    position:sticky;
-    top:0;
-    background:#f9fafb;
-    text-align:left;
-    padding:6px 8px;
-    border-bottom:1px solid #e5e7eb;
-    white-space:nowrap;
-    color:#374151;
-    font-size:12px;
-  }
-  td{
-  padding:6px 8px;
-  border-bottom:1px solid #f1f5f9;
-  vertical-align:top;          /* лучше для textarea */
-  white-space:normal;          /* ✅ главное: разрешаем перенос */
+/* Hover state for cleaning cells */
+tr:hover .apartment-cell.needs-clean,
+tr:hover td.sticky-col.needs-clean {
+  background: #e5e7eb !important;
 }
-  tr:hover td{ background:#f9fafb; }
 
-  /* компактнее статус-пилюли */
-  .pill{
-    display:inline-block;
-    padding:4px 8px;
-    border-radius:999px;
-    font-weight:800;
-    font-size:11px;
-    line-height:1;
-  }
-  /* компактные таблицы — ТОЛЬКО там, где реально нужно */
+/* === FORMS IN TABLE CELLS === */
+td form {
+  white-space: nowrap;
+}
+
+.lock-form,
+.vis-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.lock-form button,
+.vis-form button,
+.lock-form .btn-small,
+.vis-form .btn-small {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+/* === COMPACT TABLES (for specific use cases) === */
 .table-compact td,
 .table-compact th {
   white-space: nowrap;
 }
 
-/* секции: поле с текстом должно быть гибким */
+/* === SECTIONS TABLE (for apartment content management) === */
 .sections-table {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
+}
+
+.sections-table th,
+.sections-table td {
+  white-space: normal;
+  vertical-align: top;
+}
+
+.sections-table .td-text {
+  min-width: 0;
 }
 
 .sections-table .td-text,
@@ -925,56 +1079,7 @@ td.apartment-cell.needs-clean {
   max-width: 100%;
   box-sizing: border-box;
 }
-  .pill-yes{ background:#dcfce7; color:#166534; }
-  .pill-no{ background:#fee2e2; color:#991b1b; }
 
-  /* компактнее формы/кнопки */
-  .lock-form{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
-
-  .lock-input{
-    width:110px;
-    min-width:110px;
-    padding:8px 10px;
-    border-radius:10px;
-    border:1px solid #d1d5db;
-    font-size:14px;
-    letter-spacing:0.12em;
-  }
-
-  .btn-small{
-    border-radius:999px;
-    padding:7px 10px;
-    font-weight:700;
-    border:none;
-    cursor:pointer;
-    background:#2563eb;
-    color:#fff;
-    font-size:12px;
-    line-height:1;
-  }
-  .btn-ghost{ background:#eef2ff; color:#1e40af; }
-
-  /* === ONE LINE IN CELLS (LOCK + VISIBLE) === */
-  .lock-form,
-  .vis-form{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    flex-wrap:nowrap !important;
-    white-space:nowrap;
-  }
-    /* ===== Sections table (fix shifting) ===== */
-.sections-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-.sections-table th,
-.sections-table td {
-  white-space: normal;      /* важно: не nowrap */
-  vertical-align: top;
-}
-.sections-table .td-text { min-width: 0; }
 .sections-table .sec-title,
 .sections-table .sec-body {
   width: 100%;
@@ -982,29 +1087,6 @@ td.apartment-cell.needs-clean {
   box-sizing: border-box;
   display: block;
 }
-
-  .lock-form button,
-  .vis-form button,
-  .lock-form .btn-small,
-  .vis-form .btn-small{
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    white-space:nowrap;
-  }
-
-  .lock-input{
-    width:72px;
-    min-width:72px;
-  }
-  /* Только для таблиц, где нужно всё в одну строку (lock/visibility) */
-.table-compact td,
-.table-compact th,
-.lock-form,
-.vis-form{
-  white-space: nowrap;
-}
-
   </style>
 </head>
 <body>
@@ -2762,6 +2844,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
