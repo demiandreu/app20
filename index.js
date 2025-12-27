@@ -361,47 +361,52 @@ const getLastCheckinByPhone = async () => {
     }
 
     // ----------------- START_<ID> -----------------
-    if (textUpper.startsWith("START_")) {
-      const bookingId = textUpper.replace("START_", "").trim();
-      console.log("🟢 START bookingId:", bookingId);
+// ----------------- START (any format) -----------------
+const startMatch = textUpper.match(/^START[\s_:-]*([A-Z0-9]+)\s*$/);
+if (startMatch) {
+  const bookingId = String(startMatch[1] || "").trim();
+  console.log("🟢 START bookingId:", bookingId);
 
-      const bookingResult = await pool.query(
-        `
-        SELECT
-          apartment_id,
-          apartment_name,
-          booking_token,
-          full_name,
-          arrival_date,
-          arrival_time,
-          departure_date,
-          departure_time,
-          adults,
-          children,
-          beds24_booking_id,
-          booking_id_from_start,
-          reg_done,
-          pay_done
-        FROM checkins
-        WHERE booking_token = $1
-           OR booking_id_from_start = $1
-           OR beds24_booking_id::text = $1
-        ORDER BY id DESC
-        LIMIT 1
-        `,
-        [bookingId]
-      );
+  const bookingResult = await pool.query(
+    `
+    SELECT
+      apartment_id,
+      apartment_name,
+      booking_token,
+      full_name,
+      arrival_date,
+      arrival_time,
+      departure_date,
+      departure_time,
+      adults,
+      children,
+      beds24_booking_id,
+      booking_id_from_start,
+      reg_done,
+      pay_done
+    FROM checkins
+    WHERE booking_token = $1
+       OR booking_id_from_start = $1
+       OR beds24_booking_id::text = $1
+    ORDER BY id DESC
+    LIMIT 1
+    `,
+    [bookingId]
+  );
 
-      if (!bookingResult.rows.length) {
-        await sendWhatsApp(
-          from,
-          `Gracias 🙂
+  if (!bookingResult.rows.length) {
+    await sendWhatsApp(
+      from,
+      `Gracias 🙂
 No encuentro tu reserva todavía.
-Si acabas de reservar, espera un momento y vuelve a enviar:
-START_${bookingId}`
-        );
-        return res.status(200).send("OK");
-      }
+Verifica el número y vuelve a enviar:
+START ${bookingId}`
+    );
+    return res.status(200).send("OK");
+  }
+
+  // ... sigue tu lógica tal cual
+}
 
       const r = bookingResult.rows[0];
 
@@ -2884,6 +2889,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
