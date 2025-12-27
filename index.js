@@ -36,8 +36,8 @@ async function beds24SmokeTest(token) {
   const resp = await fetch("https://api.beds24.com/v2/bookings", {
     method: "GET",
     headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
+      token: `Bearer ${token}`,
+      accept: "application/json",
     },
   });
 
@@ -2937,6 +2937,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
