@@ -13,6 +13,60 @@ const twilio = require("twilio");
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+async function beds24Get(endpoint, params = {}, propertyExternalId) {
+  const accessToken = await getBeds24AccessToken(propertyExternalId);
+  const url = new URL(`https://beds24.com/api/v2${endpoint}`);
+  Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v));
+
+  const resp = await fetch(url, {
+    headers: {
+      accept: "application/json",
+      token: accessToken,  // header clave
+    },
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`Beds24 ${endpoint} error ${resp.status}: ${text.slice(0,500)}`);
+  }
+  return resp.json();
+}
+
+async function getBeds24AccessToken(propertyExternalId) {
+  const res = await pool.query(
+    `SELECT credentials->>'refresh_token' AS refresh_token
+     FROM provider_connections
+     WHERE provider = 'beds24' AND property_external_id = $1 AND is_enabled = true`,
+    [propertyExternalId]
+  );
+  const refreshToken = res.rows[0]?.refresh_token;
+  if (!refreshToken) throw new Error("No refresh_token found");
+
+  const resp = await fetch("https://beds24.com/api/v2/authentication/token", {
+    method: "GET",
+    headers: {
+      accept: "application/json",
+      refreshToken: refreshToken,  // header exacto
+    },
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`Beds24 token error ${resp.status}: ${text}`);
+  }
+
+  const json = await resp.json();
+  const accessToken = json.token;
+
+  // Opcional: guarda el access_token fresco en DB para cachear 24h
+  await pool.query(
+    `UPDATE provider_connections SET credentials = credentials || $1
+     WHERE provider = 'beds24' AND property_external_id = $2`,
+    [{ token: accessToken }, propertyExternalId]
+  );
+
+  return accessToken;
+}
 
 async function getProviderToken(provider, propertyExternalId) {
   const r = await pool.query(
@@ -1156,7 +1210,35 @@ app.get("/debug/beds24", async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
+app.get("/manager/channels/bookingssync", async (req, res) => {
+  try {
+    const propertyId = "203178"; // o saca de query o de todas las properties
+    const bookings = await beds24Get("/bookings", {
+      // filters útiles:
+      // modifiedSince: "2025-01-01",  // solo modificados desde fecha
+      // includeCancelled: true,
+      // includeInvoiceItems: true,
+    }, propertyId);
 
+    let synced = 0;
+    for (const b of bookings) {
+      const row = mapBeds24BookingToRow(b, b.roomName || "", b.roomId || "");
+      await upsertCheckinFromBeds24(row);
+      synced++;
+    }
+
+    res.send(`✅ Sync OK: ${synced} bookings procesados para property ${propertyId}`);
+  } catch (e) {
+    console.error(e);
+    res.status(500).send("Error sync: " + e.message);
+  }
+});
+app.get("/manager/channels/roomssync", async (req, res) => {
+  const propertyId = "203178";
+  const properties = await beds24Get("/properties", {}, propertyId);
+  // properties tiene rooms con id, name, etc.
+  // Puedes insertar/upsert en beds24_rooms
+});
 // ===================== MANAGER: Menu =====================
 // ===== MANAGER HOME: select apartment =====
 app.get("/manager", async (req, res) => {
@@ -2938,6 +3020,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
