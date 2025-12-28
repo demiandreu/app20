@@ -2497,8 +2497,8 @@ const guestBtn = guestPortalUrl
 // ===================== ADMIN: SET VISIBILITY =====================
 app.post("/staff/bookings/:id/lock", async (req, res) => {
   try {
-    const { id } = req.params;
-    const lockCode = String(req.body.lock_code || "").trim();
+    const bookingId = req.params.id;
+    const { lock_code } = req.body;
 
     await pool.query(
       `
@@ -2506,31 +2506,33 @@ app.post("/staff/bookings/:id/lock", async (req, res) => {
       SET lock_code = $1
       WHERE id = $2
       `,
-      [lockCode, String(id)]
+      [lock_code || null, bookingId]
     );
 
-    // вернуться туда, откуда пришли
-    const back = req.get("referer") || "/staff/checkins";
-    return res.redirect(back);
+    res.redirect(req.headers.referer || "/staff/checkins");
   } catch (e) {
     console.error("Error saving lock code:", e);
-    return res
-      .status(500)
-      .send(renderPage("Error", `<div class="card">Cannot save lock code: ${escapeHtml(e.message || String(e))}</div>`));
+    res.status(500).send("Error saving lock code");
   }
 });
-
-
 // ===================== ADMIN: CLEAN TOGGLE =====================
-app.post("/staff/bookings/:id/clean", async (req, res) => {
-  const id = Number(req.params.id);
+app.post("/staff/bookings/:id/visibility", async (req, res) => {
   try {
-    await pool.query(`UPDATE bookings SET cleaning_completed = NOT cleaning_completed WHERE id = $1`, [id]);
-    const back = req.body.returnTo || req.get("referer") || "/staff/checkins";
-    res.redirect(back);
+    const bookingId = req.params.id;
+
+    await pool.query(
+      `
+      UPDATE bookings
+      SET lock_code_visible = NOT COALESCE(lock_code_visible, false)
+      WHERE id = $1
+      `,
+      [bookingId]
+    );
+
+    res.redirect(req.headers.referer || "/staff/checkins");
   } catch (e) {
-    console.error("Clean toggle error:", e);
-    res.status(500).send("❌ Cannot toggle clean status");
+    console.error("Error toggling visibility:", e);
+    res.status(500).send("Error updating visibility");
   }
 });
 
@@ -2888,6 +2890,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
