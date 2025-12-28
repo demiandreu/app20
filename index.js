@@ -2321,7 +2321,6 @@ WHERE b.is_cancelled = false
 
     // Color logic
     const yesterdayStr = yesterday;
-
 const { rows: needsCleanRows } = await pool.query(
   `
   SELECT DISTINCT b_today.apartment_id
@@ -2889,6 +2888,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
