@@ -2322,23 +2322,28 @@ WHERE b.is_cancelled = false
     // Color logic
     const yesterdayStr = yesterday;
 
-const { rows: occupiedYesterdayRows } = await pool.query(
+const { rows: needsCleanRows } = await pool.query(
   `
-  SELECT DISTINCT apartment_id
-  FROM bookings
-  WHERE is_cancelled = false
-    AND checkin_date <= $1::date
-    AND checkout_date > $1::date
+  SELECT DISTINCT b_today.apartment_id
+  FROM bookings b_today
+  JOIN bookings b_yesterday
+    ON b_today.apartment_id = b_yesterday.apartment_id
+  WHERE b_today.is_cancelled = false
+    AND b_yesterday.is_cancelled = false
+
+    -- заезд сегодня
+    AND b_today.checkin_date = $1::date
+
+    -- были жильцы вчера
+    AND b_yesterday.checkin_date <= $2::date
+    AND b_yesterday.checkout_date > $2::date
   `,
-  [yesterdayStr]
+  [today, yesterday]
 );
 
-   const occupiedYesterdaySet = new Set(
-  occupiedYesterdayRows.map(r => String(r.apartment_id))
+const needsCleanSet = new Set(
+  needsCleanRows.map(r => String(r.apartment_id))
 );
-
-    function aptColorClass(apartmentId) {
-  const id = String(apartmentId || "");
   if (!id) return "";
 
   if (occupiedYesterdaySet.has(id)) {
@@ -2884,6 +2889,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
