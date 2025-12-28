@@ -2421,45 +2421,46 @@ app.get("/guest/:roomId/:token", async (req, res) => {
   try {
     // 1) Load check-in record
   // 1) Load check-in record (robust matching after DB changes)
-const checkinRes = await pool.query(
+// 1) Load booking (source of truth)
+const bookingRes = await pool.query(
   `
   SELECT
-    id,
-    apartment_id,
-    apartment_name,
-    beds24_room_id,
-    booking_token,
-    full_name,
-    email,
-    phone,
-    arrival_date,
-    arrival_time,
-    departure_date,
-    departure_time,
-    adults,
-    children,
-    lock_code,
-    lock_visible
-  FROM checkins
-  WHERE cancelled IS DISTINCT FROM true
-    AND beds24_room_id::text = $1
-    AND booking_token = $2
-  ORDER BY id DESC
+    b.id,
+    b.booking_reference,
+    b.apartment_id,
+    a.name as apartment_name,
+    b.guest_name as full_name,
+    b.guest_email as email,
+    b.guest_phone as phone,
+    b.checkin_date as arrival_date,
+    b.checkin_time as arrival_time,
+    b.checkout_date as departure_date,
+    b.checkout_time as departure_time,
+    b.num_adults as adults,
+    b.num_children as children,
+    b.lock_code,
+    b.lock_code_visible as lock_visible
+  FROM bookings b
+  JOIN apartments a ON a.id = b.apartment_id
+  WHERE b.is_cancelled = false
+    AND b.apartment_id::text = $1
+    AND b.booking_reference::text = $2
+  ORDER BY b.id DESC
   LIMIT 1
   `,
   [String(roomId), String(token)]
-)
+);
 
-    if (!checkinRes.rows.length) {
-      const html = `
-        <h1>Guest Dashboard</h1>
-        <p class="muted">No check-in record found for this booking.</p>
-        <p><a class="btn-link" href="/">← Back</a></p>
-      `;
-      return res.send(renderPage("Guest Dashboard", html));
-    }
+if (!bookingRes.rows.length) {
+  const html = `
+    <h1>Panel de Huésped</h1>
+    <p class="muted">No se encontró la reserva para este enlace.</p>
+    <p><a class="btn-link" href="/">← Volver</a></p>
+  `;
+  return res.send(renderPage("Panel de Huésped", html));
+}
 
-    const r = checkinRes.rows[0];
+const r = bookingRes.rows[0];
 
    // 2) Load apartment sections (room_id in apartment_sections is tied to the Beds24 room_id)
 // Fallback order: beds24_room_id -> external_room_id -> URL roomId -> apartment_id
@@ -2469,6 +2470,7 @@ const sectionsRoomId = String(
   String(roomId).trim()
 );
 
+// 2) Load apartment sections (room_id = apartment_id)
 const secRes = await pool.query(
   `
   SELECT
@@ -2478,11 +2480,11 @@ const secRes = await pool.query(
     new_media_type,
     new_media_url
   FROM apartment_sections
-  WHERE room_id = $1::int
+  WHERE room_id::text = $1
     AND is_active = true
   ORDER BY sort_order ASC, id ASC
   `,
-  [sectionsRoomId]
+  [String(r.apartment_id)]
 );
 
     const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
@@ -3264,6 +3266,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
