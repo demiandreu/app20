@@ -1967,145 +1967,132 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 // ===================== GUEST DASHBOARD =====================
 // Guest opens: /guest/:apartmentId/:bookingReference
 
+// ===================== GUEST DASHBOARD =====================
+// Guest opens: /guest/:roomId/:bookingReference
 app.get("/guest/:roomId/:bookingReference", async (req, res) => {
-  const { roomId, bookingReference } = req.params;
+  try {
+    const { roomId, bookingReference } = req.params;
 
-  const ref = String(bookingReference);
-  const refNoStart = ref.startsWith("START_") ? ref.slice(6) : ref;
+    const ref = String(bookingReference || "");
+    const refNoStart = ref.startsWith("START_") ? ref.slice(6) : ref;
 
-  const checkinRes = await pool.query(
-    `
-    SELECT *
-    FROM checkins c
-    WHERE c.beds24_room_id::text = $1
-      AND (
-        c.booking_token::text = $2
-        OR c.beds24_booking_id::text = $2
-        OR c.booking_id_from_start::text = $2
-        OR c.booking_id_from_start::text = $3
-      )
-    ORDER BY c.id DESC
-    LIMIT 1
-    `,
-    [String(roomId), ref, refNoStart]
-  );
-
-  if (checkinRes.rows.length === 0) {
-    return res.send(renderPage(
-      "Guest Dashboard",
-      `<div class="card">
-        <h1>Guest Dashboard</h1>
-        <p>No check-in record found for this booking.</p>
-        <a href="/" class="btn-link">← Back</a>
-      </div>`
-    ));
-  }
-
-  const r = checkinRes.rows[0];
-
-  // ⬇⬇⬇ ВОТ ЗДЕСЬ, ВНУТРИ async
-  const secRes = await pool.query(
-    `
-    SELECT id, title, body, new_media_type, new_media_url
-    FROM apartment_sections
-    WHERE room_id::text = $1
-      AND is_active = true
-    ORDER BY sort_order ASC, id ASC
-    `,
-    [String(roomId)]
-  );
-
-  if (checkinRes.rows.length === 0) {
-    return res.send(
-      renderPage(
-        "Guest Dashboard",
-        `
-        <div class="card">
-          <h1>Guest Dashboard</h1>
-          <p>No check-in record found for this booking.</p>
-          <a href="/" class="btn-link">← Back</a>
-        </div>
-        `
-      )
+    // 1) Find checkin by room + token/booking id
+    const checkinRes = await pool.query(
+      `
+      SELECT *
+      FROM checkins c
+      WHERE c.beds24_room_id::text = $1
+        AND (
+          c.booking_token::text = $2
+          OR c.beds24_booking_id::text = $2
+          OR c.booking_id_from_start::text = $2
+          OR c.booking_id_from_start::text = $3
+        )
+      ORDER BY c.id DESC
+      LIMIT 1
+      `,
+      [String(roomId), ref, refNoStart]
     );
-  }
 
-  const r = checkinRes.rows[0];
+    if (checkinRes.rows.length === 0) {
+      return res.send(
+        renderPage(
+          "Guest Dashboard",
+          `<div class="card">
+            <h1>Guest Dashboard</h1>
+            <p>No check-in record found for this booking.</p>
+            <a href="/" class="btn-link">← Back</a>
+          </div>`
+        )
+      );
+    }
 
-  // 2️⃣ Загружаем секции — ВНУТРИ async!
-  const roomId = r.apartment_id;
+    const checkin = checkinRes.rows[0];
 
-  const secRes = await pool.query(
-    `
-    SELECT
-      id,
-      title,
-      body,
-      new_media_type,
-      new_media_url
-    FROM apartment_sections
-    WHERE room_id::text = $1
-      AND is_active = true
-    ORDER BY sort_order ASC, id ASC
-    `,
-    [String(roomId)]
-  );
-
-  // 3️⃣ Дальше рендер HTML
-  const sectionsHtml = secRes.rows.length
-    ? secRes.rows.map(s => `<h3>${escapeHtml(s.title)}</h3>`).join("")
-    : `<div class="muted">No information sections.</div>`;
-
-  return res.send(
-    renderPage(
-      "Guest Dashboard",
+    // 2) Load apartment sections by room_id (same as URL roomId)
+    const secRes = await pool.query(
       `
-      <div class="card">
-        <h1>Guest Dashboard</h1>
-        ${sectionsHtml}
-      </div>
-      `
-    )
-  );
-});
+      SELECT id, title, body, new_media_type, new_media_url
+      FROM apartment_sections
+      WHERE room_id::text = $1
+        AND is_active = true
+      ORDER BY sort_order ASC, id ASC
+      `,
+      [String(roomId)]
+    );
 
-                // media (если есть)
-                const mediaHtml =
-                  s.new_media_url
-                    ? `<div style="margin-top:10px;">
-                        ${String(s.new_media_type || "").startsWith("image")
-                          ? `<img src="${escapeHtml(String(s.new_media_url))}" style="max-width:100%;border-radius:12px;" />`
-                          : `<a class="btn-link" href="${escapeHtml(String(s.new_media_url))}" target="_blank" rel="noopener">Open media</a>`
-                        }
-                      </div>`
-                    : "";
+    // 3) Prepare HTML blocks
+    const totalGuests =
+      (Number(checkin.adults) || 0) + (Number(checkin.children) || 0);
 
-                return `
-                  <div class="card" style="margin-top:12px;">
-                    <h2>${title}</h2>
-                    <p style="white-space:normal;">${bodyHtml}</p>
-                    ${mediaHtml}
-                  </div>
-                `;
-              })
-              .join("")}
-          </div>
-        `;
+    const show = req.query.show === "1";
+    const lockCodeHtml =
+      checkin.lock_visible && checkin.lock_code
+        ? show
+          ? `
+            <hr/>
+            <div>Lock Code: <strong style="font-size:22px;letter-spacing:2px;">${escapeHtml(
+              String(checkin.lock_code)
+            )}</strong></div>
+          `
+          : `
+            <hr/>
+            <a class="btn-link" href="/guest/${encodeURIComponent(
+              String(roomId)
+            )}/${encodeURIComponent(String(bookingReference))}?show=1">Show code</a>
+          `
+        : "";
 
-    // 5) Render page (минимально — ты можешь расширить)
+    const sectionsHtml =
+      secRes.rows.length === 0
+        ? `<div class="muted">No information sections for this apartment yet.</div>`
+        : secRes.rows
+            .map((s) => {
+              const title = escapeHtml(String(s.title || ""));
+              const rawBody = String(s.body || "");
+
+              const bodyHtml = escapeHtml(rawBody)
+                .replace(/\n/g, "<br/>")
+                .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+                  const safeUrl = escapeHtml(url);
+                  return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
+                });
+
+              const mediaHtml = s.new_media_url
+                ? `<div style="margin-top:10px;">
+                    ${
+                      String(s.new_media_type || "").startsWith("image")
+                        ? `<img src="${escapeHtml(
+                            String(s.new_media_url)
+                          )}" style="max-width:100%;border-radius:12px;" />`
+                        : `<a class="btn-link" href="${escapeHtml(
+                            String(s.new_media_url)
+                          )}" target="_blank" rel="noopener">Open media</a>`
+                    }
+                  </div>`
+                : "";
+
+              return `
+                <div class="card" style="margin-top:12px;">
+                  <h2>${title}</h2>
+                  <p style="white-space:normal;">${bodyHtml}</p>
+                  ${mediaHtml}
+                </div>
+              `;
+            })
+            .join("");
+
+    // 4) Render
     const html = `
       <div class="card">
         <h1>Guest Dashboard</h1>
-        <p class="muted">Apartment ID: ${escapeHtml(String(apartmentId))} · Booking: ${escapeHtml(String(bookingReference))}</p>
-
+        <p class="muted">Room ID: ${escapeHtml(String(roomId))} · Booking: ${escapeHtml(String(bookingReference))}</p>
         <hr/>
-        <p><strong>Guest:</strong> ${escapeHtml(String(r.full_name || ""))}</p>
+        <p><strong>Guest:</strong> ${escapeHtml(String(checkin.full_name || ""))}</p>
         <p><strong>Guests:</strong> ${totalGuests}</p>
-        <p><strong>Arrival:</strong> ${escapeHtml(String(r.arrival_date || ""))}</p>
-        <p><strong>Departure:</strong> ${escapeHtml(String(r.departure_date || ""))}</p>
-
+        <p><strong>Arrival:</strong> ${escapeHtml(String(checkin.arrival_date || ""))}</p>
+        <p><strong>Departure:</strong> ${escapeHtml(String(checkin.departure_date || ""))}</p>
         ${lockCodeHtml}
-
         ${sectionsHtml}
       </div>
     `;
@@ -2115,7 +2102,14 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
     console.error("Guest dashboard error:", err);
     return res
       .status(500)
-      .send(renderPage("Guest Dashboard", `<div class="card">Cannot load guest dashboard: ${escapeHtml(err.message || String(err))}</div>`));
+      .send(
+        renderPage(
+          "Guest Dashboard",
+          `<div class="card">Cannot load guest dashboard: ${escapeHtml(
+            err.message || String(err)
+          )}</div>`
+        )
+      );
   }
 });
 // --- LIST + FILTER ---
@@ -2710,6 +2704,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
