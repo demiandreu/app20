@@ -1294,77 +1294,7 @@ app.get("/debug/beds24", async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
-app.get("/manager/channels/bookingssync", async (req, res) => {
-  try {
-    const propertyId = "203178"; // tu property_external_id
 
-    const accessToken = await getBeds24AccessToken(propertyId);
-
-    // Traemos reservas desde 2024 hasta 2027 (para cubrir antiguas y futuras)
-    const fromDate = "2024-01-01";
-    const toDate = "2027-12-31";
-
-    const bookingsResp = await fetch(
-      `https://beds24.com/api/v2/bookings?from=${fromDate}&to=${toDate}&includeCancelled=true`,
-      {
-        headers: {
-          accept: "application/json",
-          token: accessToken,
-        },
-      }
-    );
-
-    if (!bookingsResp.ok) {
-      const text = await bookingsResp.text();
-      throw new Error(`Error Beds24: ${bookingsResp.status} - ${text.slice(0, 300)}`);
-    }
-
-    const data = await bookingsResp.json();
-
-    const bookings = Array.isArray(data) ? data : (data.bookings || data.data || []);
-
-    if (bookings.length === 0) {
-      return res.send(renderPage("Sync Bookings", `
-        <div class="card">
-          <h1>ℹ️ No hay reservas en el rango</h1>
-          <p>No se encontraron bookings entre ${fromDate} y ${toDate}.</p>
-          <p><a href="/manager" class="btn-link">← Volver</a></p>
-        </div>
-      `));
-    }
-
-    let synced = 0;
-    let updated = 0;
-    let newOnes = 0;
-
-    for (const b of bookings) {
-      const row = mapBeds24BookingToRow(b, b.roomName || "", b.roomId || "");
-      const result = await upsertCheckinFromBeds24(row);      synced++;
-      if (result.ok) newOnes++;
-      else updated++;
-    }
-
-    res.send(renderPage("Sync Bookings", `
-      <div class="card">
-        <h1 style="color:#16a34a;">✅ Sync completado</h1>
-        <p>Se procesaron <strong>${synced}</strong> reservas de Beds24 (desde ${fromDate}).</p>
-        <p>Nuevas: ${newOnes} | Actualizadas: ${updated}</p>
-        <hr/>
-        <p><a href="/staff/checkins" class="btn-primary">Ver lista completa</a></p>
-        <p><a href="/manager" class="btn-link">← Volver al Manager</a></p>
-      </div>
-    `));
-  } catch (e) {
-    console.error("Sync error:", e);
-    res.status(500).send(renderPage("Error Sync", `
-      <div class="card">
-        <h1 style="color:#991b1b;">❌ Error</h1>
-        <p>${escapeHtml(e.message || String(e))}</p>
-        <p><a href="/manager" class="btn-link">← Volver</a></p>
-      </div>
-    `));
-  }
-});
 // ===================== MANAGER: Menu =====================
 // ===== MANAGER HOME: select apartment =====
 app.get("/manager", async (req, res) => {
@@ -2585,110 +2515,65 @@ app.post("/staff/bookings/:id/visibility", async (req, res) => {
 // ===================== MANAGER: Sync Bookings manual =====================
 app.get("/manager/channels/bookingssync", async (req, res) => {
   try {
-    // 1. Сначала получаем список ВСЕХ properties
-    const masterToken = await getBeds24AccessToken("203178"); // Любой один для начала
-    
-    // Запрос на получение всех properties
-    const propsResp = await fetch(
-      `https://beds24.com/api/v2/properties`,
-      {
-        headers: {
-          accept: "application/json",
-          token: masterToken,
-        },
-      }
-    );
-    
-    if (!propsResp.ok) {
-      throw new Error(`Не удалось получить список properties: ${propsResp.status}`);
+    const propertyIdForToken = "203178"; // used only to obtain an access token
+    const token = await getBeds24AccessToken(propertyIdForToken);
+
+    const fromDate = String(req.query.from || "2024-01-01");
+    const toDate = String(req.query.to || "2027-12-31");
+    const includeCancelled = String(req.query.includeCancelled || "true");
+
+    const url =
+      `https://beds24.com/api/v2/bookings` +
+      `?from=${encodeURIComponent(fromDate)}` +
+      `&to=${encodeURIComponent(toDate)}` +
+      `&includeCancelled=${encodeURIComponent(includeCancelled)}`;
+
+    const bookingsResp = await fetch(url, {
+      headers: { accept: "application/json", token },
+    });
+
+    if (!bookingsResp.ok) {
+      const text = await bookingsResp.text();
+      throw new Error(`Beds24 bookings error ${bookingsResp.status}: ${text.slice(0, 300)}`);
     }
-    
-    const propertiesData = await propsResp.json();
-    const properties = Array.isArray(propertiesData) ? propertiesData : (propertiesData.data || []);
-    
-    console.log(`Найдено ${properties.length} апартаментов:`, properties.map(p => p.id || p.propId));
-    
-    // 2. Теперь собираем бронирования со ВСЕХ properties
-    const fromDate = "2024-01-01";
-    const toDate = "2027-12-31";
-    
-    let allBookings = [];
-    
-    for (const property of properties) {
-      const propId = property.id || property.propId || property.propertyId;
-      
-      console.log(`Загружаем бронирования для property ${propId}...`);
-      
-      const bookingsResp = await fetch(
-        `https://beds24.com/api/v2/bookings?from=${fromDate}&to=${toDate}&includeCancelled=true&propId=${propId}`,
-        {
-          headers: {
-            accept: "application/json",
-            token: masterToken,
-          },
-        }
-      );
-      
-      if (!bookingsResp.ok) {
-        const text = await bookingsResp.text();
-        console.error(`⚠️ Ошибка для property ${propId}:`, text.slice(0, 200));
-        continue;
-      }
-      
-      const data = await bookingsResp.json();
-      const bookings = Array.isArray(data) ? data : (data.bookings || data.data || []);
-      
-      console.log(`  → Найдено ${bookings.length} бронирований`);
-      allBookings = allBookings.concat(bookings);
-    }
-    
-    if (allBookings.length === 0) {
-      return res.send(renderPage("Sync Bookings", `
-        <div class="alert info">
-          ℹ️ Нет бронирований в диапазоне ${fromDate} - ${toDate}
-          <br>Проверено апартаментов: ${properties.length}
-        </div>
-        <a href="/manager">← Назад</a>
-      `));
-    }
-    
-    // 3. Синхронизируем все бронирования
-    let synced = 0;
+
+    const data = await bookingsResp.json();
+    const bookings = Array.isArray(data) ? data : (data.bookings || data.data || []);
+
+    let processed = 0;
+    let inserted = 0;
     let updated = 0;
-    let newOnes = 0;
-    
-    for (const b of allBookings) {
+    let skipped = 0;
+
+    for (const b of bookings) {
       const row = mapBeds24BookingToRow(b, b.roomName || "", b.roomId || "");
       const result = await upsertCheckinFromBeds24(row);
-      synced++;
-      if (result.ok) newOnes++;
-      else updated++;
+
+      processed++;
+      if (result?.skipped) skipped++;
+      else if (result?.inserted) inserted++;
+      else if (result?.updated) updated++;
     }
-    
-    res.send(renderPage("Sync Bookings", `
-      <div class="success">
-        ✅ Синхронизация завершена
+
+    return res.send(renderPage("Sync Bookings", `
+      <div class="card">
+        <h1 style="margin:0 0 10px;">✅ Sincronización completada</h1>
+        <p>Reservas procesadas: <strong>${processed}</strong></p>
+        <p>Nuevas: <strong>${inserted}</strong> · Actualizadas: <strong>${updated}</strong> · Omitidas: <strong>${skipped}</strong></p>
+        <p class="muted">Rango: ${escapeHtml(fromDate)} — ${escapeHtml(toDate)} · Canceladas: ${escapeHtml(includeCancelled)}</p>
+        <hr/>
+        <p><a class="btn-primary" href="/staff/checkins">Ver staff check-ins</a></p>
+        <p><a class="btn-link" href="/manager">← Volver al manager</a></p>
       </div>
-      <div class="stats">
-        <p>📊 Обработано бронирований: <strong>${synced}</strong></p>
-        <p>🏢 Апартаментов: <strong>${properties.length}</strong></p>
-        <p>🆕 Новых: <strong>${newOnes}</strong></p>
-        <p>🔄 Обновлено: <strong>${updated}</strong></p>
-        <p>📅 Период: ${fromDate} — ${toDate}</p>
-      </div>
-      <a href="/manager/checkins">Посмотреть все бронирования</a>
-      <br>
-      <a href="/manager">← Назад в Manager</a>
     `));
-    
   } catch (e) {
     console.error("Sync error:", e);
-    res.status(500).send(renderPage("Error Sync", `
-      <div class="error">
-        ❌ Ошибка синхронизации
-        <pre>${escapeHtml(e.message || String(e))}</pre>
+    return res.status(500).send(renderPage("Error Sync", `
+      <div class="card">
+        <h1 style="color:#991b1b;">❌ Error en sincronización</h1>
+        <p>${escapeHtml(e.message || String(e))}</p>
+        <p><a class="btn-link" href="/manager">← Volver</a></p>
       </div>
-      <a href="/manager">← Назад</a>
     `));
   }
 });
@@ -2935,6 +2820,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
