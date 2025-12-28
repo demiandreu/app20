@@ -107,6 +107,20 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
 });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+});
+
+// 🆕 AÑADE ESTAS LÍNEAS AQUÍ
+pool.on('connect', (client) => {
+  client.query('SET client_encoding TO UTF8');
+});
+
+async function initDb() {
+  // --- base table ---
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS checkins (
 async function initDb() {
   // --- base table ---
   await pool.query(`
@@ -2264,22 +2278,7 @@ SELECT id, title, body, icon, new_media_type, new_media_url
                         <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
                           🔗 Abrir enlace
                         </a>
-                          //eeeeeeee
-// 2) Load apartment sections by room_id
-const secRes = await pool.query(
-  `
-  SELECT id, title, body, icon, new_media_type, new_media_url
-  FROM apartment_sections
-  WHERE room_id::text = $1
-    AND is_active = true
-  ORDER BY sort_order ASC, id ASC
-  `,
-  [String(roomId)]
-);
-
-// 🐛 AÑADE ESTA LÍNEA TEMPORAL PARA DEBUG
-console.log('SECCIONES CARGADAS:', JSON.stringify(secRes.rows, null, 2));
-    //eeeeeeeeeeee
+                        
                       </div>
                     `;
                   }
@@ -2908,6 +2907,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
