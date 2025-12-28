@@ -2334,30 +2334,31 @@ WHERE b.is_cancelled = false
     // Color logic
     const yesterdayStr = yesterday;
 
-    const { rows: occupiedYesterdayRows } = await pool.query(
-      `
-      SELECT DISTINCT a.id as apartment_id
-      FROM bookings b
-      JOIN apartments a ON a.id = b.apartment_id
-      WHERE b.is_cancelled = false
-        AND b.checkin_date <= $1::date
-        AND b.checkout_date > $1::date
-      `,
-      [yesterdayStr]
-    );
+const { rows: occupiedYesterdayRows } = await pool.query(
+  `
+  SELECT DISTINCT apartment_id
+  FROM bookings
+  WHERE is_cancelled = false
+    AND checkin_date <= $1::date
+    AND checkout_date > $1::date
+  `,
+  [yesterdayStr]
+);
 
-    const occupiedYesterdaySet = new Set(
-      occupiedYesterdayRows.map(r => String(r.apartment_id))
-    );
+   const occupiedYesterdaySet = new Set(
+  occupiedYesterdayRows.map(r => String(r.apartment_id))
+);
 
     function aptColorClass(apartmentId) {
-      const id = String(apartmentId || "");
-      if (!id) return "";
-      if (occupiedYesterdaySet.has(id)) {
-        return "needs-clean";
-      }
-      return "";
-    }
+  const id = String(apartmentId || "");
+  if (!id) return "";
+
+  if (occupiedYesterdaySet.has(id)) {
+    return "needs-clean"; // 🩶
+  }
+
+  return ""; // ⚪
+}
 
     // Toolbar
     const toolbar = `
@@ -2882,6 +2883,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
