@@ -692,560 +692,228 @@ function renderPage(title, innerHtml) {
   <title>${title}</title>
 
   <style>
-/* =====================================================
-   RCS GUEST PORTAL - CLEAN CSS
-   No duplicates, proper SaaS architecture
-   ===================================================== */
-
-/* === ROOT & RESET === */
-:root {
-  color-scheme: light;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #f6f7fb;
-  color: #111827;
-  margin: 0;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-}
-
-/* === LAYOUT === */
-.page {
-  width: 100%;
-  max-width: 1100px;
-  padding: 16px;
-}
-
-.card {
-  background: #fff;
-  border-radius: 18px;
-  padding: 20px 18px 22px;
-  box-shadow: 0 10px 28px rgba(17, 24, 39, 0.08);
-  border: 1px solid #e5e7eb;
-}
-
-/* === TYPOGRAPHY === */
-h1 {
-  margin: 0 0 8px;
-  font-size: 22px;
-}
-
-h2 {
-  margin: 0 0 8px;
-  font-size: 16px;
-}
-
-p {
-  margin: 0 0 10px;
-  font-size: 14px;
-  color: #4b5563;
-}
-
-.muted {
-  font-size: 12px;
-  color: #6b7280;
-}
-
-label {
-  font-size: 13px;
-  display: block;
-  margin-bottom: 4px;
-  color: #374151;
-}
-
-/* === FORM CONTROLS === */
-input,
-select {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  color: #111827;
-  font-size: 14px;
-}
-
-input:focus,
-select:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
-}
-
-.lock-input {
-  width: 72px;
-  min-width: 72px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  border: 1px solid #d1d5db;
-  font-size: 14px;
-  letter-spacing: 0.12em;
-}
-
-/* =====================================================
-   MODERN BUTTON STYLES - Replace in your CSS
-   Subtle colors, rounded corners (not fully round)
-   ===================================================== */
-
-/* === PRIMARY BUTTONS === */
-.btn-primary,
-.btn-success,
-.btn {
-  display: inline-block;
-  border-radius: 8px; /* Less rounded */
-  padding: 10px 16px;
-  font-weight: 600; /* Less bold */
-  font-size: 14px;
-  text-decoration: none;
-  border: none;
-  cursor: pointer;
-  margin: 10px;
-  transition: all 0.2s ease;
-}
-
-.btn-primary {
-  background: #3b82f6;
-  color: #fff;
-}
-
-.btn-primary:hover {
-  background: #2563eb;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-.btn-success {
-  background: #10b981;
-  color: #fff;
-}
-
-.btn-success:hover {
-  background: #059669;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-}
-
-/* === SMALL BUTTONS IN TABLE === */
-.btn-small {
-  border-radius: 6px; /* Subtle rounded */
-  padding: 6px 12px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-  font-size: 12px;
-  line-height: 1.4;
-  white-space: nowrap;
-  transition: all 0.2s ease;
-}
-
-/* Guardar button - subtle blue */
-.btn-small:not(.btn-ghost):not(.danger) {
-  background: #dbeafe;
-  color: #1e40af;
-  border: 1px solid #93c5fd;
-}
-
-.btn-small:not(.btn-ghost):not(.danger):hover {
-  background: #bfdbfe;
-  border-color: #60a5fa;
-  transform: translateY(-1px);
-}
-
-/* Mostrar button - subtle purple */
-.btn-ghost {
-  background: #ede9fe;
-  color: #6d28d9;
-  border: 1px solid #c4b5fd;
-}
-
-.btn-ghost:hover {
-  background: #ddd6fe;
-  border-color: #a78bfa;
-  transform: translateY(-1px);
-}
-
-/* Borrar button - subtle red */
-.btn-small.danger {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fca5a5;
-}
-
-.btn-small.danger:hover {
-  background: #fecaca;
-  border-color: #f87171;
-  transform: translateY(-1px);
-}
-
-/* Abrir button - subtle gray */
-.btn-small.btn-ghost {
-  background: #f3f4f6;
-  color: #374151;
-  border: 1px solid #d1d5db;
-}
-
-.btn-small.btn-ghost:hover {
-  background: #e5e7eb;
-  border-color: #9ca3af;
-}
-
-/* === ACTION BUTTONS (Guardar in forms) === */
-button[type="submit"]:not(.clean-btn):not(.btn-small) {
-  background: #3b82f6;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-weight: 500;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-button[type="submit"]:not(.clean-btn):not(.btn-small):hover {
-  background: #2563eb;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-/* === PILLS (No / Sí indicators) === */
-.pill {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 6px; /* Less rounded */
-  font-weight: 600;
-  font-size: 11px;
-  line-height: 1.4;
-  border: 1px solid transparent;
-}
-
-.pill-yes {
-  background: #d1fae5;
-  color: #065f46;
-  border-color: #6ee7b7;
-}
-
-.pill-no {
-  background: #fee2e2;
-  color: #991b1b;
-  border-color: #fca5a5;
-}
-
-/* === CLEAN BUTTON === */
-.clean-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-  min-width: 32px;
-  padding: 0 8px;
-  border: 1px solid #e5e7eb;
-  outline: 0;
-  box-shadow: none;
-  appearance: none;
-  border-radius: 6px;
-  background: #fff;
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.clean-btn:hover {
-  background: #f9fafb;
-  border-color: #d1d5db;
-  transform: scale(1.05);
-}
-
-.clean-btn:focus {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-.clean-btn.pill-yes {
-  background: #d1fae5;
-  color: #065f46;
-  border-color: #6ee7b7;
-}
-
-.clean-btn.pill-yes:hover {
-  background: #a7f3d0;
-}
-
-.clean-btn.pill-no {
-  background: #fee2e2;
-  color: #991b1b;
-  border-color: #fca5a5;
-}
-
-.clean-btn.pill-no:hover {
-  background: #fecaca;
-}
-
-/* === BASE BUTTON (for filters) === */
-.btn-base {
-  height: 36px;
-  min-height: 36px;
-  padding: 0 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  line-height: 1.4;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  color: #374151;
-  cursor: pointer;
-  white-space: nowrap;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.btn-base:hover {
-  background: #f9fafb;
-  border-color: #9ca3af;
-  transform: translateY(-1px);
-}
-
-.btn-base.btn-success {
-  background: #d1fae5;
-  color: #065f46;
-  border-color: #6ee7b7;
-}
-
-.btn-base.btn-success:hover {
-  background: #a7f3d0;
-  border-color: #34d399;
-}
-
-/* === LINK BUTTON === */
-.btn-link {
-  background: transparent;
-  color: #3b82f6;
-  padding: 0;
-  font-weight: 500;
-  text-decoration: none;
-  border: none;
-  transition: color 0.2s ease;
-}
-
-.btn-link:hover {
-  color: #2563eb;
-  text-decoration: underline;
-}
-
-/* === WARNINGS === */
-.warnings {
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  border-radius: 12px;
-  padding: 10px 12px;
-  margin-bottom: 12px;
-  color: #9a3412;
-  font-size: 13px;
-  text-align: left;
-}
-
-.warnings p {
-  margin: 4px 0;
-  color: #9a3412;
-}
-
-/* === LAYOUT HELPERS === */
-.row {
-  display: flex;
-  gap: 10px;
-}
-
-.row > div {
-  flex: 1;
-}
-
-/* === TABLES === */
-.table-wrap {
-  width: 100%;
-  overflow-x: auto;
-  position: relative;
-  -webkit-overflow-scrolling: touch;
-}
-
-table {
-  width: 100%;
-  min-width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 12px;
-}
-/* Draggable column styles */
-th[draggable="true"] {
-  cursor: move;
-  user-select: none;
-  position: relative;
-}
-
-th[draggable="true"]:hover {
-  background: #e5e7eb;
-}
-
-th[draggable="true"]::before {
-  content: "⋮⋮";
-  position: absolute;
-  left: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 14px;
-  color: #9ca3af;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-th[draggable="true"]:hover::before {
-  opacity: 1;
-}
-
-th.dragging {
-  opacity: 0.5;
-  background: #dbeafe;
-}
-
-th.drag-over {
-  background: #dbeafe;
-  border-left: 3px solid #2563eb;
-}
-
-th.sticky-col {
-  cursor: default !important;
-}
-
-th.sticky-col::before {
-  display: none !important;
-}
-
-th {
-  position: sticky;
-  top: 0;
-  background: #f9fafb;
-  text-align: left;
-  padding: 6px 8px;
-  border-bottom: 1px solid #e5e7eb;
-  white-space: nowrap;
-  color: #374151;
-  font-size: 12px;
-}
-
-td {
-  padding: 6px 8px;
-  border-bottom: 1px solid #f1f5f9;
-  vertical-align: top;
-  white-space: normal;
-}
-
-tr:hover td {
-  background: #f9fafb;
-}
-
-/* === STICKY COLUMNS === */
-th.sticky-col,
-td.sticky-col {
-  position: sticky;
-  left: 0;
-  z-index: 2;
-}
-
-thead th.sticky-col {
-  z-index: 3;
-}
-
-/* Default background for sticky columns (non-cleaning) */
-th.sticky-col:not(.needs-clean),
-td.sticky-col:not(.needs-clean) {
-  background: #fff;
-}
-
-/* Hover state for sticky columns */
-tr:hover td.sticky-col:not(.needs-clean) {
-  background: #f9fafb;
-}
-
-/* === APARTMENT CELL STATES === */
-
-/* Default apartment cell */
-.apartment-cell {
-  transition: background 0.2s;
-}
-
-/* Apartment needs cleaning (occupied yesterday) */
-.apartment-cell.needs-clean {
-  background: #f5f5f5 !important;
-  font-weight: 600;
-}
-
-/* Sticky column when needs cleaning */
-td.sticky-col.needs-clean {
-  background: #f5f5f5 !important;
-}
-
-/* Hover state for cleaning cells */
-tr:hover .apartment-cell.needs-clean,
-tr:hover td.sticky-col.needs-clean {
-  background: #e5e7eb !important;
-}
-
-/* === FORMS IN TABLE CELLS === */
-td form {
-  white-space: nowrap;
-}
-
-.lock-form,
-.vis-form {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: nowrap;
-  white-space: nowrap;
-}
-
-.lock-form button,
-.vis-form button,
-.lock-form .btn-small,
-.vis-form .btn-small {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-}
-
-/* === COMPACT TABLES (for specific use cases) === */
+  /* === FORCE ONE-LINE CONTROLS IN TABLE === */
+  .lock-form{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-wrap:nowrap;
+    white-space:nowrap;
+  }
+
+  .lock-form .btn-small,
+  .lock-form .btn-small.btn-ghost,
+  .lock-form button{
+    white-space:nowrap;
+  }
+
+  td form{ white-space:nowrap; }
+
+  th.sticky-col, td.sticky-col{
+    background: #fff;
+    z-index: 2;
+  }
+  thead th.sticky-col{
+    z-index: 3;
+  }
+
+  .table-wrap{
+    overflow-x: auto;
+    position: relative;
+  }
+  table{
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  .btn-base {
+    height: 34px;
+    min-height: 34px;
+    padding: 0 12px;
+    border-radius: 10px;
+    font-size: 13px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* Clean button — same style as other small buttons */
+  .clean-btn{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    height:30px;
+    min-width:44px;
+    padding:0 10px;
+    border:0;
+    outline:0;
+    box-shadow:none;
+    appearance:none;
+    border-radius:10px;
+    background:#f2f2f2;
+    font-size:14px;
+    line-height:1;
+    cursor:pointer;
+  }
+  
+                 .apartment-cell.needs-clean {
+        background: #f5f5f5 !important; /* gris clarito como en tu captura antigua */
+        font-weight: 600;
+      }
+      .apartment-cell {
+        transition: background 0.2s;
+      }
+
+  .clean-btn:focus{ outline:none; }
+  .clean-btn.pill-yes{ color:#1a7f37; }
+  .clean-btn.pill-no{ color:#b42318; }
+
+  th.sticky-col,
+  td.sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #fff;
+  }
+
+  thead th.sticky-col {
+    z-index: 3;
+  }
+
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body{
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background:#f6f7fb;
+    color:#111827;
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+  }
+
+  .table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 100%;
+    border-collapse: collapse;
+  }
+
+  .page{ width:100%; max-width:1100px; padding:16px; }
+  .card{
+    background:#fff;
+    border-radius:18px;
+    padding:20px 18px 22px;
+    box-shadow:0 10px 28px rgba(17,24,39,0.08);
+    border:1px solid #e5e7eb;
+  }
+
+  h1{ margin:0 0 8px; font-size:22px; }
+  h2{ margin:0 0 8px; font-size:16px; }
+  p{ margin:0 0 10px; font-size:14px; color:#4b5563; }
+  .muted{ font-size:12px; color:#6b7280; }
+  label{ font-size:13px; display:block; margin-bottom:4px; color:#374151; }
+
+  input, select{
+    width:100%;
+    padding:10px 12px;
+    border-radius:12px;
+    border:1px solid #d1d5db;
+    background:#fff;
+    color:#111827;
+    font-size:14px;
+  }
+  input:focus, select:focus{
+    outline:none;
+    border-color:#2563eb;
+    box-shadow:0 0 0 4px rgba(37,99,235,0.12);
+  }
+
+  .row{ display:flex; gap:10px; }
+  .row > div{ flex:1; }
+
+  .btn-primary, .btn-success, .btn-link, .btn{
+    display:inline-block;
+    border-radius:999px;
+    padding:10px 18px;
+    font-weight:700;
+    font-size:14px;
+    text-decoration:none;
+    border:none;
+    cursor:pointer;
+    margin: 10px;
+  }
+  .btn-primary{ background:#2563eb; color:#fff; }
+  .btn-success{ background:#16a34a; color:#fff; }
+  .btn-link{
+    background:transparent;
+    color:#2563eb;
+    padding:0;
+    font-weight:600;
+  }
+
+  .warnings{
+    background:#fff7ed;
+    border:1px solid #fed7aa;
+    border-radius:12px;
+    padding:10px 12px;
+    margin-bottom:12px;
+    color:#9a3412;
+    font-size:13px;
+    text-align:left;
+  }
+  .warnings p{ margin:4px 0; color:#9a3412; }
+
+  /* компактнее таблица */
+  table{ width:100%; border-collapse:collapse; font-size:12px; }
+  th{
+    position:sticky;
+    top:0;
+    background:#f9fafb;
+    text-align:left;
+    padding:6px 8px;
+    border-bottom:1px solid #e5e7eb;
+    white-space:nowrap;
+    color:#374151;
+    font-size:12px;
+  }
+  td{
+  padding:6px 8px;
+  border-bottom:1px solid #f1f5f9;
+  vertical-align:top;          /* лучше для textarea */
+  white-space:normal;          /* ✅ главное: разрешаем перенос */
+}
+  tr:hover td{ background:#f9fafb; }
+
+  /* компактнее статус-пилюли */
+  .pill{
+    display:inline-block;
+    padding:4px 8px;
+    border-radius:999px;
+    font-weight:800;
+    font-size:11px;
+    line-height:1;
+  }
+  /* компактные таблицы — ТОЛЬКО там, где реально нужно */
 .table-compact td,
 .table-compact th {
   white-space: nowrap;
 }
 
-/* === SECTIONS TABLE (for apartment content management) === */
+/* секции: поле с текстом должно быть гибким */
 .sections-table {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-}
-
-.sections-table th,
-.sections-table td {
-  white-space: normal;
-  vertical-align: top;
-}
-
-.sections-table .td-text {
-  min-width: 0;
 }
 
 .sections-table .td-text,
@@ -1255,14 +923,87 @@ td form {
   max-width: 100%;
   box-sizing: border-box;
 }
+  .pill-yes{ background:#dcfce7; color:#166534; }
+  .pill-no{ background:#fee2e2; color:#991b1b; }
 
+  /* компактнее формы/кнопки */
+  .lock-form{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+
+  .lock-input{
+    width:110px;
+    min-width:110px;
+    padding:8px 10px;
+    border-radius:10px;
+    border:1px solid #d1d5db;
+    font-size:14px;
+    letter-spacing:0.12em;
+  }
+
+  .btn-small{
+    border-radius:999px;
+    padding:7px 10px;
+    font-weight:700;
+    border:none;
+    cursor:pointer;
+    background:#2563eb;
+    color:#fff;
+    font-size:12px;
+    line-height:1;
+  }
+  .btn-ghost{ background:#eef2ff; color:#1e40af; }
+
+  /* === ONE LINE IN CELLS (LOCK + VISIBLE) === */
+  .lock-form,
+  .vis-form{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-wrap:nowrap !important;
+    white-space:nowrap;
+  }
+    /* ===== Sections table (fix shifting) ===== */
+.sections-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.sections-table th,
+.sections-table td {
+  white-space: normal;      /* важно: не nowrap */
+  vertical-align: top;
+}
+.sections-table .td-text { min-width: 0; }
+.sections-table .sec-title,
 .sections-table .sec-body {
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
   display: block;
 }
-</style>
+
+  .lock-form button,
+  .vis-form button,
+  .lock-form .btn-small,
+  .vis-form .btn-small{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    white-space:nowrap;
+  }
+
+  .lock-input{
+    width:72px;
+    min-width:72px;
+  }
+  /* Только для таблиц, где нужно всё в одну строку (lock/visibility) */
+.table-compact td,
+.table-compact th,
+.lock-form,
+.vis-form{
+  white-space: nowrap;
+}
+
+  </style>
 </head>
 <body>
   <div class="page">
@@ -1270,231 +1011,6 @@ td form {
       ${innerHtml}
     </div>
   </div>
-
-  <script>
-(function() {
-  'use strict';
-  const STORAGE_KEY = 'rcs_table_column_order';
-  let draggedColumn = null;
-  let draggedIndex = null;
-
-  function getColumnOrder() {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : null;
-    } catch (e) {
-      console.error('Failed to load column order:', e);
-      return null;
-    }
-  }
-
-  function saveColumnOrder(order) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
-    } catch (e) {
-      console.error('Failed to save column order:', e);
-    }
-  }
-
-  function getCurrentOrder(table) {
-    const headers = Array.from(table.querySelectorAll('thead th'));
-    // Save only column names in order, not indices
-    return headers.map(th => th.textContent.trim());
-  }
-
-  function reorderColumns(table, columnOrder) {
-    const headerRow = table.querySelector('thead tr');
-    const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
-    
-    if (!headerRow || !columnOrder || columnOrder.length === 0) return;
-
-    const headers = Array.from(headerRow.children);
-    
-    // Create map: column name -> header element
-    const headerMap = {};
-    headers.forEach(th => {
-      const name = th.textContent.trim();
-      headerMap[name] = th;
-    });
-
-    // Reorder headers based on saved order
-    const newHeaders = [];
-    columnOrder.forEach(colName => {
-      if (headerMap[colName]) {
-        newHeaders.push(headerMap[colName]);
-      }
-    });
-
-    // Add any missing columns at the end
-    headers.forEach(th => {
-      const name = th.textContent.trim();
-      if (!columnOrder.includes(name)) {
-        newHeaders.push(th);
-      }
-    });
-
-    // Rebuild header row
-    headerRow.innerHTML = '';
-    newHeaders.forEach(th => headerRow.appendChild(th));
-
-    // Reorder body cells to match header order
-    bodyRows.forEach(row => {
-      const cells = Array.from(row.children);
-      const cellMap = {};
-      
-      // Map old header positions to cells
-      headers.forEach((th, idx) => {
-        const name = th.textContent.trim();
-        cellMap[name] = cells[idx];
-      });
-
-      // Rebuild row in new order
-      const newCells = [];
-      newHeaders.forEach(th => {
-        const name = th.textContent.trim();
-        if (cellMap[name]) {
-          newCells.push(cellMap[name]);
-        }
-      });
-
-      row.innerHTML = '';
-      newCells.forEach(td => td && row.appendChild(td));
-    });
-  }
-
-  function initDragDrop(table) {
-    const headers = table.querySelectorAll('thead th');
-    
-    headers.forEach((th, index) => {
-      if (th.classList.contains('sticky-col')) {
-        return;
-      }
-
-      th.setAttribute('draggable', 'true');
-
-      th.addEventListener('dragstart', function(e) {
-        draggedColumn = this;
-        draggedIndex = Array.from(this.parentNode.children).indexOf(this);
-        this.classList.add('dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', this.innerHTML);
-      });
-
-      th.addEventListener('dragover', function(e) {
-        if (e.preventDefault) {
-          e.preventDefault();
-        }
-        
-        if (this.classList.contains('sticky-col')) {
-          return false;
-        }
-
-        e.dataTransfer.dropEffect = 'move';
-        
-        if (draggedColumn !== this) {
-          this.classList.add('drag-over');
-        }
-        
-        return false;
-      });
-
-      th.addEventListener('dragenter', function(e) {
-        if (!this.classList.contains('sticky-col') && draggedColumn !== this) {
-          this.classList.add('drag-over');
-        }
-      });
-
-      th.addEventListener('dragleave', function(e) {
-        this.classList.remove('drag-over');
-      });
-
-      th.addEventListener('drop', function(e) {
-        if (e.stopPropagation) {
-          e.stopPropagation();
-        }
-
-        if (this.classList.contains('sticky-col')) {
-          return false;
-        }
-
-        this.classList.remove('drag-over');
-
-        if (draggedColumn !== this) {
-          const dropIndex = Array.from(this.parentNode.children).indexOf(this);
-          const allRows = Array.from(table.querySelectorAll('tbody tr'));
-
-          if (draggedIndex < dropIndex) {
-            this.parentNode.insertBefore(draggedColumn, this.nextSibling);
-          } else {
-            this.parentNode.insertBefore(draggedColumn, this);
-          }
-
-          allRows.forEach(row => {
-            const cells = Array.from(row.children);
-            const draggedCell = cells[draggedIndex];
-            const dropCell = cells[dropIndex];
-
-            if (draggedCell && dropCell) {
-              if (draggedIndex < dropIndex) {
-                row.insertBefore(draggedCell, dropCell.nextSibling);
-              } else {
-                row.insertBefore(draggedCell, dropCell);
-              }
-            }
-          });
-
-          const newOrder = getCurrentOrder(table);
-          saveColumnOrder(newOrder);
-        }
-
-        return false;
-      });
-
-      th.addEventListener('dragend', function(e) {
-        this.classList.remove('dragging');
-        
-        headers.forEach(header => {
-          header.classList.remove('drag-over');
-        });
-
-        draggedColumn = null;
-        draggedIndex = null;
-      });
-    });
-  }
-
-  function init() {
-    const tables = document.querySelectorAll('table');
-    
-    tables.forEach(table => {
-      const savedOrder = getColumnOrder();
-      if (savedOrder && savedOrder.length > 0) {
-        try {
-          reorderColumns(table, savedOrder);
-        } catch (e) {
-          console.error('Failed to apply saved column order:', e);
-        }
-      }
-
-      initDragDrop(table);
-    });
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-
-  window.resetColumnOrder = function() {
-    localStorage.removeItem(STORAGE_KEY);
-    location.reload();
-  };
-
-  console.log('✅ Draggable columns initialized');
-})();
-</script>
-
 </body>
 </html>`;
 }
@@ -2419,9 +1935,8 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 // ===================== GUEST DASHBOARD =====================
 // Guest opens: /guest/:aptId/:token
 // We show last submitted record for this booking token.
-// ===================== GUEST DASHBOARD (multi-tenant ready) =====================
-app.get("/guest/:apartmentId/:bookingRef", async (req, res) => {
-  const { apartmentId, bookingRef } = req.params;
+app.get("/guest/:roomId/:token", async (req, res) => {
+  const { roomId, token } = req.params;
 
   function toYouTubeEmbed(url) {
     const u = String(url || "");
@@ -2439,59 +1954,65 @@ app.get("/guest/:apartmentId/:bookingRef", async (req, res) => {
   }
 
   try {
-    // 1) Load booking
-    const bookingRes = await pool.query(
-      `
-      SELECT
-        b.id,
-        b.booking_reference,
-        b.apartment_id,
-        a.name AS apartment_name,
-        b.guest_name AS full_name,
-        b.guest_email AS email,
-        b.guest_phone AS phone,
-        b.checkin_date AS arrival_date,
-        b.checkin_time AS arrival_time,
-        b.checkout_date AS departure_date,
-        b.checkout_time AS departure_time,
-        b.num_adults AS adults,
-        b.num_children AS children,
-        b.lock_code,
-        b.lock_code_visible AS lock_visible
-      FROM bookings b
-      JOIN apartments a ON a.id = b.apartment_id
-      WHERE COALESCE(b.is_cancelled, false) = false
-        AND b.apartment_id::text = $1
-        AND b.booking_reference::text = $2
-      ORDER BY b.id DESC
-      LIMIT 1
-      `,
-      [String(apartmentId), String(bookingRef)]
-    );
+    // 1) Load check-in record
+  const checkinRes = await pool.query(
+  `
+  SELECT
+    id,
+    booking_token,
+    beds24_booking_id,
+    beds24_room_id,
+    apartment_name,
+    full_name,
+    email,
+    phone,
+    arrival_date,
+    arrival_time,
+    departure_date,
+    departure_time,
+    adults,
+    children,
+    lock_code,
+    lock_visible
+  FROM checkins
+  WHERE beds24_room_id::text = $1
+    AND (
+      booking_token = $2
+      OR beds24_booking_id::text = $2
+    )
+    AND cancelled IS DISTINCT FROM true  -- NUEVA LÍNEA: evita mostrar canceladas al huésped
+  ORDER BY id DESC
+  LIMIT 1
+  `,
+  [String(roomId), String(token)]
+);
 
-    if (!bookingRes.rows.length) {
+    if (!checkinRes.rows.length) {
       const html = `
-        <div class="card">
-          <h1>Panel del Huésped</h1>
-          <p class="muted">No encontramos la reserva para este enlace.</p>
-          <p><a class="btn-link" href="/">← Volver</a></p>
-        </div>
+        <h1>Guest Dashboard</h1>
+        <p class="muted">No check-in record found for this booking.</p>
+        <p><a class="btn-link" href="/">← Back</a></p>
       `;
-      return res.send(renderPage("Panel del Huésped", html));
+      return res.send(renderPage("Guest Dashboard", html));
     }
 
-    const r = bookingRes.rows[0];
+    const r = checkinRes.rows[0];
 
-    // 2) Load apartment sections by room_id = apartment_id
+    // 2) Load apartment sections
     const secRes = await pool.query(
       `
-      SELECT id, title, body, new_media_type, new_media_url
+      SELECT
+        id,
+        title,
+        body,
+        new_media_type,
+        new_media_url
       FROM apartment_sections
-      WHERE room_id = $1
+      WHERE room_id::text = $1
         AND is_active = true
       ORDER BY sort_order ASC, id ASC
       `,
-      [Number(r.apartment_id)]
+      [String(roomId)]
     );
 
     const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
@@ -2503,104 +2024,125 @@ app.get("/guest/:apartmentId/:bookingRef", async (req, res) => {
         ? show
           ? `
             <hr/>
-            <div>Código de acceso: <strong style="font-size:22px;letter-spacing:2px;">${escapeHtml(String(r.lock_code))}</strong></div>
+            <div>Lock Code: <strong style="font-size:22px;letter-spacing:2px;">${escapeHtml(
+              String(r.lock_code)
+            )}</strong></div>
           `
           : `
             <hr/>
-            <a class="btn-link" href="/guest/${encodeURIComponent(String(apartmentId))}/${encodeURIComponent(String(bookingRef))}?show=1">
-              Mostrar código
-            </a>
+            <a class="btn-link" href="/guest/${encodeURIComponent(
+              String(roomId)
+            )}/${encodeURIComponent(String(token))}?show=1">Show code</a>
           `
         : "";
 
-    // 4) Sections accordion
+    // 4) Accordion sections
     const sectionsHtml =
       secRes.rows.length === 0
-        ? `<div class="muted">Todavía no hay información para este apartamento.</div>`
+        ? `<div class="muted">No information sections for this apartment yet.</div>`
         : `
-          <h2 style="margin-top:18px;">Información útil</h2>
+          <h2 style="margin-top:18px;">Guest info</h2>
           <div id="guest-accordion">
-            ${secRes.rows.map((s) => {
-              const title = escapeHtml(s.title || "");
-              const rawBody = String(s.body || "");
-              const bodyHtml = escapeHtml(rawBody)
-                .replace(/\n/g, "<br/>")
-                .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
-                  const safeUrl = escapeHtml(url);
-                  return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
-                });
+           ${secRes.rows
+  .map((s) => {
+    const title = escapeHtml(s.title || "");
+    const rawBody = String(s.body || "");
 
-              const mediaType = String(s.new_media_type || "").toLowerCase().trim();
-              const mediaUrlRaw = String(s.new_media_url || "").trim();
-              let media = "";
+const bodyHtml = escapeHtml(rawBody)
+  .replace(/\n/g, "<br/>")
+  .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+    const safeUrl = escapeHtml(url);
+    return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
+  });
 
-              if (mediaUrlRaw) {
-                if (mediaType === "image") {
-                  const images = mediaUrlRaw.split(/\r?\n/).map(u => u.trim()).filter(Boolean);
-                  media = images.map((url) => `
-                    <div style="margin-top:10px;">
-                      <img src="${escapeHtml(url)}" style="max-width:100%;border-radius:12px;display:block;" loading="lazy" />
-                    </div>
-                  `).join("");
-                } else if (mediaType === "video") {
-                  const lower = mediaUrlRaw.toLowerCase();
-                  if (lower.endsWith(".mp4")) {
-                    media = `
-                      <div style="margin-top:10px;">
-                        <video controls playsinline style="width:100%;border-radius:12px;">
-                          <source src="${escapeHtml(mediaUrlRaw)}" type="video/mp4">
-                        </video>
-                      </div>
-                    `;
-                  } else {
-                    const yt = toYouTubeEmbed(mediaUrlRaw);
-                    const vm = toVimeoEmbed(mediaUrlRaw);
-                    const embed = yt || vm;
-                    media = embed
-                      ? `
-                        <div style="margin-top:10px;">
-                          <iframe
-                            src="${escapeHtml(embed)}"
-                            style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowfullscreen
-                          ></iframe>
-                        </div>
-                      `
-                      : `
-                        <div style="margin-top:10px;">
-                          <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
-                            ▶ Abrir vídeo
-                          </a>
-                        </div>
-                      `;
-                  }
-                } else {
-                  media = `
-                    <div style="margin-top:10px;">
-                      <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
-                        🔗 Abrir enlace
-                      </a>
-                    </div>
-                  `;
-                }
-              }
+    const mediaType = String(s.new_media_type || "").toLowerCase().trim();
+    const mediaUrlRaw = String(s.new_media_url || "").trim();
 
-              const panelId = `acc_${s.id}`;
-              return `
-                <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
-                  <button type="button" data-acc-btn="${panelId}"
-                    style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;">
-                    ${title}
-                  </button>
-                  <div id="${panelId}" style="display:none;padding:12px 14px;">
-                    <div>${bodyHtml}</div>
-                    ${media}
-                  </div>
-                </div>
-              `;
-            }).join("")}
+    let media = "";
+
+    if (mediaUrlRaw) {
+      if (mediaType === "image") {
+        const images = mediaUrlRaw
+          .split(/\r?\n/)
+          .map((u) => u.trim())
+          .filter(Boolean);
+
+        media = images
+          .map(
+            (url) => `
+              <div style="margin-top:10px;">
+                <img src="${escapeHtml(url)}" style="max-width:100%;border-radius:12px;display:block;" loading="lazy" />
+              </div>
+            `
+          )
+          .join("");
+      } else if (mediaType === "video") {
+        const lower = mediaUrlRaw.toLowerCase();
+
+        if (lower.endsWith(".mp4")) {
+          media = `
+            <div style="margin-top:10px;">
+              <video controls playsinline style="width:100%;border-radius:12px;">
+                <source src="${escapeHtml(mediaUrlRaw)}" type="video/mp4">
+              </video>
+            </div>
+          `;
+        } else {
+          const yt = toYouTubeEmbed(mediaUrlRaw);
+          const vm = toVimeoEmbed(mediaUrlRaw);
+          const embed = yt || vm;
+
+          media = embed
+            ? `
+              <div style="margin-top:10px;">
+                <iframe
+                  src="${escapeHtml(embed)}"
+                  style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen
+                ></iframe>
+              </div>
+            `
+            : `
+              <div style="margin-top:10px;">
+                <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
+                  ▶ Abrir video
+                </a>
+              </div>
+            `;
+        }
+      } else {
+        media = `
+          <div style="margin-top:10px;">
+            <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
+              🔗 Abrir enlace
+            </a>
           </div>
+        `;
+      }
+    }
+
+    const panelId = `acc_${s.id}`;
+
+    return `
+      <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
+        <button
+          type="button"
+          data-acc-btn="${panelId}"
+          style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;"
+        >
+          ${title}
+        </button>
+        <div id="${panelId}" style="display:none;padding:12px 14px;">
+          <div>${bodyHtml}</div>
+          ${media}
+        </div>
+      </div>
+    `;
+  })
+  .join("")}
+          </div>
+
           <script>
             (function () {
               var buttons = document.querySelectorAll("[data-acc-btn]");
@@ -2616,27 +2158,35 @@ app.get("/guest/:apartmentId/:bookingRef", async (req, res) => {
           </script>
         `;
 
+    // 5) Page HTML
     const html = `
       <div class="card">
-        <h1>Panel del Huésped</h1>
-        <div class="muted">Apartamento: <strong>${escapeHtml(r.apartment_name || "")}</strong></div>
-        <div class="muted">Reserva: <strong>${escapeHtml(String(r.booking_reference || ""))}</strong></div>
+        <h1>Guest Dashboard</h1>
+        <div class="muted">Apartment: <strong>${escapeHtml(r.apartment_name || "")}</strong></div>
+        <div class="muted">Booking ID: <strong>${escapeHtml(
+          String(r.beds24_booking_id || r.booking_token || "")
+        )}</strong></div>
         <hr/>
-        <div>Llegada: <strong>${fmtDate(r.arrival_date)}${r.arrival_time ? " " + fmtTime(r.arrival_time) : ""}</strong></div>
-        <div>Salida: <strong>${fmtDate(r.departure_date)}${r.departure_time ? " " + fmtTime(r.departure_time) : ""}</strong></div>
-        <div>Huéspedes: <strong>${totalGuests}</strong> (adultos: ${Number(r.adults) || 0}, niños: ${Number(r.children) || 0})</div>
+        <div>Arrival: <strong>${fmtDate(r.arrival_date)}${
+          r.arrival_time ? " " + fmtTime(r.arrival_time) : ""
+        }</strong></div>
+        <div>Departure: <strong>${fmtDate(r.departure_date)}${
+          r.departure_time ? " " + fmtTime(r.departure_time) : ""
+        }</strong></div>
+        <div>Guests: <strong>${totalGuests}</strong> (adults: ${Number(r.adults) || 0}, children: ${
+          Number(r.children) || 0
+        })</div>
         ${lockCodeHtml}
         ${sectionsHtml}
       </div>
     `;
 
-    return res.send(renderPage("Panel del Huésped", html));
+    return res.send(renderPage("Guest Dashboard", html));
   } catch (e) {
     console.error("Guest dashboard error:", e);
     return res.status(500).send("Cannot load guest dashboard: " + (e.detail || e.message || String(e)));
   }
 });
-
 // --- LIST + FILTER ---
 // ===================== STAFF: CHECKINS LIST (FIXED) =====================
 app.get("/staff/checkins", async (req, res) => {
@@ -2678,7 +2228,7 @@ app.get("/staff/checkins", async (req, res) => {
     const wArr = buildWhereFor("b.checkin_date");
     const wDep = buildWhereFor("b.checkout_date");
 
-    // Arrivals query
+    // ✅ НОВЫЙ SQL - работает с apartments + bookings
     const arrivalsRes = await pool.query(
       `
       SELECT
@@ -2707,7 +2257,6 @@ app.get("/staff/checkins", async (req, res) => {
       wArr.params
     );
 
-    // Departures query
     const departuresRes = await pool.query(
       `
       SELECT
@@ -2739,43 +2288,34 @@ app.get("/staff/checkins", async (req, res) => {
     const arrivals = arrivalsRes.rows || [];
     const departures = departuresRes.rows || [];
 
-   // Color logic: grey ONLY if (occupied yesterday) AND (has checkout today)
-const yesterdayStr = yesterday;
-const todayStr = today;
+    // Lógica de colores
+    const yesterdayStr = yesterday;
 
-// 1) apartments occupied yesterday (someone slept there)
-const { rows: occupiedYesterdayRows } = await pool.query(
-  `
-  SELECT DISTINCT b.apartment_id
-  FROM bookings b
-  WHERE b.is_cancelled = false
-    AND b.checkin_date <= $1::date
-    AND b.checkout_date > $1::date
-  `,
-  [yesterdayStr]
-);
-const occupiedYesterdaySet = new Set(occupiedYesterdayRows.map(r => String(r.apartment_id)));
+    const { rows: occupiedYesterdayRows } = await pool.query(
+      `
+      SELECT DISTINCT a.id as apartment_id
+      FROM bookings b
+      JOIN apartments a ON a.id = b.apartment_id
+      WHERE b.is_cancelled = false
+        AND b.checkin_date <= $1::date
+        AND b.checkout_date > $1::date
+      `,
+      [yesterdayStr]
+    );
 
-// 2) apartments that have a departure today (need cleaning today)
-const { rows: departuresTodayRows } = await pool.query(
-  `
-  SELECT DISTINCT b.apartment_id
-  FROM bookings b
-  WHERE b.is_cancelled = false
-    AND b.checkout_date = $1::date
-  `,
-  [todayStr]
-);
-const departuresTodaySet = new Set(departuresTodayRows.map(r => String(r.apartment_id)));
+    const occupiedYesterdaySet = new Set(
+      occupiedYesterdayRows.map(r => String(r.apartment_id))
+    );
 
-function aptColorClass(apartmentId) {
-  const id = String(apartmentId || "");
-  if (!id) return "";
-  if (occupiedYesterdaySet.has(id) && departuresTodaySet.has(id)) {
-    return "needs-clean";
-  }
-  return "";
-}
+    function aptColorClass(apartmentId) {
+      const id = String(apartmentId || "");
+      if (!id) return "";
+      if (occupiedYesterdaySet.has(id)) {
+        return "needs-clean";
+      }
+      return "";
+    }
+
     // Toolbar
     const toolbar = `
       <h1>Staff · Llegadas y Salidas</h1>
@@ -2815,29 +2355,48 @@ function aptColorClass(apartmentId) {
           ? `${fmtDate(r.departure_date)} ${fmtTime(r.departure_time)}`
           : `${fmtDate(r.arrival_date)} ${fmtTime(r.arrival_time)}`;
 
-       const guestRoomId = String(r.apartment_id || "");
-const guestToken =
-  String(
-    r.guest_token ||
-    r.guest_booking_id_from_start ||
-    r.guest_booking_id ||
-    r.guest_provider_booking_id ||
-    r.guest_external_booking_id ||
-    (r.guest_beds24_booking_id != null ? String(r.guest_beds24_booking_id) : "") ||
-    r.booking_reference ||
-    ""
-  );
+        const guestPortalUrl = `/guest/${r.apartment_id}/${r.booking_reference}`;
 
-const guestPortalUrl = `/guest/${encodeURIComponent(String(r.apartment_id))}/${encodeURIComponent(String(r.booking_reference))}`;
-
-return `
-  <tr>
-    ...
-    <td><a class="btn-small btn-ghost" href="${guestPortalUrl}" target="_blank">Abrir</a></td>
-    ...
-  </tr>
-`;
-      }).join("") : `<tr><td colspan="9" class="muted">No hay registros</td></tr>`;
+        return `
+          <tr>
+            <td class="sticky-col">
+              <form method="POST" action="/staff/bookings/${r.id}/clean">
+                <button type="submit" class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}">
+                  ${r.clean_ok ? "✓" : ""}
+                </button>
+              </form>
+            </td>
+            <td class="apartment-cell ${aptColorClass(r.apartment_id)}">
+              ${escapeHtml(r.apartment_name || "Sin nombre")}
+            </td>
+            <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
+            <td>${mainDate}</td>
+            <td>${calcNights(r.arrival_date, r.departure_date)}</td>
+            <td><a class="btn-small btn-ghost" href="${guestPortalUrl}" target="_blank">Abrir</a></td>
+            <td>
+              <form method="POST" action="/staff/bookings/${r.id}/lock" class="lock-form">
+                <input class="lock-input" name="lock_code" value="${r.lock_code || ""}" placeholder="0000" />
+                <button type="submit" class="btn-small">Guardar</button>
+              </form>
+            </td>
+            <td>
+              <form method="POST" action="/staff/bookings/${r.id}/visibility" class="vis-form">
+                <span class="pill ${r.lock_code_visible ? "pill-yes" : "pill-no"}">${r.lock_code_visible ? "Sí" : "No"}</span>
+                <button type="submit" class="btn-small ${r.lock_code_visible ? "btn-ghost" : ""}">
+                  ${r.lock_code_visible ? "Ocultar" : "Mostrar"}
+                </button>
+              </form>
+            </td>
+            <td>
+              <form method="POST" action="/staff/bookings/${r.id}/delete"
+                    onsubmit="return confirm('¿Seguro que quieres borrar esta reserva?');">
+                <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+                <button type="submit" class="btn-small danger">Borrar</button>
+              </form>
+            </td>
+          </tr>
+        `;
+      }).join("") : `<tr><td colspan="10" class="muted">No hay registros</td></tr>`;
 
       return `
         <h2 style="margin:24px 0 12px;">${title}</h2>
@@ -2876,6 +2435,56 @@ return `
     `));
   }
 });
+// ===================== BORRAR RESERVA DESDE STAFF =====================
+app.post("/staff/bookings/:id/delete", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id || isNaN(id)) {
+      return res.status(400).send("ID inválido");
+    }
+
+    const check = await pool.query(`SELECT id FROM bookings WHERE id = $1`, [id]);
+    if (check.rowCount === 0) {
+      return res.status(404).send("Reserva no encontrada");
+    }
+
+    await pool.query(`DELETE FROM bookings WHERE id = $1`, [id]);
+
+    const returnTo = req.body.returnTo || req.get("referer") || "/staff/checkins";
+    res.redirect(returnTo);
+  } catch (e) {
+    console.error("Error borrando reserva:", e);
+    res.status(500).send(renderPage("Error", `
+      <div class="card">
+        <h1 style="color:#991b1b;">❌ Error al borrar</h1>
+        <p>No se pudo borrar la reserva.</p>
+        <p><a href="/staff/checkins" class="btn-link">Volver a la lista</a></p>
+      </div>
+    `));
+  }
+});
+// ===================== ADMIN: LOCK CODE SAVE (REPLACE, NOT APPEND) =====================
+app.post("/staff/bookings/:id/lock", async (req, res) => {
+  const id = Number(req.params.id);
+  const raw = req.body.lock_code;
+  const last = Array.isArray(raw) ? raw[raw.length - 1] : raw;
+  let lockCode = String(last ?? "").trim();
+  if (req.body.clear === "1") lockCode = "";
+  lockCode = lockCode.replace(/\D/g, "").slice(0, 4);
+
+  try {
+    await pool.query(`UPDATE bookings SET lock_code = $1 WHERE id = $2`, [
+      lockCode || null,
+      id,
+    ]);
+    const back = req.body.returnTo || req.get("referer") || "/staff/checkins";
+    res.redirect(back);
+  } catch (e) {
+    console.error("Lock code update error:", e);
+    res.status(500).send("❌ Cannot update lock code");
+  }
+});
+
 // ===================== ADMIN: SET VISIBILITY =====================
 app.post("/staff/bookings/:id/visibility", async (req, res) => {
   const id = Number(req.params.id);
@@ -3200,35 +2809,6 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
