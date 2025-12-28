@@ -1223,7 +1223,6 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
     provider: "beds24",
     // otros campos...
   };
-}
 async function upsertCheckinFromBeds24(row) {
   // If dates are missing, skip (can't insert without dates)
   if (!row.arrival_date || !row.departure_date) return { skipped: true, reason: "missing_dates" };
@@ -1595,103 +1594,121 @@ app.post("/manager/apartment", async (req, res) => {
 
 app.post("/manager/apartment/sections/save", async (req, res) => {
   try {
-    const room_id = String(req.body.room_id || "").trim();
-    if (!room_id) return res.status(400).send("Missing room_id");
-
-    // 1) DELETE
-    if (req.body.delete) {
-      const deleteId = Number(req.body.delete);
-      await pool.query(
-        `DELETE FROM apartment_sections WHERE id=$1 AND room_id=$2`,
-        [deleteId, room_id]
-      );
-      return res.redirect(`/manager/apartment/sections?room_id=${encodeURIComponent(room_id)}`);
+    const roomId = String(req.body.room_id || "").trim();
+    if (!roomId) {
+      return res.status(400).send("room_id required");
     }
 
-    // 2) MOVE (up/down) — optional, if you already have logic keep it but use room_id in WHERE
-    if (req.body.move) {
-      // Keep your existing move logic, but every query must filter by room_id, not apartment_id.
-      // Example: SELECT id, sort_order FROM apartment_sections WHERE room_id=$1 ...
-    }
-
-    // 3) ADD new section
-    if (String(req.body.add) === "1") {
-      const title = String(req.body.new_title || "").trim();
-      const body = String(req.body.new_body || "").trim();
-      const sort_order = Number(req.body.new_sort_order || 1);
-      const is_active = req.body.new_is_active ? true : false;
-
-      const new_media_type = String(req.body.new_media_type || "none").trim();
-      const new_media_url = String(req.body.new_media_url || "").trim();
-
-      // Prevent fully empty section
-      if (!title && !body && !new_media_url) {
-        return res.status(400).send("Empty section");
-      }
-
-      // If URL exists but type is none -> normalize
-      const final_media_type = new_media_url
-        ? (new_media_type === "video" ? "video" : "image")
-        : "none";
+    // 1) ADD new section
+    if (req.body.add === "1") {
+      const newTitle = String(req.body.new_title || "").trim();
+      const newBody = String(req.body.new_body || "").trim();
+      const newIcon = String(req.body.new_icon || "").trim();
+      const newMediaType = String(req.body.new_media_type || "none").trim();
+      const newMediaUrl = String(req.body.new_media_url || "").trim();
+      const newSortOrder = parseInt(req.body.new_sort_order, 10) || 1;
+      const newIsActive = req.body.new_is_active === "on";
 
       await pool.query(
         `
-        INSERT INTO apartment_sections
-          (room_id, title, body, sort_order, is_active, new_media_type, new_media_url)
-        VALUES
-          ($1,$2,$3,$4,$5,$6,$7)
+        INSERT INTO apartment_sections 
+          (room_id, title, body, icon, sort_order, is_active, new_media_type, new_media_url)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         `,
-        [room_id, title, body, sort_order, is_active, final_media_type, new_media_url]
+        [roomId, newTitle, newBody, newIcon, newSortOrder, newIsActive, newMediaType, newMediaUrl]
       );
 
-      return res.redirect(`/manager/apartment/sections?room_id=${encodeURIComponent(room_id)}`);
+      return res.redirect(`/manager/apartment/sections?room_id=${roomId}`);
     }
 
-    // 4) SAVE ALL edits
-    if (req.body.save) {
-      const secRes = await pool.query(
-        `SELECT id FROM apartment_sections WHERE room_id=$1 ORDER BY id ASC`,
-        [room_id]
+    // 2) DELETE a section
+    if (req.body.delete) {
+      const deleteId = parseInt(req.body.delete, 10);
+      await pool.query(
+        `DELETE FROM apartment_sections WHERE id = $1 AND room_id::text = $2`,
+        [deleteId, roomId]
+      );
+      return res.redirect(`/manager/apartment/sections?room_id=${roomId}`);
+    }
+
+    // 3) MOVE up/down
+    if (req.body.move) {
+      const [direction, idStr] = req.body.move.split(":");
+      const moveId = parseInt(idStr, 10);
+
+      const sections = await pool.query(
+        `SELECT id, sort_order FROM apartment_sections WHERE room_id::text = $1 ORDER BY sort_order ASC, id ASC`,
+        [roomId]
       );
 
-      for (const row of secRes.rows) {
-        const id = row.id;
+      const arr = sections.rows;
+      const idx = arr.findIndex((s) => s.id === moveId);
 
+      if (idx !== -1) {
+        if (direction === "up" && idx > 0) {
+          const temp = arr[idx].sort_order;
+          arr[idx].sort_order = arr[idx - 1].sort_order;
+          arr[idx - 1].sort_order = temp;
+        } else if (direction === "down" && idx < arr.length - 1) {
+          const temp = arr[idx].sort_order;
+          arr[idx].sort_order = arr[idx + 1].sort_order;
+          arr[idx + 1].sort_order = temp;
+        }
+
+        for (const sec of arr) {
+          await pool.query(
+            `UPDATE apartment_sections SET sort_order = $1 WHERE id = $2`,
+            [sec.sort_order, sec.id]
+          );
+        }
+      }
+
+      return res.redirect(`/manager/apartment/sections?room_id=${roomId}`);
+    }
+
+    // 4) SAVE all existing sections
+    if (req.body.save === "1") {
+      const allSections = await pool.query(
+        `SELECT id FROM apartment_sections WHERE room_id::text = $1`,
+        [roomId]
+      );
+
+      for (const sec of allSections.rows) {
+        const id = sec.id;
+        const sortOrder = parseInt(req.body[`sort_order_${id}`], 10) || 0;
+        const isActive = req.body[`is_active_${id}`] === "on";
         const title = String(req.body[`title_${id}`] || "").trim();
-        const body = String(req.body[`body_${id}`] || "");
-        const sort_order = Number(req.body[`sort_order_${id}`] || 1);
-        const is_active = req.body[`is_active_${id}`] ? true : false;
-
-        const new_media_type = String(req.body[`new_media_type_${id}`] || "none").trim();
-        const new_media_url = String(req.body[`new_media_url_${id}`] || "").trim();
-
-        const final_media_type = new_media_url
-          ? (new_media_type === "video" ? "video" : "image")
-          : "none";
+        const body = String(req.body[`body_${id}`] || "").trim();
+        const icon = String(req.body[`icon_${id}`] || "").trim();
+        const mediaType = String(req.body[`new_media_type_${id}`] || "none").trim();
+        const mediaUrl = String(req.body[`new_media_url_${id}`] || "").trim();
 
         await pool.query(
           `
           UPDATE apartment_sections
-          SET title=$1,
-              body=$2,
-              sort_order=$3,
-              is_active=$4,
-              new_media_type=$5,
-              new_media_url=$6,
-              updated_at=NOW()
-          WHERE id=$7 AND room_id=$8
+          SET 
+            sort_order = $1,
+            is_active = $2,
+            title = $3,
+            body = $4,
+            icon = $5,
+            new_media_type = $6,
+            new_media_url = $7
+          WHERE id = $8
           `,
-          [title, body, sort_order, is_active, final_media_type, new_media_url, id, room_id]
+          [sortOrder, isActive, title, body, icon, mediaType, mediaUrl, id]
         );
       }
 
-      return res.redirect(`/manager/apartment/sections?room_id=${encodeURIComponent(room_id)}`);
+      return res.redirect(`/manager/apartment/sections?room_id=${roomId}`);
     }
 
-    return res.redirect(`/manager/apartment/sections?room_id=${encodeURIComponent(room_id)}`);
+    return res.status(400).send("Unknown action");
   } catch (e) {
     console.error("sections save error:", e);
-    return res.status(500).send("Cannot save sections: " + (e.detail || e.message || String(e)));
+    return res.status(500).send(
+      "Cannot save: " + (e.detail || e.message || String(e))
+    );
   }
 });
    
@@ -2871,6 +2888,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
