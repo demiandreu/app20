@@ -2268,25 +2268,30 @@ app.get("/staff/checkins", async (req, res) => {
     // Arrivals query
     const arrivalsRes = await pool.query(
       `
-      SELECT
-        b.id,
-        b.booking_reference,
-        a.name as apartment_name,
-        a.id as apartment_id,
-        b.guest_name as full_name,
-        b.guest_phone as phone,
-        b.checkin_date as arrival_date,
-        b.checkin_time as arrival_time,
-        b.checkout_date as departure_date,
-        b.checkout_time as departure_time,
-        b.num_adults as adults,
-        b.num_children as children,
-        b.lock_code,
-        b.lock_code_visible,
-        b.cleaning_completed as clean_ok
-      FROM bookings b
-      JOIN apartments a ON a.id = b.apartment_id
-      WHERE b.is_cancelled = false
+  SELECT
+  b.id,
+  b.booking_reference,
+  a.name as apartment_name,
+  a.id as apartment_id,
+  b.guest_name as full_name,
+  b.guest_phone as phone,
+  b.checkin_date as arrival_date,
+  b.checkin_time as arrival_time,
+  b.checkout_date as departure_date,
+  b.checkout_time as departure_time,
+  b.num_adults as adults,
+  b.num_children as children,
+  b.lock_code,
+  b.lock_code_visible,
+  b.cleaning_completed as clean_ok,
+
+  c.room_id as room_id
+
+FROM bookings b
+JOIN apartments a ON a.id = b.apartment_id
+LEFT JOIN checkins c
+  ON c.beds24_booking_id::text = b.booking_reference::text
+WHERE b.is_cancelled = false
         ${wArr.whereSql ? " AND " + wArr.whereSql.substring(6) : ""}
       ORDER BY b.checkin_date ASC, b.checkin_time ASC, b.id DESC
       LIMIT 300
@@ -2395,8 +2400,12 @@ function renderTable(rows, mode) {
       ? `${fmtDate(r.departure_date)} ${fmtTime(r.departure_time)}`
       : `${fmtDate(r.arrival_date)} ${fmtTime(r.arrival_time)}`;
 
-    const guestPortalUrl = `/guest/${r.apartment_id}/${r.booking_reference}`;
-
+  const guestPortalUrl = r.room_id
+  ? `/guest/${r.room_id}/${r.booking_reference}`
+  : null;
+const guestBtn = guestPortalUrl
+  ? `<a class="btn-small btn-ghost" href="${guestPortalUrl}" target="_blank" rel="noopener">Abrir</a>`
+  : `<span class="muted">Sin link</span>`;
     return `
       <tr>
         <!-- 1. Limpieza -->
@@ -2409,7 +2418,7 @@ function renderTable(rows, mode) {
         </td>
         
         <!-- 2. Huésped -->
-        <td><a class="btn-small btn-ghost" href="${guestPortalUrl}" target="_blank">Abrir</a></td>
+        <td>${guestBtn}</td>
         
         <!-- 3. Llegada -->
         <td>${mainDate}</td>
@@ -2432,7 +2441,9 @@ function renderTable(rows, mode) {
             <button type="submit" class="btn-small">Guardar</button>
           </form>
         </td>
-        
+        //temporal
+        <td class="muted">room_id=${escapeHtml(String(r.room_id || ""))}</td>
+        //temporal
         <!-- 8. Visible -->
         <td>
           <form method="POST" action="/staff/bookings/${r.id}/visibility" class="vis-form">
@@ -2873,6 +2884,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
