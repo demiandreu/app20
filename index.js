@@ -157,26 +157,63 @@ async function initDb() {
 // ====== MANAGER: Apartment Sections (Accordion content) ======
 app.get("/manager/apartment/sections", async (req, res) => {
   try {
-  const roomId = String(req.query.room_id || "").trim();
+    const roomId = String(req.query.room_id || "").trim();
 
-const aptRes = await pool.query(
-  `SELECT id, apartment_name FROM beds24_rooms WHERE beds24_room_id::text = $1 LIMIT 1`,
-  [roomId]
-);
+    const aptRes = await pool.query(
+      `SELECT id, apartment_name FROM beds24_rooms WHERE beds24_room_id::text = $1 LIMIT 1`,
+      [roomId]
+    );
 
-const apt = aptRes.rows[0] || null;
-
-const backHref = apt ? `/manager/apartment?id=${apt.id}` : `/manager`;
+    const apt = aptRes.rows[0] || null;
+    const backHref = apt ? `/manager/apartment?id=${apt.id}` : `/manager`;
 
     const secRes = await pool.query(
       `
-      SELECT id, title, body, sort_order, is_active, new_media_type, new_media_url
+      SELECT id, title, body, sort_order, is_active, new_media_type, new_media_url, icon
       FROM apartment_sections
       WHERE room_id::text = $1
       ORDER BY sort_order ASC, id ASC
       `,
       [roomId]
     );
+
+    // Opciones de iconos predefinidos
+    const iconOptions = [
+      { value: "", label: "Sin icono" },
+      { value: "📍", label: "📍 Dirección" },
+      { value: "🔑", label: "🔑 Llaves" },
+      { value: "📶", label: "📶 WiFi" },
+      { value: "☕", label: "☕ Cafetera" },
+      { value: "🧳", label: "🧳 Maletas" },
+      { value: "🎫", label: "🎫 Entradas" },
+      { value: "🚗", label: "🚗 Parking" },
+      { value: "♿", label: "♿ Accesibilidad" },
+      { value: "🏊", label: "🏊 Piscina" },
+      { value: "🍽️", label: "🍽️ Restaurantes" },
+      { value: "🏖️", label: "🏖️ Playa" },
+      { value: "🚿", label: "🚿 Baño" },
+      { value: "🛏️", label: "🛏️ Dormitorio" },
+      { value: "📺", label: "📺 TV" },
+      { value: "❄️", label: "❄️ Aire acondicionado" },
+      { value: "🔥", label: "🔥 Calefacción" },
+      { value: "🧺", label: "🧺 Lavandería" },
+      { value: "🍳", label: "🍳 Cocina" },
+      { value: "🎮", label: "🎮 Entretenimiento" },
+      { value: "📞", label: "📞 Contacto" },
+      { value: "⏰", label: "⏰ Horarios" },
+      { value: "ℹ️", label: "ℹ️ Información" },
+      { value: "⚠️", label: "⚠️ Importante" },
+    ];
+
+    const createIconSelect = (selectedIcon, nameAttr) => {
+      return `
+        <select name="${nameAttr}" style="width:100%; margin-bottom:8px;">
+          ${iconOptions.map(opt => 
+            `<option value="${opt.value}" ${selectedIcon === opt.value ? 'selected' : ''}>${opt.label}</option>`
+          ).join('')}
+        </select>
+      `;
+    };
 
     const rowsHtml = secRes.rows
       .map((s) => {
@@ -198,8 +235,14 @@ const backHref = apt ? `/manager/apartment?id=${apt.id}` : `/manager`;
               </div>
             </td>
             <td class="td-text">
-              <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" class="sec-title" placeholder="(optional title)" />
-              <textarea name="body_${s.id}" rows="5" class="sec-body" placeholder="Text...">${escapeHtml(s.body || "")}</textarea>
+              <label class="muted">Icono</label>
+              ${createIconSelect(s.icon || "", `icon_${s.id}`)}
+              
+              <label class="muted">Título</label>
+              <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" class="sec-title" placeholder="Título opcional" />
+              
+              <label class="muted">Texto</label>
+              <textarea name="body_${s.id}" rows="5" class="sec-body" placeholder="Texto...">${escapeHtml(s.body || "")}</textarea>
 
               <div style="margin-top:10px; display:grid; gap:6px;">
                 <label class="muted">Media type</label>
@@ -211,11 +254,11 @@ const backHref = apt ? `/manager/apartment?id=${apt.id}` : `/manager`;
 
                 <label class="muted">Media URL</label>
                 <textarea
-  name="new_media_url_${s.id}"
-  rows="3"
-  placeholder="One URL per line"
-  style="width:100%;"
->${escapeHtml(s.new_media_url || "")}</textarea>
+                  name="new_media_url_${s.id}"
+                  rows="3"
+                  placeholder="One URL per line"
+                  style="width:100%;"
+                >${escapeHtml(s.new_media_url || "")}</textarea>
               </div>
             </td>
           </tr>
@@ -244,7 +287,7 @@ const backHref = apt ? `/manager/apartment?id=${apt.id}` : `/manager`;
       </p>
 
       <p>
-      <a class="btn-link" href="${backHref}">← Back</a>
+        <a class="btn-link" href="${backHref}">← Back</a>
       </p>
 
       <form method="POST" action="/manager/apartment/sections/save">
@@ -253,11 +296,14 @@ const backHref = apt ? `/manager/apartment?id=${apt.id}` : `/manager`;
         <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
           <h2 style="margin:0 0 8px; font-size:16px;">Add new section</h2>
           <div style="display:grid; gap:8px;">
+            <label>Icono</label>
+            ${createIconSelect("", "new_icon")}
+
             <label>Title</label>
-            <input name="new_title" placeholder="Title" />
+            <input name="new_title" placeholder="Título" />
 
             <label>Text</label>
-            <textarea name="new_body" rows="4" placeholder="Text for guests..."></textarea>
+            <textarea name="new_body" rows="4" placeholder="Texto para huéspedes..."></textarea>
 
             <label class="muted">Media type</label>
             <select name="new_media_type">
@@ -289,7 +335,7 @@ const backHref = apt ? `/manager/apartment?id=${apt.id}` : `/manager`;
               <tr>
                 <th style="width:90px;">Order</th>
                 <th style="width:180px;">Actions</th>
-                <th>Title & Text</th>
+                <th>Icono, Título & Texto</th>
               </tr>
             </thead>
             <tbody>
@@ -2825,6 +2871,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
