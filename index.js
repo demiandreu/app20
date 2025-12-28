@@ -1059,12 +1059,7 @@ td.apartment-cell.needs-clean {
 // ROUTES
 // =====================================================
 
-function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
-  // Extraer nombre del apartamento de forma inteligente
-  // Extraer nombre del apartamento del payload de Beds24
-  let apartmentName = b.roomName || ""; // si Beds24 lo envía directamente
-  //vremenno
-  function toDateOnly(v) {
+function toDateOnly(v) {
   if (!v) return null;
   const s = String(v).trim();
   if (s.includes(" ")) return s.split(" ")[0]; // "YYYY-MM-DD HH:mm" -> date
@@ -1072,22 +1067,13 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
   return s;                                    // "YYYY-MM-DD"
 }
 
-function toTimeOnly(v) {
-  if (!v) return null;
-  const s = String(v).trim();
-  if (s.includes(" ")) return s.split(" ")[1] || null; // "YYYY-MM-DD HH:mm" -> time
-  if (s.includes(":")) return s;                       // "16:00"
-  return null;
-}
-
+// function 1
 function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
   let apartmentName = b.roomName || "";
-
   if (!apartmentName && b.apiMessage) {
     const match = String(b.apiMessage).match(/^Room:\s*(.+?)(\r?\n|$)/i);
     if (match) apartmentName = match[1].trim();
   }
-
   if (!apartmentName) {
     apartmentName = `Apartamento ${b.roomId || "sin id"}`;
   }
@@ -1096,16 +1082,16 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
     apartment_id: String(b.roomId || roomIdFallback || ""),
     apartment_name: apartmentName,
 
-    checkin_date: b.arrival || b.checkin_date || b.checkin || null,
-    checkin_time: b.arrivalTime || b.checkin_time || null,
+    arrival_date: toDateOnly(b.arrival || b.checkin_date || b.checkin || null),
+    arrival_time: toTimeOnly(b.arrivalTime || b.checkin_time || b.checkin || null),
 
-    checkout_date: b.departure || b.checkout_date || b.checkout || null,
-    checkout_time: b.departureTime || b.checkout_time || null,
+    departure_date: toDateOnly(b.departure || b.checkout_date || b.checkout || null),
+    departure_time: toTimeOnly(b.departureTime || b.checkout_time || b.checkout || null),
 
-    adults: b.numAdult || 0,
-    children: b.numChild || 0,
+    adults: Number(b.numAdult || 0),
+    children: Number(b.numChild || 0),
 
-    beds24_booking_id: b.id ? BigInt(b.id) : null,
+    beds24_booking_id: b.id ? String(b.id) : null,
     beds24_room_id: String(b.roomId || roomIdFallback || ""),
 
     status: b.status || "confirmed",
@@ -1115,24 +1101,9 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
     provider: "beds24",
   };
 
-  // normalize date/time
-  row.checkin_date = toDateOnly(row.checkin_date);
-  row.checkin_time = toTimeOnly(row.checkin_time || b.arrivalTime || b.checkin);
-
-  row.checkout_date = toDateOnly(row.checkout_date);
-  row.checkout_time = toTimeOnly(row.checkout_time || b.departureTime || b.checkout);
-
   return row;
 }
   //vremenno
-  const row = mapBeds24BookingToRow(b, b.roomName || "", b.roomId || "");
-
-if (row.checkin_date && String(row.checkin_date).includes(":")) {
-  throw new Error(`BAD checkin_date (time in date): ${row.checkin_date}`);
-}
-if (row.checkout_date && String(row.checkout_date).includes(":")) {
-  throw new Error(`BAD checkout_date (time in date): ${row.checkout_date}`);
-}
 
 await upsertCheckinFromBeds24(row);
   
@@ -2916,6 +2887,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
