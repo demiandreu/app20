@@ -1974,12 +1974,15 @@ app.get("/guest/:apartmentId/:bookingReference", async (req, res) => {
       `
       SELECT *
       FROM checkins c
-      WHERE c.apartment_id::text = $1
+      WHERE c.apartment_id = $1::text
         AND (
-          c.booking_token::text = $2
-          OR c.beds24_booking_id::text = $2
-          OR c.external_booking_id::text = $2
-          OR c.provider_booking_id::text = $2
+          c.booking_token = $2::text
+          OR c.booking_token = ('START_' || $2::text)
+          OR c.beds24_booking_id::text = $2::text
+          OR c.booking_id_from_start = $2::text
+          OR c.booking_id = $2::text
+          OR c.external_booking_id = $2::text
+          OR c.provider_booking_id = $2::text
         )
       ORDER BY c.id DESC
       LIMIT 1
@@ -2000,7 +2003,13 @@ app.get("/guest/:apartmentId/:bookingReference", async (req, res) => {
       );
     }
 
-    const r = checkinRes.rows[0];
+    const checkin = checkinRes.rows[0];
+    // ... render дальше
+  } catch (e) {
+    console.error("Cannot load guest dashboard:", e);
+    res.status(500).send("Cannot load guest dashboard: " + (e.message || String(e)));
+  }
+});
 
     // 2) Load apartment sections (ВАЖНО: в твоей БД это apartment_sections с room_id)
     const secRes = await pool.query(
@@ -2699,6 +2708,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
