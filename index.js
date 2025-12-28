@@ -1989,8 +1989,31 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
     `,
     [String(roomId), ref, refNoStart]
   );
-  ...
-});
+
+  if (checkinRes.rows.length === 0) {
+    return res.send(renderPage(
+      "Guest Dashboard",
+      `<div class="card">
+        <h1>Guest Dashboard</h1>
+        <p>No check-in record found for this booking.</p>
+        <a href="/" class="btn-link">← Back</a>
+      </div>`
+    ));
+  }
+
+  const r = checkinRes.rows[0];
+
+  // ⬇⬇⬇ ВОТ ЗДЕСЬ, ВНУТРИ async
+  const secRes = await pool.query(
+    `
+    SELECT id, title, body, new_media_type, new_media_url
+    FROM apartment_sections
+    WHERE room_id::text = $1
+      AND is_active = true
+    ORDER BY sort_order ASC, id ASC
+    `,
+    [String(roomId)]
+  );
 
   if (checkinRes.rows.length === 0) {
     return res.send(
@@ -2687,6 +2710,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
