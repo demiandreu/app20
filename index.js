@@ -454,7 +454,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       const bookingId = String(startMatch[1] || "").trim();
       console.log("🟢 START bookingId:", bookingId);
 
-      const bookingResult = await pool.query(
+      const booking = await pool.query(
         `
         SELECT *
         FROM checkins
@@ -467,7 +467,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
         [bookingId]
       );
 
-      if (!bookingResult.rows.length) {
+      if (!booking.rows.length) {
         await sendWhatsApp(
           from,
           `Gracias 🙂\nNo encuentro tu reserva todavía.\nVerifica el número y vuelve a enviar:\nSTART ${bookingId}`
@@ -475,7 +475,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
         return res.status(200).send("OK");
       }
 
-      const r = bookingResult.rows[0];
+      const r = booking.rows[0];
 
       // ✅ Bind session (this phone can continue REGOK/PAYOK/LISTO)
       await setSessionCheckin(r.id);
@@ -1262,7 +1262,7 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
 
     for (const b of bookings) {
       const row = mapBeds24BookingToRow(b, b.roomName || "", b.roomId || "");
-      const result = await upsertCheckinFromBeds24(row);
+      const  = await upsertCheckinFromBeds24(row);
       synced++;
       if (result.ok) newOnes++;
       else updated++;
@@ -1959,7 +1959,7 @@ app.get("/guest/:roomId/:token", async (req, res) => {
     // 1) Load check-in record
 const { apartmentId, bookingReference } = req.params;
 
-const result = await pool.query(
+const checkinRes = await pool.query(
   `
   SELECT
     id,
@@ -2764,6 +2764,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
