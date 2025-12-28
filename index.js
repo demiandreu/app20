@@ -1099,34 +1099,45 @@ async function upsertCheckinFromBeds24(row) {
   // 2) Upsert into checkins (single source of truth)
   await pool.query(
     `
-    INSERT INTO checkins (
-      apartment_id, booking_token, full_name, email, phone,
-      arrival_date, arrival_time, departure_date, departure_time,
-      adults, children,
-      beds24_booking_id, beds24_room_id, apartment_name, beds24_raw
-    )
-    VALUES (
-      $1,$2,$3,$4,$5,
-      $6,$7,$8,$9,
-      $10,$11,
-      $12,$13,$14,$15
-    )
-    ON CONFLICT (beds24_booking_id)
-    DO UPDATE SET
-      apartment_id = EXCLUDED.apartment_id,
-      booking_token = EXCLUDED.booking_token,
-      full_name = EXCLUDED.full_name,
-      email = EXCLUDED.email,
-      phone = EXCLUDED.phone,
-      arrival_date = EXCLUDED.arrival_date,
-      arrival_time = EXCLUDED.arrival_time,
-      departure_date = EXCLUDED.departure_date,
-      departure_time = EXCLUDED.departure_time,
-      adults = EXCLUDED.adults,
-      children = EXCLUDED.children,
-      beds24_room_id = EXCLUDED.beds24_room_id,
-      apartment_name = EXCLUDED.apartment_name,
-      beds24_raw = EXCLUDED.beds24_raw
+INSERT INTO checkins (
+  apartment_id,
+  room_id,
+  booking_token,
+  full_name,
+  email,
+  phone,
+  arrival_date,
+  arrival_time,
+  departure_date,
+  departure_time,
+  adults,
+  children,
+  beds24_booking_id,
+  apartment_name,
+  beds24_raw
+)
+VALUES (
+  $1,$2,$3,$4,$5,
+  $6,$7,$8,$9,
+  $10,$11,
+  $12,$13,$14,$15
+)
+ON CONFLICT (beds24_booking_id)
+DO UPDATE SET
+  apartment_id = EXCLUDED.apartment_id,
+  room_id      = EXCLUDED.room_id,
+  booking_token = EXCLUDED.booking_token,
+  full_name = EXCLUDED.full_name,
+  email = EXCLUDED.email,
+  phone = EXCLUDED.phone,
+  arrival_date = EXCLUDED.arrival_date,
+  arrival_time = EXCLUDED.arrival_time,
+  departure_date = EXCLUDED.departure_date,
+  departure_time = EXCLUDED.departure_time,
+  adults = EXCLUDED.adults,
+  children = EXCLUDED.children,
+  apartment_name = EXCLUDED.apartment_name,
+  beds24_raw = EXCLUDED.beds24_raw;
     `,
     [
       apartmentId,
@@ -1971,28 +1982,27 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 // Guest opens: /guest/:roomId/:bookingReference
 app.get("/guest/:roomId/:bookingReference", async (req, res) => {
   try {
-    const { roomId, bookingReference } = req.params;
+ const { roomId, bookingReference } = req.params;
 
-    const ref = String(bookingReference || "");
-    const refNoStart = ref.startsWith("START_") ? ref.slice(6) : ref;
+const ref = String(bookingReference);
+const refNoStart = ref.startsWith("START_") ? ref.slice(6) : ref;
 
-    // 1) Find checkin by room + token/booking id
-    const checkinRes = await pool.query(
-      `
-      SELECT *
-      FROM checkins c
-      WHERE c.beds24_room_id::text = $1
-        AND (
-          c.booking_token::text = $2
-          OR c.beds24_booking_id::text = $2
-          OR c.booking_id_from_start::text = $2
-          OR c.booking_id_from_start::text = $3
-        )
-      ORDER BY c.id DESC
-      LIMIT 1
-      `,
-      [String(roomId), ref, refNoStart]
-    );
+const checkinRes = await pool.query(
+  `
+  SELECT *
+  FROM checkins
+  WHERE room_id::text = $1
+    AND (
+      booking_token::text = $2
+      OR beds24_booking_id::text = $2
+      OR booking_id_from_start::text = $2
+      OR booking_id_from_start::text = $3
+    )
+  ORDER BY id DESC
+  LIMIT 1
+  `,
+  [String(roomId), ref, refNoStart]
+);
 
     if (checkinRes.rows.length === 0) {
       return res.send(
@@ -2010,16 +2020,16 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
     const checkin = checkinRes.rows[0];
 
     // 2) Load apartment sections by room_id (same as URL roomId)
-    const secRes = await pool.query(
-      `
-      SELECT id, title, body, new_media_type, new_media_url
-      FROM apartment_sections
-      WHERE room_id::text = $1
-        AND is_active = true
-      ORDER BY sort_order ASC, id ASC
-      `,
-      [String(roomId)]
-    );
+   const secRes = await pool.query(
+  `
+  SELECT id, title, body, new_media_type, new_media_url
+  FROM apartment_sections
+  WHERE room_id::text = $1
+    AND is_active = true
+  ORDER BY sort_order ASC, id ASC
+  `,
+  [String(roomId)]
+);
 
     // 3) Prepare HTML blocks
     const totalGuests =
@@ -2704,6 +2714,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
