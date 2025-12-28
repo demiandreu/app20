@@ -2378,18 +2378,52 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
           </div>
         </div>
         
-        ${r.lock_visible && r.lock_code ? `
-          <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px; background:#f9fafb;">
-            <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:8px;">🔑 Código de acceso</div>
-            ${show ? `
-              <div style="font-size:28px; font-weight:700; letter-spacing:3px; color:#374151; font-family:monospace;">${escapeHtml(String(r.lock_code))}</div>
-            ` : `
-              <a class="btn-link" href="/guest/${encodeURIComponent(String(roomId))}/${encodeURIComponent(String(bookingReference))}?show=1" style="display:inline-block; padding:10px 16px; background:#3b82f6; color:white; text-decoration:none; border-radius:8px; font-weight:500;">Mostrar código</a>
-            `}
-          </div>
-        ` : ''}
+   ${r.lock_visible ? `
+  <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px; background:#f9fafb;">
+    <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:8px;">
+      🔑 Código de acceso
+    </div>
+
+    ${r.lock_code ? `
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <span id="lockCodeMasked" style="font-size:22px; letter-spacing:3px; color:#374151; font-family:monospace;">••••</span>
+
+        <span id="lockCodeValue" style="display:none; font-size:28px; font-weight:700; letter-spacing:3px; color:#374151; font-family:monospace;">
+          ${escapeHtml(String(r.lock_code))}
+        </span>
+
+        <button
+          type="button"
+          onclick="toggleLockCode()"
+          style="display:inline-block; padding:10px 16px; background:#3b82f6; color:white; border:0; border-radius:8px; font-weight:600; cursor:pointer;"
+        >
+          Mostrar código
+        </button>
+      </div>
+
+      <p style="margin:10px 0 0; color:#6b7280; font-size:13px;">
+        No compartas este código con terceros.
+      </p>
+    ` : `
+      <p style="margin:0; color:#6b7280;">
+        Código aún no disponible.
+      </p>
+    `}
+  </div>
+` : ''}
         
         ${sectionsHtml}
+        <script>
+  function toggleLockCode() {
+    var masked = document.getElementById("lockCodeMasked");
+    var value = document.getElementById("lockCodeValue");
+    if (!masked || !value) return;
+
+    var isHidden = value.style.display === "none";
+    value.style.display = isHidden ? "inline" : "none";
+    masked.style.display = isHidden ? "none" : "inline";
+  }
+</script>
       </div>
     `;
 
@@ -2964,6 +2998,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
