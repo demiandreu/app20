@@ -1062,32 +1062,56 @@ td.apartment-cell.needs-clean {
 function toDateOnly(v) {
   if (!v) return null;
   const s = String(v).trim();
-  if (!s) return null;
-
-  // "YYYY-MM-DD HH:mm" -> "YYYY-MM-DD"
-  if (s.includes(" ")) return s.split(" ")[0];
-
-  // If it's only time like "16:00" -> not a date
-  if (s.includes(":") && !s.includes("-")) return null;
-
-  // Already "YYYY-MM-DD"
-  return s;
+  if (s.includes(" ")) return s.split(" ")[0]; // "YYYY-MM-DD HH:mm" -> date
+  if (s.includes(":")) return null;            // "16:00" is NOT a date
+  return s;                                    // "YYYY-MM-DD"
 }
 
 function toTimeOnly(v) {
   if (!v) return null;
   const s = String(v).trim();
-  if (!s) return null;
-
-  // "YYYY-MM-DD HH:mm" -> "HH:mm"
-  if (s.includes(" ")) return (s.split(" ")[1] || "").slice(0, 5) || null;
-
-  // "16:00" -> "16:00"
-  if (s.includes(":")) return s.slice(0, 5);
-
+  if (s.includes(" ")) return s.split(" ")[1] || null; // "YYYY-MM-DD HH:mm" -> time
+  if (s.includes(":")) return s;                       // "16:00"
   return null;
 }
 
+function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
+  let apartmentName = b.roomName || roomNameFallback || "";
+
+  if (!apartmentName && b.apiMessage) {
+    const match = String(b.apiMessage).match(/^Room:\s*(.+?)(\r?\n|$)/i);
+    if (match) apartmentName = match[1].trim();
+  }
+
+  if (!apartmentName) {
+    apartmentName = `Apartamento ${b.roomId || roomIdFallback || "sin id"}`;
+  }
+
+  const row = {
+    apartment_id: String(b.roomId || roomIdFallback || ""),   // may be empty
+    apartment_name: apartmentName,
+
+    arrival_date: toDateOnly(b.arrival || b.checkin_date || b.checkin || null),
+    arrival_time: toTimeOnly(b.arrivalTime || b.checkin_time || b.checkin || null),
+
+    departure_date: toDateOnly(b.departure || b.checkout_date || b.checkout || null),
+    departure_time: toTimeOnly(b.departureTime || b.checkout_time || b.checkout || null),
+
+    adults: Number(b.numAdult || 0),
+    children: Number(b.numChild || 0),
+
+    beds24_booking_id: b.id != null ? String(b.id) : null,
+    beds24_room_id: String(b.roomId || roomIdFallback || ""),
+
+    status: b.status || "confirmed",
+    cancelled: String(b.status || "").toLowerCase() === "cancelled",
+
+    beds24_raw: b,
+    provider: "beds24",
+  };
+
+  return row;
+}
 function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
   // Apartment name
   let apartmentName = b.roomName || roomNameFallback || "";
@@ -2573,42 +2597,79 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     const toDate = String(req.query.to || "2027-12-31");
     const includeCancelled = String(req.query.includeCancelled || "true");
 
-    const url =
-      `https://beds24.com/api/v2/bookings` +
-      `?from=${encodeURIComponent(fromDate)}` +
-      `&to=${encodeURIComponent(toDate)}` +
-      `&includeCancelled=${encodeURIComponent(includeCancelled)}`;
-
-    const bookingsResp = await fetch(url, {
+    // 1) Fetch all properties
+    const propsResp = await fetch("https://beds24.com/api/v2/properties", {
       headers: { accept: "application/json", token },
     });
 
-    if (!bookingsResp.ok) {
-      const text = await bookingsResp.text();
-      throw new Error(`Beds24 bookings error ${bookingsResp.status}: ${text.slice(0, 300)}`);
+    if (!propsResp.ok) {
+      const text = await propsResp.text();
+      throw new Error(`Beds24 properties error ${propsResp.status}: ${text.slice(0, 300)}`);
     }
 
-    const data = await bookingsResp.json();
-    const bookings = Array.isArray(data) ? data : (data.bookings || data.data || []);
+    const propsJson = await propsResp.json();
+    const properties = Array.isArray(propsJson) ? propsJson : (propsJson.data || []);
+    const propIds = properties
+      .map((p) => p.id || p.propId || p.propertyId)
+      .filter((x) => x != null)
+      .map((x) => String(x));
+
+    if (!propIds.length) {
+      return res.send(renderPage("Sync Bookings", `
+        <div class="card">
+          <h1 style="margin:0 0 10px;">ℹ️ No properties found</h1>
+          <p>Could not load properties from API.</p>
+          <p><a class="btn-link" href="/manager">← Volver</a></p>
+        </div>
+      `));
+    }
 
     let processed = 0;
     let inserted = 0;
     let updated = 0;
     let skipped = 0;
+    let errors = 0;
 
-    for (const b of bookings) {
-      const row = mapBeds24BookingToRow(b, b.roomName || "", b.roomId || "");
-      const result = await upsertCheckinFromBeds24(row);
+    // 2) Fetch bookings per property
+    for (const propId of propIds) {
+      const url =
+        `https://beds24.com/api/v2/bookings` +
+        `?from=${encodeURIComponent(fromDate)}` +
+        `&to=${encodeURIComponent(toDate)}` +
+        `&includeCancelled=${encodeURIComponent(includeCancelled)}` +
+        `&propId=${encodeURIComponent(propId)}`;
 
-      processed++;
-      if (result?.skipped) skipped++;
-      else if (result?.inserted) inserted++;
-      else if (result?.updated) updated++;
+      const bookingsResp = await fetch(url, {
+        headers: { accept: "application/json", token },
+      });
+
+      if (!bookingsResp.ok) {
+        const text = await bookingsResp.text();
+        console.error(`Beds24 bookings error for propId=${propId}:`, text.slice(0, 300));
+        errors++;
+        continue;
+      }
+
+      const data = await bookingsResp.json();
+      const bookings = Array.isArray(data) ? data : (data.bookings || data.data || []);
+
+      for (const b of bookings) {
+        const row = mapBeds24BookingToRow(b, b.roomName || "", b.roomId || "");
+        const result = await upsertCheckinFromBeds24(row);
+
+        processed++;
+
+        if (result?.skipped) skipped++;
+        else if (result?.inserted) inserted++;
+        else if (result?.updated) updated++;
+        else if (result?.ok) inserted++; // fallback if your upsert returns { ok: true }
+      }
     }
 
     return res.send(renderPage("Sync Bookings", `
       <div class="card">
         <h1 style="margin:0 0 10px;">✅ Sincronización completada</h1>
+        <p>Properties: <strong>${propIds.length}</strong> · Errors: <strong>${errors}</strong></p>
         <p>Reservas procesadas: <strong>${processed}</strong></p>
         <p>Nuevas: <strong>${inserted}</strong> · Actualizadas: <strong>${updated}</strong> · Omitidas: <strong>${skipped}</strong></p>
         <p class="muted">Rango: ${escapeHtml(fromDate)} — ${escapeHtml(toDate)} · Canceladas: ${escapeHtml(includeCancelled)}</p>
@@ -2628,10 +2689,7 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     `));
   }
 });
-//vremenno45
 
-
-//vremenno
 // ===================== MANAGER: one page for apartments + defaults =====================
 
 // helper: safe value
@@ -2767,6 +2825,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
