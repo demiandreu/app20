@@ -1136,7 +1136,6 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
     provider: "beds24",
     // otros campos...
   };
-}
 function toDateOnly(v) {
   if (!v) return null;
   const s = String(v).trim();
@@ -2879,6 +2878,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
