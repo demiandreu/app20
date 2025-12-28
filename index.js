@@ -1105,15 +1105,7 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
 }
   //vremenno
 
-await upsertCheckinFromBeds24(row);
-  
-  if (!apartmentName && b.apiMessage) {
-    // Beds24 siempre pone "Room: Nombre del apartamento" al principio
-    const match = b.apiMessage.match(/^Room:\s*(.+?)(?:\n|$)/i);
-    if (match) {
-      apartmentName = match[1].trim();
-    }
-  }
+
 
   // Fallback bonito si no encontramos nada
   if (!apartmentName) {
@@ -2887,6 +2879,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
