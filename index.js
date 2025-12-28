@@ -1256,7 +1256,6 @@ td form {
   box-sizing: border-box;
 }
 
-.sections-table .sec-title,
 .sections-table .sec-body {
   width: 100%;
   max-width: 100%;
@@ -1272,17 +1271,9 @@ td form {
     </div>
   </div>
 
-  /* =====================================================
-   DRAGGABLE TABLE COLUMNS
-   Add this to renderTable() function in /staff/checkins
-   ===================================================== */
-
-// Add this CSS to your <style> block in renderPage()
-
-    <script>
+  <script>
 (function() {
   'use strict';
-
   const STORAGE_KEY = 'rcs_table_column_order';
   let draggedColumn = null;
   let draggedIndex = null;
@@ -3254,6 +3245,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
