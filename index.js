@@ -2332,7 +2332,8 @@ const title = icon + escapeHtml(s.title || "");
         ${sectionsHtml}
       </div>
     `;*/
-    const html = `
+// 5) Render page (Spanish UI)
+const html = `
   <div class="card">
     <div style="text-align:center; margin-bottom:30px;">
       <h1 style="margin-bottom:8px; font-size:28px;">Bienvenido</h1>
@@ -2373,6 +2374,10 @@ const title = icon + escapeHtml(s.title || "");
         `}
       </div>
     ` : ''}
+    
+    ${sectionsHtml}
+  </div>
+`;
 
     return res.send(renderPage("Panel del huésped", html));
   } catch (e) {
@@ -2945,6 +2950,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
