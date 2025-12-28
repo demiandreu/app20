@@ -1278,7 +1278,6 @@ td form {
    ===================================================== */
 
 // Add this CSS to your <style> block in renderPage()
-const draggableColumnStyles = `
 
     <script>
 (function() {
@@ -3255,6 +3254,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
