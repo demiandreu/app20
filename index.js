@@ -1967,27 +1967,30 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 // ===================== GUEST DASHBOARD =====================
 // Guest opens: /guest/:apartmentId/:bookingReference
 
-app.get("/guest/:apartmentId/:bookingReference", async (req, res) => {
-  const { apartmentId, bookingReference } = req.params;
+app.get("/guest/:roomId/:bookingReference", async (req, res) => {
+  const { roomId, bookingReference } = req.params;
 
-  // 1️⃣ Получаем checkin
+  const ref = String(bookingReference);
+  const refNoStart = ref.startsWith("START_") ? ref.slice(6) : ref;
+
   const checkinRes = await pool.query(
     `
     SELECT *
     FROM checkins c
-    WHERE c.apartment_id::text = $1
+    WHERE c.beds24_room_id::text = $1
       AND (
         c.booking_token::text = $2
         OR c.beds24_booking_id::text = $2
         OR c.booking_id_from_start::text = $2
-        OR c.external_booking_id::text = $2
-        OR c.provider_booking_id::text = $2
+        OR c.booking_id_from_start::text = $3
       )
     ORDER BY c.id DESC
     LIMIT 1
     `,
-    [String(apartmentId), String(bookingReference)]
+    [String(roomId), ref, refNoStart]
   );
+  ...
+});
 
   if (checkinRes.rows.length === 0) {
     return res.send(
@@ -2684,6 +2687,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
