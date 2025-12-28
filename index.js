@@ -2270,6 +2270,22 @@ SELECT id, title, body, icon, new_media_type, new_media_url
                 }
 
                 const panelId = `acc_${s.id}`;
+                //eeeeeeee
+// 2) Load apartment sections by room_id
+const secRes = await pool.query(
+  `
+  SELECT id, title, body, icon, new_media_type, new_media_url
+  FROM apartment_sections
+  WHERE room_id::text = $1
+    AND is_active = true
+  ORDER BY sort_order ASC, id ASC
+  `,
+  [String(roomId)]
+);
+
+// 🐛 AÑADE ESTA LÍNEA TEMPORAL PARA DEBUG
+console.log('SECCIONES CARGADAS:', JSON.stringify(secRes.rows, null, 2));
+    //eeeeeeeeeeee
 
                 return `
                   <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
@@ -2289,22 +2305,7 @@ SELECT id, title, body, icon, new_media_type, new_media_url
               })
               .join("")}
           </div>
-//eeeeeeee
-// 2) Load apartment sections by room_id
-const secRes = await pool.query(
-  `
-  SELECT id, title, body, icon, new_media_type, new_media_url
-  FROM apartment_sections
-  WHERE room_id::text = $1
-    AND is_active = true
-  ORDER BY sort_order ASC, id ASC
-  `,
-  [String(roomId)]
-);
 
-// 🐛 AÑADE ESTA LÍNEA TEMPORAL PARA DEBUG
-console.log('SECCIONES CARGADAS:', JSON.stringify(secRes.rows, null, 2));
-    //eeeeeeeeeeee
           <script>
             (function () {
               var buttons = document.querySelectorAll("[data-acc-btn]");
@@ -2906,6 +2907,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
