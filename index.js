@@ -1062,36 +1062,62 @@ td.apartment-cell.needs-clean {
 function toDateOnly(v) {
   if (!v) return null;
   const s = String(v).trim();
-  if (s.includes(" ")) return s.split(" ")[0]; // "YYYY-MM-DD HH:mm" -> date
-  if (s.includes(":")) return null;            // "16:00" is NOT a date
-  return s;                                    // "YYYY-MM-DD"
+  if (!s) return null;
+
+  // "YYYY-MM-DD HH:mm" -> "YYYY-MM-DD"
+  if (s.includes(" ")) return s.split(" ")[0];
+
+  // If it's only time like "16:00" -> not a date
+  if (s.includes(":") && !s.includes("-")) return null;
+
+  // Already "YYYY-MM-DD"
+  return s;
 }
 
-// function 1
+function toTimeOnly(v) {
+  if (!v) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+
+  // "YYYY-MM-DD HH:mm" -> "HH:mm"
+  if (s.includes(" ")) return (s.split(" ")[1] || "").slice(0, 5) || null;
+
+  // "16:00" -> "16:00"
+  if (s.includes(":")) return s.slice(0, 5);
+
+  return null;
+}
+
 function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
-  let apartmentName = b.roomName || "";
+  // Apartment name
+  let apartmentName = b.roomName || roomNameFallback || "";
   if (!apartmentName && b.apiMessage) {
     const match = String(b.apiMessage).match(/^Room:\s*(.+?)(\r?\n|$)/i);
     if (match) apartmentName = match[1].trim();
   }
-  if (!apartmentName) {
-    apartmentName = `Apartamento ${b.roomId || "sin id"}`;
-  }
+  if (!apartmentName) apartmentName = `Apartamento ${b.roomId || roomIdFallback || "sin id"}`;
 
-  const row = {
+  const arrivalDate = toDateOnly(b.arrival || b.checkin_date || b.checkin);
+  const arrivalTime = toTimeOnly(b.arrivalTime || b.checkin_time || b.checkin);
+
+  const departureDate = toDateOnly(b.departure || b.checkout_date || b.checkout);
+  const departureTime = toTimeOnly(b.departureTime || b.checkout_time || b.checkout);
+
+  return {
     apartment_id: String(b.roomId || roomIdFallback || ""),
     apartment_name: apartmentName,
 
-    arrival_date: toDateOnly(b.arrival || b.checkin_date || b.checkin || null),
-    arrival_time: toTimeOnly(b.arrivalTime || b.checkin_time || b.checkin || null),
+    arrival_date: arrivalDate,
+    arrival_time: arrivalTime,
 
-    departure_date: toDateOnly(b.departure || b.checkout_date || b.checkout || null),
-    departure_time: toTimeOnly(b.departureTime || b.checkout_time || b.checkout || null),
+    departure_date: departureDate,
+    departure_time: departureTime,
 
     adults: Number(b.numAdult || 0),
     children: Number(b.numChild || 0),
 
-    beds24_booking_id: b.id ? String(b.id) : null,
+    // IMPORTANT: keep as text/number; convert to BigInt only if your DB column is BIGINT
+    beds24_booking_id: b.id != null ? String(b.id) : null,
     beds24_room_id: String(b.roomId || roomIdFallback || ""),
 
     status: b.status || "confirmed",
@@ -1100,17 +1126,8 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
     beds24_raw: b,
     provider: "beds24",
   };
-
-  return row;
 }
-  //vremenno
 
-
-
-  // Fallback bonito si no encontramos nada
-  if (!apartmentName) {
-    apartmentName = `Apartamento ${b.roomId || "sin ID"}`;
-  }
 
   return {
     apartment_id: String(b.roomId || roomIdFallback || ""),
@@ -1136,31 +1153,7 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
     provider: "beds24",
     // otros campos...
   };
-function toDateOnly(v) {
-  if (!v) return null;
-  const s = String(v).trim();
-  // если вдруг пришло "2025-12-28 16:00" -> берём дату
-  if (s.includes(" ")) return s.split(" ")[0];
-  // если пришло "16:00" -> это НЕ дата
-  if (s.includes(":")) return null;
-  return s; // "2025-12-28"
 }
-
-function toTimeOnly(v) {
-  if (!v) return null;
-  const s = String(v).trim();
-  // если пришло "2025-12-28 16:00" -> берём время
-  if (s.includes(" ")) return s.split(" ")[1] || null;
-  // если пришло "16:00" -> это время
-  if (s.includes(":")) return s;
-  return null;
-}
-row.checkin_date  = toDateOnly(b.checkin_date || b.arrival || b.checkin);
-row.checkin_time  = toTimeOnly(b.checkin_time || b.arrivalTime || b.checkin);
-
-row.checkout_date = toDateOnly(b.checkout_date || b.departure || b.checkout);
-row.checkout_time = toTimeOnly(b.checkout_time || b.departureTime || b.checkout);
-
 async function upsertCheckinFromBeds24(row) {
   // If dates are missing, skip (can't insert without dates)
   if (!row.arrival_date || !row.departure_date) return { skipped: true, reason: "missing_dates" };
@@ -1235,23 +1228,23 @@ DO UPDATE SET
   apartment_name = EXCLUDED.apartment_name,
   beds24_raw = EXCLUDED.beds24_raw;
     `,
-    [
-      apartmentId,
-      row.booking_token != null ? String(row.booking_token) : null,
-      row.full_name || null,
-      row.email || null,
-      row.phone || null,
-      row.arrival_date,
-      row.arrival_time || null,
-      row.departure_date,
-      row.departure_time || null,
-      row.adults != null ? row.adults : null,
-      row.children != null ? row.children : null,
-      row.beds24_booking_id != null ? String(row.beds24_booking_id) : null,
-      beds24RoomId,
-      row.apartment_name || null,
-      row.beds24_raw || null,
-    ]
+   [
+  apartmentId,                          // $1 apartment_id
+  beds24RoomId,                         // $2 room_id  (ВАЖНО)
+  row.booking_token != null ? String(row.booking_token) : null, // $3 booking_token
+  row.full_name || null,                // $4
+  row.email || null,                    // $5
+  row.phone || null,                    // $6
+  row.arrival_date,                     // $7
+  row.arrival_time || null,             // $8
+  row.departure_date,                   // $9
+  row.departure_time || null,           // $10
+  row.adults != null ? row.adults : null,       // $11
+  row.children != null ? row.children : null,   // $12
+  row.beds24_booking_id != null ? String(row.beds24_booking_id) : null, // $13
+  row.apartment_name || null,           // $14
+  row.beds24_raw || null,               // $15
+]
   );
 
   return { ok: true };
@@ -2637,111 +2630,7 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
 });
 //vremenno45
 
-app.get("/manager/channels/bookings-all", async (req, res) => {
-  try {
-    const from = String(req.query.from || "2025-01-01");
-    const to = String(req.query.to || "2026-12-31");
 
-    const rooms = await pool.query(`
-      SELECT beds24_room_id, beds24_prop_key, apartment_name
-      FROM beds24_rooms
-      WHERE is_active = true AND beds24_prop_key IS NOT NULL
-      ORDER BY apartment_name ASC
-    `);
-
-    const out = [];
-
-    for (const r of rooms.rows) {
-      try {
-        const url = "https://api.beds24.com/json/getBookings"; // если у тебя другой endpoint — оставь тот, который сейчас работает
-        const payload = {
-          propKey: r.beds24_prop_key,
-          roomId: String(r.beds24_room_id),
-          from,
-          to,
-        };
-
-        const data = await beds24PostJson(url, payload);
-
-        const count = Array.isArray(data) ? data.length : (data?.bookings?.length || 0);
-
-        out.push({
-          apartment: r.apartment_name,
-          roomId: r.beds24_room_id,
-          count,
-          sample: Array.isArray(data)
-            ? data.slice(0, 2).map(x => ({ bookId: x.bookId, firstNight: x.firstNight, lastNight: x.lastNight, status: x.status }))
-            : (data?.bookings || []).slice(0, 2).map(x => ({ bookId: x.bookId, firstNight: x.firstNight, lastNight: x.lastNight, status: x.status })),
-        });
-      } catch (e) {
-        out.push({
-          apartment: r.apartment_name,
-          roomId: r.beds24_room_id,
-          error: String(e.message || e),
-        });
-      }
-    }
-
-    res.json({ from, to, rooms: rooms.rows.length, out });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send(String(err.message || err));
-  }
-});
-//vremenno45
-// страница со списком апартаментов (Beds24 rooms mapping)
-app.get("/manager/settings/apartments", async (req, res) => {
-  try {
-    const top = `<p style="margin:0 0 12px;"><a class="btn-link" href="/manager">← Manager</a></p>`;
-
-    const { rows } = await pool.query(`
-      SELECT id, beds24_room_id, beds24_prop_key, apartment_name, is_active
-      FROM beds24_rooms
-      ORDER BY apartment_name ASC
-    `);
-
-    const listHtml = rows
-      .map(
-        (r) => `
-          <tr>
-            <td>${escapeHtml(maskKey(r.beds24_prop_key))}</td>
-            <td>${escapeHtml(String(r.beds24_room_id ?? ""))}</td>
-            <td>${escapeHtml(r.apartment_name ?? "")}</td>
-            <td>${r.is_active ? "✅" : "❌"}</td>
-            <td>
-              <form method="POST" action="/manager/settings/apartments/toggle" style="display:inline;">
-                <input type="hidden" name="id" value="${r.id}">
-                <button type="submit">${r.is_active ? "Disable" : "Enable"}</button>
-              </form>
-            </td>
-          </tr>
-        `
-      )
-      .join("");
-
-    res.send(`
-      ${top}
-      <h2>Apartments (synced) from your channel manager</h2>
-      < border="1" cellpadding="8" cellspacing="0">
-        <thead>
-          <tr>
-            <th>Property key</th>
-            <th>Room ID</th>
-            <th>Apartment</th>
-            <th>Active</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${listHtml}
-        </tbody>
-      </>
-    `);
-  } catch (err) {
-    console.error("❌ manager apartments page error:", err);
-    res.status(500).send("Error");
-  }
-});
 //vremenno
 // ===================== MANAGER: one page for apartments + defaults =====================
 
@@ -2878,6 +2767,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
