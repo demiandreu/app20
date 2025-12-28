@@ -2423,7 +2423,6 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 app.get("/guest/:apartmentId/:bookingRef", async (req, res) => {
   const { apartmentId, bookingRef } = req.params;
 
-  // Helpers para incrustar video
   function toYouTubeEmbed(url) {
     const u = String(url || "");
     const m1 = u.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/);
@@ -2431,6 +2430,7 @@ app.get("/guest/:apartmentId/:bookingRef", async (req, res) => {
     const id = (m1 && m1[1]) || (m2 && m2[1]);
     return id ? `https://www.youtube.com/embed/${id}` : null;
   }
+
   function toVimeoEmbed(url) {
     const u = String(url || "");
     const m = u.match(/vimeo\.com\/(\d+)/);
@@ -2439,31 +2439,30 @@ app.get("/guest/:apartmentId/:bookingRef", async (req, res) => {
   }
 
   try {
-    // 1) Booking por apartment_id + booking_reference
+    // 1) Load booking
     const bookingRes = await pool.query(
       `
       SELECT
         b.id,
-        b.apartment_id,
-        a.name              AS apartment_name,
         b.booking_reference,
-        b.guest_name        AS full_name,
-        b.guest_email       AS email,
-        b.guest_phone       AS phone,
-        b.checkin_date      AS arrival_date,
-        b.checkin_time      AS arrival_time,
-        b.checkout_date     AS departure_date,
-        b.checkout_time     AS departure_time,
-        b.num_adults        AS adults,
-        b.num_children      AS children,
+        b.apartment_id,
+        a.name AS apartment_name,
+        b.guest_name AS full_name,
+        b.guest_email AS email,
+        b.guest_phone AS phone,
+        b.checkin_date AS arrival_date,
+        b.checkin_time AS arrival_time,
+        b.checkout_date AS departure_date,
+        b.checkout_time AS departure_time,
+        b.num_adults AS adults,
+        b.num_children AS children,
         b.lock_code,
-        b.lock_code_visible,
-        b.is_cancelled
+        b.lock_code_visible AS lock_visible
       FROM bookings b
       JOIN apartments a ON a.id = b.apartment_id
-      WHERE b.apartment_id::text = $1
-        AND b.booking_reference = $2
-        AND COALESCE(b.is_cancelled,false) = false
+      WHERE COALESCE(b.is_cancelled, false) = false
+        AND b.apartment_id::text = $1
+        AND b.booking_reference::text = $2
       ORDER BY b.id DESC
       LIMIT 1
       `,
@@ -2474,7 +2473,7 @@ app.get("/guest/:apartmentId/:bookingRef", async (req, res) => {
       const html = `
         <div class="card">
           <h1>Panel del Huésped</h1>
-          <p class="muted">No encontramos la reserva.</p>
+          <p class="muted">No encontramos la reserva para este enlace.</p>
           <p><a class="btn-link" href="/">← Volver</a></p>
         </div>
       `;
@@ -2483,38 +2482,41 @@ app.get("/guest/:apartmentId/:bookingRef", async (req, res) => {
 
     const r = bookingRes.rows[0];
 
-    // 2) Secciones del apartamento (room_id = apartments.id)
+    // 2) Load apartment sections by room_id = apartment_id
     const secRes = await pool.query(
       `
       SELECT id, title, body, new_media_type, new_media_url
       FROM apartment_sections
-      WHERE room_id::text = $1
+      WHERE room_id = $1
         AND is_active = true
       ORDER BY sort_order ASC, id ASC
       `,
-      [String(r.apartment_id)]
+      [Number(r.apartment_id)]
     );
 
-    // 3) Código de caja (mostrar mediante ?show=1)
+    const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
+
+    // 3) Lock code visibility via ?show=1
     const show = req.query.show === "1";
     const lockCodeHtml =
-      r.lock_code_visible && r.lock_code
-        ? (show
-            ? `
-              <hr/>
-              <div>Caja de llaves: <strong style="font-size:22px;letter-spacing:2px;">${escapeHtml(String(r.lock_code))}</strong></div>
-            `
-            : `
-              <hr/>
-              <a class="btn-link" href="/guest/${encodeURIComponent(String(r.apartment_id))}/${encodeURIComponent(String(r.booking_reference))}?show=1">Mostrar código</a>
-            `
-          )
+      r.lock_visible && r.lock_code
+        ? show
+          ? `
+            <hr/>
+            <div>Código de acceso: <strong style="font-size:22px;letter-spacing:2px;">${escapeHtml(String(r.lock_code))}</strong></div>
+          `
+          : `
+            <hr/>
+            <a class="btn-link" href="/guest/${encodeURIComponent(String(apartmentId))}/${encodeURIComponent(String(bookingRef))}?show=1">
+              Mostrar código
+            </a>
+          `
         : "";
 
-    // 4) Render de secciones (linkificación + imágenes/vídeos)
+    // 4) Sections accordion
     const sectionsHtml =
       secRes.rows.length === 0
-        ? `<div class="muted">Aún no hay información para este apartamento.</div>`
+        ? `<div class="muted">Todavía no hay información para este apartamento.</div>`
         : `
           <h2 style="margin-top:18px;">Información útil</h2>
           <div id="guest-accordion">
@@ -2534,10 +2536,7 @@ app.get("/guest/:apartmentId/:bookingRef", async (req, res) => {
 
               if (mediaUrlRaw) {
                 if (mediaType === "image") {
-                  const images = mediaUrlRaw
-                    .split(/\r?\n/)
-                    .map((u) => u.trim())
-                    .filter(Boolean);
+                  const images = mediaUrlRaw.split(/\r?\n/).map(u => u.trim()).filter(Boolean);
                   media = images.map((url) => `
                     <div style="margin-top:10px;">
                       <img src="${escapeHtml(url)}" style="max-width:100%;border-radius:12px;display:block;" loading="lazy" />
@@ -2570,14 +2569,18 @@ app.get("/guest/:apartmentId/:bookingRef", async (req, res) => {
                       `
                       : `
                         <div style="margin-top:10px;">
-                          <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">▶ Abrir vídeo</a>
+                          <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
+                            ▶ Abrir vídeo
+                          </a>
                         </div>
                       `;
                   }
                 } else {
                   media = `
                     <div style="margin-top:10px;">
-                      <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">🔗 Abrir enlace</a>
+                      <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
+                        🔗 Abrir enlace
+                      </a>
                     </div>
                   `;
                 }
@@ -2586,11 +2589,8 @@ app.get("/guest/:apartmentId/:bookingRef", async (req, res) => {
               const panelId = `acc_${s.id}`;
               return `
                 <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
-                  <button
-                    type="button"
-                    data-acc-btn="${panelId}"
-                    style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;"
-                  >
+                  <button type="button" data-acc-btn="${panelId}"
+                    style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;">
                     ${title}
                   </button>
                   <div id="${panelId}" style="display:none;padding:12px 14px;">
@@ -2616,8 +2616,6 @@ app.get("/guest/:apartmentId/:bookingRef", async (req, res) => {
           </script>
         `;
 
-    // 5) Página
-    const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
     const html = `
       <div class="card">
         <h1>Panel del Huésped</h1>
@@ -2635,9 +2633,10 @@ app.get("/guest/:apartmentId/:bookingRef", async (req, res) => {
     return res.send(renderPage("Panel del Huésped", html));
   } catch (e) {
     console.error("Guest dashboard error:", e);
-    return res.status(500).send("No se puede cargar el panel del huésped: " + (e.detail || e.message || String(e)));
+    return res.status(500).send("Cannot load guest dashboard: " + (e.detail || e.message || String(e)));
   }
 });
+
 // --- LIST + FILTER ---
 // ===================== STAFF: CHECKINS LIST (FIXED) =====================
 app.get("/staff/checkins", async (req, res) => {
@@ -3201,6 +3200,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
