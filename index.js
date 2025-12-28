@@ -2160,13 +2160,29 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
     );
 
     if (!checkinRes.rows.length) {
-      const html = `
-        <div class="card">
-          <h1>Panel del huésped</h1>
-          <p class="muted">No encontramos tu reserva con esos datos.</p>
-          <p class="muted">Verifica el enlace o contacta con soporte.</p>
-          <a class="btn-link" href="/">← Volver</a>
-        </div>
+     const html = `
+  <style>
+    @media (max-width: 768px) {
+      .card {
+        margin: 0 !important;
+        padding: 12px !important;
+        border-radius: 0 !important;
+        max-width: 100% !important;
+      }
+      body {
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+    }
+  </style>
+  <div class="card">
+    <div style="text-align:center; margin-bottom:30px;">
+      <h1 style="margin-bottom:8px; font-size:28px;">Bienvenido</h1>
+      <div style="font-size:18px; color:#6b7280;">${escapeHtml(r.apartment_name || "")}</div>
+      ${r.beds24_booking_id || r.booking_token ? `
+        <div style="font-size:13px; color:#9ca3af; margin-top:8px;">Reserva: ${escapeHtml(String(r.beds24_booking_id || r.booking_token || ""))}</div>
+      ` : ''}
+    </div>
       `;
       return res.send(renderPage("Panel del huésped", html));
     }
@@ -2932,6 +2948,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
