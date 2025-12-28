@@ -1966,106 +1966,82 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 // We show last submitted record for this booking token.
 // ===================== GUEST DASHBOARD =====================
 // Guest opens: /guest/:apartmentId/:bookingReference
+
 app.get("/guest/:apartmentId/:bookingReference", async (req, res) => {
-  try {
-    const { apartmentId, bookingReference } = req.params;
+  const { apartmentId, bookingReference } = req.params;
 
-    const checkinRes = await pool.query(
-      `
-      SELECT *
-      FROM checkins c
-      WHERE c.apartment_id = $1::text
-        AND (
-          c.booking_token = $2::text
-          OR c.booking_token = ('START_' || $2::text)
-          OR c.beds24_booking_id::text = $2::text
-          OR c.booking_id_from_start = $2::text
-          OR c.booking_id = $2::text
-          OR c.external_booking_id = $2::text
-          OR c.provider_booking_id = $2::text
-        )
-      ORDER BY c.id DESC
-      LIMIT 1
-      `,
-      [String(apartmentId), String(bookingReference)]
+  // 1️⃣ Получаем checkin
+  const checkinRes = await pool.query(
+    `
+    SELECT *
+    FROM checkins c
+    WHERE c.apartment_id::text = $1
+      AND (
+        c.booking_token::text = $2
+        OR c.beds24_booking_id::text = $2
+        OR c.booking_id_from_start::text = $2
+        OR c.external_booking_id::text = $2
+        OR c.provider_booking_id::text = $2
+      )
+    ORDER BY c.id DESC
+    LIMIT 1
+    `,
+    [String(apartmentId), String(bookingReference)]
+  );
+
+  if (checkinRes.rows.length === 0) {
+    return res.send(
+      renderPage(
+        "Guest Dashboard",
+        `
+        <div class="card">
+          <h1>Guest Dashboard</h1>
+          <p>No check-in record found for this booking.</p>
+          <a href="/" class="btn-link">← Back</a>
+        </div>
+        `
+      )
     );
-
-    if (checkinRes.rows.length === 0) {
-      return res.send(
-        renderPage(
-          "Guest Dashboard",
-          `<div class="card">
-            <h1>Guest Dashboard</h1>
-            <p>No check-in record found for this booking.</p>
-            <a href="/" class="btn-link">← Back</a>
-          </div>`
-        )
-      );
-    }
-
-    const checkin = checkinRes.rows[0];
-    // ... render дальше
-  } catch (e) {
-    console.error("Cannot load guest dashboard:", e);
-    res.status(500).send("Cannot load guest dashboard: " + (e.message || String(e)));
   }
-});
 
-    // 2) Load apartment sections (ВАЖНО: в твоей БД это apartment_sections с room_id)
-    const secRes = await pool.query(
+  const r = checkinRes.rows[0];
+
+  // 2️⃣ Загружаем секции — ВНУТРИ async!
+  const roomId = r.apartment_id;
+
+  const secRes = await pool.query(
+    `
+    SELECT
+      id,
+      title,
+      body,
+      new_media_type,
+      new_media_url
+    FROM apartment_sections
+    WHERE room_id::text = $1
+      AND is_active = true
+    ORDER BY sort_order ASC, id ASC
+    `,
+    [String(roomId)]
+  );
+
+  // 3️⃣ Дальше рендер HTML
+  const sectionsHtml = secRes.rows.length
+    ? secRes.rows.map(s => `<h3>${escapeHtml(s.title)}</h3>`).join("")
+    : `<div class="muted">No information sections.</div>`;
+
+  return res.send(
+    renderPage(
+      "Guest Dashboard",
       `
-      SELECT
-        id,
-        title,
-        body,
-        new_media_type,
-        new_media_url
-      FROM apartment_sections
-      WHERE room_id::text = $1
-        AND is_active = true
-      ORDER BY sort_order ASC, id ASC
-      `,
-      [String(apartmentId)]
-    );
-
-    const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
-
-    // 3) Lock code visibility via ?show=1
-    const show = req.query.show === "1";
-    const lockCodeHtml =
-      r.lock_visible && r.lock_code
-        ? show
-          ? `
-            <hr/>
-            <div>Lock Code: <strong style="font-size:22px;letter-spacing:2px;">${escapeHtml(
-              String(r.lock_code)
-            )}</strong></div>
-          `
-          : `
-            <hr/>
-            <a class="btn-link" href="/guest/${encodeURIComponent(
-              String(apartmentId)
-            )}/${encodeURIComponent(String(bookingReference))}?show=1">Show code</a>
-          `
-        : "";
-
-    // 4) Sections HTML
-    const sectionsHtml =
-      secRes.rows.length === 0
-        ? `<div class="muted">No information sections for this apartment yet.</div>`
-        : `
-          <h2 style="margin-top:18px;">Guest info</h2>
-          <div id="guest-accordion">
-            ${secRes.rows
-              .map((s) => {
-                const title = escapeHtml(s.title || "");
-                const rawBody = String(s.body || "");
-                const bodyHtml = escapeHtml(rawBody)
-                  .replace(/\n/g, "<br/>")
-                  .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
-                    const safeUrl = escapeHtml(url);
-                    return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
-                  });
+      <div class="card">
+        <h1>Guest Dashboard</h1>
+        ${sectionsHtml}
+      </div>
+      `
+    )
+  );
+});
 
                 // media (если есть)
                 const mediaHtml =
@@ -2708,6 +2684,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
