@@ -1960,32 +1960,19 @@ const { apartmentId, bookingReference } = req.params;
 
 const checkinRes = await pool.query(
   `
-  SELECT
-    id,
-    apartment_id,
-    apartment_name,
-    full_name,
-    email,
-    phone,
-    arrival_date,
-    arrival_time,
-    departure_date,
-    departure_time,
-    adults,
-    children,
-    lock_code,
-    lock_visible
-  FROM checkins
-  WHERE cancelled IS DISTINCT FROM true
-    AND apartment_id::text = $1
+  SELECT c.*
+  FROM checkins c
+  WHERE c.cancelled IS DISTINCT FROM true
+    AND c.external_room_id::text = $1
     AND (
-      booking_id::text = $2
-      OR booking_token = $2
-      OR booking_id_from_start = $2
-      OR external_booking_id = $2
-      OR provider_booking_id = $2
+      c.booking_id_from_start = $2
+      OR c.booking_id = $2
+      OR c.external_booking_id = $2
+      OR c.provider_booking_id = $2
+      OR c.booking_token = $2
+      OR c.beds24_booking_id::text = $2
     )
-  ORDER BY id DESC
+  ORDER BY c.id DESC
   LIMIT 1
   `,
   [String(apartmentId), String(bookingReference)]
@@ -2763,6 +2750,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
