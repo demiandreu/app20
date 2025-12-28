@@ -2636,7 +2636,7 @@ const bodyHtml = escapeHtml(rawBody)
         <h1>Guest Dashboard</h1>
         <div class="muted">Apartment: <strong>${escapeHtml(r.apartment_name || "")}</strong></div>
         <div class="muted">Booking ID: <strong>${escapeHtml(
-          String(r.beds24_booking_id || r.booking_token || "")
+         String(r.booking_reference || "")
         )}</strong></div>
         <hr/>
         <div>Arrival: <strong>${fmtDate(r.arrival_date)}${
@@ -3266,6 +3266,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
