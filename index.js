@@ -2491,18 +2491,31 @@ const guestBtn = guestPortalUrl
   }
 });
 // ===================== ADMIN: SET VISIBILITY =====================
-app.post("/staff/bookings/:id/visibility", async (req, res) => {
-  const id = Number(req.params.id);
+app.post("/staff/bookings/:id/lock", async (req, res) => {
   try {
-    // Toggle visibility
-    await pool.query(`UPDATE bookings SET lock_code_visible = NOT lock_code_visible WHERE id = $1`, [id]);
-    const back = req.body.returnTo || req.get("referer") || "/staff/checkins";
-    res.redirect(back);
+    const { id } = req.params;
+    const lockCode = String(req.body.lock_code || "").trim();
+
+    await pool.query(
+      `
+      UPDATE bookings
+      SET lock_code = $1
+      WHERE id = $2
+      `,
+      [lockCode, String(id)]
+    );
+
+    // вернуться туда, откуда пришли
+    const back = req.get("referer") || "/staff/checkins";
+    return res.redirect(back);
   } catch (e) {
-    console.error("Visibility update error:", e);
-    res.status(500).send("❌ Cannot update visibility");
+    console.error("Error saving lock code:", e);
+    return res
+      .status(500)
+      .send(renderPage("Error", `<div class="card">Cannot save lock code: ${escapeHtml(e.message || String(e))}</div>`));
   }
 });
+
 
 // ===================== ADMIN: CLEAN TOGGLE =====================
 app.post("/staff/bookings/:id/clean", async (req, res) => {
@@ -2871,6 +2884,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
