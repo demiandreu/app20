@@ -2400,9 +2400,11 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 // ===================== GUEST DASHBOARD =====================
 // Guest opens: /guest/:aptId/:token
 // We show last submitted record for this booking token.
-app.get("/guest/:roomId/:token", async (req, res) => {
-  const { roomId, token } = req.params;
+// ===================== GUEST DASHBOARD (multi-tenant ready) =====================
+app.get("/guest/:apartmentId/:bookingRef", async (req, res) => {
+  const { apartmentId, bookingRef } = req.params;
 
+  // Helpers para incrustar video
   function toYouTubeEmbed(url) {
     const u = String(url || "");
     const m1 = u.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/);
@@ -2410,7 +2412,6 @@ app.get("/guest/:roomId/:token", async (req, res) => {
     const id = (m1 && m1[1]) || (m2 && m2[1]);
     return id ? `https://www.youtube.com/embed/${id}` : null;
   }
-
   function toVimeoEmbed(url) {
     const u = String(url || "");
     const m = u.match(/vimeo\.com\/(\d+)/);
@@ -2419,202 +2420,168 @@ app.get("/guest/:roomId/:token", async (req, res) => {
   }
 
   try {
-    // 1) Load check-in record
-  // 1) Load check-in record (robust matching after DB changes)
-// 1) Load booking (source of truth)
-const bookingRes = await pool.query(
-  `
-  SELECT
-    b.id,
-    b.booking_reference,
-    b.apartment_id,
-    a.name as apartment_name,
-    b.guest_name as full_name,
-    b.guest_email as email,
-    b.guest_phone as phone,
-    b.checkin_date as arrival_date,
-    b.checkin_time as arrival_time,
-    b.checkout_date as departure_date,
-    b.checkout_time as departure_time,
-    b.num_adults as adults,
-    b.num_children as children,
-    b.lock_code,
-    b.lock_code_visible as lock_visible
-  FROM bookings b
-  JOIN apartments a ON a.id = b.apartment_id
-  WHERE b.is_cancelled = false
-    AND b.apartment_id::text = $1
-    AND b.booking_reference::text = $2
-  ORDER BY b.id DESC
-  LIMIT 1
-  `,
-  [String(roomId), String(token)]
-);
+    // 1) Booking por apartment_id + booking_reference
+    const bookingRes = await pool.query(
+      `
+      SELECT
+        b.id,
+        b.apartment_id,
+        a.name              AS apartment_name,
+        b.booking_reference,
+        b.guest_name        AS full_name,
+        b.guest_email       AS email,
+        b.guest_phone       AS phone,
+        b.checkin_date      AS arrival_date,
+        b.checkin_time      AS arrival_time,
+        b.checkout_date     AS departure_date,
+        b.checkout_time     AS departure_time,
+        b.num_adults        AS adults,
+        b.num_children      AS children,
+        b.lock_code,
+        b.lock_code_visible,
+        b.is_cancelled
+      FROM bookings b
+      JOIN apartments a ON a.id = b.apartment_id
+      WHERE b.apartment_id::text = $1
+        AND b.booking_reference = $2
+        AND COALESCE(b.is_cancelled,false) = false
+      ORDER BY b.id DESC
+      LIMIT 1
+      `,
+      [String(apartmentId), String(bookingRef)]
+    );
 
-if (!bookingRes.rows.length) {
-  const html = `
-    <h1>Panel de Huésped</h1>
-    <p class="muted">No se encontró la reserva para este enlace.</p>
-    <p><a class="btn-link" href="/">← Volver</a></p>
-  `;
-  return res.send(renderPage("Panel de Huésped", html));
-}
-
-const r = bookingRes.rows[0];
-
-   // 2) Load apartment sections (room_id in apartment_sections is tied to the Beds24 room_id)
-// Fallback order: beds24_room_id -> external_room_id -> URL roomId -> apartment_id
-// 2) Load apartment sections (room_id = apartments.id)
-const sectionsRoomId = String(
-  (r.apartment_id && String(r.apartment_id).trim()) ||
-  String(roomId).trim()
-);
-
-// 2) Load apartment sections (room_id = apartment_id)
-const secRes = await pool.query(
-  `
-  SELECT
-    id,
-    title,
-    body,
-    new_media_type,
-    new_media_url
-  FROM apartment_sections
-  WHERE room_id::text = $1
-    AND is_active = true
-  ORDER BY sort_order ASC, id ASC
-  `,
-  [String(r.apartment_id)]
-);
-
-    const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
-
-    // 3) Lock code visibility via ?show=1
-    const show = req.query.show === "1";
-    const lockCodeHtml =
-      r.lock_visible && r.lock_code
-        ? show
-          ? `
-            <hr/>
-            <div>Lock Code: <strong style="font-size:22px;letter-spacing:2px;">${escapeHtml(
-              String(r.lock_code)
-            )}</strong></div>
-          `
-          : `
-            <hr/>
-            <a class="btn-link" href="/guest/${encodeURIComponent(
-  String(r.beds24_room_id || r.apartment_id || roomId)
-)}/${encodeURIComponent(String(r.beds24_booking_id || r.booking_token || token))}?show=1">Show code</a>
-          `
-        : "";
-
-    // 4) Accordion sections
-    const sectionsHtml =
-      secRes.rows.length === 0
-        ? `<div class="muted">No information sections for this apartment yet.</div>`
-        : `
-          <h2 style="margin-top:18px;">Guest info</h2>
-          <div id="guest-accordion">
-           ${secRes.rows
-  .map((s) => {
-    const title = escapeHtml(s.title || "");
-    const rawBody = String(s.body || "");
-
-const bodyHtml = escapeHtml(rawBody)
-  .replace(/\n/g, "<br/>")
-  .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
-    const safeUrl = escapeHtml(url);
-    return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
-  });
-
-    const mediaType = String(s.new_media_type || "").toLowerCase().trim();
-    const mediaUrlRaw = String(s.new_media_url || "").trim();
-
-    let media = "";
-
-    if (mediaUrlRaw) {
-      if (mediaType === "image") {
-        const images = mediaUrlRaw
-          .split(/\r?\n/)
-          .map((u) => u.trim())
-          .filter(Boolean);
-
-        media = images
-          .map(
-            (url) => `
-              <div style="margin-top:10px;">
-                <img src="${escapeHtml(url)}" style="max-width:100%;border-radius:12px;display:block;" loading="lazy" />
-              </div>
-            `
-          )
-          .join("");
-      } else if (mediaType === "video") {
-        const lower = mediaUrlRaw.toLowerCase();
-
-        if (lower.endsWith(".mp4")) {
-          media = `
-            <div style="margin-top:10px;">
-              <video controls playsinline style="width:100%;border-radius:12px;">
-                <source src="${escapeHtml(mediaUrlRaw)}" type="video/mp4">
-              </video>
-            </div>
-          `;
-        } else {
-          const yt = toYouTubeEmbed(mediaUrlRaw);
-          const vm = toVimeoEmbed(mediaUrlRaw);
-          const embed = yt || vm;
-
-          media = embed
-            ? `
-              <div style="margin-top:10px;">
-                <iframe
-                  src="${escapeHtml(embed)}"
-                  style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowfullscreen
-                ></iframe>
-              </div>
-            `
-            : `
-              <div style="margin-top:10px;">
-                <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
-                  ▶ Abrir video
-                </a>
-              </div>
-            `;
-        }
-      } else {
-        media = `
-          <div style="margin-top:10px;">
-            <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
-              🔗 Abrir enlace
-            </a>
-          </div>
-        `;
-      }
+    if (!bookingRes.rows.length) {
+      const html = `
+        <div class="card">
+          <h1>Panel del Huésped</h1>
+          <p class="muted">No encontramos la reserva.</p>
+          <p><a class="btn-link" href="/">← Volver</a></p>
+        </div>
+      `;
+      return res.send(renderPage("Panel del Huésped", html));
     }
 
-    const panelId = `acc_${s.id}`;
+    const r = bookingRes.rows[0];
 
-    return `
-      <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
-        <button
-          type="button"
-          data-acc-btn="${panelId}"
-          style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;"
-        >
-          ${title}
-        </button>
-        <div id="${panelId}" style="display:none;padding:12px 14px;">
-          <div>${bodyHtml}</div>
-          ${media}
-        </div>
-      </div>
-    `;
-  })
-  .join("")}
+    // 2) Secciones del apartamento (room_id = apartments.id)
+    const secRes = await pool.query(
+      `
+      SELECT id, title, body, new_media_type, new_media_url
+      FROM apartment_sections
+      WHERE room_id::text = $1
+        AND is_active = true
+      ORDER BY sort_order ASC, id ASC
+      `,
+      [String(r.apartment_id)]
+    );
+
+    // 3) Código de caja (mostrar mediante ?show=1)
+    const show = req.query.show === "1";
+    const lockCodeHtml =
+      r.lock_code_visible && r.lock_code
+        ? (show
+            ? `
+              <hr/>
+              <div>Caja de llaves: <strong style="font-size:22px;letter-spacing:2px;">${escapeHtml(String(r.lock_code))}</strong></div>
+            `
+            : `
+              <hr/>
+              <a class="btn-link" href="/guest/${encodeURIComponent(String(r.apartment_id))}/${encodeURIComponent(String(r.booking_reference))}?show=1">Mostrar código</a>
+            `
+          )
+        : "";
+
+    // 4) Render de secciones (linkificación + imágenes/vídeos)
+    const sectionsHtml =
+      secRes.rows.length === 0
+        ? `<div class="muted">Aún no hay información para este apartamento.</div>`
+        : `
+          <h2 style="margin-top:18px;">Información útil</h2>
+          <div id="guest-accordion">
+            ${secRes.rows.map((s) => {
+              const title = escapeHtml(s.title || "");
+              const rawBody = String(s.body || "");
+              const bodyHtml = escapeHtml(rawBody)
+                .replace(/\n/g, "<br/>")
+                .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+                  const safeUrl = escapeHtml(url);
+                  return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
+                });
+
+              const mediaType = String(s.new_media_type || "").toLowerCase().trim();
+              const mediaUrlRaw = String(s.new_media_url || "").trim();
+              let media = "";
+
+              if (mediaUrlRaw) {
+                if (mediaType === "image") {
+                  const images = mediaUrlRaw
+                    .split(/\r?\n/)
+                    .map((u) => u.trim())
+                    .filter(Boolean);
+                  media = images.map((url) => `
+                    <div style="margin-top:10px;">
+                      <img src="${escapeHtml(url)}" style="max-width:100%;border-radius:12px;display:block;" loading="lazy" />
+                    </div>
+                  `).join("");
+                } else if (mediaType === "video") {
+                  const lower = mediaUrlRaw.toLowerCase();
+                  if (lower.endsWith(".mp4")) {
+                    media = `
+                      <div style="margin-top:10px;">
+                        <video controls playsinline style="width:100%;border-radius:12px;">
+                          <source src="${escapeHtml(mediaUrlRaw)}" type="video/mp4">
+                        </video>
+                      </div>
+                    `;
+                  } else {
+                    const yt = toYouTubeEmbed(mediaUrlRaw);
+                    const vm = toVimeoEmbed(mediaUrlRaw);
+                    const embed = yt || vm;
+                    media = embed
+                      ? `
+                        <div style="margin-top:10px;">
+                          <iframe
+                            src="${escapeHtml(embed)}"
+                            style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowfullscreen
+                          ></iframe>
+                        </div>
+                      `
+                      : `
+                        <div style="margin-top:10px;">
+                          <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">▶ Abrir vídeo</a>
+                        </div>
+                      `;
+                  }
+                } else {
+                  media = `
+                    <div style="margin-top:10px;">
+                      <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">🔗 Abrir enlace</a>
+                    </div>
+                  `;
+                }
+              }
+
+              const panelId = `acc_${s.id}`;
+              return `
+                <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
+                  <button
+                    type="button"
+                    data-acc-btn="${panelId}"
+                    style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;"
+                  >
+                    ${title}
+                  </button>
+                  <div id="${panelId}" style="display:none;padding:12px 14px;">
+                    <div>${bodyHtml}</div>
+                    ${media}
+                  </div>
+                </div>
+              `;
+            }).join("")}
           </div>
-
           <script>
             (function () {
               var buttons = document.querySelectorAll("[data-acc-btn]");
@@ -2630,33 +2597,26 @@ const bodyHtml = escapeHtml(rawBody)
           </script>
         `;
 
-    // 5) Page HTML
+    // 5) Página
+    const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
     const html = `
       <div class="card">
-        <h1>Guest Dashboard</h1>
-        <div class="muted">Apartment: <strong>${escapeHtml(r.apartment_name || "")}</strong></div>
-        <div class="muted">Booking ID: <strong>${escapeHtml(
-         String(r.booking_reference || "")
-        )}</strong></div>
+        <h1>Panel del Huésped</h1>
+        <div class="muted">Apartamento: <strong>${escapeHtml(r.apartment_name || "")}</strong></div>
+        <div class="muted">Reserva: <strong>${escapeHtml(String(r.booking_reference || ""))}</strong></div>
         <hr/>
-        <div>Arrival: <strong>${fmtDate(r.arrival_date)}${
-          r.arrival_time ? " " + fmtTime(r.arrival_time) : ""
-        }</strong></div>
-        <div>Departure: <strong>${fmtDate(r.departure_date)}${
-          r.departure_time ? " " + fmtTime(r.departure_time) : ""
-        }</strong></div>
-        <div>Guests: <strong>${totalGuests}</strong> (adults: ${Number(r.adults) || 0}, children: ${
-          Number(r.children) || 0
-        })</div>
+        <div>Llegada: <strong>${fmtDate(r.arrival_date)}${r.arrival_time ? " " + fmtTime(r.arrival_time) : ""}</strong></div>
+        <div>Salida: <strong>${fmtDate(r.departure_date)}${r.departure_time ? " " + fmtTime(r.departure_time) : ""}</strong></div>
+        <div>Huéspedes: <strong>${totalGuests}</strong> (adultos: ${Number(r.adults) || 0}, niños: ${Number(r.children) || 0})</div>
         ${lockCodeHtml}
         ${sectionsHtml}
       </div>
     `;
 
-    return res.send(renderPage("Guest Dashboard", html));
+    return res.send(renderPage("Panel del Huésped", html));
   } catch (e) {
     console.error("Guest dashboard error:", e);
-    return res.status(500).send("Cannot load guest dashboard: " + (e.detail || e.message || String(e)));
+    return res.status(500).send("No se puede cargar el panel del huésped: " + (e.detail || e.message || String(e)));
   }
 });
 // --- LIST + FILTER ---
@@ -3266,6 +3226,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
