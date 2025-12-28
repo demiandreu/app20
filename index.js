@@ -2469,7 +2469,7 @@ const guestBtn = guestPortalUrl
         <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
         
         <!-- 6. Apartamento -->
-        <td class="apartment-cell ${aptColorClass(r.apartment_id)}">
+        <td class="apartment-cell ${getColumnClass(r.apartment_id)}">
           ${escapeHtml(r.apartment_name || "Sin nombre")}
         </td>
         
@@ -2935,6 +2935,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
