@@ -2158,7 +2158,7 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
     // 2) Load apartment sections by room_id
     const secRes = await pool.query(
       `
-      SELECT id, title, body, new_media_type, new_media_url
+SELECT id, title, body, icon, new_media_type, new_media_url
       FROM apartment_sections
       WHERE room_id::text = $1
         AND is_active = true
@@ -2197,6 +2197,7 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
           <div id="guest-accordion">
             ${secRes.rows
               .map((s) => {
+                const icon = s.icon ? `${s.icon} ` : '';
                 const title = escapeHtml(s.title || "");
                 const rawBody = String(s.body || "");
 
@@ -2897,6 +2898,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
