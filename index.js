@@ -885,23 +885,7 @@ td.apartment-cell.needs-clean {
      padding: 0;
     margin: 0;
   }
-  .card {
-  max-width: 800px;
-  margin: 20px auto;
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
 
-/* 🆕 Añade esto para móvil */
-@media (max-width: 768px) {
-  .card {
-    margin: 0;
-    padding: 16px;
-    border-radius: 0;
-    max-width: 100%;
-  }
 
   .table-wrap {
     width: 100%;
@@ -2980,6 +2964,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
