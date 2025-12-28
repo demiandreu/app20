@@ -2196,8 +2196,8 @@ SELECT id, title, body, icon, new_media_type, new_media_url
           <div id="guest-accordion">
             ${secRes.rows
               .map((s) => {
-                const icon = s.icon ? `${s.icon} ` : '';
-                const title = escapeHtml(s.title || "");
+               const icon = s.icon ? `${s.icon} ` : '';
+const title = icon + escapeHtml(s.title || "");
                 const rawBody = String(s.body || "");
 
                 const bodyHtml = escapeHtml(rawBody)
@@ -2899,6 +2899,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
