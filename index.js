@@ -1058,7 +1058,12 @@ td.apartment-cell.needs-clean {
 // =====================================================
 // ROUTES
 // =====================================================
-
+if (row.checkin_date && String(row.checkin_date).includes(":")) {
+  throw new Error(`BAD checkin_date (time in date): ${row.checkin_date}`);
+}
+if (row.checkout_date && String(row.checkout_date).includes(":")) {
+  throw new Error(`BAD checkout_date (time in date): ${row.checkout_date}`);
+}
 function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
   // Extraer nombre del apartamento de forma inteligente
   // Extraer nombre del apartamento del payload de Beds24
@@ -1102,6 +1107,30 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
     // otros campos...
   };
 }
+function toDateOnly(v) {
+  if (!v) return null;
+  const s = String(v).trim();
+  // если вдруг пришло "2025-12-28 16:00" -> берём дату
+  if (s.includes(" ")) return s.split(" ")[0];
+  // если пришло "16:00" -> это НЕ дата
+  if (s.includes(":")) return null;
+  return s; // "2025-12-28"
+}
+
+function toTimeOnly(v) {
+  if (!v) return null;
+  const s = String(v).trim();
+  // если пришло "2025-12-28 16:00" -> берём время
+  if (s.includes(" ")) return s.split(" ")[1] || null;
+  // если пришло "16:00" -> это время
+  if (s.includes(":")) return s;
+  return null;
+}
+row.checkin_date  = toDateOnly(b.checkin_date || b.arrival || b.checkin);
+row.checkin_time  = toTimeOnly(b.checkin_time || b.arrivalTime || b.checkin);
+
+row.checkout_date = toDateOnly(b.checkout_date || b.departure || b.checkout);
+row.checkout_time = toTimeOnly(b.checkout_time || b.departureTime || b.checkout);
 
 async function upsertCheckinFromBeds24(row) {
   // If dates are missing, skip (can't insert without dates)
@@ -2820,6 +2849,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
