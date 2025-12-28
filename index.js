@@ -1964,58 +1964,42 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 // ===================== GUEST DASHBOARD =====================
 // Guest opens: /guest/:aptId/:token
 // We show last submitted record for this booking token.
-app.get("/guest/:roomId/:token", async (req, res) => {
-  const { roomId, token } = req.params;
+app.get("/guest/:apartmentId/:bookingReference", async (req, res) => {
+  const { apartmentId, bookingReference } = req.params;
 
-  function toYouTubeEmbed(url) {
-    const u = String(url || "");
-    const m1 = u.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/);
-    const m2 = u.match(/[?&]v=([A-Za-z0-9_-]{6,})/);
-    const id = (m1 && m1[1]) || (m2 && m2[1]);
-    return id ? `https://www.youtube.com/embed/${id}` : null;
+  const checkinRes = await pool.query(
+    `
+    SELECT *
+    FROM checkins c
+    WHERE c.apartment_id::text = $1
+      AND (
+        c.booking_token::text = $2
+        OR c.beds24_booking_id::text = $2
+        OR c.external_booking_id::text = $2
+        OR c.provider_booking_id::text = $2
+      )
+    LIMIT 1
+    `,
+    [String(apartmentId), String(bookingReference)]
+  );
+
+  if (checkinRes.rows.length === 0) {
+    return res.send(
+      renderPage(
+        "Guest Dashboard",
+        `<div class="card">
+          <h1>Guest Dashboard</h1>
+          <p>No check-in record found for this booking.</p>
+          <a href="/" class="btn-link">← Back</a>
+        </div>`
+      )
+    );
   }
 
-  function toVimeoEmbed(url) {
-    const u = String(url || "");
-    const m = u.match(/vimeo\.com\/(\d+)/);
-    const id = m && m[1];
-    return id ? `https://player.vimeo.com/video/${id}` : null;
-  }
+  const checkin = checkinRes.rows[0];
 
-  try {
-    // 1) Load check-in record
-const { apartmentId, bookingReference } = req.params;
-
-const checkinRes = await pool.query(
-  `
-  SELECT c.*
-  FROM checkins c
-  WHERE c.cancelled IS DISTINCT FROM true
-    AND c.external_room_id::text = $1
-    AND (
-      c.booking_id_from_start = $2
-      OR c.booking_id = $2
-      OR c.external_booking_id = $2
-      OR c.provider_booking_id = $2
-      OR c.booking_token = $2
-      OR c.beds24_booking_id::text = $2
-    )
-  ORDER BY c.id DESC
-  LIMIT 1
-  `,
-  [String(apartmentId), String(bookingReference)]
-);
-    if (!checkinRes.rows.length) {
-      const html = `
-        <h1>Guest Dashboard</h1>
-        <p class="muted">No check-in record found for this booking.</p>
-        <p><a class="btn-link" href="/">← Back</a></p>
-      `;
-      return res.send(renderPage("Guest Dashboard", html));
-    }
-
-    const r = checkinRes.rows[0];
-
+  // дальше рендер страницы
+});
     // 2) Load apartment sections
     const secRes = await pool.query(
       `
@@ -2797,6 +2781,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
