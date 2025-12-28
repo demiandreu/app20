@@ -1262,8 +1262,7 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
 
     for (const b of bookings) {
       const row = mapBeds24BookingToRow(b, b.roomName || "", b.roomId || "");
-      const  = await upsertCheckinFromBeds24(row);
-      synced++;
+      const result = await upsertCheckinFromBeds24(row);      synced++;
       if (result.ok) newOnes++;
       else updated++;
     }
@@ -2764,6 +2763,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
