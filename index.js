@@ -2165,8 +2165,168 @@ SELECT id, title, body, icon, new_media_type, new_media_url
       `,
       [String(roomId)]
     );
+const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
 
-    const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
+// 3) Lock code visibility via ?show=1 (only if lock_visible=true)
+const show = req.query.show === "1";
+const lockCodeHtml =
+  r.lock_visible && r.lock_code
+    ? show
+      ? `
+        <hr/>
+        <div>Código de acceso: <strong style="font-size:22px;letter-spacing:2px;">${escapeHtml(
+          String(r.lock_code)
+        )}</strong></div>
+      `
+      : `
+        <hr/>
+        <a class="btn-link" href="/guest/${encodeURIComponent(String(roomId))}/${encodeURIComponent(
+          String(bookingReference)
+        )}?show=1">Mostrar código</a>
+      `
+    : "";
+
+// 4) Accordion sections
+const sectionsHtml =
+  secRes.rows.length === 0
+    ? `<div class="muted">Todavía no hay información para este apartamento.</div>`
+    : `
+      <h2 style="margin-top:18px;">Información del apartamento</h2>
+      <div id="guest-accordion">
+        ${secRes.rows
+          .map((s) => {
+            const icon = s.icon ? `${s.icon} ` : '';
+            const title = icon + escapeHtml(s.title || "");
+            const rawBody = String(s.body || "");
+            
+            const bodyHtml = escapeHtml(rawBody)
+              .replace(/\n/g, "<br/>")
+              .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+                const safeUrl = escapeHtml(url);
+                return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
+              });
+
+            const mediaType = String(s.new_media_type || "").toLowerCase().trim();
+            const mediaUrlRaw = String(s.new_media_url || "").trim();
+            let media = "";
+
+            if (mediaUrlRaw) {
+              if (mediaType === "image") {
+                const images = mediaUrlRaw
+                  .split(/\r?\n/)
+                  .map((u) => u.trim())
+                  .filter(Boolean);
+
+                media = images
+                  .map(
+                    (url) => `
+                      <div style="margin-top:10px;">
+                        <img src="${escapeHtml(
+                          url
+                        )}" style="max-width:100%;border-radius:12px;display:block;" loading="lazy" />
+                      </div>
+                    `
+                  )
+                  .join("");
+              } else if (mediaType === "video") {
+                const lower = mediaUrlRaw.toLowerCase();
+
+                if (lower.endsWith(".mp4")) {
+                  media = `
+                    <div style="margin-top:10px;">
+                      <video controls playsinline style="width:100%;border-radius:12px;">
+                        <source src="${escapeHtml(mediaUrlRaw)}" type="video/mp4">
+                      </video>
+                    </div>
+                  `;
+                } else {
+                  const yt = toYouTubeEmbed(mediaUrlRaw);
+                  const vm = toVimeoEmbed(mediaUrlRaw);
+                  const embed = yt || vm;
+
+                  media = embed
+                    ? `
+                      <div style="margin-top:10px;">
+                        <iframe
+                          src="${escapeHtml(embed)}"
+                          style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowfullscreen
+                        ></iframe>
+                      </div>
+                    `
+                    : `
+                      <div style="margin-top:10px;">
+                        <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
+                          ▶ Abrir vídeo
+                        </a>
+                      </div>
+                    `;
+                }
+              } else {
+                media = `
+                  <div style="margin-top:10px;">
+                    <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
+                      🔗 Abrir enlace
+                    </a>
+                  </div>
+                `;
+              }
+            }
+
+            const panelId = `acc_${s.id}`;
+
+            return `
+              <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
+                <button
+                  type="button"
+                  data-acc-btn="${panelId}"
+                  style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;"
+                >
+                  ${title}
+                </button>
+                <div id="${panelId}" style="display:none;padding:12px 14px;">
+                  <div>${bodyHtml}</div>
+                  ${media}
+                </div>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+
+      <script>
+        (function () {
+          var buttons = document.querySelectorAll("[data-acc-btn]");
+          buttons.forEach(function (btn) {
+            btn.addEventListener("click", function () {
+              var id = btn.getAttribute("data-acc-btn");
+              var panel = document.getElementById(id);
+              if (!panel) return;
+              panel.style.display = (panel.style.display === "block") ? "none" : "block";
+            });
+          });
+        })();
+      </script>
+    `;
+
+// 5) Render page (Spanish UI)
+const html = `
+  <div class="card">
+    <h1>Panel del huésped</h1>
+    <div class="muted">Apartamento: <strong>${escapeHtml(r.apartment_name || "")}</strong></div>
+    <div class="muted">Reserva: <strong>${escapeHtml(String(r.beds24_booking_id || r.booking_token || ""))}</strong></div>
+    <hr/>
+    <div>Llegada: <strong>${fmtDate(r.arrival_date)}${r.arrival_time ? " " + fmtTime(r.arrival_time) : ""}</strong></div>
+    <div>Salida: <strong>${fmtDate(r.departure_date)}${r.departure_time ? " " + fmtTime(r.departure_time) : ""}</strong></div>
+    <div>Huéspedes: <strong>${totalGuests}</strong> (adultos: ${Number(r.adults) || 0}, niños: ${Number(r.children) || 0})</div>
+    ${lockCodeHtml}
+    ${sectionsHtml}
+  </div>
+`;
+
+return res.send(renderPage("Panel del huésped", html));
+  /*  const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
 
     // 3) Lock code visibility via ?show=1 (only if lock_visible=true)
     const show = req.query.show === "1";
@@ -2379,7 +2539,7 @@ const html = `
   </div>
 `;
 
-    return res.send(renderPage("Panel del huésped", html));
+    return res.send(renderPage("Panel del huésped", html)); */
   } catch (e) {
     console.error("Guest dashboard error:", e);
     return res
@@ -2950,6 +3110,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
