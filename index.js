@@ -2371,6 +2371,7 @@ WHERE b.is_cancelled = false
 
     // Color logic
     const yesterdayStr = yesterday;
+// Build needsCleanSet
 const { rows: needsCleanRows } = await pool.query(
   `
   SELECT DISTINCT b_today.apartment_id
@@ -2379,57 +2380,51 @@ const { rows: needsCleanRows } = await pool.query(
     ON b_today.apartment_id = b_yesterday.apartment_id
   WHERE b_today.is_cancelled = false
     AND b_yesterday.is_cancelled = false
-
-    -- заезд сегодня
+    -- check-in today
     AND b_today.checkin_date = $1::date
-
-    -- были жильцы вчера
+    -- occupied yesterday
     AND b_yesterday.checkin_date <= $2::date
     AND b_yesterday.checkout_date > $2::date
   `,
   [today, yesterday]
 );
 
-const needsCleanSet = new Set(
-  needsCleanRows.map(r => String(r.apartment_id))
-);
+const needsCleanSet = new Set(needsCleanRows.map(r => String(r.apartment_id)));
+
+// Column class helper
+function getColumnClass(id) {
   if (!id) return "";
-
-  if (occupiedYesterdaySet.has(id)) {
-    return "needs-clean"; // 🩶
-  }
-
+  if (needsCleanSet.has(String(id))) return "needs-clean"; // 🩶
   return ""; // ⚪
 }
 
-    // Toolbar
-    const toolbar = `
-      <h1>Staff · Llegadas y Salidas</h1>
-      <p class="muted">Zona horaria: España (Europe/Madrid)</p>
-      <form method="GET" action="/staff/checkins" style="margin:20px 0;">
-        <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
-          <div>
-            <label>Desde</label>
-            <input type="date" name="from" value="${fromDate || ""}" />
-          </div>
-          <div>
-            <label>Hasta</label>
-            <input type="date" name="to" value="${toDate || ""}" />
-          </div>
-          <button type="submit" class="btn-primary">Filtrar</button>
-          <a href="/staff/checkins" class="btn-link">Resetear</a>
-        </div>
-        <div style="margin-top:12px;">
-          <p class="muted" style="margin:0 0 8px;">Filtros rápidos</p>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <a href="?quick=yesterday" class="btn-base ${quick === "yesterday" ? "btn-success" : ""}">Ayer</a>
-            <a href="?quick=today" class="btn-base ${quick === "today" ? "btn-success" : ""}">Hoy</a>
-            <a href="?quick=tomorrow" class="btn-base ${quick === "tomorrow" ? "btn-success" : ""}">Mañana</a>
-          </div>
-        </div>
-      </form>
-    `;
-
+// Toolbar
+const toolbar = `
+  <h1>Staff · Llegadas y Salidas</h1>
+  <p class="muted">Zona horaria: España (Europe/Madrid)</p>
+  <form method="GET" action="/staff/checkins" style="margin:20px 0;">
+    <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
+      <div>
+        <label>Desde</label>
+        <input type="date" name="from" value="${fromDate || ""}" />
+      </div>
+      <div>
+        <label>Hasta</label>
+        <input type="date" name="to" value="${toDate || ""}" />
+      </div>
+      <button type="submit" class="btn-primary">Filtrar</button>
+      <a href="/staff/checkins" class="btn-link">Resetear</a>
+    </div>
+    <div style="margin-top:12px;">
+      <p class="muted" style="margin:0 0 8px;">Filtros rápidos</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a href="?quick=yesterday" class="btn-base ${quick === "yesterday" ? "btn-success" : ""}">Ayer</a>
+        <a href="?quick=today" class="btn-base ${quick === "today" ? "btn-success" : ""}">Hoy</a>
+        <a href="?quick=tomorrow" class="btn-base ${quick === "tomorrow" ? "btn-success" : ""}">Mañana</a>
+      </div>
+    </div>
+  </form>
+`;
   // REORDERED TABLE - Replace in your renderTable() function
 
 function renderTable(rows, mode) {
@@ -2940,6 +2935,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
