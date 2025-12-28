@@ -124,7 +124,16 @@ async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
+ await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_code TEXT;`);
+  
+  // ... aquí estarán tus otras migraciones existentes ...
 
+  // 🆕 AÑADE ESTAS LÍNEAS AL FINAL (antes del último })
+  await pool.query(`
+    ALTER TABLE apartment_sections 
+    ADD COLUMN IF NOT EXISTS icon VARCHAR(10) DEFAULT '';
+  `);
+  console.log('✅ Columna icon verificada');
   // --- lock fields ---
   await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_code TEXT;`);
   await pool.query(
@@ -1199,7 +1208,7 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
 }
 
 
-  return {
+/*  return {
     apartment_id: String(b.roomId || roomIdFallback || ""),
     apartment_name: apartmentName,
     booking_token: b.bookingToken || null,
@@ -1222,7 +1231,7 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
     beds24_raw: b, // payload completo
     provider: "beds24",
     // otros campos...
-  };
+  }; */
 async function upsertCheckinFromBeds24(row) {
   // If dates are missing, skip (can't insert without dates)
   if (!row.arrival_date || !row.departure_date) return { skipped: true, reason: "missing_dates" };
@@ -2888,6 +2897,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
