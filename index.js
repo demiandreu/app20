@@ -2289,21 +2289,6 @@ SELECT id, title, body, icon, new_media_type, new_media_url
               })
               .join("")}
           </div>
-
-          <script>
-            (function () {
-              var buttons = document.querySelectorAll("[data-acc-btn]");
-              buttons.forEach(function (btn) {
-                btn.addEventListener("click", function () {
-                  var id = btn.getAttribute("data-acc-btn");
-                  var panel = document.getElementById(id);
-                  if (!panel) return;
-                  panel.style.display = (panel.style.display === "block") ? "none" : "block";
-                });
-              });
-            })();
-          </script>
-        `;
 //eeeeeeee
 // 2) Load apartment sections by room_id
 const secRes = await pool.query(
@@ -2320,6 +2305,21 @@ const secRes = await pool.query(
 // 🐛 AÑADE ESTA LÍNEA TEMPORAL PARA DEBUG
 console.log('SECCIONES CARGADAS:', JSON.stringify(secRes.rows, null, 2));
     //eeeeeeeeeeee
+          <script>
+            (function () {
+              var buttons = document.querySelectorAll("[data-acc-btn]");
+              buttons.forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                  var id = btn.getAttribute("data-acc-btn");
+                  var panel = document.getElementById(id);
+                  if (!panel) return;
+                  panel.style.display = (panel.style.display === "block") ? "none" : "block";
+                });
+              });
+            })();
+          </script>
+        `;
+
     // 5) Render page (Spanish UI)
     const html = `
       <div class="card">
@@ -2906,6 +2906,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
