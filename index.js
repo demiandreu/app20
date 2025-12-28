@@ -2829,58 +2829,14 @@ const guestToken =
     ""
   );
 
-const guestPortalUrl = `/guest/${r.beds24_room_id}/${r.booking_token}`;
+const guestPortalUrl = `/guest/${encodeURIComponent(String(r.apartment_id))}/${encodeURIComponent(String(r.booking_reference))}`;
 
 return `
-<tr>
-  <td class="sticky-col">
-    <form method="POST" action="/staff/bookings/${r.id}/clean">
-      <button type="submit" class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}">
-        ${r.clean_ok ? "✓" : ""}
-      </button>
-    </form>
-  </td>
-
-  <td class="apartment-cell ${aptColorClass(r.apartment_id)}">
-    ${escapeHtml(r.apartment_name || "Sin nombre")}
-  </td>
-
-  <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
-  <td>${mainDate}</td>
-  <td>${calcNights(r.arrival_date, r.departure_date)}</td>
-
-  <td>
-    <a class="btn-small btn-ghost" href="${guestPortalUrl}" target="_blank">
-      Abrir
-    </a>
-  </td>
-
-  <td>
-    <form method="POST" action="/staff/bookings/${r.id}/lock" class="lock-form">
-      <input class="lock-input" name="lock_code" value="${r.lock_code || ""}" placeholder="0000" />
-      <button type="submit" class="btn-small">Guardar</button>
-    </form>
-  </td>
-
-  <td>
-    <form method="POST" action="/staff/bookings/${r.id}/visibility" class="vis-form">
-      <span class="pill ${r.lock_code_visible ? "pill-yes" : "pill-no"}">
-        ${r.lock_code_visible ? "Sí" : "No"}
-      </span>
-      <button type="submit" class="btn-small ${r.lock_code_visible ? "btn-ghost" : ""}">
-        ${r.lock_code_visible ? "Ocultar" : "Mostrar"}
-      </button>
-    </form>
-  </td>
-
-  <td>
-    <form method="POST" action="/staff/bookings/${r.id}/delete"
-          onsubmit="return confirm('¿Seguro que quieres borrar esta reserva?');">
-      <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
-      <button type="submit" class="btn-small danger">Borrar</button>
-    </form>
-  </td>
-</tr>
+  <tr>
+    ...
+    <td><a class="btn-small btn-ghost" href="${guestPortalUrl}" target="_blank">Abrir</a></td>
+    ...
+  </tr>
 `;
       }).join("") : `<tr><td colspan="9" class="muted">No hay registros</td></tr>`;
 
@@ -3245,6 +3201,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
