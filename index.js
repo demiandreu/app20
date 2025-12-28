@@ -1980,144 +1980,246 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 
 // ===================== GUEST DASHBOARD =====================
 // Guest opens: /guest/:roomId/:bookingReference
+// ===================== GUEST DASHBOARD =====================
+// URL final: /guest/:roomId/:bookingReference
 app.get("/guest/:roomId/:bookingReference", async (req, res) => {
+  const { roomId, bookingReference } = req.params;
+
+  function toYouTubeEmbed(url) {
+    const u = String(url || "");
+    const m1 = u.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/);
+    const m2 = u.match(/[?&]v=([A-Za-z0-9_-]{6,})/);
+    const id = (m1 && m1[1]) || (m2 && m2[1]);
+    return id ? `https://www.youtube.com/embed/${id}` : null;
+  }
+
+  function toVimeoEmbed(url) {
+    const u = String(url || "");
+    const m = u.match(/vimeo\.com\/(\d+)/);
+    const id = m && m[1];
+    return id ? `https://player.vimeo.com/video/${id}` : null;
+  }
+
   try {
- const { roomId, bookingReference } = req.params;
+    const ref = String(bookingReference || "").trim();
+    const refNoStart = ref.toUpperCase().startsWith("START_") ? ref.slice(6) : ref;
 
-const ref = String(bookingReference);
-const refNoStart = ref.startsWith("START_") ? ref.slice(6) : ref;
-
-const checkinRes = await pool.query(
-  `
-  SELECT *
-  FROM checkins
-  WHERE room_id::text = $1
-    AND (
-      booking_token::text = $2
-      OR beds24_booking_id::text = $2
-      OR booking_id_from_start::text = $2
-      OR booking_id_from_start::text = $3
-    )
-  ORDER BY id DESC
-  LIMIT 1
-  `,
-  [String(roomId), ref, refNoStart]
-);
-
-    if (checkinRes.rows.length === 0) {
-      return res.send(
-        renderPage(
-          "Guest Dashboard",
-          `<div class="card">
-            <h1>Guest Dashboard</h1>
-            <p>No check-in record found for this booking.</p>
-            <a href="/" class="btn-link">← Back</a>
-          </div>`
+    // 1) Load check-in record by RoomID + Booking Reference
+    const checkinRes = await pool.query(
+      `
+      SELECT *
+      FROM checkins c
+      WHERE c.room_id::text = $1
+        AND (
+          c.booking_token::text = $2
+          OR c.beds24_booking_id::text = $2
+          OR c.booking_id_from_start::text = $2
+          OR c.booking_id_from_start::text = $3
+          OR c.booking_id::text = $2
+          OR c.external_booking_id::text = $2
+          OR c.provider_booking_id::text = $2
         )
-      );
+        AND c.cancelled IS DISTINCT FROM true
+      ORDER BY c.id DESC
+      LIMIT 1
+      `,
+      [String(roomId), ref, refNoStart]
+    );
+
+    if (!checkinRes.rows.length) {
+      const html = `
+        <div class="card">
+          <h1>Panel del huésped</h1>
+          <p class="muted">No encontramos tu reserva con esos datos.</p>
+          <p class="muted">Verifica el enlace o contacta con soporte.</p>
+          <a class="btn-link" href="/">← Volver</a>
+        </div>
+      `;
+      return res.send(renderPage("Panel del huésped", html));
     }
 
-    const checkin = checkinRes.rows[0];
+    const r = checkinRes.rows[0];
 
-    // 2) Load apartment sections by room_id (same as URL roomId)
-   const secRes = await pool.query(
-  `
-  SELECT id, title, body, new_media_type, new_media_url
-  FROM apartment_sections
-  WHERE room_id::text = $1
-    AND is_active = true
-  ORDER BY sort_order ASC, id ASC
-  `,
-  [String(roomId)]
-);
+    // 2) Load apartment sections by room_id
+    const secRes = await pool.query(
+      `
+      SELECT id, title, body, new_media_type, new_media_url
+      FROM apartment_sections
+      WHERE room_id::text = $1
+        AND is_active = true
+      ORDER BY sort_order ASC, id ASC
+      `,
+      [String(roomId)]
+    );
 
-    // 3) Prepare HTML blocks
-    const totalGuests =
-      (Number(checkin.adults) || 0) + (Number(checkin.children) || 0);
+    const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
 
+    // 3) Lock code visibility via ?show=1 (only if lock_visible=true)
     const show = req.query.show === "1";
     const lockCodeHtml =
-      checkin.lock_visible && checkin.lock_code
+      r.lock_visible && r.lock_code
         ? show
           ? `
             <hr/>
-            <div>Lock Code: <strong style="font-size:22px;letter-spacing:2px;">${escapeHtml(
-              String(checkin.lock_code)
+            <div>Código de acceso: <strong style="font-size:22px;letter-spacing:2px;">${escapeHtml(
+              String(r.lock_code)
             )}</strong></div>
           `
           : `
             <hr/>
-            <a class="btn-link" href="/guest/${encodeURIComponent(
-              String(roomId)
-            )}/${encodeURIComponent(String(bookingReference))}?show=1">Show code</a>
+            <a class="btn-link" href="/guest/${encodeURIComponent(String(roomId))}/${encodeURIComponent(
+              String(bookingReference)
+            )}?show=1">Mostrar código</a>
           `
         : "";
 
+    // 4) Accordion sections
     const sectionsHtml =
       secRes.rows.length === 0
-        ? `<div class="muted">No information sections for this apartment yet.</div>`
-        : secRes.rows
-            .map((s) => {
-              const title = escapeHtml(String(s.title || ""));
-              const rawBody = String(s.body || "");
+        ? `<div class="muted">Todavía no hay información para este apartamento.</div>`
+        : `
+          <h2 style="margin-top:18px;">Información del apartamento</h2>
+          <div id="guest-accordion">
+            ${secRes.rows
+              .map((s) => {
+                const title = escapeHtml(s.title || "");
+                const rawBody = String(s.body || "");
 
-              const bodyHtml = escapeHtml(rawBody)
-                .replace(/\n/g, "<br/>")
-                .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
-                  const safeUrl = escapeHtml(url);
-                  return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
-                });
+                const bodyHtml = escapeHtml(rawBody)
+                  .replace(/\n/g, "<br/>")
+                  .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+                    const safeUrl = escapeHtml(url);
+                    return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
+                  });
 
-              const mediaHtml = s.new_media_url
-                ? `<div style="margin-top:10px;">
-                    ${
-                      String(s.new_media_type || "").startsWith("image")
-                        ? `<img src="${escapeHtml(
-                            String(s.new_media_url)
-                          )}" style="max-width:100%;border-radius:12px;" />`
-                        : `<a class="btn-link" href="${escapeHtml(
-                            String(s.new_media_url)
-                          )}" target="_blank" rel="noopener">Open media</a>`
+                const mediaType = String(s.new_media_type || "").toLowerCase().trim();
+                const mediaUrlRaw = String(s.new_media_url || "").trim();
+                let media = "";
+
+                if (mediaUrlRaw) {
+                  if (mediaType === "image") {
+                    const images = mediaUrlRaw
+                      .split(/\r?\n/)
+                      .map((u) => u.trim())
+                      .filter(Boolean);
+
+                    media = images
+                      .map(
+                        (url) => `
+                          <div style="margin-top:10px;">
+                            <img src="${escapeHtml(
+                              url
+                            )}" style="max-width:100%;border-radius:12px;display:block;" loading="lazy" />
+                          </div>
+                        `
+                      )
+                      .join("");
+                  } else if (mediaType === "video") {
+                    const lower = mediaUrlRaw.toLowerCase();
+
+                    if (lower.endsWith(".mp4")) {
+                      media = `
+                        <div style="margin-top:10px;">
+                          <video controls playsinline style="width:100%;border-radius:12px;">
+                            <source src="${escapeHtml(mediaUrlRaw)}" type="video/mp4">
+                          </video>
+                        </div>
+                      `;
+                    } else {
+                      const yt = toYouTubeEmbed(mediaUrlRaw);
+                      const vm = toVimeoEmbed(mediaUrlRaw);
+                      const embed = yt || vm;
+
+                      media = embed
+                        ? `
+                          <div style="margin-top:10px;">
+                            <iframe
+                              src="${escapeHtml(embed)}"
+                              style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowfullscreen
+                            ></iframe>
+                          </div>
+                        `
+                        : `
+                          <div style="margin-top:10px;">
+                            <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
+                              ▶ Abrir vídeo
+                            </a>
+                          </div>
+                        `;
                     }
-                  </div>`
-                : "";
+                  } else {
+                    media = `
+                      <div style="margin-top:10px;">
+                        <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
+                          🔗 Abrir enlace
+                        </a>
+                      </div>
+                    `;
+                  }
+                }
 
-              return `
-                <div class="card" style="margin-top:12px;">
-                  <h2>${title}</h2>
-                  <p style="white-space:normal;">${bodyHtml}</p>
-                  ${mediaHtml}
-                </div>
-              `;
-            })
-            .join("");
+                const panelId = `acc_${s.id}`;
 
-    // 4) Render
+                return `
+                  <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
+                    <button
+                      type="button"
+                      data-acc-btn="${panelId}"
+                      style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;"
+                    >
+                      ${title}
+                    </button>
+                    <div id="${panelId}" style="display:none;padding:12px 14px;">
+                      <div>${bodyHtml}</div>
+                      ${media}
+                    </div>
+                  </div>
+                `;
+              })
+              .join("")}
+          </div>
+
+          <script>
+            (function () {
+              var buttons = document.querySelectorAll("[data-acc-btn]");
+              buttons.forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                  var id = btn.getAttribute("data-acc-btn");
+                  var panel = document.getElementById(id);
+                  if (!panel) return;
+                  panel.style.display = (panel.style.display === "block") ? "none" : "block";
+                });
+              });
+            })();
+          </script>
+        `;
+
+    // 5) Render page (Spanish UI)
     const html = `
       <div class="card">
-        <h1>Guest Dashboard</h1>
-        <p class="muted">Room ID: ${escapeHtml(String(roomId))} · Booking: ${escapeHtml(String(bookingReference))}</p>
+        <h1>Panel del huésped</h1>
+        <div class="muted">Apartamento: <strong>${escapeHtml(r.apartment_name || "")}</strong></div>
+        <div class="muted">Reserva: <strong>${escapeHtml(String(r.beds24_booking_id || r.booking_token || ""))}</strong></div>
         <hr/>
-        <p><strong>Guest:</strong> ${escapeHtml(String(checkin.full_name || ""))}</p>
-        <p><strong>Guests:</strong> ${totalGuests}</p>
-        <p><strong>Arrival:</strong> ${escapeHtml(String(checkin.arrival_date || ""))}</p>
-        <p><strong>Departure:</strong> ${escapeHtml(String(checkin.departure_date || ""))}</p>
+        <div>Llegada: <strong>${fmtDate(r.arrival_date)}${r.arrival_time ? " " + fmtTime(r.arrival_time) : ""}</strong></div>
+        <div>Salida: <strong>${fmtDate(r.departure_date)}${r.departure_time ? " " + fmtTime(r.departure_time) : ""}</strong></div>
+        <div>Huéspedes: <strong>${totalGuests}</strong> (adultos: ${Number(r.adults) || 0}, niños: ${Number(r.children) || 0})</div>
         ${lockCodeHtml}
         ${sectionsHtml}
       </div>
     `;
 
-    return res.send(renderPage("Guest Dashboard", html));
-  } catch (err) {
-    console.error("Guest dashboard error:", err);
+    return res.send(renderPage("Panel del huésped", html));
+  } catch (e) {
+    console.error("Guest dashboard error:", e);
     return res
       .status(500)
       .send(
         renderPage(
-          "Guest Dashboard",
-          `<div class="card">Cannot load guest dashboard: ${escapeHtml(
-            err.message || String(err)
-          )}</div>`
+          "Panel del huésped",
+          `<div class="card">No se pudo cargar el panel: ${escapeHtml(e.detail || e.message || String(e))}</div>`
         )
       );
   }
@@ -2714,6 +2816,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
