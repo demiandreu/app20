@@ -2400,11 +2400,12 @@ function renderTable(rows, mode) {
       ? `${fmtDate(r.departure_date)} ${fmtTime(r.departure_time)}`
       : `${fmtDate(r.arrival_date)} ${fmtTime(r.arrival_time)}`;
 
-  const guestPortalUrl = r.room_id
-  ? `/guest/${r.room_id}/${r.booking_reference}`
+ const guestPortalUrl = r.room_id
+  ? `/guest/${encodeURIComponent(String(r.room_id))}/${encodeURIComponent(String(r.booking_reference))}`
   : null;
+
 const guestBtn = guestPortalUrl
-  ? `<a class="btn-small btn-ghost" href="${guestPortalUrl}" target="_blank" rel="noopener">Abrir</a>`
+  ? `<a class="btn-small btn-ghost" href="${guestPortalUrl}" target="_blank">Abrir</a>`
   : `<span class="muted">Sin link</span>`;
     return `
       <tr>
@@ -2881,6 +2882,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
