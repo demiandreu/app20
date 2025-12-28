@@ -854,15 +854,11 @@ td.apartment-cell.needs-clean {
     cursor:pointer;
     margin: 10px;
   }
-  .btn-primary{ background:#2563eb; color:#fff; }
-  .btn-success{ background:#16a34a; color:#fff; }
-  .btn-link{
-    background:transparent;
-    color:#2563eb;
-    padding:0;
-    font-weight:600;
-  }
-
+ .btn-primary {
+  background-color: #e8eef4;
+  color: #2c4a66;
+  border: 1px solid #d6dee8;
+}
   .warnings{
     background:#fff7ed;
     border:1px solid #fed7aa;
@@ -897,14 +893,11 @@ td.apartment-cell.needs-clean {
   tr:hover td{ background:#f9fafb; }
 
   /* компактнее статус-пилюли */
-  .pill{
-    display:inline-block;
-    padding:4px 8px;
-    border-radius:999px;
-    font-weight:800;
-    font-size:11px;
-    line-height:1;
-  }
+.pill {
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
   /* компактные таблицы — ТОЛЬКО там, где реально нужно */
 .table-compact td,
 .table-compact th {
@@ -941,17 +934,12 @@ td.apartment-cell.needs-clean {
     letter-spacing:0.12em;
   }
 
-  .btn-small{
-    border-radius:999px;
-    padding:7px 10px;
-    font-weight:700;
-    border:none;
-    cursor:pointer;
-    background:#2563eb;
-    color:#fff;
-    font-size:12px;
-    line-height:1;
-  }
+  .btn-small,
+.btn-base,
+.btn-primary {
+  border-radius: 8px; /* вместо «пилюли» */
+  font-weight: 500;
+}
   .btn-ghost{ background:#eef2ff; color:#1e40af; }
 
   /* === ONE LINE IN CELLS (LOCK + VISIBLE) === */
@@ -2883,6 +2871,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
