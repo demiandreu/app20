@@ -702,10 +702,34 @@ function renderPage(title, innerHtml) {
   }
 
   .lock-form .btn-small,
-  .lock-form .btn-small.btn-ghost,
-  .lock-form button{
-    white-space:nowrap;
-  }
+  .btn-small.btn-ghost {
+  background: transparent;
+  border: none;
+  color: #6366f1; /* Индиго цвет как у ссылок */
+  text-decoration: underline;
+  padding: 4px 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+.btn-small.btn-ghost:hover {
+  color: #4f46e5;
+  text-decoration: underline;
+  background: transparent;
+}
+.btn-small,
+.btn-small.btn-ghost,
+.btn-small.danger {
+  font-family: inherit;
+  outline: none;
+}
+
+.btn-small:focus,
+.btn-small.btn-ghost:focus,
+.btn-small.danger:focus {
+  outline: 2px solid #e0e7ff;
+  outline-offset: 2px;
+}
 
   td form{ white-space:nowrap; }
 
@@ -934,11 +958,37 @@ td.apartment-cell.needs-clean {
     letter-spacing:0.12em;
   }
 
-  .btn-small,
-.btn-base,
-.btn-primary {
-  border-radius: 8px; /* вместо «пилюли» */
+ .btn-small {
+  background: #f3f4f6; /* Очень светло-серый */
+  border: 1px solid #e5e7eb;
+  color: #6b7280; /* Серый текст */
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
   font-weight: 500;
+}
+.btn-small:hover {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+  color: #4b5563;
+}
+.btn-small.danger {
+  background: #fef2f2; /* Очень бледный розовый */
+  border: 1px solid #fecaca;
+  color: #dc2626; /* Красный текст */
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-weight: 500;
+}
+.btn-small.danger:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
 }
   .btn-ghost{ background:#eef2ff; color:#1e40af; }
 
@@ -2890,6 +2940,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
