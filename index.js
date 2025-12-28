@@ -2441,9 +2441,6 @@ const guestBtn = guestPortalUrl
             <button type="submit" class="btn-small">Guardar</button>
           </form>
         </td>
-        //temporal
-        <td class="muted">room_id=${escapeHtml(String(r.room_id || ""))}</td>
-        //temporal
         <!-- 8. Visible -->
         <td>
           <form method="POST" action="/staff/bookings/${r.id}/visibility" class="vis-form">
@@ -2884,6 +2881,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
