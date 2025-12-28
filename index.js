@@ -577,7 +577,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
 
       const adults = Number(r.adults || 0);
       const children = Number(r.children || 0);
-      const guestsText =
+      const sText =
         adults || children ? `${adults} adultos${children ? `, ${children} niños` : ""}` : "—";
 
       const showKeys = !!(r.reg_done && r.pay_done);
@@ -589,7 +589,7 @@ Tu reserva está confirmada ✅
 🏠 Apartamento: ${apt}
 📅 Entrada: ${arriveDate} ${arriveTime}
 📅 Salida: ${departDate} ${departTime}
-👥 Huéspedes: ${guestsText}
+👥 Huéspedes: ${sText}
 
 Para enviarte las instrucciones de acceso y el código de la caja de llaves, necesito 2 pasos:
 
@@ -2087,14 +2087,7 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
   }
 });
 
-// ===================== GUEST DASHBOARD =====================
-// Guest opens: /guest/:aptId/:token
-// We show last submitted record for this booking token.
-// ===================== GUEST DASHBOARD =====================
-// Guest opens: /guest/:apartmentId/:bookingReference
 
-// ===================== GUEST DASHBOARD =====================
-// Guest opens: /guest/:roomId/:bookingReference
 // ===================== GUEST DASHBOARD =====================
 // URL final: /guest/:roomId/:bookingReference
 app.get("/guest/:roomId/:bookingReference", async (req, res) => {
@@ -2311,7 +2304,22 @@ SELECT id, title, body, icon, new_media_type, new_media_url
             })();
           </script>
         `;
+//eeeeeeee
+// 2) Load apartment sections by room_id
+const secRes = await pool.query(
+  `
+  SELECT id, title, body, icon, new_media_type, new_media_url
+  FROM apartment_sections
+  WHERE room_id::text = $1
+    AND is_active = true
+  ORDER BY sort_order ASC, id ASC
+  `,
+  [String(roomId)]
+);
 
+// 🐛 AÑADE ESTA LÍNEA TEMPORAL PARA DEBUG
+console.log('SECCIONES CARGADAS:', JSON.stringify(secRes.rows, null, 2));
+    //eeeeeeeeeeee
     // 5) Render page (Spanish UI)
     const html = `
       <div class="card">
@@ -2898,6 +2906,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
