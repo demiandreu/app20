@@ -760,14 +760,16 @@ function renderPage(title, innerHtml) {
     cursor:pointer;
   }
   
-                 .apartment-cell.needs-clean {
-        background: #f5f5f5 !important; /* gris clarito como en tu captura antigua */
-        font-weight: 600;
-      }
-      .apartment-cell {
-        transition: background 0.2s;
-      }
+.apartment-cell.needs-clean {
+  background: #f5f5f5 !important;
+  font-weight: 600;
+}
 
+/* Override sticky-col background when needs cleaning */
+td.sticky-col.needs-clean,
+td.apartment-cell.needs-clean {
+  background: #f5f5f5 !important;
+}
   .clean-btn:focus{ outline:none; }
   .clean-btn.pill-yes{ color:#1a7f37; }
   .clean-btn.pill-no{ color:#b42318; }
@@ -2228,7 +2230,7 @@ app.get("/staff/checkins", async (req, res) => {
     const wArr = buildWhereFor("b.checkin_date");
     const wDep = buildWhereFor("b.checkout_date");
 
-    // ✅ НОВЫЙ SQL - работает с apartments + bookings
+    // Arrivals query
     const arrivalsRes = await pool.query(
       `
       SELECT
@@ -2257,6 +2259,7 @@ app.get("/staff/checkins", async (req, res) => {
       wArr.params
     );
 
+    // Departures query
     const departuresRes = await pool.query(
       `
       SELECT
@@ -2288,7 +2291,7 @@ app.get("/staff/checkins", async (req, res) => {
     const arrivals = arrivalsRes.rows || [];
     const departures = departuresRes.rows || [];
 
-    // Lógica de colores
+    // Color logic
     const yesterdayStr = yesterday;
 
     const { rows: occupiedYesterdayRows } = await pool.query(
@@ -2396,7 +2399,7 @@ app.get("/staff/checkins", async (req, res) => {
             </td>
           </tr>
         `;
-      }).join("") : `<tr><td colspan="10" class="muted">No hay registros</td></tr>`;
+      }).join("") : `<tr><td colspan="9" class="muted">No hay registros</td></tr>`;
 
       return `
         <h2 style="margin:24px 0 12px;">${title}</h2>
@@ -2435,56 +2438,6 @@ app.get("/staff/checkins", async (req, res) => {
     `));
   }
 });
-// ===================== BORRAR RESERVA DESDE STAFF =====================
-app.post("/staff/bookings/:id/delete", async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    if (!id || isNaN(id)) {
-      return res.status(400).send("ID inválido");
-    }
-
-    const check = await pool.query(`SELECT id FROM bookings WHERE id = $1`, [id]);
-    if (check.rowCount === 0) {
-      return res.status(404).send("Reserva no encontrada");
-    }
-
-    await pool.query(`DELETE FROM bookings WHERE id = $1`, [id]);
-
-    const returnTo = req.body.returnTo || req.get("referer") || "/staff/checkins";
-    res.redirect(returnTo);
-  } catch (e) {
-    console.error("Error borrando reserva:", e);
-    res.status(500).send(renderPage("Error", `
-      <div class="card">
-        <h1 style="color:#991b1b;">❌ Error al borrar</h1>
-        <p>No se pudo borrar la reserva.</p>
-        <p><a href="/staff/checkins" class="btn-link">Volver a la lista</a></p>
-      </div>
-    `));
-  }
-});
-// ===================== ADMIN: LOCK CODE SAVE (REPLACE, NOT APPEND) =====================
-app.post("/staff/bookings/:id/lock", async (req, res) => {
-  const id = Number(req.params.id);
-  const raw = req.body.lock_code;
-  const last = Array.isArray(raw) ? raw[raw.length - 1] : raw;
-  let lockCode = String(last ?? "").trim();
-  if (req.body.clear === "1") lockCode = "";
-  lockCode = lockCode.replace(/\D/g, "").slice(0, 4);
-
-  try {
-    await pool.query(`UPDATE bookings SET lock_code = $1 WHERE id = $2`, [
-      lockCode || null,
-      id,
-    ]);
-    const back = req.body.returnTo || req.get("referer") || "/staff/checkins";
-    res.redirect(back);
-  } catch (e) {
-    console.error("Lock code update error:", e);
-    res.status(500).send("❌ Cannot update lock code");
-  }
-});
-
 // ===================== ADMIN: SET VISIBILITY =====================
 app.post("/staff/bookings/:id/visibility", async (req, res) => {
   const id = Number(req.params.id);
@@ -2809,6 +2762,13 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
+
+
+
+
+
+
 
 
 
