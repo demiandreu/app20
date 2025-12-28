@@ -1957,13 +1957,13 @@ app.get("/guest/:roomId/:token", async (req, res) => {
 
   try {
     // 1) Load check-in record
-  const checkinRes = await pool.query(
+const { apartmentId, bookingReference } = req.params;
+
+const result = await pool.query(
   `
   SELECT
     id,
-    booking_token,
-    beds24_booking_id,
-    beds24_room_id,
+    apartment_id,
     apartment_name,
     full_name,
     email,
@@ -1977,18 +1977,20 @@ app.get("/guest/:roomId/:token", async (req, res) => {
     lock_code,
     lock_visible
   FROM checkins
-  WHERE beds24_room_id::text = $1
+  WHERE cancelled IS DISTINCT FROM true
+    AND apartment_id::text = $1
     AND (
-      booking_token = $2
-      OR beds24_booking_id::text = $2
+      booking_id::text = $2
+      OR booking_token = $2
+      OR booking_id_from_start = $2
+      OR external_booking_id = $2
+      OR provider_booking_id = $2
     )
-    AND cancelled IS DISTINCT FROM true  -- NUEVA LÍNEA: evita mostrar canceladas al huésped
   ORDER BY id DESC
   LIMIT 1
   `,
-  [String(roomId), String(token)]
+  [String(apartmentId), String(bookingReference)]
 );
-
     if (!checkinRes.rows.length) {
       const html = `
         <h1>Guest Dashboard</h1>
@@ -2762,6 +2764,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
