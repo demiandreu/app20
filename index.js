@@ -2160,7 +2160,7 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
     );
 
     if (!checkinRes.rows.length) {
-     const html = `
+   const html = `
   <style>
     @media (max-width: 768px) {
       .card {
@@ -2173,15 +2173,48 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
         padding: 0 !important;
         margin: 0 !important;
       }
+      /* Reducir espacios en móvil */
+      h1 {
+        font-size: 24px !important;
+        margin-bottom: 6px !important;
+      }
+      .info-card {
+        padding: 14px !important;
+        margin-bottom: 14px !important;
+      }
+      .header-section {
+        margin-bottom: 20px !important;
+      }
     }
   </style>
   <div class="card">
-    <div style="text-align:center; margin-bottom:30px;">
+    <div class="header-section" style="text-align:center; margin-bottom:30px;">
       <h1 style="margin-bottom:8px; font-size:28px;">Bienvenido</h1>
       <div style="font-size:18px; color:#6b7280;">${escapeHtml(r.apartment_name || "")}</div>
       ${r.beds24_booking_id || r.booking_token ? `
         <div style="font-size:13px; color:#9ca3af; margin-top:8px;">Reserva: ${escapeHtml(String(r.beds24_booking_id || r.booking_token || ""))}</div>
       ` : ''}
+    </div>
+    
+    <div class="info-card" style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:16px;">
+        <div style="flex:1; min-width:140px;">
+          <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">Llegada</div>
+          <div style="font-size:15px; font-weight:600;">${fmtDate(r.arrival_date)}</div>
+          ${r.arrival_time ? `<div style="color:#6b7280; font-size:13px;">${fmtTime(r.arrival_time)}</div>` : ''}
+        </div>
+        <div style="width:1px; background:#e5e7eb;"></div>
+        <div style="flex:1; min-width:140px;">
+          <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">Salida</div>
+          <div style="font-size:15px; font-weight:600;">${fmtDate(r.departure_date)}</div>
+          ${r.departure_time ? `<div style="color:#6b7280; font-size:13px;">${fmtTime(r.departure_time)}</div>` : ''}
+        </div>
+      </div>
+      
+      <div style="border-top:1px solid #e5e7eb; padding-top:12px;">
+        <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">Huéspedes</div>
+        <div style="font-size:14px;"><span style="font-weight:600;">${totalGuests}</span> personas <span style="color:#9ca3af;">•</span> ${Number(r.adults) || 0} adultos, ${Number(r.children) || 0} niños</div>
+      </div>
     </div>
       `;
       return res.send(renderPage("Panel del huésped", html));
@@ -2948,6 +2981,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
