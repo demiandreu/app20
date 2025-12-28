@@ -1279,56 +1279,8 @@ td form {
 
 // Add this CSS to your <style> block in renderPage()
 const draggableColumnStyles = `
-  /* Draggable column styles */
-  th[draggable="true"] {
-    cursor: move;
-    user-select: none;
-    position: relative;
-  }
 
-  th[draggable="true"]:hover {
-    background: #e5e7eb;
-  }
-
-  th[draggable="true"]::before {
-    content: "⋮⋮";
-    position: absolute;
-    left: 4px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 14px;
-    color: #9ca3af;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-
-  th[draggable="true"]:hover::before {
-    opacity: 1;
-  }
-
-  th.dragging {
-    opacity: 0.5;
-    background: #dbeafe;
-  }
-
-  th.drag-over {
-    background: #dbeafe;
-    border-left: 3px solid #2563eb;
-  }
-
-  /* Don't allow dragging sticky-col (Limpieza) */
-  th.sticky-col {
-    cursor: default !important;
-  }
-
-  th.sticky-col::before {
-    display: none !important;
-  }
-`;
-
-// JavaScript for drag & drop functionality
-const draggableColumnsScript = `
-<script>
+    <script>
 (function() {
   'use strict';
 
@@ -1336,7 +1288,6 @@ const draggableColumnsScript = `
   let draggedColumn = null;
   let draggedIndex = null;
 
-  // Get column order from localStorage
   function getColumnOrder() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -1347,7 +1298,6 @@ const draggableColumnsScript = `
     }
   }
 
-  // Save column order to localStorage
   function saveColumnOrder(order) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
@@ -1356,66 +1306,82 @@ const draggableColumnsScript = `
     }
   }
 
-  // Get current column order from table
   function getCurrentOrder(table) {
     const headers = Array.from(table.querySelectorAll('thead th'));
     // Save only column names in order, not indices
     return headers.map(th => th.textContent.trim());
   }
 
-  // Reorder table columns
-  function reorderColumns(table, order) {
+  function reorderColumns(table, columnOrder) {
     const headerRow = table.querySelector('thead tr');
     const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
     
-    if (!headerRow) return;
+    if (!headerRow || !columnOrder || columnOrder.length === 0) return;
 
-    // Create mapping from old index to new index
-    const oldToNew = {};
-    order.forEach((col, newIdx) => {
-      oldToNew[col.index] = newIdx;
+    const headers = Array.from(headerRow.children);
+    
+    // Create map: column name -> header element
+    const headerMap = {};
+    headers.forEach(th => {
+      const name = th.textContent.trim();
+      headerMap[name] = th;
     });
 
-    // Reorder header
-    const newHeaders = new Array(order.length);
-    Array.from(headerRow.children).forEach((th, oldIdx) => {
-      const newIdx = oldToNew[oldIdx];
-      if (newIdx !== undefined) {
-        newHeaders[newIdx] = th;
+    // Reorder headers based on saved order
+    const newHeaders = [];
+    columnOrder.forEach(colName => {
+      if (headerMap[colName]) {
+        newHeaders.push(headerMap[colName]);
       }
     });
-    
-    headerRow.innerHTML = '';
-    newHeaders.forEach(th => th && headerRow.appendChild(th));
 
-    // Reorder body rows
+    // Add any missing columns at the end
+    headers.forEach(th => {
+      const name = th.textContent.trim();
+      if (!columnOrder.includes(name)) {
+        newHeaders.push(th);
+      }
+    });
+
+    // Rebuild header row
+    headerRow.innerHTML = '';
+    newHeaders.forEach(th => headerRow.appendChild(th));
+
+    // Reorder body cells to match header order
     bodyRows.forEach(row => {
-      const newCells = new Array(order.length);
-      Array.from(row.children).forEach((td, oldIdx) => {
-        const newIdx = oldToNew[oldIdx];
-        if (newIdx !== undefined) {
-          newCells[newIdx] = td;
+      const cells = Array.from(row.children);
+      const cellMap = {};
+      
+      // Map old header positions to cells
+      headers.forEach((th, idx) => {
+        const name = th.textContent.trim();
+        cellMap[name] = cells[idx];
+      });
+
+      // Rebuild row in new order
+      const newCells = [];
+      newHeaders.forEach(th => {
+        const name = th.textContent.trim();
+        if (cellMap[name]) {
+          newCells.push(cellMap[name]);
         }
       });
-      
+
       row.innerHTML = '';
       newCells.forEach(td => td && row.appendChild(td));
     });
   }
 
-  // Initialize drag & drop for a table
   function initDragDrop(table) {
     const headers = table.querySelectorAll('thead th');
     
     headers.forEach((th, index) => {
-      // Skip sticky-col (Limpieza column)
       if (th.classList.contains('sticky-col')) {
         return;
       }
 
       th.setAttribute('draggable', 'true');
 
-      // Drag start
       th.addEventListener('dragstart', function(e) {
         draggedColumn = this;
         draggedIndex = Array.from(this.parentNode.children).indexOf(this);
@@ -1424,13 +1390,11 @@ const draggableColumnsScript = `
         e.dataTransfer.setData('text/html', this.innerHTML);
       });
 
-      // Drag over
       th.addEventListener('dragover', function(e) {
         if (e.preventDefault) {
           e.preventDefault();
         }
         
-        // Don't allow drop on sticky-col
         if (this.classList.contains('sticky-col')) {
           return false;
         }
@@ -1444,25 +1408,21 @@ const draggableColumnsScript = `
         return false;
       });
 
-      // Drag enter
       th.addEventListener('dragenter', function(e) {
         if (!this.classList.contains('sticky-col') && draggedColumn !== this) {
           this.classList.add('drag-over');
         }
       });
 
-      // Drag leave
       th.addEventListener('dragleave', function(e) {
         this.classList.remove('drag-over');
       });
 
-      // Drop
       th.addEventListener('drop', function(e) {
         if (e.stopPropagation) {
           e.stopPropagation();
         }
 
-        // Don't allow drop on sticky-col
         if (this.classList.contains('sticky-col')) {
           return false;
         }
@@ -1471,17 +1431,14 @@ const draggableColumnsScript = `
 
         if (draggedColumn !== this) {
           const dropIndex = Array.from(this.parentNode.children).indexOf(this);
-          const allHeaders = Array.from(this.parentNode.children);
           const allRows = Array.from(table.querySelectorAll('tbody tr'));
 
-          // Move header
           if (draggedIndex < dropIndex) {
             this.parentNode.insertBefore(draggedColumn, this.nextSibling);
           } else {
             this.parentNode.insertBefore(draggedColumn, this);
           }
 
-          // Move cells in body rows
           allRows.forEach(row => {
             const cells = Array.from(row.children);
             const draggedCell = cells[draggedIndex];
@@ -1496,7 +1453,6 @@ const draggableColumnsScript = `
             }
           });
 
-          // Save new order
           const newOrder = getCurrentOrder(table);
           saveColumnOrder(newOrder);
         }
@@ -1504,11 +1460,9 @@ const draggableColumnsScript = `
         return false;
       });
 
-      // Drag end
       th.addEventListener('dragend', function(e) {
         this.classList.remove('dragging');
         
-        // Remove drag-over from all headers
         headers.forEach(header => {
           header.classList.remove('drag-over');
         });
@@ -1519,12 +1473,10 @@ const draggableColumnsScript = `
     });
   }
 
-  // Initialize on page load
   function init() {
     const tables = document.querySelectorAll('table');
     
     tables.forEach(table => {
-      // Apply saved order first
       const savedOrder = getColumnOrder();
       if (savedOrder && savedOrder.length > 0) {
         try {
@@ -1534,34 +1486,24 @@ const draggableColumnsScript = `
         }
       }
 
-      // Initialize drag & drop
       initDragDrop(table);
     });
   }
 
-  // Run on DOM ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
   }
 
-  // Add reset function to window for debugging
   window.resetColumnOrder = function() {
     localStorage.removeItem(STORAGE_KEY);
     location.reload();
   };
 
-  console.log('✅ Draggable columns initialized. Type resetColumnOrder() to reset.');
+  console.log('✅ Draggable columns initialized');
 })();
 </script>
-`;
-
-// Export for use in renderTable()
-module.exports = {
-  draggableColumnStyles,
-  draggableColumnsScript
-};
 
 </body>
 </html>`;
@@ -3313,6 +3255,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
