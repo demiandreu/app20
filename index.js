@@ -117,10 +117,6 @@ async function initDb() {
   // --- base table ---
   await pool.query(`
     CREATE TABLE IF NOT EXISTS checkins (
-async function initDb() {
-  // --- base table ---
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS checkins (
       id SERIAL PRIMARY KEY,
       apartment_id TEXT NOT NULL,
       booking_token TEXT NOT NULL,
@@ -2903,6 +2899,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
