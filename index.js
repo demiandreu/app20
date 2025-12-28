@@ -2116,7 +2116,9 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
     const id = m && m[1];
     return id ? `https://player.vimeo.com/video/${id}` : null;
   }
-
+<div class="muted" style="font-size:12px;margin:8px 0;">
+  debug: lock_visible=${escapeHtml(String(r.lock_visible))}, lock_code=${escapeHtml(String(r.lock_code))}
+</div>
   try {
     const ref = String(bookingReference || "").trim();
     const refNoStart = ref.toUpperCase().startsWith("START_") ? ref.slice(6) : ref;
@@ -2998,6 +3000,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
