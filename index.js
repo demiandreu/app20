@@ -2335,82 +2335,101 @@ app.get("/staff/checkins", async (req, res) => {
       </form>
     `;
 
-    function renderTable(rows, mode) {
-      const title = mode === "departures" 
-        ? `Salidas <span class="muted">(${rows.length})</span>` 
-        : `Llegadas <span class="muted">(${rows.length})</span>`;
-      const dateColTitle = mode === "departures" ? "Salida" : "Llegada";
+  // REORDERED TABLE - Replace in your renderTable() function
 
-      const tbody = rows.length ? rows.map(r => {
-        const mainDate = mode === "departures" 
-          ? `${fmtDate(r.departure_date)} ${fmtTime(r.departure_time)}`
-          : `${fmtDate(r.arrival_date)} ${fmtTime(r.arrival_time)}`;
+function renderTable(rows, mode) {
+  const title = mode === "departures" 
+    ? `Salidas <span class="muted">(${rows.length})</span>` 
+    : `Llegadas <span class="muted">(${rows.length})</span>`;
+  const dateColTitle = mode === "departures" ? "Salida" : "Llegada";
 
-        const guestPortalUrl = `/guest/${r.apartment_id}/${r.booking_reference}`;
+  const tbody = rows.length ? rows.map(r => {
+    const mainDate = mode === "departures" 
+      ? `${fmtDate(r.departure_date)} ${fmtTime(r.departure_time)}`
+      : `${fmtDate(r.arrival_date)} ${fmtTime(r.arrival_time)}`;
 
-        return `
+    const guestPortalUrl = `/guest/${r.apartment_id}/${r.booking_reference}`;
+
+    return `
+      <tr>
+        <!-- 1. Limpieza -->
+        <td class="sticky-col">
+          <form method="POST" action="/staff/bookings/${r.id}/clean">
+            <button type="submit" class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}">
+              ${r.clean_ok ? "✓" : ""}
+            </button>
+          </form>
+        </td>
+        
+        <!-- 2. Huésped -->
+        <td><a class="btn-small btn-ghost" href="${guestPortalUrl}" target="_blank">Abrir</a></td>
+        
+        <!-- 3. Llegada -->
+        <td>${mainDate}</td>
+        
+        <!-- 4. Noches -->
+        <td>${calcNights(r.arrival_date, r.departure_date)}</td>
+        
+        <!-- 5. A|C -->
+        <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
+        
+        <!-- 6. Apartamento -->
+        <td class="apartment-cell ${aptColorClass(r.apartment_id)}">
+          ${escapeHtml(r.apartment_name || "Sin nombre")}
+        </td>
+        
+        <!-- 7. Código -->
+        <td>
+          <form method="POST" action="/staff/bookings/${r.id}/lock" class="lock-form">
+            <input class="lock-input" name="lock_code" value="${r.lock_code || ""}" placeholder="0000" />
+            <button type="submit" class="btn-small">Guardar</button>
+          </form>
+        </td>
+        
+        <!-- 8. Visible -->
+        <td>
+          <form method="POST" action="/staff/bookings/${r.id}/visibility" class="vis-form">
+            <span class="pill ${r.lock_code_visible ? "pill-yes" : "pill-no"}">${r.lock_code_visible ? "Sí" : "No"}</span>
+            <button type="submit" class="btn-small ${r.lock_code_visible ? "btn-ghost" : ""}">
+              ${r.lock_code_visible ? "Ocultar" : "Mostrar"}
+            </button>
+          </form>
+        </td>
+        
+        <!-- 9. Acciones -->
+        <td>
+          <form method="POST" action="/staff/bookings/${r.id}/delete"
+                onsubmit="return confirm('¿Seguro que quieres borrar esta reserva?');">
+            <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+            <button type="submit" class="btn-small danger">Borrar</button>
+          </form>
+        </td>
+      </tr>
+    `;
+  }).join("") : `<tr><td colspan="9" class="muted">No hay registros</td></tr>`;
+
+  return `
+    <h2 style="margin:24px 0 12px;">${title}</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
           <tr>
-            <td class="sticky-col">
-              <form method="POST" action="/staff/bookings/${r.id}/clean">
-                <button type="submit" class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}">
-                  ${r.clean_ok ? "✓" : ""}
-                </button>
-              </form>
-            </td>
-            <td class="apartment-cell ${aptColorClass(r.apartment_id)}">
-              ${escapeHtml(r.apartment_name || "Sin nombre")}
-            </td>
-            <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
-            <td>${mainDate}</td>
-            <td>${calcNights(r.arrival_date, r.departure_date)}</td>
-            <td><a class="btn-small btn-ghost" href="${guestPortalUrl}" target="_blank">Abrir</a></td>
-            <td>
-              <form method="POST" action="/staff/bookings/${r.id}/lock" class="lock-form">
-                <input class="lock-input" name="lock_code" value="${r.lock_code || ""}" placeholder="0000" />
-                <button type="submit" class="btn-small">Guardar</button>
-              </form>
-            </td>
-            <td>
-              <form method="POST" action="/staff/bookings/${r.id}/visibility" class="vis-form">
-                <span class="pill ${r.lock_code_visible ? "pill-yes" : "pill-no"}">${r.lock_code_visible ? "Sí" : "No"}</span>
-                <button type="submit" class="btn-small ${r.lock_code_visible ? "btn-ghost" : ""}">
-                  ${r.lock_code_visible ? "Ocultar" : "Mostrar"}
-                </button>
-              </form>
-            </td>
-            <td>
-              <form method="POST" action="/staff/bookings/${r.id}/delete"
-                    onsubmit="return confirm('¿Seguro que quieres borrar esta reserva?');">
-                <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
-                <button type="submit" class="btn-small danger">Borrar</button>
-              </form>
-            </td>
+            <th class="sticky-col">Limpieza</th>
+            <th>Huésped</th>
+            <th>${dateColTitle}</th>
+            <th>Noches</th>
+            <th>A|C</th>
+            <th>Apartamento</th>
+            <th>Código</th>
+            <th>Visible</th>
+            <th>Acciones</th>
           </tr>
-        `;
-      }).join("") : `<tr><td colspan="9" class="muted">No hay registros</td></tr>`;
-
-      return `
-        <h2 style="margin:24px 0 12px;">${title}</h2>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th class="sticky-col">Limpieza</th>
-                <th>Apartamento</th>
-                <th>A|C</th>
-                <th>${dateColTitle}</th>
-                <th>Noches</th>
-                <th>Huésped</th>
-                <th>Código</th>
-                <th>Visible</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>${tbody}</tbody>
-          </table>
-        </div>
-      `;
-    }
+        </thead>
+        <tbody>${tbody}</tbody>
+      </table>
+    </div>
+  `;
+}
 
     const pageHtml = toolbar + renderTable(arrivals, "arrivals") + `<div style="height:24px;"></div>` + renderTable(departures, "departures");
 
