@@ -2141,7 +2141,7 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
     );
 
     if (!checkinRes.rows.length) {
-      const html = `
+   /*   const html = `
         <div class="card">
           <h1>Panel del huésped</h1>
           <p class="muted">No encontramos tu reserva con esos datos.</p>
@@ -2185,8 +2185,53 @@ SELECT id, title, body, icon, new_media_type, new_media_url
               String(bookingReference)
             )}?show=1">Mostrar código</a>
           `
-        : "";
-
+        : ""; */
+// 5) Render page (Spanish UI)
+const html = `
+  <div class="card">
+    <div style="text-align:center; margin-bottom:30px;">
+      <h1 style="margin-bottom:8px; font-size:28px;">Bienvenido</h1>
+      <div style="font-size:18px; color:#6b7280;">${escapeHtml(r.apartment_name || "")}</div>
+      ${r.beds24_booking_id || r.booking_token ? `
+        <div style="font-size:13px; color:#9ca3af; margin-top:8px;">Reserva: ${escapeHtml(String(r.beds24_booking_id || r.booking_token || ""))}</div>
+      ` : ''}
+    </div>
+    
+    <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:16px;">
+        <div style="flex:1; min-width:140px;">
+          <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">Llegada</div>
+          <div style="font-size:16px; font-weight:600;">${fmtDate(r.arrival_date)}</div>
+          ${r.arrival_time ? `<div style="color:#6b7280; font-size:14px;">${fmtTime(r.arrival_time)}</div>` : ''}
+        </div>
+        <div style="width:1px; background:#e5e7eb;"></div>
+        <div style="flex:1; min-width:140px;">
+          <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">Salida</div>
+          <div style="font-size:16px; font-weight:600;">${fmtDate(r.departure_date)}</div>
+          ${r.departure_time ? `<div style="color:#6b7280; font-size:14px;">${fmtTime(r.departure_time)}</div>` : ''}
+        </div>
+      </div>
+      
+      <div style="border-top:1px solid #e5e7eb; padding-top:16px;">
+        <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">Huéspedes</div>
+        <div style="font-size:16px;"><span style="font-weight:600;">${totalGuests}</span> personas <span style="color:#9ca3af;">•</span> ${Number(r.adults) || 0} adultos, ${Number(r.children) || 0} niños</div>
+      </div>
+    </div>
+    
+    ${r.lock_visible && r.lock_code ? `
+      <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px; background:#f9fafb;">
+        <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:8px;">🔑 Código de acceso</div>
+        ${show ? `
+          <div style="font-size:28px; font-weight:700; letter-spacing:3px; color:#374151; font-family:monospace;">${escapeHtml(String(r.lock_code))}</div>
+        ` : `
+          <a class="btn-link" href="/guest/${encodeURIComponent(String(roomId))}/${encodeURIComponent(String(bookingReference))}?show=1" style="display:inline-block; padding:10px 16px; background:#3b82f6; color:white; text-decoration:none; border-radius:8px; font-weight:500;">Mostrar código</a>
+        `}
+      </div>
+    ` : ''}
+    
+    ${sectionsHtml}
+  </div>
+`;
     // 4) Accordion sections
     const sectionsHtml =
       secRes.rows.length === 0
@@ -2899,6 +2944,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
