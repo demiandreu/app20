@@ -2264,13 +2264,7 @@ SELECT id, title, body, icon, new_media_type, new_media_url
                         <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
                           🔗 Abrir enlace
                         </a>
-                      </div>
-                    `;
-                  }
-                }
-
-                const panelId = `acc_${s.id}`;
-                //eeeeeeee
+                          //eeeeeeee
 // 2) Load apartment sections by room_id
 const secRes = await pool.query(
   `
@@ -2286,6 +2280,13 @@ const secRes = await pool.query(
 // 🐛 AÑADE ESTA LÍNEA TEMPORAL PARA DEBUG
 console.log('SECCIONES CARGADAS:', JSON.stringify(secRes.rows, null, 2));
     //eeeeeeeeeeee
+                      </div>
+                    `;
+                  }
+                }
+
+                const panelId = `acc_${s.id}`;
+            
 
                 return `
                   <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
@@ -2907,6 +2908,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
