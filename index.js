@@ -1064,10 +1064,39 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
     // otros campos...
   };
 }
-async function upsertCheckinFromBeds24(row) {
-  // если дат нет — пропускаем (без дат нельзя вставить в checkins)
-  if (!row.arrival_date || !row.departure_date) return { skipped: true };
 
+async function upsertCheckinFromBeds24(row) {
+  // If dates are missing, skip (can't insert without dates)
+  if (!row.arrival_date || !row.departure_date) return { skipped: true, reason: "missing_dates" };
+
+  // 1) Resolve apartment_id by beds24_room_id if apartment_id is not provided
+  let apartmentId = row.apartment_id ? String(row.apartment_id) : null;
+
+  const beds24RoomId = row.beds24_room_id != null ? String(row.beds24_room_id) : null;
+  if (!apartmentId) {
+    if (!beds24RoomId) {
+      return { skipped: true, reason: "missing_beds24_room_id" };
+    }
+
+    const aptRes = await pool.query(
+      `
+      SELECT id
+      FROM apartments
+      WHERE beds24_room_id::text = $1
+      LIMIT 1
+      `,
+      [beds24RoomId]
+    );
+
+    apartmentId = aptRes.rows?.[0]?.id ? String(aptRes.rows[0].id) : null;
+
+    if (!apartmentId) {
+      // No mapping found => can't show guest/staff correctly
+      return { skipped: true, reason: `apartment_not_mapped_for_room_${beds24RoomId}` };
+    }
+  }
+
+  // 2) Upsert into checkins (single source of truth)
   await pool.query(
     `
     INSERT INTO checkins (
@@ -1100,27 +1129,26 @@ async function upsertCheckinFromBeds24(row) {
       beds24_raw = EXCLUDED.beds24_raw
     `,
     [
-      row.apartment_id,
-      row.booking_token,
-      row.full_name,
-      row.email,
-      row.phone,
+      apartmentId,
+      row.booking_token != null ? String(row.booking_token) : null,
+      row.full_name || null,
+      row.email || null,
+      row.phone || null,
       row.arrival_date,
-      row.arrival_time,
+      row.arrival_time || null,
       row.departure_date,
-      row.departure_time,
-      row.adults,
-      row.children,
-      row.beds24_booking_id,
-      row.beds24_room_id,
-      row.apartment_name,
-      row.beds24_raw,
+      row.departure_time || null,
+      row.adults != null ? row.adults : null,
+      row.children != null ? row.children : null,
+      row.beds24_booking_id != null ? String(row.beds24_booking_id) : null,
+      beds24RoomId,
+      row.apartment_name || null,
+      row.beds24_raw || null,
     ]
   );
 
   return { ok: true };
 }
-
 
 //vremenno
 async function beds24PostJson(url, body, apiKeyOverride) {
@@ -2769,6 +2797,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
