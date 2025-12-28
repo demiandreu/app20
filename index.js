@@ -2162,7 +2162,7 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
     if (!checkinRes.rows.length) {
    const html = `
   <style>
-    @media (max-width: 768px) {
+    @media (max-width: 480px) {
       .card {
         margin: 0 !important;
         padding: 12px !important;
@@ -2173,7 +2173,6 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
         padding: 0 !important;
         margin: 0 !important;
       }
-      /* Reducir espacios en móvil */
       h1 {
         font-size: 24px !important;
         margin-bottom: 6px !important;
@@ -2981,6 +2980,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
