@@ -1350,17 +1350,17 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
 }
 
 async function upsertCheckinFromBeds24(row) {
-  // If dates are missing, skip (can't insert without dates)
-  if (!row.arrival_date || !row.departure_date) return { skipped: true, reason: "missing_dates" };
+  // Must have dates
+  if (!row.arrival_date || !row.departure_date) {
+    return { skipped: true, reason: "missing_dates" };
+  }
 
-  // 1) Resolve apartment_id by beds24_room_id if apartment_id is not provided
+  // Resolve apartment_id using apartments.beds24_room_id mapping if needed
   let apartmentId = row.apartment_id ? String(row.apartment_id) : null;
-
   const beds24RoomId = row.beds24_room_id != null ? String(row.beds24_room_id) : null;
+
   if (!apartmentId) {
-    if (!beds24RoomId) {
-      return { skipped: true, reason: "missing_beds24_room_id" };
-    }
+    if (!beds24RoomId) return { skipped: true, reason: "missing_beds24_room_id" };
 
     const aptRes = await pool.query(
       `
@@ -1373,82 +1373,86 @@ async function upsertCheckinFromBeds24(row) {
     );
 
     apartmentId = aptRes.rows?.[0]?.id ? String(aptRes.rows[0].id) : null;
-
     if (!apartmentId) {
-      // No mapping found => can't show guest/staff correctly
       return { skipped: true, reason: `apartment_not_mapped_for_room_${beds24RoomId}` };
     }
   }
 
-  // 2) Upsert into checkins (single source of truth)
- 
-await pool.query(
-      `
-      INSERT INTO checkins (
-        apartment_id,
-        booking_token,
-        beds24_booking_id,
-        beds24_room_id,
-        apartment_name,
-        full_name,
-        email,
-        phone,
-        arrival_date,
-        arrival_time,
-        departure_date,
-        departure_time,
-        adults,
-        children,
-        beds24_raw
-      )
-      VALUES (
-        $1, $2, $3, $4, $5,
-        $6, $7, $8,
-        $9, $10, $11, $12,
-        $13, $14,
-)
-ON CONFLICT (beds24_booking_id)
-DO UPDATE SET
-  apartment_id        = EXCLUDED.apartment_id,
-  beds24_room_id      = COALESCE(EXCLUDED.beds24_room_id, checkins.beds24_room_id),
-  apartment_name      = COALESCE(EXCLUDED.apartment_name, checkins.apartment_name),
+  const bookingToken =
+    row.booking_token != null && String(row.booking_token).trim() !== ""
+      ? String(row.booking_token)
+      : (row.beds24_booking_id != null ? `beds24_${String(row.beds24_booking_id)}` : null);
 
-  full_name           = COALESCE(NULLIF(checkins.full_name, ''), EXCLUDED.full_name),
-  email               = COALESCE(NULLIF(checkins.email, ''), EXCLUDED.email),
-  phone               = COALESCE(NULLIF(checkins.phone, ''), EXCLUDED.phone),
+  await pool.query(
+    `
+    INSERT INTO checkins (
+      apartment_id,
+      room_id,
+      booking_token,
+      full_name,
+      email,
+      phone,
+      arrival_date,
+      arrival_time,
+      departure_date,
+      departure_time,
+      adults,
+      children,
+      beds24_booking_id,
+      beds24_room_id,
+      apartment_name,
+      beds24_raw
+    )
+    VALUES (
+      $1,$2,$3,$4,$5,
+      $6,$7,$8,$9,$10,
+      $11,$12,$13,$14,$15,
+      $16::jsonb
+    )
+    ON CONFLICT (beds24_booking_id)
+    DO UPDATE SET
+      apartment_id     = EXCLUDED.apartment_id,
+      room_id          = EXCLUDED.room_id,
+      booking_token    = COALESCE(NULLIF(EXCLUDED.booking_token, ''), checkins.booking_token),
+      beds24_room_id   = COALESCE(NULLIF(EXCLUDED.beds24_room_id, ''), checkins.beds24_room_id),
+      apartment_name   = COALESCE(NULLIF(EXCLUDED.apartment_name, ''), checkins.apartment_name),
 
-  arrival_date        = COALESCE(EXCLUDED.arrival_date, checkins.arrival_date),
-  arrival_time        = COALESCE(EXCLUDED.arrival_time, checkins.arrival_time),
-  departure_date      = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
-  departure_time      = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
+      full_name        = COALESCE(NULLIF(checkins.full_name, ''), EXCLUDED.full_name),
+      email            = COALESCE(NULLIF(checkins.email, ''), EXCLUDED.email),
+      phone            = COALESCE(NULLIF(checkins.phone, ''), EXCLUDED.phone),
 
-  adults              = COALESCE(EXCLUDED.adults, checkins.adults),
-  children            = COALESCE(EXCLUDED.children, checkins.children),
+      arrival_date     = COALESCE(EXCLUDED.arrival_date, checkins.arrival_date),
+      arrival_time     = COALESCE(EXCLUDED.arrival_time, checkins.arrival_time),
+      departure_date   = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
+      departure_time   = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
 
-  beds24_raw          = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
+      adults           = COALESCE(EXCLUDED.adults, checkins.adults),
+      children         = COALESCE(EXCLUDED.children, checkins.children),
+
+      beds24_raw       = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
     `,
-   [
-  apartmentId,                          // $1 apartment_id
-  beds24RoomId,                         // $2 room_id  (ВАЖНО)
-  row.booking_token != null ? String(row.booking_token) : null, // $3 booking_token
-  row.full_name || null,                // $4
-  row.email || null,                    // $5
-  row.phone || null,                    // $6
-  row.arrival_date,                     // $7
-  row.arrival_time || null,             // $8
-  row.departure_date,                   // $9
-  row.departure_time || null,           // $10
-  row.adults != null ? row.adults : null,       // $11
-  row.children != null ? row.children : null,   // $12
-  row.beds24_booking_id != null ? String(row.beds24_booking_id) : null, // $13
-  row.apartment_name || null,           // $14
-  row.beds24_raw || null,               // $15
-]
+    [
+      apartmentId,                           // $1
+      beds24RoomId,                          // $2 room_id
+      bookingToken,                          // $3 booking_token
+      row.full_name || null,                 // $4
+      row.email || null,                     // $5
+      row.phone || null,                     // $6
+      row.arrival_date,                      // $7
+      row.arrival_time || null,              // $8
+      row.departure_date,                    // $9
+      row.departure_time || null,            // $10
+      row.adults != null ? Number(row.adults) : null,       // $11
+      row.children != null ? Number(row.children) : null,   // $12
+      row.beds24_booking_id != null ? String(row.beds24_booking_id) : null, // $13
+      beds24RoomId,                          // $14 beds24_room_id
+      row.apartment_name || null,            // $15
+      row.beds24_raw ? JSON.stringify(row.beds24_raw) : null // $16::jsonb
+    ]
   );
 
   return { ok: true };
 }
-
 //vremenno
 async function beds24PostJson(url, body, apiKeyOverride) {
   const apiKey = apiKeyOverride || process.env.BEDS24_API_KEY;
@@ -3239,6 +3243,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
