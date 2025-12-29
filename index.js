@@ -1859,6 +1859,9 @@ app.post("/webhooks/beds24", async (req, res) => {
       console.log("❌ Beds24 webhook: invalid secret");
       return res.status(401).send("Unauthorized");
     }
+     console.log("🔵 ========== BEDS24 WEBHOOK ==========");
+    console.log("📦 Body:", JSON.stringify(req.body, null, 2));
+    console.log("🔵 ======================================");
 
     const payload = req.body || {};
     const booking = payload.booking || payload;
@@ -3188,6 +3191,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
