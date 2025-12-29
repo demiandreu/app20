@@ -1268,15 +1268,6 @@ function toTimeOnly(v) {
 
 
 function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
-  console.log('=== BOOKING DEBUG ===');
-  console.log('Booking ID:', b.id);
-  console.log('roomId:', b.roomId);
-  console.log('roomName:', b.roomName);
-  console.log('room:', b.room);
-  console.log('apiMessage:', b.apiMessage ? b.apiMessage.substring(0, 100) : 'N/A');
-  console.log('Campos disponibles:', Object.keys(b).slice(0, 20));
-  console.log('===================');
-  
   let roomName = b.roomName || roomNameFallback || "";
   let apartmentName = roomName;
   
@@ -2950,12 +2941,9 @@ app.post("/staff/checkins/:id/delete", async (req, res) => {
 // ===================== MANAGER: Sync Bookings manual =====================
 app.get("/manager/channels/bookingssync", async (req, res) => {
   try {
-   
-
     const propertyIdForToken = "203178";
     const token = await getBeds24AccessToken(propertyIdForToken);
     
-    // Parámetros de query
     const fromDate = String(req.query.from || "2024-01-01");
     const toDate = String(req.query.to || "2027-12-31");
     const includeCancelled = String(req.query.includeCancelled || "true");
@@ -2987,24 +2975,41 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
       `));
     }
     
+    // 2) NUEVO: Fetch all rooms to get roomId -> roomName mapping
+    const roomsResp = await fetch("https://beds24.com/api/v2/rooms", {
+      headers: { accept: "application/json", token },
+    });
+    
+    const roomsMap = new Map();
+    if (roomsResp.ok) {
+      const roomsData = await roomsResp.json();
+      const rooms = Array.isArray(roomsData) ? roomsData : (roomsData.data || []);
+      
+      for (const room of rooms) {
+        const roomId = String(room.id || room.roomId || "");
+        const roomName = room.name || room.roomName || "";
+        if (roomId && roomName) {
+          roomsMap.set(roomId, roomName);
+        }
+      }
+      
+      console.log(`Loaded ${roomsMap.size} room names from Beds24 API`);
+    } else {
+      console.warn("Could not fetch rooms from Beds24 API");
+    }
+    
     let processed = 0;
     let inserted = 0;
     let updated = 0;
     let skipped = 0;
     let errors = 0;
     
-    // 2) Fetch bookings per property
+    // 3) Fetch bookings per property
     for (const propId of propIds) {
-      // CORRECCIÓN: API v2 usa propertyId en lugar de propId
-      // También podemos usar filter u otros parámetros según necesidad
       const url =
         `https://beds24.com/api/v2/bookings` +
         `?propertyId=${encodeURIComponent(propId)}` +
         `&includeInvoiceItems=true`;
-      
-      // Si necesitas filtrar por fechas, intenta estos parámetros adicionales:
-      // Nota: La documentación no es 100% clara sobre parámetros de fecha en v2
-      // Podrías necesitar usar webhooks o filtros diferentes
       
       const bookingsResp = await fetch(url, {
         headers: { accept: "application/json", token },
@@ -3021,24 +3026,25 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
       const bookings = Array.isArray(data) ? data : (data.bookings || data.data || []);
       
       for (const b of bookings) {
-        // Filtrar manualmente por fechas si la API no lo soporta directamente
         const arrival = new Date(b.arrival || b.arrivalDate);
         const departure = new Date(b.departure || b.departureDate);
         const from = new Date(fromDate);
         const to = new Date(toDate);
         
-        // Saltar si no está en el rango de fechas
         if (arrival < from || arrival > to) {
           continue;
         }
         
-        // Saltar cancelaciones si no se deben incluir
         if (includeCancelled === "false" && 
             (b.status === "cancelled" || b.status === "canceled")) {
           continue;
         }
         
-        const row = mapBeds24BookingToRow(b, b.roomName || "", b.roomId || "");
+        // IMPORTANTE: Obtener el nombre real del room desde el Map
+        const roomId = String(b.roomId || "");
+        const realRoomName = roomsMap.get(roomId) || "";
+        
+        const row = mapBeds24BookingToRow(b, realRoomName, roomId);
         const result = await upsertCheckinFromBeds24(row);
         processed++;
         if (result?.skipped) skipped++;
@@ -3051,7 +3057,7 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     return res.send(renderPage("Sync Bookings", `
       <div class="card">
         <h1 style="margin:0 0 10px;">✅ Sincronización completada</h1>
-        <p>Properties: <strong>${propIds.length}</strong> · Errors: <strong>${errors}</strong></p>
+        <p>Properties: <strong>${propIds.length}</strong> · Rooms: <strong>${roomsMap.size}</strong> · Errors: <strong>${errors}</strong></p>
         <p>Reservas procesadas: <strong>${processed}</strong></p>
         <p>Nuevas: <strong>${inserted}</strong> · Actualizadas: <strong>${updated}</strong> · Omitidas: <strong>${skipped}</strong></p>
         <p class="muted">Rango: ${escapeHtml(fromDate)} — ${escapeHtml(toDate)} · Canceladas: ${escapeHtml(includeCancelled)}</p>
@@ -3207,6 +3213,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
