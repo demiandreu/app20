@@ -2944,7 +2944,7 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     const propertyIdForToken = "203178";
     const token = await getBeds24AccessToken(propertyIdForToken);
     
-    const fromDate = String(req.query.from || "2024-01-01");
+    const fromDate = String(req.query.from || "2020-01-01");
     const toDate = String(req.query.to || "2027-12-31");
     const includeCancelled = String(req.query.includeCancelled || "true");
     
@@ -3208,6 +3208,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
