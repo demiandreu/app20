@@ -3060,30 +3060,23 @@ app.get("/manager/channels/sync", async (req, res) => {
     const propertyIdForToken = "203178";
     const token = await getBeds24AccessToken(propertyIdForToken);
     
-    // 1) Fetch rooms desde Beds24 API v2
-    const roomsResp = await fetch("https://beds24.com/api/v2/inventory/rooms", {
-      headers: { 
-        accept: "application/json", 
-        token 
-      },
+    // 1) Fetch all properties
+    const propsResp = await fetch("https://beds24.com/api/v2/properties", {
+      headers: { accept: "application/json", token },
     });
     
-    if (!roomsResp.ok) {
-      const text = await roomsResp.text();
-      throw new Error(`Beds24 rooms error ${roomsResp.status}: ${text.slice(0, 500)}`);
+    if (!propsResp.ok) {
+      const text = await propsResp.text();
+      throw new Error(`Beds24 properties error ${propsResp.status}: ${text.slice(0, 500)}`);
     }
     
-    const roomsData = await roomsResp.json();
-    console.log("📦 Rooms response:", JSON.stringify(roomsData, null, 2));
+    const propsJson = await propsResp.json();
+    const properties = Array.isArray(propsJson) ? propsJson : (propsJson.data || []);
     
-    const rooms = Array.isArray(roomsData) ? roomsData : (roomsData.data || roomsData.rooms || []);
-    
-    if (!rooms.length) {
+    if (!properties.length) {
       return res.send(renderPage("Sync Rooms", `
         <div class="card">
-          <h1 style="margin:0 0 10px;">ℹ️ No rooms found</h1>
-          <p>Could not load rooms from Beds24 API.</p>
-          <pre>${escapeHtml(JSON.stringify(roomsData, null, 2))}</pre>
+          <h1>ℹ️ No properties found</h1>
           <p><a class="btn-link" href="/manager">← Volver</a></p>
         </div>
       `));
@@ -3093,38 +3086,90 @@ app.get("/manager/channels/sync", async (req, res) => {
     let errors = 0;
     const details = [];
     
-    // 2) Insertar/actualizar cada room en beds24_rooms
-    for (const room of rooms) {
+    // 2) Para cada property, obtener sus rooms
+    for (const prop of properties) {
+      const propId = String(prop.id || prop.propertyId || "");
+      
+      if (!propId) continue;
+      
       try {
-        const roomId = String(room.id || room.roomId || room.unitId || "");
-        const roomName = room.name || room.roomName || room.unitName || `Room ${roomId}`;
+        // Fetch rooms de esta property específica
+        const roomsResp = await fetch(
+          `https://beds24.com/api/v2/properties/${propId}/rooms`,
+          {
+            headers: { accept: "application/json", token },
+          }
+        );
         
-        if (!roomId) {
-          console.warn("⚠️ Room sin ID:", room);
+        if (!roomsResp.ok) {
+          const text = await roomsResp.text();
+          console.error(`Error fetching rooms for property ${propId}:`, text);
+          errors++;
           continue;
         }
         
-        await pool.query(
-          `INSERT INTO beds24_rooms (beds24_room_id, apartment_name, is_active)
-           VALUES ($1, $2, true)
-           ON CONFLICT (beds24_room_id) 
-           DO UPDATE SET 
-             apartment_name = EXCLUDED.apartment_name,
-             is_active = true,
-             updated_at = NOW()`,
-          [roomId, roomName]
-        );
+        const roomsData = await roomsResp.json();
+        const rooms = Array.isArray(roomsData) ? roomsData : (roomsData.data || roomsData.rooms || []);
         
-        synced++;
-        details.push(`✅ ${roomId} → ${roomName}`);
-        console.log(`✅ Synced room: ${roomId} → ${roomName}`);
+        // 3) Insertar cada room en beds24_rooms
+        for (const room of rooms) {
+          try {
+            const roomId = String(room.id || room.roomId || "");
+            const roomName = room.name || room.roomName || `Room ${roomId}`;
+            
+            if (!roomId) continue;
+            
+            await pool.query(
+              `INSERT INTO beds24_rooms (beds24_room_id, apartment_name, is_active)
+               VALUES ($1, $2, true)
+               ON CONFLICT (beds24_room_id) 
+               DO UPDATE SET 
+                 apartment_name = EXCLUDED.apartment_name,
+                 is_active = true,
+                 updated_at = NOW()`,
+              [roomId, roomName]
+            );
+            
+            synced++;
+            details.push(`✅ ${roomId} → ${roomName}`);
+            console.log(`✅ Synced: ${roomId} → ${roomName}`);
+          } catch (err) {
+            errors++;
+            console.error("Error syncing room:", err);
+          }
+        }
       } catch (err) {
         errors++;
-        details.push(`❌ Error: ${err.message}`);
-        console.error("❌ Error syncing room:", err);
+        console.error(`Error with property ${propId}:`, err);
       }
     }
     
+    return res.send(renderPage("Sync Rooms", `
+      <div class="card">
+        <h1>✅ Rooms sincronizados</h1>
+        <p>Total: <strong>${synced}</strong> rooms · Errores: <strong>${errors}</strong></p>
+        <details style="margin-top:20px;">
+          <summary style="cursor:pointer; font-weight:bold;">Ver detalles</summary>
+          <pre style="margin-top:10px; padding:10px; background:#f5f5f5; border-radius:4px; font-size:12px;">${escapeHtml(details.join('\n'))}</pre>
+        </details>
+        <hr/>
+        <p><a class="btn-primary" href="/manager/channels/bookingssync">Sincronizar Bookings</a></p>
+        <p><a class="btn-link" href="/manager">← Volver</a></p>
+      </div>
+    `));
+    
+  } catch (e) {
+    console.error("Sync rooms error:", e);
+    return res.status(500).send(renderPage("Error", `
+      <div class="card">
+        <h1 style="color:#991b1b;">❌ Error al sincronizar rooms</h1>
+        <p>${escapeHtml(e.message || String(e))}</p>
+        <pre style="background:#f5f5f5; padding:10px; border-radius:4px; font-size:12px; overflow:auto;">${escapeHtml(e.stack || "")}</pre>
+        <p><a class="btn-link" href="/manager">← Volver</a></p>
+      </div>
+    `));
+  }
+});
     return res.send(renderPage("Sync Rooms", `
       <div class="card">
         <h1 style="margin:0 0 10px;">✅ Rooms sincronizados desde Beds24</h1>
@@ -3286,6 +3331,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
