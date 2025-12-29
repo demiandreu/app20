@@ -2053,22 +2053,22 @@ app.post("/webhooks/beds24", async (req, res) => {
         $13, $14,
         $15::jsonb
       )
-      ON CONFLICT (beds24_room_id)
-      DO UPDATE SET
-        apartment_id       = EXCLUDED.apartment_id,
-        beds24_booking_id  = COALESCE(EXCLUDED.beds24_booking_id, checkins.beds24_booking_id),
-        beds24_room_id     = COALESCE(EXCLUDED.beds24_room_id,    checkins.beds24_room_id),
-        apartment_name     = COALESCE(EXCLUDED.apartment_name,    checkins.apartment_name),
-        full_name          = EXCLUDED.full_name,
-        email              = EXCLUDED.email,
-        phone              = EXCLUDED.phone,
-        arrival_date       = COALESCE(EXCLUDED.arrival_date,   checkins.arrival_date),
-        arrival_time       = COALESCE(EXCLUDED.arrival_time,   checkins.arrival_time),
-        departure_date     = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
-        departure_time     = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
-        adults             = COALESCE(EXCLUDED.adults,   checkins.adults),
-        children           = COALESCE(EXCLUDED.children, checkins.children),
-        beds24_raw         = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
+      ON CONFLICT (beds24_booking_id)
+DO UPDATE SET
+  apartment_id        = EXCLUDED.apartment_id,
+  beds24_booking_id   = EXCLUDED.beds24_booking_id,
+  beds24_room_id      = COALESCE(EXCLUDED.beds24_room_id, checkins.beds24_room_id),
+  apartment_name      = COALESCE(EXCLUDED.apartment_name, checkins.apartment_name),
+  full_name           = EXCLUDED.full_name,
+  email               = EXCLUDED.email,
+  phone               = EXCLUDED.phone,
+  arrival_date        = COALESCE(EXCLUDED.arrival_date, checkins.arrival_date),
+  arrival_time        = COALESCE(EXCLUDED.arrival_time, checkins.arrival_time),
+  departure_date      = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
+  departure_time      = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
+  adults              = COALESCE(EXCLUDED.adults, checkins.adults),
+  children            = COALESCE(EXCLUDED.children, checkins.children),
+  beds24_raw          = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
       `,
       [
         String(beds24RoomId || ""), // apartment_id
@@ -3251,6 +3251,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
