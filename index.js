@@ -2769,7 +2769,7 @@ const guestBtn = guestPortalUrl
         <td>${calcNights(r.arrival_date, r.departure_date)}</td>
         
         <!-- 5. A|C -->
-        <td>${(r.adults || 0)} | ${(r.children || 0)}</td>
+<td style="white-space:nowrap;">${(r.adults || 0)}&nbsp;|&nbsp;${(r.children || 0)}</td>
         
         <!-- 6. Apartamento -->
         <td class="apartment-cell ${getColumnClass(r.apartment_id)}">
@@ -3231,6 +3231,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
