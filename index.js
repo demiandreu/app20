@@ -1193,6 +1193,7 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
 
   return row;
 }
+
 function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
   // Apartment name
   let apartmentName = b.roomName || roomNameFallback || "";
@@ -1212,6 +1213,12 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
     apartment_id: String(b.roomId || roomIdFallback || ""),
     apartment_name: apartmentName,
 
+    // ✅ AGREGAR ESTOS CAMPOS QUE FALTAN:
+    booking_token: b.bookingToken || b.id ? `beds24_${b.id}` : `temp_${Date.now()}`,
+    full_name: `${b.firstName || ""} ${b.lastName || ""}`.trim() || "Guest",
+    email: b.email || "unknown@unknown.com",
+    phone: b.phone || b.mobile || "+000000000",
+
     arrival_date: arrivalDate,
     arrival_time: arrivalTime,
 
@@ -1221,7 +1228,6 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
     adults: Number(b.numAdult || 0),
     children: Number(b.numChild || 0),
 
-    // IMPORTANT: keep as text/number; convert to BigInt only if your DB column is BIGINT
     beds24_booking_id: b.id != null ? String(b.id) : null,
     beds24_room_id: String(b.roomId || roomIdFallback || ""),
 
@@ -3083,6 +3089,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
