@@ -1015,17 +1015,17 @@ td.apartment-cell.needs-clean {
   /* Mobile fix: remove side padding */
 @media (max-width: 640px) {
   body {
-    padding: 3px !important;
+    padding: 1px !important;
   }
 
   .page,
   .container,
   .card {
-    padding-left: 3px !important;
-    padding-right: 3px !important;
-    margin-left: 3px !important;
-    margin-right: 3px !important;
-    border-radius: 3px !important;
+    padding-left: 1px !important;
+    padding-right: 1px !important;
+    margin-left: 1px !important;
+    margin-right: 1px !important;
+    border-radius: 1px !important;
   }
 }
 
@@ -3063,6 +3063,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
