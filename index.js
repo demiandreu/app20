@@ -1381,8 +1381,7 @@ async function upsertCheckinFromBeds24(row) {
   }
 
   // 2) Upsert into checkins (single source of truth)
-  await pool.query(
-    `
+ 
 await pool.query(
       `
       INSERT INTO checkins (
@@ -3221,6 +3220,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
