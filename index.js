@@ -2614,36 +2614,37 @@ app.get("/staff/checkins", async (req, res) => {
       return { whereSql, params };
     }
 
-    const wArr = buildWhereFor("b.checkin_date");
-    const wDep = buildWhereFor("b.checkout_date");
+const wArr = buildWhereFor("c.arrival_date");
+const wDep = buildWhereFor("c.departure_date");
 
     // Arrivals query
-  const arrivalsRes = await pool.query(
+const departuresRes = await pool.query(
   `
   SELECT
     c.id,
-    COALESCE(c.beds24_booking_id::text, c.booking_token::text, c.booking_id::text) AS booking_reference,
-    c.apartment_name as apartment_name,
-    c.apartment_id as apartment_id,
-    c.full_name as full_name,
-    c.phone as phone,
-    c.arrival_date as arrival_date,
-    c.arrival_time as arrival_time,
-    c.departure_date as departure_date,
-    c.departure_time as departure_time,
-    c.adults as adults,
-    c.children as children,
+    c.beds24_booking_id,
+    c.booking_token,
+    c.apartment_name,
+    c.apartment_id,
+    c.full_name,
+    c.phone,
+    c.arrival_date,
+    c.arrival_time,
+    c.departure_date,
+    c.departure_time,
+    c.adults,
+    c.children,
     c.lock_code,
     c.lock_visible,
     c.clean_ok,
-    c.room_id as room_id
+    c.room_id
   FROM checkins c
   WHERE c.cancelled IS DISTINCT FROM true
-  ${wArr.whereSql ? " AND " + wArr.whereSql.substring(6).replaceAll("b.", "c.") : ""}
-  ORDER BY c.arrival_date ASC, c.arrival_time ASC NULLS LAST, c.id DESC
+    ${wDep.whereSql ? " AND " + wDep.whereSql.substring(6).replaceAll("b.", "c.") : ""}
+  ORDER BY c.departure_date ASC, c.departure_time ASC, c.id DESC
   LIMIT 300
   `,
-  wArr.params
+  wDep.params
 );
 
     // Departures query
@@ -2746,8 +2747,9 @@ function renderTable(rows, mode) {
       ? `${fmtDate(r.departure_date)} ${fmtTime(r.departure_time)}`
       : `${fmtDate(r.arrival_date)} ${fmtTime(r.arrival_time)}`;
 
- const guestPortalUrl = r.room_id
-  ? `/guest/${encodeURIComponent(String(r.room_id))}/${encodeURIComponent(String(r.booking_reference))}`
+const bookingRef = r.beds24_booking_id || r.booking_token || "";
+const guestPortalUrl = (r.room_id && bookingRef)
+  ? `/guest/${encodeURIComponent(String(r.room_id))}/${encodeURIComponent(String(bookingRef))}`
   : null;
 
 const guestBtn = guestPortalUrl
@@ -2840,8 +2842,8 @@ const guestBtn = guestPortalUrl
           <tr>
             <th class="sticky-col">Limpieza</th>
             <th>ID</th>
-            <td>${escapeHtml(String(r.booking_reference || ""))}</td>
-            <th>Huésped</th>
+<td>${escapeHtml(String(r.beds24_booking_id || r.booking_token || ""))}</td>
+<th>Huésped</th>
             <th>${dateColTitle}</th>
             <th>Noches</th>
             <th>A|C</th>
@@ -3234,6 +3236,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
