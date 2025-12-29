@@ -511,7 +511,7 @@ function calcNights(arrive, depart) {
   return n > 0 ? n : "";
 }
 
-app.post("/webhooks/twilio/whatsapp", async (req, res) => {
+/* app.post("/webhooks/twilio/whatsapp", async (req, res) => {
   console.log("🔥 TWILIO HIT", req.body);
 
   try {
@@ -777,7 +777,7 @@ ${keysLink || "—"}`
     console.error("❌ WhatsApp inbound error:", err);
     return res.status(200).send("OK");
   }
-});
+}); */
 
 // ===================== TWILIO CLIENT =====================
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
@@ -1858,7 +1858,7 @@ async function beds24SmokeTest(token) {
   return { ok: resp.ok, status: resp.status, data };
 }
 
-app.post("/webhooks/beds24", async (req, res) => {
+/* app.post("/webhooks/beds24", async (req, res) => {
   try {
     const secret = String(req.query.key || "");
     if (secret !== String(process.env.BEDS24_SECRET || "")) {
@@ -2058,8 +2058,8 @@ app.post("/webhooks/beds24", async (req, res) => {
     console.error("❌ Webhook error:", err);
     res.status(500).send("Error: " + err.message);
   }
-});
-/* app.post("/webhooks/beds24", async (req, res) => {
+}); */
+ app.post("/webhooks/beds24", async (req, res) => {
   try {
     const secret = String(req.query.key || "");
     if (secret !== String(process.env.BEDS24_SECRET || "")) {
@@ -2255,7 +2255,7 @@ DO UPDATE SET
     console.error("❌ DB insert error:", err);
     res.status(500).send("DB error");
   }
-}); */
+}); 
 
 
 // ===================== GUEST ROUTES =====================
@@ -2922,10 +2922,8 @@ const guestBtn = guestPortalUrl
             </button>
           </form>
         </td>
-        <td style="font-family:monospace; font-size:13px;">
-  ${escapeHtml(String(
-    r.booking_reference || r.beds24_booking_id || r.id
-  ))}
+        <<td style="font-family:monospace; font-size:13px;">
+  ${escapeHtml(String(r.beds24_booking_id || r.booking_token || ""))}
 </td>
         
         <!-- 2. Huésped -->
@@ -3392,6 +3390,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
