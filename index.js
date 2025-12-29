@@ -2812,11 +2812,11 @@ const guestBtn = guestPortalUrl
         
         <!-- 9. Acciones -->
         <td>
-          <form method="POST" action="/staff/bookings/${r.id}/delete"
-                onsubmit="return confirm('¿Seguro que quieres borrar esta reserva?');">
-            <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
-            <button type="submit" class="btn-small danger">Borrar</button>
-          </form>
+         <form method="POST" action="/staff/bookings/${r.id}/delete"
+      onsubmit="return confirm('¿Seguro que quieres borrar esta reserva?');">
+  <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+  <button type="submit" class="btn-small danger">Borrar</button>
+</form>
         </td>
       </tr>
     `;
@@ -3192,6 +3192,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
