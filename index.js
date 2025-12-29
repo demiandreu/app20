@@ -2777,54 +2777,57 @@ const guestBtn = guestPortalUrl
         </td>
         
         <!-- 7. Código -->
-       <td>
+        <td>
           <form method="POST" action="/staff/checkins/${r.id}/lock" class="lock-form">
-      class="lock-input"
-      name="lock_code"
-      value="${r.lock_code || ""}"
-      placeholder="0000"
-      inputmode="numeric"
-      pattern="[0-9]*"
-    />
+            <input
+              type="text"
+              class="lock-input"
+              name="lock_code"
+              value="${escapeHtml(r.lock_code || "")}"
+              placeholder="0000"
+              inputmode="numeric"
+              pattern="[0-9]*"
+            />
 
-    <div class="lock-actions">
-      <button type="submit" class="btn-small btn-primary">
-        Guardar
-      </button>
+            <div class="lock-actions">
+              <button type="submit" class="btn-small btn-primary">
+                Guardar
+              </button>
 
-      <button
-        type="submit"
-        name="clear"
-        value="1"
-        class="btn-small btn-danger"
-      >
-        Clear
-      </button>
-    </div>
-  </form>
-</td>
+              <button
+                type="submit"
+                name="clear"
+                value="1"
+                class="btn-small btn-danger"
+              >
+                Clear
+              </button>
+            </div>
+          </form>
+        </td>
+        
         <!-- 8. Visible -->
-       <td>
+        <td>
           <form method="POST" action="/staff/checkins/${r.id}/visibility" class="vis-form">
-  <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+            <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
 
-  <span class="pill ${r.lock_code_visible ? "pill-yes" : "pill-no"}">
-    ${r.lock_code_visible ? "Sí" : "No"}
-  </span>
+            <span class="pill ${r.lock_code_visible ? "pill-yes" : "pill-no"}">
+              ${r.lock_code_visible ? "Sí" : "No"}
+            </span>
 
-  <button type="submit" class="btn-small ${r.lock_code_visible ? "btn-ghost" : ""}">
-    ${r.lock_code_visible ? "Ocultar" : "Mostrar"}
-  </button>
-</form>
+            <button type="submit" class="btn-small ${r.lock_code_visible ? "btn-ghost" : ""}">
+              ${r.lock_code_visible ? "Ocultar" : "Mostrar"}
+            </button>
+          </form>
         </td>
         
         <!-- 9. Acciones -->
         <td>
-         <form method="POST" action="/staff/checkins/${r.id}/delete"
-      onsubmit="return confirm('¿Seguro que quieres borrar esta reserva?');">
-  <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
-  <button type="submit" class="btn-small danger">Borrar</button>
-</form>
+          <form method="POST" action="/staff/checkins/${r.id}/delete"
+                onsubmit="return confirm('¿Seguro que quieres borrar esta reserva?');">
+            <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+            <button type="submit" class="btn-small danger">Borrar</button>
+          </form>
         </td>
       </tr>
     `;
@@ -3228,6 +3231,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
