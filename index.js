@@ -1336,97 +1336,107 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
   }; */
 async function upsertCheckinFromBeds24(row) {
   // If dates are missing, skip (can't insert without dates)
-  if (!row.arrival_date || !row.departure_date) return { skipped: true, reason: "missing_dates" };
-
-  // 1) Resolve apartment_id by beds24_room_id if apartment_id is not provided
-  let apartmentId = row.apartment_id ? String(row.apartment_id) : null;
-
-  const beds24RoomId = row.beds24_room_id != null ? String(row.beds24_room_id) : null;
-  if (!apartmentId) {
-    if (!beds24RoomId) {
-      return { skipped: true, reason: "missing_beds24_room_id" };
-    }
-
-    const aptRes = await pool.query(
-      `
-      SELECT id
-      FROM apartments
-      WHERE beds24_room_id::text = $1
-      LIMIT 1
-      `,
-      [beds24RoomId]
-    );
-
-    apartmentId = aptRes.rows?.[0]?.id ? String(aptRes.rows[0].id) : null;
-
-    if (!apartmentId) {
-      // No mapping found => can't show guest/staff correctly
-      return { skipped: true, reason: `apartment_not_mapped_for_room_${beds24RoomId}` };
-    }
+  if (!row.arrival_date || !row.departure_date) {
+    return { skipped: true, reason: "missing_dates" };
   }
 
-  // 2) Upsert into checkins (single source of truth)
-  await pool.query(
-    `
-INSERT INTO checkins (
-  apartment_id,
-  room_id,
-  booking_token,
-  full_name,
-  email,
-  phone,
-  arrival_date,
-  arrival_time,
-  departure_date,
-  departure_time,
-  adults,
-  children,
-  beds24_booking_id,
-  apartment_name,
-  beds24_raw
-)
-VALUES (
-  $1,$2,$3,$4,$5,
-  $6,$7,$8,$9,
-  $10,$11,
-  $12,$13,$14,$15
-)
-ON CONFLICT (beds24_booking_id)
-DO UPDATE SET
-  apartment_id = EXCLUDED.apartment_id,
-  room_id      = EXCLUDED.room_id,
-  booking_token = EXCLUDED.booking_token,
-  full_name = EXCLUDED.full_name,
-  email = EXCLUDED.email,
-  phone = EXCLUDED.phone,
-  arrival_date = EXCLUDED.arrival_date,
-  arrival_time = EXCLUDED.arrival_time,
-  departure_date = EXCLUDED.departure_date,
-  departure_time = EXCLUDED.departure_time,
-  adults = EXCLUDED.adults,
-  children = EXCLUDED.children,
-  apartment_name = EXCLUDED.apartment_name,
-  beds24_raw = EXCLUDED.beds24_raw;
-    `,
-   [
-  apartmentId,                          // $1 apartment_id
-  beds24RoomId,                         // $2 room_id  (ВАЖНО)
-  row.booking_token != null ? String(row.booking_token) : null, // $3 booking_token
-  row.full_name || null,                // $4
-  row.email || null,                    // $5
-  row.phone || null,                    // $6
-  row.arrival_date,                     // $7
-  row.arrival_time || null,             // $8
-  row.departure_date,                   // $9
-  row.departure_time || null,           // $10
-  row.adults != null ? row.adults : null,       // $11
-  row.children != null ? row.children : null,   // $12
-  row.beds24_booking_id != null ? String(row.beds24_booking_id) : null, // $13
-  row.apartment_name || null,           // $14
-  row.beds24_raw ? JSON.stringify(row.beds24_raw) : null]
+  // Use beds24_room_id directly as apartment_id
+  const apartmentId = row.beds24_room_id ? String(row.beds24_room_id) : 
+                      row.apartment_id ? String(row.apartment_id) : null;
+
+  if (!apartmentId) {
+    return { skipped: true, reason: "missing_apartment_id" };
+  }
+
+  // Ensure beds24_rooms mapping exists (auto-create if needed)
+  if (apartmentId && row.apartment_name) {
+    await pool.query(
+      `INSERT INTO beds24_rooms (beds24_room_id, apartment_name, is_active)
+       VALUES ($1, $2, true)
+       ON CONFLICT (beds24_room_id) 
+       DO UPDATE SET 
+         apartment_name = COALESCE(EXCLUDED.apartment_name, beds24_rooms.apartment_name),
+         is_active = true,
+         updated_at = NOW()`,
+      [apartmentId, row.apartment_name]
+    );
+  }
+
+  // Upsert into checkins
+  const result = await pool.query(
+    `INSERT INTO checkins (
+      apartment_id,
+      room_id,
+      booking_token,
+      full_name,
+      email,
+      phone,
+      arrival_date,
+      arrival_time,
+      departure_date,
+      departure_time,
+      adults,
+      children,
+      beds24_booking_id,
+      apartment_name,
+      beds24_raw,
+      status,
+      cancelled,
+      provider
+    )
+    VALUES (
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+      $11, $12, $13, $14, $15, $16, $17, $18
+    )
+    ON CONFLICT (beds24_booking_id)
+    DO UPDATE SET
+      apartment_id = EXCLUDED.apartment_id,
+      room_id = EXCLUDED.room_id,
+      booking_token = EXCLUDED.booking_token,
+      full_name = EXCLUDED.full_name,
+      email = EXCLUDED.email,
+      phone = EXCLUDED.phone,
+      arrival_date = EXCLUDED.arrival_date,
+      arrival_time = EXCLUDED.arrival_time,
+      departure_date = EXCLUDED.departure_date,
+      departure_time = EXCLUDED.departure_time,
+      adults = EXCLUDED.adults,
+      children = EXCLUDED.children,
+      apartment_name = EXCLUDED.apartment_name,
+      beds24_raw = EXCLUDED.beds24_raw,
+      status = EXCLUDED.status,
+      cancelled = EXCLUDED.cancelled,
+      provider = EXCLUDED.provider
+    RETURNING beds24_booking_id, apartment_name`,
+    [
+      apartmentId,                          // $1 apartment_id
+      apartmentId,                          // $2 room_id (same as apartment_id)
+      row.booking_token || null,            // $3
+      row.full_name || null,                // $4
+      row.email || null,                    // $5
+      row.phone || null,                    // $6
+      row.arrival_date,                     // $7
+      row.arrival_time || null,             // $8
+      row.departure_date,                   // $9
+      row.departure_time || null,           // $10
+      row.adults != null ? row.adults : 0,  // $11
+      row.children != null ? row.children : 0, // $12
+      row.beds24_booking_id || null,        // $13
+      row.apartment_name || null,           // $14
+      row.beds24_raw ? JSON.stringify(row.beds24_raw) : null, // $15
+      row.status || 'confirmed',            // $16
+      row.cancelled || false,               // $17
+      'beds24'                              // $18
+    ]
   );
 
-  return { ok: true };
+  const wasInserted = result.rowCount > 0;
+  return { 
+    ok: true, 
+    inserted: wasInserted,
+    booking_id: result.rows[0]?.beds24_booking_id,
+    apartment_name: result.rows[0]?.apartment_name
+  };
 }
 
 //vremenno
@@ -3194,6 +3204,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
