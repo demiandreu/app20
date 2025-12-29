@@ -2830,7 +2830,7 @@ const guestBtn = guestPortalUrl
         </td>
       </tr>
     `;
-  }).join("") : `<tr><td colspan="9" class="muted">No hay registros</td></tr>`;
+  }).join("") : `<tr><td colspan="10" class="muted">No hay registros</td></tr>`;
 
   return `
     <h2 style="margin:24px 0 12px;">${title}</h2>
@@ -3234,6 +3234,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
