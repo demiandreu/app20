@@ -2650,7 +2650,14 @@ const departuresRes = await pool.query(
       FROM checkins c
       WHERE c.cancelled = false
         AND c.departure_date IS NOT NULL
-        ${wDep.whereSql}
+        ${wDep.whereSql ? " AND " + wDep.whereSql.substring(6) : ""}
+
+
+${
+  wDep.whereSql
+    ? " AND " + String(wDep.whereSql).replace(/^\s*where\s+/i, "")
+    : ""
+}
       ORDER BY c.departure_date ASC, c.departure_time ASC, c.id DESC
       LIMIT 300
       `,
@@ -3220,6 +3227,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
