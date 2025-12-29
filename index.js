@@ -1525,7 +1525,11 @@ app.get("/manager", async (req, res) => {
   const { rows: apartments } = await pool.query(`
   SELECT 
     id, 
-    COALESCE(custom_name, apartment_name) as apartment_name
+    COALESCE(
+      NULLIF(apartment_name, ''),
+      custom_name,
+      'Apartment #' || id::text
+    ) as apartment_name
   FROM beds24_rooms
   WHERE is_active = true
   ORDER BY apartment_name ASC
@@ -1572,82 +1576,91 @@ app.get("/manager/apartment", async (req, res) => {
   try {
     const id = Number(req.query.id);
     if (!id) return res.status(400).send("Missing id");
-
+    
     const { rows } = await pool.query(
       `
-     SELECT
-  id,
-  apartment_name,
-  beds24_room_id,
-  support_phone,
-  default_arrival_time,
-  default_departure_time,
-  registration_url,
-  payment_url,
-  keys_instructions_url
-FROM beds24_rooms
-WHERE id = $1
-LIMIT 1
+      SELECT
+        id,
+        apartment_name,
+        custom_name,
+        beds24_room_id,
+        support_phone,
+        default_arrival_time,
+        default_departure_time,
+        registration_url,
+        payment_url,
+        keys_instructions_url
+      FROM beds24_rooms
+      WHERE id = $1
+      LIMIT 1
       `,
       [id]
     );
-
+    
     if (!rows.length) return res.status(404).send("Apartment not found");
     const a = rows[0];
     
-const roomId = String(a.beds24_room_id || "").trim();
-
+    const roomId = String(a.beds24_room_id || "").trim();
+    const beds24Name = a.custom_name || "";
+    const displayName = a.apartment_name || beds24Name || `Apartment #${a.id}`;
+    
     const html = `
       <h1>Apartment Settings</h1>
       <p><a href="/manager">← Back to Manager</a></p>
-       ${roomId
-  ? `<a class="btn-link" href="/manager/apartment/sections?room_id=${encodeURIComponent(roomId)}">
-       🪗 Manage guest accordion sections
-     </a>`
-  : `<span class="muted">⚠ Missing room_id for this apartment</span>`
-}
-
+      
+      ${roomId
+        ? `<a class="btn-link" href="/manager/apartment/sections?room_id=${encodeURIComponent(roomId)}">
+             🪗 Manage guest accordion sections
+           </a>`
+        : `<span class="muted">⚠ Missing room_id for this apartment</span>`
+      }
+      
       <form method="POST" action="/manager/apartment/save">
         <input type="hidden" name="id" value="${a.id}" />
-
+        
         <label>Apartment name</label><br/>
-        <input name="apartment_name" value="${escapeHtml(a.apartment_name || "")}" style="width:100%; max-width:700px;" />
+        ${beds24Name ? `<p class="muted" style="margin:4px 0 8px;">Beds24 name: <strong>${escapeHtml(beds24Name)}</strong></p>` : ''}
+        <input 
+          name="apartment_name" 
+          value="${escapeHtml(a.apartment_name || "")}" 
+          placeholder="${beds24Name ? `Leave empty to use: ${escapeHtml(beds24Name)}` : 'Custom name'}"
+          style="width:100%; max-width:700px;" 
+        />
+        <p class="muted" style="margin:4px 0 12px;">Leave empty to use the Beds24 name automatically</p>
+        
+        <label>Support WhatsApp (human)</label><br/>
+        <input
+          name="support_phone"
+          value="${escapeHtml(a?.support_phone || "")}"
+          placeholder="+34 600 123 456"
+          style="width:320px"
+        />
         <br/><br/>
-                    <label>Support WhatsApp (human)</label><br/>
-<input
-  name="support_phone"
-  value="${escapeHtml(a?.support_phone || "")}"
-  placeholder="+34 600 123 456"
-  style="width:320px"
-/>
-
+        
         <label>Default arrival time</label><br/>
         <input type="time" name="default_arrival_time" value="${escapeHtml(String(a.default_arrival_time || "").slice(0,5))}" />
         <br/><br/>
-
+        
         <label>Default departure time</label><br/>
         <input type="time" name="default_departure_time" value="${escapeHtml(String(a.default_departure_time || "").slice(0,5))}" />
         <br/><br/>
-
+        
         <label>Registration link</label><br/>
         <input name="registration_url" value="${escapeHtml(a.registration_url || "")}" style="width:100%; max-width:700px;" />
         <br/><br/>
-
+        
         <label>Payment link</label><br/>
         <input name="payment_url" value="${escapeHtml(a.payment_url || "")}" style="width:100%; max-width:700px;" />
         <br/><br/>
-
+        
         <label>Keys / Instructions link</label><br/>
         <input name="keys_instructions_url" value="${escapeHtml(a.keys_instructions_url || "")}" style="width:100%; max-width:700px;" />
         <br/><br/>
-
+        
         <button type="submit">Save</button>
       </form>
-      <p style="margin-top:10px;">
-
-</p>
     `;
-
+    
     res.send(renderPage("Apartment Settings", html));
   } catch (e) {
     console.error("❌ /manager/apartment error:", e);
@@ -3217,6 +3230,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
