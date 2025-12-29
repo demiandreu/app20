@@ -2979,16 +2979,10 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     
     // 2) Fetch bookings per property
     for (const propId of propIds) {
-      // CORRECCIÓN: API v2 usa propertyId en lugar de propId
-      // También podemos usar filter u otros parámetros según necesidad
       const url =
         `https://beds24.com/api/v2/bookings` +
         `?propertyId=${encodeURIComponent(propId)}` +
         `&includeInvoiceItems=true`;
-      
-      // Si necesitas filtrar por fechas, intenta estos parámetros adicionales:
-      // Nota: La documentación no es 100% clara sobre parámetros de fecha en v2
-      // Podrías necesitar usar webhooks o filtros diferentes
       
       const bookingsResp = await fetch(url, {
         headers: { accept: "application/json", token },
@@ -3005,18 +2999,15 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
       const bookings = Array.isArray(data) ? data : (data.bookings || data.data || []);
       
       for (const b of bookings) {
-        // Filtrar manualmente por fechas si la API no lo soporta directamente
         const arrival = new Date(b.arrival || b.arrivalDate);
         const departure = new Date(b.departure || b.departureDate);
         const from = new Date(fromDate);
         const to = new Date(toDate);
         
-        // Saltar si no está en el rango de fechas
         if (arrival < from || arrival > to) {
           continue;
         }
         
-        // Saltar cancelaciones si no se deben incluir
         if (includeCancelled === "false" && 
             (b.status === "cancelled" || b.status === "canceled")) {
           continue;
@@ -3055,6 +3046,7 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     `));
   }
 });
+
 app.get("/manager/channels/sync", async (req, res) => {
   try {
     const propertyIdForToken = "203178";
@@ -3165,32 +3157,6 @@ app.get("/manager/channels/sync", async (req, res) => {
         <h1 style="color:#991b1b;">❌ Error al sincronizar rooms</h1>
         <p>${escapeHtml(e.message || String(e))}</p>
         <pre style="background:#f5f5f5; padding:10px; border-radius:4px; font-size:12px; overflow:auto;">${escapeHtml(e.stack || "")}</pre>
-        <p><a class="btn-link" href="/manager">← Volver</a></p>
-      </div>
-    `));
-  }
-});
-    return res.send(renderPage("Sync Rooms", `
-      <div class="card">
-        <h1 style="margin:0 0 10px;">✅ Rooms sincronizados desde Beds24</h1>
-        <p>Total: <strong>${synced}</strong> rooms · Errores: <strong>${errors}</strong></p>
-        <details style="margin-top:20px;">
-          <summary style="cursor:pointer; font-weight:bold;">Ver detalles</summary>
-          <pre style="margin-top:10px; padding:10px; background:#f5f5f5; border-radius:4px; font-size:12px;">${escapeHtml(details.join('\n'))}</pre>
-        </details>
-        <hr/>
-        <p><a class="btn-primary" href="/manager/channels/bookingssync">Sincronizar Bookings</a></p>
-        <p><a class="btn-link" href="/manager">← Volver</a></p>
-      </div>
-    `));
-    
-  } catch (e) {
-    console.error("Sync rooms error:", e);
-    return res.status(500).send(renderPage("Error", `
-      <div class="card">
-        <h1 style="color:#991b1b;">❌ Error al sincronizar rooms</h1>
-        <p>${escapeHtml(e.message || String(e))}</p>
-        <pre style="background:#f5f5f5; padding:10px; border-radius:4px; font-size:12px;">${escapeHtml(e.stack || "")}</pre>
         <p><a class="btn-link" href="/manager">← Volver</a></p>
       </div>
     `));
@@ -3331,6 +3297,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
