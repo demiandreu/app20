@@ -1041,17 +1041,23 @@ td.apartment-cell.needs-clean {
   .row{ display:flex; gap:10px; }
   .row > div{ flex:1; }
 
-  .btn-primary, .btn-success, .btn-link, .btn{
-    display:inline-block;
-    border-radius:999px;
-    padding:10px 18px;
-    font-weight:700;
-    font-size:14px;
-    text-decoration:none;
-    border:none;
-    cursor:pointer;
-    margin: 10px;
-  }
+  .btn-primary, .btn-link, .btn{
+  display:inline-block;
+  border-radius:999px;
+  padding:10px 18px;
+  font-weight:700;
+  font-size:14px;
+  text-decoration:none;
+  border:none;
+  cursor:pointer;
+  margin: 10px;
+}
+
+.btn-success {
+  background: #22c55e;
+  color: white;
+  font-weight: 600;
+}
  .btn-primary {
   background-color: #e8eef4;
   color: #2c4a66;
@@ -3208,6 +3214,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
