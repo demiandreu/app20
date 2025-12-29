@@ -2925,11 +2925,6 @@ app.post("/staff/bookings/:id/lock", async (req, res) => {
       [lockCode, bookingId]
     );
 
-    res.redirect(req.headers.referer || "/staff/checkins");
-  } catch (e) {
-    console.error("Error saving lock code:", e);
-    res.status(500).send("Error saving lock code");
-  }
 });
 
 // ===================== ADMIN: VISIBILITY TOGGLE =====================
@@ -3233,6 +3228,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
