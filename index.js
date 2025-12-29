@@ -1433,20 +1433,23 @@ VALUES (
 )
 ON CONFLICT (beds24_booking_id)
 DO UPDATE SET
-  apartment_id = EXCLUDED.apartment_id,
-  room_id      = EXCLUDED.room_id,
-  booking_token = EXCLUDED.booking_token,
-  full_name = EXCLUDED.full_name,
-  email = EXCLUDED.email,
-  phone = EXCLUDED.phone,
-  arrival_date = EXCLUDED.arrival_date,
-  arrival_time = EXCLUDED.arrival_time,
-  departure_date = EXCLUDED.departure_date,
-  departure_time = EXCLUDED.departure_time,
-  adults = EXCLUDED.adults,
-  children = EXCLUDED.children,
-  apartment_name = EXCLUDED.apartment_name,
-  beds24_raw = EXCLUDED.beds24_raw;
+  apartment_id        = EXCLUDED.apartment_id,
+  beds24_room_id      = COALESCE(EXCLUDED.beds24_room_id, checkins.beds24_room_id),
+  apartment_name      = COALESCE(EXCLUDED.apartment_name, checkins.apartment_name),
+
+  full_name           = COALESCE(NULLIF(checkins.full_name, ''), EXCLUDED.full_name),
+  email               = COALESCE(NULLIF(checkins.email, ''), EXCLUDED.email),
+  phone               = COALESCE(NULLIF(checkins.phone, ''), EXCLUDED.phone),
+
+  arrival_date        = COALESCE(EXCLUDED.arrival_date, checkins.arrival_date),
+  arrival_time        = COALESCE(EXCLUDED.arrival_time, checkins.arrival_time),
+  departure_date      = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
+  departure_time      = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
+
+  adults              = COALESCE(EXCLUDED.adults, checkins.adults),
+  children            = COALESCE(EXCLUDED.children, checkins.children),
+
+  beds24_raw          = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
     `,
    [
   apartmentId,                          // $1 apartment_id
@@ -2072,7 +2075,7 @@ DO UPDATE SET
       `,
       [
         String(beds24RoomId || ""), // apartment_id
-        String(booking.id || ""),   // booking_token
+       `beds24_${String(booking.id || "")}`, // booking_token  
         beds24BookingId,            // beds24_booking_id
         String(beds24RoomId || ""), // beds24_room_id
         apartmentName,              // apartment_name
@@ -2618,68 +2621,66 @@ app.get("/staff/checkins", async (req, res) => {
     const wDep = buildWhereFor("b.checkout_date");
 
     // Arrivals query
-    const arrivalsRes = await pool.query(
-      `
+   const arrivalsRes = await pool.query(
+  `
   SELECT
-  b.id,
-  b.booking_reference,
-  a.name as apartment_name,
-  a.id as apartment_id,
-  b.guest_name as full_name,
-  b.guest_phone as phone,
-  b.checkin_date as arrival_date,
-  b.checkin_time as arrival_time,
-  b.checkout_date as departure_date,
-  b.checkout_time as departure_time,
-  b.num_adults as adults,
-  b.num_children as children,
-  b.lock_code,
-  b.lock_code_visible,
-  b.cleaning_completed as clean_ok,
-
-  c.room_id as room_id
-
-FROM bookings b
-JOIN apartments a ON a.id = b.apartment_id
-LEFT JOIN checkins c
-  ON c.beds24_booking_id::text = b.booking_reference::text
-WHERE b.is_cancelled = false
-        ${wArr.whereSql ? " AND " + wArr.whereSql.substring(6) : ""}
-      ORDER BY b.checkin_date ASC, b.checkin_time ASC, b.id DESC
-      LIMIT 300
-      `,
-      wArr.params
-    );
+    c.id,
+    c.booking_token,
+    c.beds24_booking_id,
+    c.apartment_id,
+    c.apartment_name,
+    c.full_name,
+    c.phone,
+    c.arrival_date,
+    c.arrival_time,
+    c.departure_date,
+    c.departure_time,
+    c.adults,
+    c.children,
+    c.lock_code,
+    c.lock_visible AS lock_code_visible,
+    c.clean_ok,
+    c.room_id
+  FROM checkins c
+  WHERE c.cancelled = false
+    AND c.arrival_date IS NOT NULL
+    ${wArr.whereSql ? " AND " + wArr.whereSql.substring(6) : ""}
+  ORDER BY c.arrival_date ASC, c.arrival_time ASC, c.id DESC
+  LIMIT 300
+  `,
+  wArr.params
+);
 
     // Departures query
-    const departuresRes = await pool.query(
-      `
-      SELECT
-        b.id,
-        b.booking_reference,
-        a.name as apartment_name,
-        a.id as apartment_id,
-        b.guest_name as full_name,
-        b.guest_phone as phone,
-        b.checkin_date as arrival_date,
-        b.checkin_time as arrival_time,
-        b.checkout_date as departure_date,
-        b.checkout_time as departure_time,
-        b.num_adults as adults,
-        b.num_children as children,
-        b.lock_code,
-        b.lock_code_visible,
-        b.cleaning_completed as clean_ok
-      FROM bookings b
-      JOIN apartments a ON a.id = b.apartment_id
-      WHERE b.is_cancelled = false
-        ${wDep.whereSql ? " AND " + wDep.whereSql.substring(6) : ""}
-      ORDER BY b.checkout_date ASC, b.checkout_time ASC, b.id DESC
-      LIMIT 300
-      `,
-      wDep.params
-    );
-
+  const departuresRes = await pool.query(
+  `
+  SELECT
+    c.id,
+    c.booking_token,
+    c.beds24_booking_id,
+    c.apartment_id,
+    c.apartment_name,
+    c.full_name,
+    c.phone,
+    c.arrival_date,
+    c.arrival_time,
+    c.departure_date,
+    c.departure_time,
+    c.adults,
+    c.children,
+    c.lock_code,
+    c.lock_visible AS lock_code_visible,
+    c.clean_ok,
+    c.room_id
+  FROM checkins c
+  WHERE c.cancelled = false
+    AND c.departure_date IS NOT NULL
+    ${wDep.whereSql ? " AND " + wDep.whereSql.substring(6) : ""}
+  ORDER BY c.departure_date ASC, c.departure_time ASC, c.id DESC
+  LIMIT 300
+  `,
+  wDep.params
+);
     const arrivals = arrivalsRes.rows || [];
     const departures = departuresRes.rows || [];
 
@@ -3251,6 +3252,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
