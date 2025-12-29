@@ -1525,11 +1525,11 @@ app.get("/manager", async (req, res) => {
     const { rows: apartments } = await pool.query(`
       SELECT 
         id, 
-        COALESCE(
-          custom_name,
-          NULLIF(apartment_name, ''),
-          'Apartment #' || id::text
-        ) as apartment_name
+       COALESCE(
+  NULLIF(apartment_name, ''),
+  custom_name,
+  'Apartment #' || id::text
+) as apartment_name
       FROM beds24_rooms
       WHERE is_active = true
       ORDER BY apartment_name ASC
@@ -3228,6 +3228,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
