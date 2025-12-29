@@ -1522,29 +1522,27 @@ app.get("/debug/beds24", async (req, res) => {
 // ===== MANAGER HOME: select apartment =====
 app.get("/manager", async (req, res) => {
   try {
-  const { rows: apartments } = await pool.query(`
-  SELECT 
-    id, 
-    COALESCE(
-      NULLIF(apartment_name, ''),
-      custom_name,
-      'Apartment #' || id::text
-    ) as apartment_name
-  FROM beds24_rooms
-  WHERE is_active = true
-  ORDER BY apartment_name ASC
-`);
-
-const options = apartments
-  .map(
-    (a) =>
-      `<option value="${a.id}">${escapeHtml(a.display_name || ("Apartment #" + a.id))}</option>`
-  )
-  .join("");
-
+    const { rows: apartments } = await pool.query(`
+      SELECT 
+        id, 
+        COALESCE(
+          NULLIF(apartment_name, ''),
+          custom_name,
+          'Apartment #' || id::text
+        ) as apartment_name
+      FROM beds24_rooms
+      WHERE is_active = true
+      ORDER BY apartment_name ASC
+    `);
+    
+    const options = apartments
+      .map((a) => 
+        `<option value="${a.id}">${escapeHtml(a.apartment_name)}</option>`
+      )
+      .join("");
+    
     const html = `
       <h1>Manager</h1>
-
       <h3>Apartment settings</h3>
       <form method="GET" action="/manager/apartment">
         <label>Select apartment:</label><br/>
@@ -1553,9 +1551,7 @@ const options = apartments
         </select>
         <button type="submit" style="padding:6px 10px;">Open</button>
       </form>
-
       <hr/>
-
       <h3>Quick links</h3>
       <ul>
         <li><a href="/manager/channels/sync">Sync Rooms</a></li>
@@ -1563,14 +1559,13 @@ const options = apartments
         <li><a href="/staff/checkins">Staff · Check-ins</a></li>
       </ul>
     `;
-
+    
     res.send(renderPage("Manager", html));
   } catch (e) {
     console.error("❌ /manager error:", e);
     res.status(500).send("Manager error");
   }
 });
-
 // ===== EDIT APARTMENT SETTINGS PAGE =====
 app.get("/manager/apartment", async (req, res) => {
   try {
@@ -3232,6 +3227,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
