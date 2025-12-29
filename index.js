@@ -3,7 +3,7 @@
 // (same logic, only reorganized and labeled)
 // =====================================================
 
-// ===================== CONFIG =====================
+// ===================== CONFIG ====================
 require("dotenv").config();
 const express = require("express");
 const { Pool } = require("pg");
@@ -2924,6 +2924,11 @@ app.post("/staff/bookings/:id/lock", async (req, res) => {
       `,
       [lockCode, bookingId]
     );
+       res.redirect(req.headers.referer || "/staff/checkins");
+  } catch (e) {
+    console.error("Error clearing lock code:", e);
+    res.status(500).send("Error clearing lock code");
+  }
 
 });
 
@@ -3228,6 +3233,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
