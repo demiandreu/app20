@@ -1526,8 +1526,8 @@ app.get("/manager", async (req, res) => {
       SELECT 
         id, 
         COALESCE(
-          NULLIF(apartment_name, ''),
           custom_name,
+          NULLIF(apartment_name, ''),
           'Apartment #' || id::text
         ) as apartment_name
       FROM beds24_rooms
@@ -3227,6 +3227,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
