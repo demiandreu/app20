@@ -2952,6 +2952,18 @@ app.post("/staff/checkins/:id/delete", async (req, res) => {
 // ===================== MANAGER: Sync Bookings manual =====================
 app.get("/manager/channels/bookingssync", async (req, res) => {
   try {
+    for (const b of bookings) {
+  // AGREGAR ESTAS LINEAS DE DEBUG AQUI:
+  console.log('=== BOOKING DEBUG ===');
+  console.log('Booking ID:', b.id);
+  console.log('roomId:', b.roomId);
+  console.log('roomName:', b.roomName);
+  console.log('room:', b.room);
+  console.log('Campos disponibles:', Object.keys(b));
+  console.log('===================');
+  
+  // Filtrar manualmente por fechas...
+  const arrival = new Date(b.arrival || b.arrivalDate);
     const propertyIdForToken = "203178";
     const token = await getBeds24AccessToken(propertyIdForToken);
     
@@ -3207,6 +3219,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
