@@ -2618,7 +2618,7 @@ const wArr = buildWhereFor("c.arrival_date");
 const wDep = buildWhereFor("c.departure_date");
 
     // Arrivals query
-const departuresRes = await pool.query(
+const arrivalsRes = await pool.query(
   `
   SELECT
     c.id,
@@ -2640,11 +2640,11 @@ const departuresRes = await pool.query(
     c.room_id
   FROM checkins c
   WHERE c.cancelled IS DISTINCT FROM true
-    ${wDep.whereSql ? " AND " + wDep.whereSql.substring(6).replaceAll("b.", "c.") : ""}
-  ORDER BY c.departure_date ASC, c.departure_time ASC, c.id DESC
+    ${wArr.whereSql ? " AND " + wArr.whereSql.substring(6).replaceAll("b.", "c.") : ""}
+  ORDER BY c.arrival_date ASC, c.arrival_time ASC, c.id DESC
   LIMIT 300
   `,
-  wDep.params
+  wArr.params
 );
 
     // Departures query
@@ -3236,6 +3236,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
