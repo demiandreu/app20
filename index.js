@@ -2582,103 +2582,88 @@ app.get("/staff/checkins", async (req, res) => {
       else if (quick === "tomorrow") { fromDate = tomorrow; toDate = tomorrow; }
     }
 
-    function buildWhereFor(fieldName) {
-      const where = [];
-      const params = [];
-      if (fromDate) {
-        params.push(fromDate);
-        where.push(`${fieldName} >= $${params.length}`);
-      }
-      if (toDate) {
-        params.push(toDate);
-        where.push(`${fieldName} <= $${params.length}`);
-      }
-      const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
-      return { whereSql, params };
-    }
-function normalizeWhereClause(sql) {
-  if (!sql) return "";
-  return String(sql)
-    .trim()
-    .replace(/^\s*where\s+/i, "")
-    .replace(/^\s*and\s+/i, "")
-    .trim();
+   function buildWhereFor(fieldName) {
+  const where = [];
+  const params = [];
+
+  if (fromDate) {
+    params.push(fromDate);
+    where.push(`${fieldName} >= $${params.length}`);
+  }
+  if (toDate) {
+    params.push(toDate);
+    where.push(`${fieldName} <= $${params.length}`);
+  }
+
+  // IMPORTANT: return only "AND ..." fragment (no WHERE)
+  const andSql = where.length ? ` AND ${where.join(" AND ")}` : "";
+  return { andSql, params };
 }
 
-const extraArr = normalizeWhereClause(wArr?.whereSql);
-const extraDep = normalizeWhereClause(wDep?.whereSql);
-  const wArr = buildWhereFor("c.arrival_date");
-    const wDep = buildWhereFor("c.departure_date");
+const wArr = buildWhereFor("c.arrival_date");
+const wDep = buildWhereFor("c.departure_date");
 
-    // Arrivals query
-    const arrivalsRes = await pool.query(
-      `
-      SELECT
-        c.id,
-        c.booking_token,
-        c.beds24_booking_id,
-        c.apartment_id,
-        c.apartment_name,
-        c.full_name,
-        c.phone,
-        c.arrival_date,
-        c.arrival_time,
-        c.departure_date,
-        c.departure_time,
-        c.adults,
-        c.children,
-        c.lock_code,
-        c.lock_visible AS lock_code_visible,
-        c.clean_ok,
-        c.room_id
-    FROM checkins c
-WHERE 1=1
-  AND c.cancelled = false
-  AND c.arrival_date IS NOT NULL
-  ${extraArr ? " AND " + extraArr : ""}
-      ORDER BY c.arrival_date ASC, c.arrival_time ASC, c.id DESC
-      LIMIT 300
-      `,
-      wArr.params
-    );
-    // Departures query
+// Arrivals
+const arrivalsRes = await pool.query(
+  `
+  SELECT
+    c.id,
+    c.booking_token,
+    c.beds24_booking_id,
+    c.apartment_id,
+    c.apartment_name,
+    c.full_name,
+    c.phone,
+    c.arrival_date,
+    c.arrival_time,
+    c.departure_date,
+    c.departure_time,
+    c.adults,
+    c.children,
+    c.lock_code,
+    c.lock_visible AS lock_code_visible,
+    c.clean_ok,
+    c.room_id
+  FROM checkins c
+  WHERE c.cancelled = false
+    AND c.arrival_date IS NOT NULL
+    ${wArr.andSql}
+  ORDER BY c.arrival_date ASC, c.arrival_time ASC, c.id DESC
+  LIMIT 300
+  `,
+  wArr.params
+);
+
+// Departures
 const departuresRes = await pool.query(
-      `
-      SELECT
-        c.id,
-        c.booking_token,
-        c.beds24_booking_id,
-        c.apartment_id,
-        c.apartment_name,
-        c.full_name,
-        c.phone,
-        c.arrival_date,
-        c.arrival_time,
-        c.departure_date,
-        c.departure_time,
-        c.adults,
-        c.children,
-        c.lock_code,
-        c.lock_visible AS lock_code_visible,
-        c.clean_ok,
-        c.room_id
-     FROM checkins c
-WHERE 1=1
-  AND c.cancelled = false
-  AND c.departure_date IS NOT NULL
-  ${extraDep ? " AND " + extraDep : ""}
-
-
-${
-  wDep.whereSql
-    ? " AND " + String(wDep.whereSql).replace(/^\s*where\s+/i, "")
-    : ""
-}
-      ORDER BY c.departure_date ASC, c.departure_time ASC, c.id DESC
-      LIMIT 300
-      `,
-      wDep.params
-    );
+  `
+  SELECT
+    c.id,
+    c.booking_token,
+    c.beds24_booking_id,
+    c.apartment_id,
+    c.apartment_name,
+    c.full_name,
+    c.phone,
+    c.arrival_date,
+    c.arrival_time,
+    c.departure_date,
+    c.departure_time,
+    c.adults,
+    c.children,
+    c.lock_code,
+    c.lock_visible AS lock_code_visible,
+    c.clean_ok,
+    c.room_id
+  FROM checkins c
+  WHERE c.cancelled = false
+    AND c.departure_date IS NOT NULL
+    ${wDep.andSql}
+  ORDER BY c.departure_date ASC, c.departure_time ASC, c.id DESC
+  LIMIT 300
+  `,
+  wDep.params
+);
     const arrivals = arrivalsRes.rows || [];
     const departures = departuresRes.rows || [];
 
@@ -3243,6 +3228,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
