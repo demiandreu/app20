@@ -1522,13 +1522,13 @@ app.get("/debug/beds24", async (req, res) => {
 // ===== MANAGER HOME: select apartment =====
 app.get("/manager", async (req, res) => {
   try {
-    const { rows: apartments } = await pool.query(`
+  const { rows: apartments } = await pool.query(`
   SELECT 
     id, 
-    COALESCE(custom_name, apartment_name) as display_name
+    COALESCE(custom_name, apartment_name) as apartment_name
   FROM beds24_rooms
   WHERE is_active = true
-  ORDER BY display_name ASC
+  ORDER BY apartment_name ASC
 `);
 
 const options = apartments
@@ -3217,6 +3217,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
