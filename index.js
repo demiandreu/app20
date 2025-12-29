@@ -1316,7 +1316,6 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
     provider: "beds24",
   };
 }
-}
 
 async function upsertCheckinFromBeds24(row) {
   // Must have dates
@@ -3209,6 +3208,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
