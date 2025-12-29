@@ -2828,30 +2828,31 @@ app.post("/staff/bookings/:id/visibility", async (req, res) => {
 // ===================== MANAGER: Sync Bookings manual =====================
 app.get("/manager/channels/bookingssync", async (req, res) => {
   try {
-    const propertyIdForToken = "203178"; // used only to obtain an access token
+    const propertyIdForToken = "203178";
     const token = await getBeds24AccessToken(propertyIdForToken);
-
+    
+    // Parámetros de query
     const fromDate = String(req.query.from || "2024-01-01");
     const toDate = String(req.query.to || "2027-12-31");
     const includeCancelled = String(req.query.includeCancelled || "true");
-
+    
     // 1) Fetch all properties
     const propsResp = await fetch("https://beds24.com/api/v2/properties", {
       headers: { accept: "application/json", token },
     });
-
+    
     if (!propsResp.ok) {
       const text = await propsResp.text();
       throw new Error(`Beds24 properties error ${propsResp.status}: ${text.slice(0, 300)}`);
     }
-
+    
     const propsJson = await propsResp.json();
     const properties = Array.isArray(propsJson) ? propsJson : (propsJson.data || []);
     const propIds = properties
       .map((p) => p.id || p.propId || p.propertyId)
       .filter((x) => x != null)
       .map((x) => String(x));
-
+      
     if (!propIds.length) {
       return res.send(renderPage("Sync Bookings", `
         <div class="card">
@@ -2861,49 +2862,68 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
         </div>
       `));
     }
-
+    
     let processed = 0;
     let inserted = 0;
     let updated = 0;
     let skipped = 0;
     let errors = 0;
-
+    
     // 2) Fetch bookings per property
     for (const propId of propIds) {
+      // CORRECCIÓN: API v2 usa propertyId en lugar de propId
+      // También podemos usar filter u otros parámetros según necesidad
       const url =
         `https://beds24.com/api/v2/bookings` +
-        `?from=${encodeURIComponent(fromDate)}` +
-        `&to=${encodeURIComponent(toDate)}` +
-        `&includeCancelled=${encodeURIComponent(includeCancelled)}` +
-        `&propId=${encodeURIComponent(propId)}`;
-
+        `?propertyId=${encodeURIComponent(propId)}` +
+        `&includeInvoiceItems=true`;
+      
+      // Si necesitas filtrar por fechas, intenta estos parámetros adicionales:
+      // Nota: La documentación no es 100% clara sobre parámetros de fecha en v2
+      // Podrías necesitar usar webhooks o filtros diferentes
+      
       const bookingsResp = await fetch(url, {
         headers: { accept: "application/json", token },
       });
-
+      
       if (!bookingsResp.ok) {
         const text = await bookingsResp.text();
         console.error(`Beds24 bookings error for propId=${propId}:`, text.slice(0, 300));
         errors++;
         continue;
       }
-
+      
       const data = await bookingsResp.json();
       const bookings = Array.isArray(data) ? data : (data.bookings || data.data || []);
-
+      
       for (const b of bookings) {
+        // Filtrar manualmente por fechas si la API no lo soporta directamente
+        const arrival = new Date(b.arrival || b.arrivalDate);
+        const departure = new Date(b.departure || b.departureDate);
+        const from = new Date(fromDate);
+        const to = new Date(toDate);
+        
+        // Saltar si no está en el rango de fechas
+        if (arrival < from || arrival > to) {
+          continue;
+        }
+        
+        // Saltar cancelaciones si no se deben incluir
+        if (includeCancelled === "false" && 
+            (b.status === "cancelled" || b.status === "canceled")) {
+          continue;
+        }
+        
         const row = mapBeds24BookingToRow(b, b.roomName || "", b.roomId || "");
         const result = await upsertCheckinFromBeds24(row);
-
         processed++;
-
         if (result?.skipped) skipped++;
         else if (result?.inserted) inserted++;
         else if (result?.updated) updated++;
-        else if (result?.ok) inserted++; // fallback if your upsert returns { ok: true }
+        else if (result?.ok) inserted++;
       }
     }
-
+    
     return res.send(renderPage("Sync Bookings", `
       <div class="card">
         <h1 style="margin:0 0 10px;">✅ Sincronización completada</h1>
@@ -3063,6 +3083,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
