@@ -361,6 +361,16 @@ app.get("/manager/apartment/sections", async (req, res) => {
           background: #d1fae5;
           color: #065f46;
         }
+        .lock-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.btn-danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
         
         .accordion-badge.inactive {
           background: #fee2e2;
@@ -2778,32 +2788,32 @@ const guestBtn = guestPortalUrl
         
         <!-- 7. Código -->
         <td>
-          <form method="POST" action="/staff/bookings/${r.id}/lock" class="lock-form">
-  <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+  <form method="POST" action="/staff/bookings/${r.id}/lock" class="lock-form">
+    <input
+      class="lock-input"
+      name="lock_code"
+      value="${r.lock_code || ""}"
+      placeholder="0000"
+      inputmode="numeric"
+      pattern="[0-9]*"
+    />
 
-  <input
-    class="lock-input"
-    name="lock_code"
-    value="${escapeHtml(r.lock_code || "")}"
-    placeholder="0000"
-    inputmode="numeric"
-    pattern="[0-9]*"
-    autocomplete="one-time-code"
-    maxlength="12"
-  />
+    <div class="lock-actions">
+      <button type="submit" class="btn-small btn-primary">
+        Guardar
+      </button>
 
-  <button type="submit" class="btn-small">Guardar</button>
-</form>
-<form method="POST" action="/staff/bookings/${r.id}/lock/clear" style="display:inline;">
-  <button
-    type="submit"
-    class="btn-small btn-ghost danger"
-    onclick="return confirm('¿Borrar el código de acceso?');"
-  >
-    Clear
-  </button>
-</form>
-        </td>
+      <button
+        type="submit"
+        name="clear"
+        value="1"
+        class="btn-small btn-danger"
+      >
+        Clear
+      </button>
+    </div>
+  </form>
+</td>
         <!-- 8. Visible -->
         <td>
         <form method="POST" action="/staff/bookings/${r.id}/visibility" class="vis-form">
@@ -2900,10 +2910,11 @@ app.post("/staff/bookings/:id/lock/clear", async (req, res) => {
 app.post("/staff/bookings/:id/lock", async (req, res) => {
   try {
     const bookingId = req.params.id;
-    const { lock_code, returnTo } = req.body;
+    const isClear = req.body.clear === "1";
 
-    // keep only digits (so you can paste "12 34" and it becomes "1234")
-    const cleaned = String(lock_code || "").replace(/\D/g, "");
+    const lockCode = isClear
+      ? null
+      : (req.body.lock_code || null);
 
     await pool.query(
       `
@@ -2911,13 +2922,13 @@ app.post("/staff/bookings/:id/lock", async (req, res) => {
       SET lock_code = $1
       WHERE id = $2
       `,
-      [cleaned || null, bookingId]
+      [lockCode, bookingId]
     );
 
-    return safeRedirect(res, returnTo);
+    res.redirect(req.headers.referer || "/staff/checkins");
   } catch (e) {
     console.error("Error saving lock code:", e);
-    return res.status(500).send("Error saving lock code");
+    res.status(500).send("Error saving lock code");
   }
 });
 
@@ -3222,6 +3233,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
