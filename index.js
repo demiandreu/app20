@@ -230,53 +230,78 @@ app.get("/manager/apartment/sections", async (req, res) => {
       `;
     };
 
-    const rowsHtml = secRes.rows
-      .map((s) => {
+    const accordionItems = secRes.rows
+      .map((s, index) => {
         const checked = s.is_active ? "checked" : "";
         return `
-          <tr>
-            <td style="width:90px;">
-              <input name="sort_order_${s.id}" value="${Number(s.sort_order) || 0}" style="width:70px; box-sizing:border-box;" />
-            </td>
-            <td style="width:180px;">
-              <label style="display:flex; gap:8px; align-items:center;">
-                <input type="checkbox" name="is_active_${s.id}" ${checked}/>
-                Active
-              </label>
-              <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
-                <button class="btn-mini" type="submit" name="move" value="up:${s.id}">↑</button>
-                <button class="btn-mini" type="submit" name="move" value="down:${s.id}">↓</button>
-                <button class="btn-mini danger" type="submit" name="delete" value="${s.id}">Delete</button>
+          <div class="accordion-item">
+            <div class="accordion-header" onclick="toggleAccordion(${s.id})">
+              <div class="accordion-title">
+                <span class="accordion-icon">${s.icon || '📄'}</span>
+                <strong>${escapeHtml(s.title || `Sección #${index + 1}`)}</strong>
+                <span class="accordion-badge ${s.is_active ? 'active' : 'inactive'}">
+                  ${s.is_active ? '✓ Activa' : '✗ Inactiva'}
+                </span>
               </div>
-            </td>
-            <td class="td-text">
-              <label class="muted">Icono</label>
-              ${createIconSelect(s.icon || "", `icon_${s.id}`)}
-              
-              <label class="muted">Título</label>
-              <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" class="sec-title" placeholder="Título opcional" />
-              
-              <label class="muted">Texto</label>
-              <textarea name="body_${s.id}" rows="5" class="sec-body" placeholder="Texto...">${escapeHtml(s.body || "")}</textarea>
+              <span class="accordion-arrow" id="arrow-${s.id}">▼</span>
+            </div>
+            
+            <div class="accordion-content" id="content-${s.id}">
+              <div class="accordion-body">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:16px;">
+                  <div>
+                    <label style="display:block; margin-bottom:4px;">Order</label>
+                    <input name="sort_order_${s.id}" value="${Number(s.sort_order) || 0}" style="width:100%; box-sizing:border-box;" />
+                  </div>
+                  <div>
+                    <label style="display:block; margin-bottom:4px;">Estado</label>
+                    <label style="display:flex; gap:8px; align-items:center; padding:8px;">
+                      <input type="checkbox" name="is_active_${s.id}" ${checked}/>
+                      Activa
+                    </label>
+                  </div>
+                </div>
 
-              <div style="margin-top:10px; display:grid; gap:6px;">
-                <label class="muted">Media type</label>
-                <select name="new_media_type_${s.id}">
-                  <option value="none" ${String(s.new_media_type || "none") === "none" ? "selected" : ""}>None</option>
-                  <option value="image" ${String(s.new_media_type || "") === "image" ? "selected" : ""}>Image</option>
-                  <option value="video" ${String(s.new_media_type || "") === "video" ? "selected" : ""}>Video</option>
-                </select>
+                <div style="margin-bottom:12px;">
+                  <label class="muted">Icono</label>
+                  ${createIconSelect(s.icon || "", `icon_${s.id}`)}
+                </div>
+                
+                <div style="margin-bottom:12px;">
+                  <label class="muted">Título</label>
+                  <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" class="sec-title" placeholder="Título opcional" />
+                </div>
+                
+                <div style="margin-bottom:12px;">
+                  <label class="muted">Texto</label>
+                  <textarea name="body_${s.id}" rows="5" class="sec-body" placeholder="Texto...">${escapeHtml(s.body || "")}</textarea>
+                </div>
 
-                <label class="muted">Media URL</label>
-                <textarea
-                  name="new_media_url_${s.id}"
-                  rows="3"
-                  placeholder="One URL per line"
-                  style="width:100%;"
-                >${escapeHtml(s.new_media_url || "")}</textarea>
+                <div style="display:grid; gap:8px; margin-bottom:16px;">
+                  <label class="muted">Media type</label>
+                  <select name="new_media_type_${s.id}">
+                    <option value="none" ${String(s.new_media_type || "none") === "none" ? "selected" : ""}>None</option>
+                    <option value="image" ${String(s.new_media_type || "") === "image" ? "selected" : ""}>Image</option>
+                    <option value="video" ${String(s.new_media_type || "") === "video" ? "selected" : ""}>Video</option>
+                  </select>
+
+                  <label class="muted">Media URL</label>
+                  <textarea
+                    name="new_media_url_${s.id}"
+                    rows="3"
+                    placeholder="One URL per line"
+                    style="width:100%;"
+                  >${escapeHtml(s.new_media_url || "")}</textarea>
+                </div>
+
+                <div style="display:flex; gap:8px; flex-wrap:wrap; padding-top:12px; border-top:1px solid #e5e7eb;">
+                  <button class="btn-mini" type="submit" name="move" value="up:${s.id}">↑ Subir</button>
+                  <button class="btn-mini" type="submit" name="move" value="down:${s.id}">↓ Bajar</button>
+                  <button class="btn-mini danger" type="submit" name="delete" value="${s.id}" onclick="return confirm('¿Eliminar esta sección?')">🗑️ Eliminar</button>
+                </div>
               </div>
-            </td>
-          </tr>
+            </div>
+          </div>
         `;
       })
       .join("");
@@ -284,13 +309,99 @@ app.get("/manager/apartment/sections", async (req, res) => {
     const html = `
       <style>
         .muted { opacity: 0.65; font-size: 12px; }
-        .sections-table { width:100%; border-collapse: collapse; }
-        .sections-table th, .sections-table td { border-top: 1px solid #e5e7eb; padding: 10px; vertical-align: top; }
         .sec-title { width: 100%; box-sizing: border-box; margin-bottom: 8px; }
         .sec-body { width: 100%; box-sizing: border-box; }
-        .btn-mini { padding: 6px 10px; }
-        .danger { background: #fee2e2; }
+        .btn-mini { padding: 6px 10px; font-size: 14px; cursor: pointer; border: 1px solid #ddd; background: #f9f9f9; border-radius: 4px; }
+        .btn-mini:hover { background: #e9e9e9; }
+        .danger { background: #fee2e2; border-color: #fca5a5; }
+        .danger:hover { background: #fecaca; }
+        
+        /* Estilos del acordeón */
+        .accordion-item {
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          margin-bottom: 8px;
+          background: white;
+          overflow: hidden;
+        }
+        
+        .accordion-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 16px;
+          cursor: pointer;
+          background: #f9fafb;
+          transition: background 0.2s;
+        }
+        
+        .accordion-header:hover {
+          background: #f3f4f6;
+        }
+        
+        .accordion-title {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex: 1;
+        }
+        
+        .accordion-icon {
+          font-size: 20px;
+        }
+        
+        .accordion-badge {
+          padding: 4px 10px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+        
+        .accordion-badge.active {
+          background: #d1fae5;
+          color: #065f46;
+        }
+        
+        .accordion-badge.inactive {
+          background: #fee2e2;
+          color: #991b1b;
+        }
+        
+        .accordion-arrow {
+          transition: transform 0.3s;
+          font-size: 12px;
+          color: #6b7280;
+        }
+        
+        .accordion-arrow.rotated {
+          transform: rotate(-180deg);
+        }
+        
+        .accordion-content {
+          max-height: 0;
+          overflow: hidden;
+          transition: max-height 0.3s ease;
+        }
+        
+        .accordion-content.open {
+          max-height: 2000px;
+        }
+        
+        .accordion-body {
+          padding: 16px;
+          border-top: 1px solid #e5e7eb;
+        }
       </style>
+
+      <script>
+        function toggleAccordion(id) {
+          const content = document.getElementById('content-' + id);
+          const arrow = document.getElementById('arrow-' + id);
+          
+          content.classList.toggle('open');
+          arrow.classList.toggle('rotated');
+        }
+      </script>
 
       <h1>Apartment Sections</h1>
 
@@ -309,7 +420,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
         <input type="hidden" name="room_id" value="${escapeHtml(roomId)}" />
 
         <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
-          <h2 style="margin:0 0 8px; font-size:16px;">Add new section</h2>
+          <h2 style="margin:0 0 8px; font-size:16px;">➕ Añadir nueva sección</h2>
           <div style="display:grid; gap:8px;">
             <label>Icono</label>
             ${createIconSelect("", "new_icon")}
@@ -343,23 +454,14 @@ app.get("/manager/apartment/sections", async (req, res) => {
         </div>
 
         <div style="margin-top:12px; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
-          <h2 style="margin:0 0 10px; font-size:16px;">Existing sections</h2>
+          <h2 style="margin:0 0 16px; font-size:16px;">📋 Secciones existentes</h2>
 
-          <table class="sections-table">
-            <thead>
-              <tr>
-                <th style="width:90px;">Order</th>
-                <th style="width:180px;">Actions</th>
-                <th>Icono, Título & Texto</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rowsHtml || `<tr><td colspan="3" class="muted" style="padding:10px;">No sections yet.</td></tr>`}
-            </tbody>
-          </table>
+          <div class="accordion">
+            ${accordionItems || `<p class="muted" style="padding:10px;">No hay secciones todavía.</p>`}
+          </div>
 
-          <div style="margin-top:12px;">
-            <button type="submit" name="save" value="1">Save all</button>
+          <div style="margin-top:16px;">
+            <button type="submit" name="save" value="1" style="padding:10px 20px; font-size:16px;">💾 Guardar todos los cambios</button>
           </div>
         </div>
       </form>
@@ -373,8 +475,6 @@ app.get("/manager/apartment/sections", async (req, res) => {
     );
   }
 });
-
-
 
 // ===================== HELPERS =====================
 function ymd(d) {
@@ -3089,6 +3189,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
