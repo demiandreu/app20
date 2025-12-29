@@ -1376,8 +1376,8 @@ async function upsertCheckinFromBeds24(row) {
       booking_token    = COALESCE(NULLIF(EXCLUDED.booking_token, ''), checkins.booking_token),
       beds24_room_id   = COALESCE(NULLIF(EXCLUDED.beds24_room_id, ''), checkins.beds24_room_id),
       apartment_name   = COALESCE(NULLIF(EXCLUDED.apartment_name, ''), checkins.apartment_name),
-      room_name        = COALESCE(NULLIF(EXCLUDED.room_name, ''), checkins.room_name),
-
+      room_name        = EXCLUDED.room_name,
+      
       full_name        = COALESCE(NULLIF(checkins.full_name, ''), EXCLUDED.full_name),
       email            = COALESCE(NULLIF(checkins.email, ''), EXCLUDED.email),
       phone            = COALESCE(NULLIF(checkins.phone, ''), EXCLUDED.phone),
@@ -3203,6 +3203,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
