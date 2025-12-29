@@ -2683,17 +2683,17 @@ const arrivalsRes = await pool.query(
 // Build needsCleanSet
 const { rows: needsCleanRows } = await pool.query(
   `
-  SELECT DISTINCT b_today.apartment_id
-  FROM bookings b_today
-  JOIN bookings b_yesterday
-    ON b_today.apartment_id = b_yesterday.apartment_id
-  WHERE b_today.is_cancelled = false
-    AND b_yesterday.is_cancelled = false
-    -- check-in today
-    AND b_today.arrival_date = $1::date
+  SELECT DISTINCT c_today.apartment_id
+  FROM checkins c_today
+  JOIN checkins c_yesterday
+    ON c_today.apartment_id = c_yesterday.apartment_id
+  WHERE c_today.cancelled = false
+    AND c_yesterday.cancelled = false
+    -- arrival today
+    AND c_today.arrival_date = $1::date
     -- occupied yesterday
-    AND b_yesterday.arrival_date <= $2::date
-    AND b_yesterday.departure_date > $2::date
+    AND c_yesterday.arrival_date <= $2::date
+    AND c_yesterday.departure_date > $2::date
   `,
   [today, yesterday]
 );
@@ -3236,6 +3236,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
