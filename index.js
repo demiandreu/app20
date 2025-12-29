@@ -2948,8 +2948,8 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     const toDate = String(req.query.to || "2027-12-31");
     const includeCancelled = String(req.query.includeCancelled || "true");
     
-    // 1) Fetch all properties
-    const propsResp = await fetch("https://beds24.com/api/v2/properties", {
+    // 1) Fetch all properties WITH ROOMS
+    const propsResp = await fetch("https://beds24.com/api/v2/properties?includeAllRooms=true", {
       headers: { accept: "application/json", token },
     });
     
@@ -2975,28 +2975,20 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
       `));
     }
     
-    // 2) NUEVO: Fetch all rooms to get roomId -> roomName mapping
-    const roomsResp = await fetch("https://beds24.com/api/v2/rooms", {
-      headers: { accept: "application/json", token },
-    });
-    
+    // 2) Create roomId -> roomName mapping from properties
     const roomsMap = new Map();
-    if (roomsResp.ok) {
-      const roomsData = await roomsResp.json();
-      const rooms = Array.isArray(roomsData) ? roomsData : (roomsData.data || []);
-      
-      for (const room of rooms) {
+    for (const prop of properties) {
+      const roomTypes = prop.roomTypes || [];
+      for (const room of roomTypes) {
         const roomId = String(room.id || room.roomId || "");
         const roomName = room.name || room.roomName || "";
         if (roomId && roomName) {
           roomsMap.set(roomId, roomName);
         }
       }
-      
-      console.log(`Loaded ${roomsMap.size} room names from Beds24 API`);
-    } else {
-      console.warn("Could not fetch rooms from Beds24 API");
     }
+    
+    console.log(`Loaded ${roomsMap.size} room names from ${properties.length} properties`);
     
     let processed = 0;
     let inserted = 0;
@@ -3040,7 +3032,6 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
           continue;
         }
         
-        // IMPORTANTE: Obtener el nombre real del room desde el Map
         const roomId = String(b.roomId || "");
         const realRoomName = roomsMap.get(roomId) || "";
         
@@ -3077,7 +3068,6 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     `));
   }
 });
-
 // ===================== MANAGER: one page for apartments + defaults =====================
 
 // helper: safe value
@@ -3213,6 +3203,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
