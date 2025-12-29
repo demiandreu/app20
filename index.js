@@ -2799,7 +2799,6 @@ const guestBtn = guestPortalUrl
           <tr>
             <th class="sticky-col">Limpieza</th>
             <th>ID</th>
-<td>${escapeHtml(String(r.beds24_booking_id || r.booking_token || ""))}</td>
 <th>Huésped</th>
             <th>${dateColTitle}</th>
             <th>Noches</th>
@@ -3193,6 +3192,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
