@@ -1615,6 +1615,7 @@ app.get("/manager/apartment", async (req, res) => {
         
         <label>Apartment name</label><br/>
         ${beds24Name ? `<p class="muted" style="margin:4px 0 8px;">Beds24 name: <strong>${escapeHtml(beds24Name)}</strong></p>` : ''}
+        ${roomId ? `<p class="muted">Room ID: <strong>${escapeHtml(roomId)}</strong> · Beds24 name: <strong>${escapeHtml(beds24Name)}</strong></p>` : ''}
         <input 
           name="apartment_name" 
           value="${escapeHtml(a.apartment_name || "")}" 
@@ -3227,6 +3228,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
