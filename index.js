@@ -2916,68 +2916,79 @@ app.post("/staff/bookings/:id/lock/clear", async (req, res) => {
 app.post("/staff/bookings/:id/lock", async (req, res) => {
   try {
     const bookingId = req.params.id;
-    const isClear = req.body.clear === "1";
+    const { lock_code } = req.body;
 
-    const lockCode = isClear
-      ? null
-      : (req.body.lock_code || null);
-
+    // 1) Update in bookings
     await pool.query(
       `
       UPDATE bookings
       SET lock_code = $1
       WHERE id = $2
       `,
-      [lockCode, bookingId]
+      [lock_code || null, bookingId]
     );
-       res.redirect(req.headers.referer || "/staff/checkins");
-  } catch (e) {
-    console.error("Error clearing lock code:", e);
-    res.status(500).send("Error clearing lock code");
-  }
 
+    // 2) Also update in checkins (guest panel reads from checkins)
+    await pool.query(
+      `
+      UPDATE checkins c
+      SET lock_code = $1
+      FROM bookings b
+      WHERE b.id = $2
+        AND (
+          c.beds24_booking_id::text = b.booking_reference::text
+          OR c.booking_token::text  = b.booking_reference::text
+          OR c.booking_id::text     = b.booking_reference::text
+          OR c.provider_booking_id::text = b.booking_reference::text
+          OR c.external_booking_id::text = b.booking_reference::text
+        )
+      `,
+      [lock_code || null, bookingId]
+    );
+
+    return res.redirect(req.headers.referer || "/staff/checkins");
+  } catch (e) {
+    console.error("Error saving lock code:", e);
+    return res.status(500).send("Error saving lock code");
+  }
 });
 
 // ===================== ADMIN: VISIBILITY TOGGLE =====================
 app.post("/staff/bookings/:id/visibility", async (req, res) => {
   try {
     const bookingId = req.params.id;
-    const { returnTo } = req.body;
 
-    await pool.query(
+    // 1) Toggle in bookings
+    const updated = await pool.query(
       `
       UPDATE bookings
       SET lock_code_visible = NOT COALESCE(lock_code_visible, false)
       WHERE id = $1
+      RETURNING lock_code_visible, booking_reference
       `,
       [bookingId]
     );
 
-    return safeRedirect(res, returnTo);
+    const vis = updated.rows?.[0]?.lock_code_visible ?? false;
+
+    // 2) Mirror to checkins
+    await pool.query(
+      `
+      UPDATE checkins
+      SET lock_visible = $1
+      WHERE beds24_booking_id::text = $2
+         OR booking_token::text = $2
+         OR booking_id::text = $2
+         OR provider_booking_id::text = $2
+         OR external_booking_id::text = $2
+      `,
+      [vis, String(updated.rows?.[0]?.booking_reference || "")]
+    );
+
+    return res.redirect(req.headers.referer || "/staff/checkins");
   } catch (e) {
     console.error("Error toggling visibility:", e);
     return res.status(500).send("Error updating visibility");
-  }
-});
-app.post("/staff/bookings/:id/delete", async (req, res) => {
-  try {
-    const bookingId = req.params.id;
-    const { returnTo } = req.body;
-
-    // Soft delete (recommended)
-    await pool.query(
-      `
-      UPDATE bookings
-      SET is_cancelled = true
-      WHERE id = $1
-      `,
-      [bookingId]
-    );
-
-    return safeRedirect(res, returnTo);
-  } catch (e) {
-    console.error("Error deleting booking:", e);
-    return res.status(500).send("Error deleting booking");
   }
 });
 // ===================== MANAGER SETTINGS =====================
@@ -3239,6 +3250,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
