@@ -2948,7 +2948,6 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     const toDate = String(req.query.to || "2027-12-31");
     const includeCancelled = String(req.query.includeCancelled || "true");
     
-    // 1) Fetch all properties WITH ROOMS
     const propsResp = await fetch("https://beds24.com/api/v2/properties?includeAllRooms=true", {
       headers: { accept: "application/json", token },
     });
@@ -2975,20 +2974,23 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
       `));
     }
     
-    // 2) Create roomId -> roomName mapping from properties
     const roomsMap = new Map();
     for (const prop of properties) {
       const roomTypes = prop.roomTypes || [];
+      console.log(`Property ${prop.id}: found ${roomTypes.length} roomTypes`);
+      
       for (const room of roomTypes) {
         const roomId = String(room.id || room.roomId || "");
         const roomName = room.name || room.roomName || "";
         if (roomId && roomName) {
           roomsMap.set(roomId, roomName);
+          console.log(`  ✓ Mapped roomId "${roomId}" -> "${roomName}"`);
         }
       }
     }
     
-    console.log(`Loaded ${roomsMap.size} room names from ${properties.length} properties`);
+    console.log(`=== TOTAL: Loaded ${roomsMap.size} room names from ${properties.length} properties ===`);
+    console.log('All roomIds in map:', Array.from(roomsMap.keys()));
     
     let processed = 0;
     let inserted = 0;
@@ -2996,7 +2998,6 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     let skipped = 0;
     let errors = 0;
     
-    // 3) Fetch bookings per property
     for (const propId of propIds) {
       const url =
         `https://beds24.com/api/v2/bookings` +
@@ -3035,7 +3036,11 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
         const roomId = String(b.roomId || "");
         const realRoomName = roomsMap.get(roomId) || "";
         
+        console.log(`Booking ${b.id}: roomId="${roomId}" (type: ${typeof roomId}), found name="${realRoomName}"`);
+        
         const row = mapBeds24BookingToRow(b, realRoomName, roomId);
+        console.log(`  -> row.room_name="${row.room_name}"`);
+        
         const result = await upsertCheckinFromBeds24(row);
         processed++;
         if (result?.skipped) skipped++;
@@ -3203,6 +3208,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
