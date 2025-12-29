@@ -1282,11 +1282,11 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
     apartment_id: String(b.roomId || roomIdFallback || ""),   // may be empty
     apartment_name: apartmentName,
 
-    arrival_date: toDateOnly(b.arrival || b.checkin_date || b.checkin || null),
-    arrival_time: toTimeOnly(b.arrivalTime || b.checkin_time || b.checkin || null),
+    arrival_date: toDateOnly(b.arrival || b.arrival_date || b.checkin || null),
+    arrival_time: toTimeOnly(b.arrivalTime || b.arrival_time || b.checkin || null),
 
-    departure_date: toDateOnly(b.departure || b.checkout_date || b.checkout || null),
-    departure_time: toTimeOnly(b.departureTime || b.checkout_time || b.checkout || null),
+    departure_date: toDateOnly(b.departure || b.departure_date || b.checkout || null),
+    departure_time: toTimeOnly(b.departureTime || b.departure_time || b.checkout || null),
 
     adults: Number(b.numAdult || 0),
     children: Number(b.numChild || 0),
@@ -1313,11 +1313,11 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
   }
   if (!apartmentName) apartmentName = `Apartamento ${b.roomId || roomIdFallback || "sin id"}`;
 
-  const arrivalDate = toDateOnly(b.arrival || b.checkin_date || b.checkin);
-  const arrivalTime = toTimeOnly(b.arrivalTime || b.checkin_time || b.checkin);
+  const arrivalDate = toDateOnly(b.arrival || b.arrival_date || b.checkin);
+  const arrivalTime = toTimeOnly(b.arrivalTime || b.arrival_time || b.checkin);
 
-  const departureDate = toDateOnly(b.departure || b.checkout_date || b.checkout);
-  const departureTime = toTimeOnly(b.departureTime || b.checkout_time || b.checkout);
+  const departureDate = toDateOnly(b.departure || b.departure_date || b.checkout);
+  const departureTime = toTimeOnly(b.departureTime || b.departure_time || b.checkout);
 
   return {
     apartment_id: String(b.roomId || roomIdFallback || ""),
@@ -2690,10 +2690,10 @@ const { rows: needsCleanRows } = await pool.query(
   WHERE b_today.is_cancelled = false
     AND b_yesterday.is_cancelled = false
     -- check-in today
-    AND b_today.checkin_date = $1::date
+    AND b_today.arrival_date = $1::date
     -- occupied yesterday
-    AND b_yesterday.checkin_date <= $2::date
-    AND b_yesterday.checkout_date > $2::date
+    AND b_yesterday.arrival_date <= $2::date
+    AND b_yesterday.departure_date > $2::date
   `,
   [today, yesterday]
 );
@@ -3236,6 +3236,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
