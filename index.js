@@ -1858,8 +1858,208 @@ async function beds24SmokeTest(token) {
   return { ok: resp.ok, status: resp.status, data };
 }
 
-
 app.post("/webhooks/beds24", async (req, res) => {
+  try {
+    const secret = String(req.query.key || "");
+    if (secret !== String(process.env.BEDS24_SECRET || "")) {
+      console.log("❌ Beds24 webhook: invalid secret");
+      return res.status(401).send("Unauthorized");
+    }
+
+    const payload = req.body || {};
+    const booking = payload.booking || payload;
+
+    if (!booking || !booking.id) {
+      console.log("ℹ️ Beds24 webhook: no booking.id, ignored");
+      return res.status(200).send("Ignored");
+    }
+
+    const beds24BookingId = String(booking.id);
+    console.log("✅ Webhook hit - Booking ID:", beds24BookingId);
+
+    // ---- Extract room/apartment info ----
+    const beds24RoomId = String(
+      booking?.roomId ?? booking?.room?.id ?? booking?.unitId ?? ""
+    );
+
+    let apartmentName = null;
+    let apartmentId = beds24RoomId; // Use beds24RoomId as apartment_id
+
+    // Try to get mapped apartment name from DB
+    if (beds24RoomId) {
+      const roomRes = await pool.query(
+        `SELECT apartment_name FROM beds24_rooms 
+         WHERE beds24_room_id = $1 AND is_active = true LIMIT 1`,
+        [beds24RoomId]
+      );
+
+      if (roomRes.rows.length) {
+        apartmentName = roomRes.rows[0].apartment_name;
+      }
+    }
+
+    // Fallback to booking data
+    if (!apartmentName) {
+      apartmentName =
+        booking?.roomName ||
+        booking?.unitName ||
+        booking?.apartmentName ||
+        booking?.room?.name ||
+        booking?.unit?.name ||
+        "Unknown Apartment";
+    }
+
+    // ---- Extract guest info ----
+    const guest = payload.guest || booking.guest || booking.guestData || {};
+    const fullName =
+      guest.name ||
+      [guest.firstName, guest.lastName].filter(Boolean).join(" ") ||
+      guest.fullName ||
+      booking.guestName ||
+      booking.name ||
+      [booking.firstName, booking.lastName].filter(Boolean).join(" ") ||
+      "Beds24 Guest";
+
+    const email = guest.email || guest.emailAddress || "unknown@beds24";
+    const phone =
+      guest.phone ||
+      guest.mobile ||
+      guest.phoneNumber ||
+      booking.phone ||
+      booking.mobile ||
+      booking.phoneNumber ||
+      "";
+
+    // ---- Extract dates ----
+    const arrivalDate =
+      booking?.arrival?.date ??
+      booking?.arrivalDate ??
+      booking?.checkin?.date ??
+      booking?.checkinDate ??
+      booking?.arrival ??
+      null;
+
+    const departureDate =
+      booking?.departure?.date ??
+      booking?.departureDate ??
+      booking?.checkout?.date ??
+      booking?.checkoutDate ??
+      booking?.departure ??
+      null;
+
+    const arrivalTime = booking?.arrival?.time || booking?.arrivalTime || null;
+    const departureTime = booking?.departure?.time || booking?.departureTime || null;
+
+    // ---- Extract adults/children ----
+    const adults = Number.isFinite(Number(booking?.numAdult)) ? Number(booking.numAdult) : 0;
+    const children = Number.isFinite(Number(booking?.numChild)) ? Number(booking.numChild) : 0;
+
+    // ---- Extract status ----
+    const status = booking?.status || booking?.bookingStatus || "confirmed";
+    const cancelled = status === "cancelled" || status === "canceled" || booking?.cancelled === true;
+
+    console.log("📊 Booking data:", { 
+      id: beds24BookingId, 
+      roomId: beds24RoomId,
+      apartment: apartmentName,
+      guests: `${adults}A ${children}C`,
+      status,
+      cancelled
+    });
+
+    // ---- Auto-update beds24_rooms mapping ----
+    if (beds24RoomId && beds24RoomId !== "undefined" && beds24RoomId !== "null") {
+      await pool.query(
+        `INSERT INTO beds24_rooms (beds24_room_id, apartment_name, is_active)
+         VALUES ($1, $2, true)
+         ON CONFLICT (beds24_room_id)
+         DO UPDATE SET
+           apartment_name = COALESCE(EXCLUDED.apartment_name, beds24_rooms.apartment_name),
+           is_active = true,
+           updated_at = NOW()`,
+        [beds24RoomId, apartmentName]
+      );
+    }
+
+    // ---- Upsert checkin ----
+    await pool.query(
+      `INSERT INTO checkins (
+        apartment_id,
+        room_id,
+        booking_token,
+        beds24_booking_id,
+        apartment_name,
+        full_name,
+        email,
+        phone,
+        arrival_date,
+        arrival_time,
+        departure_date,
+        departure_time,
+        adults,
+        children,
+        status,
+        cancelled,
+        cancelled_at,
+        beds24_raw,
+        provider
+      )
+      VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+        $11, $12, $13, $14, $15, $16, 
+        CASE WHEN $16 THEN NOW() ELSE NULL END,
+        $17::jsonb, 'beds24'
+      )
+      ON CONFLICT (beds24_booking_id)
+      DO UPDATE SET
+        apartment_id = EXCLUDED.apartment_id,
+        room_id = COALESCE(EXCLUDED.room_id, checkins.room_id),
+        apartment_name = COALESCE(EXCLUDED.apartment_name, checkins.apartment_name),
+        full_name = EXCLUDED.full_name,
+        email = EXCLUDED.email,
+        phone = EXCLUDED.phone,
+        arrival_date = COALESCE(EXCLUDED.arrival_date, checkins.arrival_date),
+        arrival_time = COALESCE(EXCLUDED.arrival_time, checkins.arrival_time),
+        departure_date = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
+        departure_time = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
+        adults = COALESCE(EXCLUDED.adults, checkins.adults),
+        children = COALESCE(EXCLUDED.children, checkins.children),
+        status = EXCLUDED.status,
+        cancelled = EXCLUDED.cancelled,
+        cancelled_at = EXCLUDED.cancelled_at,
+        beds24_raw = EXCLUDED.beds24_raw,
+        provider = EXCLUDED.provider
+      `,
+      [
+        apartmentId,           // $1 apartment_id
+        beds24RoomId,          // $2 room_id
+        beds24BookingId,       // $3 booking_token
+        beds24BookingId,       // $4 beds24_booking_id
+        apartmentName,         // $5 apartment_name
+        fullName,              // $6
+        email,                 // $7
+        phone,                 // $8
+        arrivalDate,           // $9
+        arrivalTime,           // $10
+        departureDate,         // $11
+        departureTime,         // $12
+        adults,                // $13
+        children,              // $14
+        status,                // $15
+        cancelled,             // $16
+        JSON.stringify(payload), // $17 beds24_raw
+      ]
+    );
+
+    console.log("✅ Booking upserted successfully:", beds24BookingId);
+    res.status(200).send("OK");
+    
+  } catch (err) {
+    console.error("❌ Webhook error:", err);
+    res.status(500).send("Error: " + err.message);
+  }
+});
+/* app.post("/webhooks/beds24", async (req, res) => {
   try {
     const secret = String(req.query.key || "");
     if (secret !== String(process.env.BEDS24_SECRET || "")) {
@@ -2055,7 +2255,7 @@ DO UPDATE SET
     console.error("❌ DB insert error:", err);
     res.status(500).send("DB error");
   }
-});
+}); */
 
 
 // ===================== GUEST ROUTES =====================
@@ -3192,6 +3392,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
