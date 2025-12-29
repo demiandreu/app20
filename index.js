@@ -2592,7 +2592,17 @@ app.get("/staff/checkins", async (req, res) => {
       const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
       return { whereSql, params };
     }
+function normalizeWhereClause(sql) {
+  if (!sql) return "";
+  return String(sql)
+    .trim()
+    .replace(/^\s*where\s+/i, "")
+    .replace(/^\s*and\s+/i, "")
+    .trim();
+}
 
+const extraArr = normalizeWhereClause(wArr?.whereSql);
+const extraDep = normalizeWhereClause(wDep?.whereSql);
   const wArr = buildWhereFor("c.arrival_date");
     const wDep = buildWhereFor("c.departure_date");
 
@@ -2617,10 +2627,11 @@ app.get("/staff/checkins", async (req, res) => {
         c.lock_visible AS lock_code_visible,
         c.clean_ok,
         c.room_id
-      FROM checkins c
-      WHERE c.cancelled = false
-        AND c.arrival_date IS NOT NULL
-        ${wArr.whereSql}
+    FROM checkins c
+WHERE 1=1
+  AND c.cancelled = false
+  AND c.arrival_date IS NOT NULL
+  ${extraArr ? " AND " + extraArr : ""}
       ORDER BY c.arrival_date ASC, c.arrival_time ASC, c.id DESC
       LIMIT 300
       `,
@@ -2647,10 +2658,11 @@ const departuresRes = await pool.query(
         c.lock_visible AS lock_code_visible,
         c.clean_ok,
         c.room_id
-      FROM checkins c
-      WHERE c.cancelled = false
-        AND c.departure_date IS NOT NULL
-        ${wDep.whereSql ? " AND " + wDep.whereSql.substring(6) : ""}
+     FROM checkins c
+WHERE 1=1
+  AND c.cancelled = false
+  AND c.departure_date IS NOT NULL
+  ${extraDep ? " AND " + extraDep : ""}
 
 
 ${
@@ -3227,6 +3239,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
