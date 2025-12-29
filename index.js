@@ -2951,8 +2951,7 @@ app.post("/staff/checkins/:id/delete", async (req, res) => {
 app.get("/manager/channels/bookingssync", async (req, res) => {
   try {
    
-  // Filtrar manualmente por fechas...
-  const arrival = new Date(b.arrival || b.arrivalDate);
+
     const propertyIdForToken = "203178";
     const token = await getBeds24AccessToken(propertyIdForToken);
     
@@ -3208,6 +3207,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
