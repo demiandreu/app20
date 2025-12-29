@@ -1266,52 +1266,22 @@ function toTimeOnly(v) {
   return null;
 }
 
-function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
-  let apartmentName = b.roomName || roomNameFallback || "";
 
+function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
+  // 🆕 CAPTURAR ROOM NAME del API
+  let roomName = b.roomName || roomNameFallback || "";
+  
+  // Apartment name (puede ser diferente al room_name)
+  let apartmentName = roomName;
+  
   if (!apartmentName && b.apiMessage) {
     const match = String(b.apiMessage).match(/^Room:\s*(.+?)(\r?\n|$)/i);
     if (match) apartmentName = match[1].trim();
   }
-
+  
   if (!apartmentName) {
     apartmentName = `Apartamento ${b.roomId || roomIdFallback || "sin id"}`;
   }
-
-  const row = {
-    apartment_id: String(b.roomId || roomIdFallback || ""),   // may be empty
-    apartment_name: apartmentName,
-
-    arrival_date: toDateOnly(b.arrival || b.checkin_date || b.checkin || null),
-    arrival_time: toTimeOnly(b.arrivalTime || b.checkin_time || b.checkin || null),
-
-    departure_date: toDateOnly(b.departure || b.checkout_date || b.checkout || null),
-    departure_time: toTimeOnly(b.departureTime || b.checkout_time || b.checkout || null),
-
-    adults: Number(b.numAdult || 0),
-    children: Number(b.numChild || 0),
-
-    beds24_booking_id: b.id != null ? String(b.id) : null,
-    beds24_room_id: String(b.roomId || roomIdFallback || ""),
-
-    status: b.status || "confirmed",
-    cancelled: String(b.status || "").toLowerCase() === "cancelled",
-
-    beds24_raw: b,
-    provider: "beds24",
-  };
-
-  return row;
-}
-
-function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
-  // Apartment name
-  let apartmentName = b.roomName || roomNameFallback || "";
-  if (!apartmentName && b.apiMessage) {
-    const match = String(b.apiMessage).match(/^Room:\s*(.+?)(\r?\n|$)/i);
-    if (match) apartmentName = match[1].trim();
-  }
-  if (!apartmentName) apartmentName = `Apartamento ${b.roomId || roomIdFallback || "sin id"}`;
 
   const arrivalDate = toDateOnly(b.arrival || b.checkin_date || b.checkin);
   const arrivalTime = toTimeOnly(b.arrivalTime || b.checkin_time || b.checkin);
@@ -1322,8 +1292,8 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
   return {
     apartment_id: String(b.roomId || roomIdFallback || ""),
     apartment_name: apartmentName,
+    room_name: roomName,  // 🆕 NUEVO CAMPO
 
-    // ✅ AGREGAR ESTOS CAMPOS QUE FALTAN:
     booking_token: b.bookingToken || b.id ? `beds24_${b.id}` : `temp_${Date.now()}`,
     full_name: `${b.firstName || ""} ${b.lastName || ""}`.trim() || "Guest",
     email: b.email || "unknown@unknown.com",
@@ -1385,37 +1355,39 @@ async function upsertCheckinFromBeds24(row) {
 
   await pool.query(
     `
-    INSERT INTO checkins (
-      apartment_id,
-      room_id,
-      booking_token,
-      full_name,
-      email,
-      phone,
-      arrival_date,
-      arrival_time,
-      departure_date,
-      departure_time,
-      adults,
-      children,
-      beds24_booking_id,
-      beds24_room_id,
-      apartment_name,
-      beds24_raw
-    )
-    VALUES (
-      $1,$2,$3,$4,$5,
-      $6,$7,$8,$9,$10,
-      $11,$12,$13,$14,$15,
-      $16::jsonb
-    )
+ INSERT INTO checkins (
+  apartment_id,
+  room_id,
+  booking_token,
+  full_name,
+  email,
+  phone,
+  arrival_date,
+  arrival_time,
+  departure_date,
+  departure_time,
+  adults,
+  children,
+  beds24_booking_id,
+  beds24_room_id,
+  apartment_name,
+  room_name,        // 🆕 AGREGAR ESTA LÍNEA
+  beds24_raw
+)
+VALUES (
+  $1,$2,$3,$4,$5,
+  $6,$7,$8,$9,$10,
+  $11,$12,$13,$14,$15,
+  $16,$17::jsonb    // 🆕 CAMBIAR $16 a $17
+)
     ON CONFLICT (beds24_booking_id)
-    DO UPDATE SET
-      apartment_id     = EXCLUDED.apartment_id,
-      room_id          = EXCLUDED.room_id,
-      booking_token    = COALESCE(NULLIF(EXCLUDED.booking_token, ''), checkins.booking_token),
-      beds24_room_id   = COALESCE(NULLIF(EXCLUDED.beds24_room_id, ''), checkins.beds24_room_id),
-      apartment_name   = COALESCE(NULLIF(EXCLUDED.apartment_name, ''), checkins.apartment_name),
+DO UPDATE SET
+  apartment_id     = EXCLUDED.apartment_id,
+  room_id          = EXCLUDED.room_id,
+  booking_token    = COALESCE(NULLIF(EXCLUDED.booking_token, ''), checkins.booking_token),
+  beds24_room_id   = COALESCE(NULLIF(EXCLUDED.beds24_room_id, ''), checkins.beds24_room_id),
+  apartment_name   = COALESCE(NULLIF(EXCLUDED.apartment_name, ''), checkins.apartment_name),
+  room_name        = COALESCE(NULLIF(EXCLUDED.room_name, ''), checkins.room_name),  // 🆕 AGREGAR
 
       full_name        = COALESCE(NULLIF(checkins.full_name, ''), EXCLUDED.full_name),
       email            = COALESCE(NULLIF(checkins.email, ''), EXCLUDED.email),
@@ -1431,24 +1403,25 @@ async function upsertCheckinFromBeds24(row) {
 
       beds24_raw       = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
     `,
-    [
-      apartmentId,                           // $1
-      beds24RoomId,                          // $2 room_id
-      bookingToken,                          // $3 booking_token
-      row.full_name || null,                 // $4
-      row.email || null,                     // $5
-      row.phone || null,                     // $6
-      row.arrival_date,                      // $7
-      row.arrival_time || null,              // $8
-      row.departure_date,                    // $9
-      row.departure_time || null,            // $10
-      row.adults != null ? Number(row.adults) : null,       // $11
-      row.children != null ? Number(row.children) : null,   // $12
-      row.beds24_booking_id != null ? String(row.beds24_booking_id) : null, // $13
-      beds24RoomId,                          // $14 beds24_room_id
-      row.apartment_name || null,            // $15
-      row.beds24_raw ? JSON.stringify(row.beds24_raw) : null // $16::jsonb
-    ]
+   [
+  apartmentId,                           // $1
+  beds24RoomId,                          // $2
+  bookingToken,                          // $3
+  row.full_name || null,                 // $4
+  row.email || null,                     // $5
+  row.phone || null,                     // $6
+  row.arrival_date,                      // $7
+  row.arrival_time || null,              // $8
+  row.departure_date,                    // $9
+  row.departure_time || null,            // $10
+  row.adults != null ? Number(row.adults) : null,       // $11
+  row.children != null ? Number(row.children) : null,   // $12
+  row.beds24_booking_id != null ? String(row.beds24_booking_id) : null, // $13
+  beds24RoomId,                          // $14
+  row.apartment_name || null,            // $15
+  row.room_name || null,                 // $16 🆕 AGREGAR
+  row.beds24_raw ? JSON.stringify(row.beds24_raw) : null // $17::jsonb (era $16)
+]
   );
 
   return { ok: true };
@@ -2612,6 +2585,7 @@ const arrivalsRes = await pool.query(
     c.beds24_booking_id,
     c.apartment_id,
     c.apartment_name,
+    c.room_name,
     c.full_name,
     c.phone,
     c.arrival_date,
@@ -2643,6 +2617,7 @@ const departuresRes = await pool.query(
     c.beds24_booking_id,
     c.apartment_id,
     c.apartment_name,
+    c.room_name,
     c.full_name,
     c.phone,
     c.arrival_date,
@@ -2769,11 +2744,11 @@ const guestBtn = guestPortalUrl
         <td>${calcNights(r.arrival_date, r.departure_date)}</td>
         
         <!-- 5. A|C -->
-<td style="white-space:nowrap;">${(r.adults || 0)}&nbsp;|&nbsp;${(r.children || 0)}</td>
+        <td style="white-space:nowrap;">${(r.adults || 0)}&nbsp;|&nbsp;${(r.children || 0)}</td>
         
         <!-- 6. Apartamento -->
         <td class="apartment-cell ${getColumnClass(r.apartment_id)}">
-          ${escapeHtml(r.apartment_name || "Sin nombre")}
+          ${escapeHtml(r.room_name || r.apartment_name || "Sin nombre")}
         </td>
         
         <!-- 7. Código -->
@@ -3231,6 +3206,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
