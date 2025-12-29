@@ -2777,21 +2777,25 @@ const guestBtn = guestPortalUrl
         </td>
         
         <!-- 7. Código -->
-        <td>
-          <form method="POST" action="/staff/bookings/${r.id}/lock" class="lock-form">
-            <input class="lock-input" name="lock_code" value="${r.lock_code || ""}" placeholder="0000" />
-            <button type="submit" class="btn-small">Guardar</button>
-          </form>
-        </td>
-        <!-- 8. Visible -->
-        <td>
-          <form method="POST" action="/staff/bookings/${r.id}/visibility" class="vis-form">
-            <span class="pill ${r.lock_code_visible ? "pill-yes" : "pill-no"}">${r.lock_code_visible ? "Sí" : "No"}</span>
-            <button type="submit" class="btn-small ${r.lock_code_visible ? "btn-ghost" : ""}">
-              ${r.lock_code_visible ? "Ocultar" : "Mostrar"}
-            </button>
-          </form>
-        </td>
+// Código de cerradura - columna 7
+<td>
+  <form method="POST" action="/staff/bookings/${r.id}/lock" class="lock-form">
+    <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+    <input class="lock-input" name="lock_code" value="${r.lock_code || ""}" placeholder="0000" />
+    <button type="submit" class="btn-small">Guardar</button>
+  </form>
+</td>
+
+// Visibilidad - columna 8
+<td>
+  <form method="POST" action="/staff/bookings/${r.id}/visibility" class="vis-form">
+    <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+    <span class="pill ${r.lock_code_visible ? "pill-yes" : "pill-no"}">${r.lock_code_visible ? "Sí" : "No"}</span>
+    <button type="submit" class="btn-small ${r.lock_code_visible ? "btn-ghost" : ""}">
+      ${r.lock_code_visible ? "Ocultar" : "Mostrar"}
+    </button>
+  </form>
+</td>
         
         <!-- 9. Acciones -->
         <td>
@@ -2842,8 +2846,105 @@ const guestBtn = guestPortalUrl
     `));
   }
 });
-// ===================== ADMIN: SET VISIBILITY =====================
+
+// ===================== ADMIN: SET LOCK CODE =====================
 app.post("/staff/bookings/:id/lock", async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const lockCode = String(req.body.lock_code || "").trim() || null;
+    const returnTo = req.body.returnTo || req.get('referer') || "/staff/checkins";
+
+    // 1) Update bookings + get booking_reference
+    const bRes = await pool.query(
+      `
+      UPDATE bookings
+      SET lock_code = $1
+      WHERE id = $2
+      RETURNING booking_reference
+      `,
+      [lockCode, bookingId]
+    );
+
+    const bookingRef = bRes.rows?.[0]?.booking_reference
+      ? String(bRes.rows[0].booking_reference)
+      : null;
+
+    // 2) Sync to checkins so Guest panel can show it
+    if (bookingRef) {
+      await pool.query(
+        `
+        UPDATE checkins
+        SET lock_code = $1
+        WHERE beds24_booking_id::text = $2::text
+           OR booking_token::text = $2::text
+           OR booking_reference::text = $2::text
+           OR external_booking_id::text = $2::text
+           OR provider_booking_id::text = $2::text
+           OR booking_id_from_start::text = $2::text
+           OR booking_id::text = $2::text
+        `,
+        [lockCode, bookingRef]
+      );
+    }
+
+    return res.redirect(returnTo);
+  } catch (e) {
+    console.error("Error saving lock code:", e);
+    const returnTo = req.body.returnTo || req.get('referer') || "/staff/checkins";
+    return res.redirect(returnTo + (returnTo.includes('?') ? '&' : '?') + 'error=lock_save');
+  }
+});
+
+// ===================== ADMIN: VISIBILITY TOGGLE =====================
+app.post("/staff/bookings/:id/visibility", async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const returnTo = req.body.returnTo || req.get('referer') || "/staff/checkins";
+
+    // 1) Toggle in bookings + get booking_reference + new visible state
+    const bRes = await pool.query(
+      `
+      UPDATE bookings
+      SET lock_code_visible = NOT COALESCE(lock_code_visible, false)
+      WHERE id = $1
+      RETURNING booking_reference, lock_code_visible
+      `,
+      [bookingId]
+    );
+
+    const bookingRef = bRes.rows?.[0]?.booking_reference
+      ? String(bRes.rows[0].booking_reference)
+      : null;
+
+    const visible = bRes.rows?.[0]?.lock_code_visible === true;
+
+    // 2) Sync to checkins so Guest panel can show/hide it
+    if (bookingRef) {
+      await pool.query(
+        `
+        UPDATE checkins
+        SET lock_visible = $1
+        WHERE beds24_booking_id::text = $2::text
+           OR booking_token::text = $2::text
+           OR booking_reference::text = $2::text
+           OR external_booking_id::text = $2::text
+           OR provider_booking_id::text = $2::text
+           OR booking_id_from_start::text = $2::text
+           OR booking_id::text = $2::text
+        `,
+        [visible, bookingRef]
+      );
+    }
+
+    return res.redirect(returnTo);
+  } catch (e) {
+    console.error("Error toggling visibility:", e);
+    const returnTo = req.body.returnTo || req.get('referer') || "/staff/checkins";
+    return res.redirect(returnTo + (returnTo.includes('?') ? '&' : '?') + 'error=visibility');
+  }
+});
+// ===================== ADMIN: SET VISIBILITY =====================
+/* app.post("/staff/bookings/:id/lock", async (req, res) => {
   try {
     const bookingId = req.params.id;
     const lockCode = String(req.body.lock_code || "").trim() || null;
@@ -2929,7 +3030,7 @@ app.post("/staff/bookings/:id/visibility", async (req, res) => {
     console.error("Error toggling visibility:", e);
     return res.status(500).send("Error updating visibility");
   }
-});
+}); */
 // ===================== MANAGER SETTINGS =====================
 // ===================== MANAGER: Sync Bookings manual =====================
 app.get("/manager/channels/bookingssync", async (req, res) => {
@@ -3189,6 +3290,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
