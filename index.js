@@ -1012,6 +1012,23 @@ td.apartment-cell.needs-clean {
   /* компактнее формы/кнопки */
   .lock-form{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
 
+  /* Mobile fix: remove side padding */
+@media (max-width: 640px) {
+  body {
+    padding: 0 !important;
+  }
+
+  .page,
+  .container,
+  .card {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    border-radius: 0 !important;
+  }
+}
+
   .lock-input{
     width:110px;
     min-width:110px;
@@ -3046,6 +3063,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
