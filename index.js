@@ -3133,41 +3133,43 @@ app.post("/manager/defaults/save", async (req, res) => {
 app.post("/manager/apartment/save", async (req, res) => {
   try {
     const id = Number(req.body.id);
-
     const {
       apartment_name,
+      support_phone,
       default_arrival_time,
       default_departure_time,
       registration_url,
       payment_url,
       keys_instructions_url,
     } = req.body;
-
+    
     await pool.query(
       `
       UPDATE beds24_rooms
       SET
         apartment_name = $2,
-        default_arrival_time = $3,
-        default_departure_time = $4,
-        registration_url = $5,
-        payment_url = $6,
-        keys_instructions_url = $7,
+        support_phone = $3,
+        default_arrival_time = $4,
+        default_departure_time = $5,
+        registration_url = $6,
+        payment_url = $7,
+        keys_instructions_url = $8,
         updated_at = now()
       WHERE id = $1
       `,
       [
         id,
-        apartment_name,
-        default_arrival_time,
-        default_departure_time,
-        registration_url,
-        payment_url,
-        keys_instructions_url,
+        apartment_name || null,  // Si está vacío, guarda NULL
+        support_phone || null,
+        default_arrival_time || null,
+        default_departure_time || null,
+        registration_url || null,
+        payment_url || null,
+        keys_instructions_url || null,
       ]
     );
-
-    res.redirect(`/manager?aptId=${encodeURIComponent(String(id))}`);
+    
+    res.redirect(`/manager/apartment?id=${encodeURIComponent(String(id))}`);
   } catch (err) {
     console.error("❌ /manager/apartment/save error:", err);
     res.status(500).send("Save apartment error");
@@ -3230,6 +3232,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
