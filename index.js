@@ -2779,18 +2779,35 @@ const guestBtn = guestPortalUrl
         <!-- 7. Código -->
         <td>
           <form method="POST" action="/staff/bookings/${r.id}/lock" class="lock-form">
-            <input class="lock-input" name="lock_code" value="${r.lock_code || ""}" placeholder="0000" />
-            <button type="submit" class="btn-small">Guardar</button>
-          </form>
+  <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+
+  <input
+    class="lock-input"
+    name="lock_code"
+    value="${escapeHtml(r.lock_code || "")}"
+    placeholder="0000"
+    inputmode="numeric"
+    pattern="[0-9]*"
+    autocomplete="one-time-code"
+    maxlength="12"
+  />
+
+  <button type="submit" class="btn-small">Guardar</button>
+</form>
         </td>
         <!-- 8. Visible -->
         <td>
-          <form method="POST" action="/staff/bookings/${r.id}/visibility" class="vis-form">
-            <span class="pill ${r.lock_code_visible ? "pill-yes" : "pill-no"}">${r.lock_code_visible ? "Sí" : "No"}</span>
-            <button type="submit" class="btn-small ${r.lock_code_visible ? "btn-ghost" : ""}">
-              ${r.lock_code_visible ? "Ocultar" : "Mostrar"}
-            </button>
-          </form>
+        <form method="POST" action="/staff/bookings/${r.id}/visibility" class="vis-form">
+  <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+
+  <span class="pill ${r.lock_code_visible ? "pill-yes" : "pill-no"}">
+    ${r.lock_code_visible ? "Sí" : "No"}
+  </span>
+
+  <button type="submit" class="btn-small ${r.lock_code_visible ? "btn-ghost" : ""}">
+    ${r.lock_code_visible ? "Ocultar" : "Mostrar"}
+  </button>
+</form>
         </td>
         
         <!-- 9. Acciones -->
@@ -2842,44 +2859,32 @@ const guestBtn = guestPortalUrl
     `));
   }
 });
+
+function safeRedirect(res, returnTo, fallback = "/staff/checkins") {
+  const target = String(returnTo || "").trim();
+  // allow only internal relative paths
+  if (target.startsWith("/")) return res.redirect(target);
+  return res.redirect(fallback);
+}
 // ===================== ADMIN: SET VISIBILITY =====================
 app.post("/staff/bookings/:id/lock", async (req, res) => {
   try {
     const bookingId = req.params.id;
-    const lockCode = String(req.body.lock_code || "").trim() || null;
+    const { lock_code, returnTo } = req.body;
 
-    // 1) Update bookings + get booking_reference
-    const bRes = await pool.query(
+    // keep only digits (so you can paste "12 34" and it becomes "1234")
+    const cleaned = String(lock_code || "").replace(/\D/g, "");
+
+    await pool.query(
       `
       UPDATE bookings
       SET lock_code = $1
       WHERE id = $2
-      RETURNING booking_reference
       `,
-      [lockCode, bookingId]
+      [cleaned || null, bookingId]
     );
 
-    const bookingRef = bRes.rows?.[0]?.booking_reference
-      ? String(bRes.rows[0].booking_reference)
-      : null;
-
-    // 2) Sync to checkins so Guest panel can show it
-    if (bookingRef) {
-      await pool.query(
-        `
-        UPDATE checkins
-        SET lock_code = $1
-        WHERE beds24_booking_id::text = $2::text
-           OR booking_token::text = $2::text
-           OR booking_reference::text = $2::text
-           OR external_booking_id::text = $2::text
-           OR provider_booking_id::text = $2::text
-        `,
-        [lockCode, bookingRef]
-      );
-    }
-
-    return res.redirect(req.headers.referer || "/staff/checkins");
+    return safeRedirect(res, returnTo);
   } catch (e) {
     console.error("Error saving lock code:", e);
     return res.status(500).send("Error saving lock code");
@@ -2890,41 +2895,18 @@ app.post("/staff/bookings/:id/lock", async (req, res) => {
 app.post("/staff/bookings/:id/visibility", async (req, res) => {
   try {
     const bookingId = req.params.id;
+    const { returnTo } = req.body;
 
-    // 1) Toggle in bookings + get booking_reference + new visible state
-    const bRes = await pool.query(
+    await pool.query(
       `
       UPDATE bookings
       SET lock_code_visible = NOT COALESCE(lock_code_visible, false)
       WHERE id = $1
-      RETURNING booking_reference, lock_code_visible
       `,
       [bookingId]
     );
 
-    const bookingRef = bRes.rows?.[0]?.booking_reference
-      ? String(bRes.rows[0].booking_reference)
-      : null;
-
-    const visible = bRes.rows?.[0]?.lock_code_visible === true;
-
-    // 2) Sync to checkins so Guest panel can show/hide it
-    if (bookingRef) {
-      await pool.query(
-        `
-        UPDATE checkins
-        SET lock_visible = $1
-        WHERE beds24_booking_id::text = $2::text
-           OR booking_token::text = $2::text
-           OR booking_reference::text = $2::text
-           OR external_booking_id::text = $2::text
-           OR provider_booking_id::text = $2::text
-        `,
-        [visible, bookingRef]
-      );
-    }
-
-    return res.redirect(req.headers.referer || "/staff/checkins");
+    return safeRedirect(res, returnTo);
   } catch (e) {
     console.error("Error toggling visibility:", e);
     return res.status(500).send("Error updating visibility");
@@ -3189,6 +3171,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
