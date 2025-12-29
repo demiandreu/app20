@@ -2912,6 +2912,27 @@ app.post("/staff/bookings/:id/visibility", async (req, res) => {
     return res.status(500).send("Error updating visibility");
   }
 });
+app.post("/staff/bookings/:id/delete", async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+    const { returnTo } = req.body;
+
+    // Soft delete (recommended)
+    await pool.query(
+      `
+      UPDATE bookings
+      SET is_cancelled = true
+      WHERE id = $1
+      `,
+      [bookingId]
+    );
+
+    return safeRedirect(res, returnTo);
+  } catch (e) {
+    console.error("Error deleting booking:", e);
+    return res.status(500).send("Error deleting booking");
+  }
+});
 // ===================== MANAGER SETTINGS =====================
 // ===================== MANAGER: Sync Bookings manual =====================
 app.get("/manager/channels/bookingssync", async (req, res) => {
@@ -3171,6 +3192,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
