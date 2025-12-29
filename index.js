@@ -2768,6 +2768,11 @@ const guestBtn = guestPortalUrl
             </button>
           </form>
         </td>
+        <td style="font-family:monospace; font-size:13px;">
+  ${escapeHtml(String(
+    r.booking_reference || r.beds24_booking_id || r.id
+  ))}
+</td>
         
         <!-- 2. Huésped -->
         <td>${guestBtn}</td>
@@ -2848,6 +2853,7 @@ const guestBtn = guestPortalUrl
         <thead>
           <tr>
             <th class="sticky-col">Limpieza</th>
+            <th>ID</th>
             <th>Huésped</th>
             <th>${dateColTitle}</th>
             <th>Noches</th>
@@ -3233,6 +3239,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
