@@ -2794,6 +2794,15 @@ const guestBtn = guestPortalUrl
 
   <button type="submit" class="btn-small">Guardar</button>
 </form>
+<form method="POST" action="/staff/bookings/${r.id}/lock/clear" style="display:inline;">
+  <button
+    type="submit"
+    class="btn-small btn-ghost danger"
+    onclick="return confirm('¿Borrar el código de acceso?');"
+  >
+    Clear
+  </button>
+</form>
         </td>
         <!-- 8. Visible -->
         <td>
@@ -2866,6 +2875,27 @@ function safeRedirect(res, returnTo, fallback = "/staff/checkins") {
   if (target.startsWith("/")) return res.redirect(target);
   return res.redirect(fallback);
 }
+app.post("/staff/bookings/:id/lock/clear", async (req, res) => {
+  try {
+    const bookingId = req.params.id;
+
+    await pool.query(
+      `
+      UPDATE bookings
+      SET
+        lock_code = NULL,
+        lock_code_visible = false
+      WHERE id = $1
+      `,
+      [bookingId]
+    );
+
+    res.redirect(req.headers.referer || "/staff/checkins");
+  } catch (e) {
+    console.error("Error clearing lock code:", e);
+    res.status(500).send("Error clearing lock code");
+  }
+});
 // ===================== ADMIN: SET VISIBILITY =====================
 app.post("/staff/bookings/:id/lock", async (req, res) => {
   try {
@@ -3192,6 +3222,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
