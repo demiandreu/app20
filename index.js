@@ -1523,17 +1523,20 @@ app.get("/debug/beds24", async (req, res) => {
 app.get("/manager", async (req, res) => {
   try {
     const { rows: apartments } = await pool.query(`
-      SELECT id, apartment_name
-      FROM beds24_rooms
-      ORDER BY apartment_name ASC
-    `);
+  SELECT 
+    id, 
+    COALESCE(custom_name, apartment_name) as display_name
+  FROM beds24_rooms
+  WHERE is_active = true
+  ORDER BY display_name ASC
+`);
 
-    const options = apartments
-      .map(
-        (a) =>
-          `<option value="${a.id}">${escapeHtml(a.apartment_name || ("Apartment #" + a.id))}</option>`
-      )
-      .join("");
+const options = apartments
+  .map(
+    (a) =>
+      `<option value="${a.id}">${escapeHtml(a.display_name || ("Apartment #" + a.id))}</option>`
+  )
+  .join("");
 
     const html = `
       <h1>Manager</h1>
@@ -3214,6 +3217,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
