@@ -1309,38 +1309,12 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
   };
 }
 
-
-/*  return {
-    apartment_id: String(b.roomId || roomIdFallback || ""),
-    apartment_name: apartmentName,
-    booking_token: b.bookingToken || null,
-    full_name: `${b.firstName || ""} ${b.lastName || ""}`.trim() || "",
-    email: b.email || "unknown@unknown",
-    phone: b.phone || b.mobile || "+000",
-    arrival_date: b.arrival || null,
-    arrival_time: b.arrivalTime ? b.arrivalTime.slice(0, 5) : "16:00",
-    departure_date: b.departure || null,
-    departure_time: b.departureTime ? b.departureTime.slice(0, 5) : "11:00",
-    adults: b.numAdult || 0,
-    children: b.numChild || 0,
-    beds24_booking_id: b.id ? BigInt(b.id) : null,
-    beds24_room_id: String(b.roomId || ""),
-    status: b.status || "confirmed",
-    cancelled: b.status === "cancelled",
-    lock_code: null,
-    lock_visible: false,
-    clean_ok: false,
-    beds24_raw: b, // payload completo
-    provider: "beds24",
-    // otros campos...
-  }; */
 async function upsertCheckinFromBeds24(row) {
-  // If dates are missing, skip (can't insert without dates)
+  // If dates are missing, skip
   if (!row.arrival_date || !row.departure_date) {
     return { skipped: true, reason: "missing_dates" };
   }
 
-  // Use beds24_room_id directly as apartment_id
   const apartmentId = row.beds24_room_id ? String(row.beds24_room_id) : 
                       row.apartment_id ? String(row.apartment_id) : null;
 
@@ -1348,21 +1322,33 @@ async function upsertCheckinFromBeds24(row) {
     return { skipped: true, reason: "missing_apartment_id" };
   }
 
-  // Ensure beds24_rooms mapping exists (auto-create if needed)
-  if (apartmentId && row.apartment_name) {
+  // 🔥 BUSCAR EL NOMBRE CORRECTO EN beds24_rooms
+  let correctApartmentName = row.apartment_name; // usar el que viene por defecto
+  
+  const roomRes = await pool.query(
+    `SELECT apartment_name FROM beds24_rooms 
+     WHERE beds24_room_id = $1 AND is_active = true LIMIT 1`,
+    [apartmentId]
+  );
+  
+  if (roomRes.rows.length > 0 && roomRes.rows[0].apartment_name) {
+    // Si existe un mapeo en beds24_rooms, SIEMPRE úsalo
+    correctApartmentName = roomRes.rows[0].apartment_name;
+  } else {
+    // Si NO existe, crear el mapeo con el nombre que viene de la API
     await pool.query(
       `INSERT INTO beds24_rooms (beds24_room_id, apartment_name, is_active)
        VALUES ($1, $2, true)
        ON CONFLICT (beds24_room_id) 
        DO UPDATE SET 
-         apartment_name = COALESCE(EXCLUDED.apartment_name, beds24_rooms.apartment_name),
+         apartment_name = COALESCE(beds24_rooms.apartment_name, EXCLUDED.apartment_name),
          is_active = true,
          updated_at = NOW()`,
-      [apartmentId, row.apartment_name]
+      [apartmentId, correctApartmentName]
     );
   }
 
-  // Upsert into checkins
+  // Upsert into checkins con el nombre correcto
   const result = await pool.query(
     `INSERT INTO checkins (
       apartment_id,
@@ -1410,7 +1396,7 @@ async function upsertCheckinFromBeds24(row) {
     RETURNING beds24_booking_id, apartment_name`,
     [
       apartmentId,                          // $1 apartment_id
-      apartmentId,                          // $2 room_id (same as apartment_id)
+      apartmentId,                          // $2 room_id
       row.booking_token || null,            // $3
       row.full_name || null,                // $4
       row.email || null,                    // $5
@@ -1422,7 +1408,7 @@ async function upsertCheckinFromBeds24(row) {
       row.adults != null ? row.adults : 0,  // $11
       row.children != null ? row.children : 0, // $12
       row.beds24_booking_id || null,        // $13
-      row.apartment_name || null,           // $14
+      correctApartmentName,                 // $14 ← 🔥 USAR EL NOMBRE CORRECTO
       row.beds24_raw ? JSON.stringify(row.beds24_raw) : null, // $15
       row.status || 'confirmed',            // $16
       row.cancelled || false,               // $17
@@ -1430,10 +1416,8 @@ async function upsertCheckinFromBeds24(row) {
     ]
   );
 
-  const wasInserted = result.rowCount > 0;
   return { 
     ok: true, 
-    inserted: wasInserted,
     booking_id: result.rows[0]?.beds24_booking_id,
     apartment_name: result.rows[0]?.apartment_name
   };
@@ -3204,6 +3188,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
