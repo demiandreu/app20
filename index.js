@@ -1268,10 +1268,16 @@ function toTimeOnly(v) {
 
 
 function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
-  // 🆕 CAPTURAR ROOM NAME del API
-  let roomName = b.roomName || roomNameFallback || "";
+  console.log('=== BOOKING DEBUG ===');
+  console.log('Booking ID:', b.id);
+  console.log('roomId:', b.roomId);
+  console.log('roomName:', b.roomName);
+  console.log('room:', b.room);
+  console.log('apiMessage:', b.apiMessage ? b.apiMessage.substring(0, 100) : 'N/A');
+  console.log('Campos disponibles:', Object.keys(b).slice(0, 20));
+  console.log('===================');
   
-  // Apartment name (puede ser diferente al room_name en algunos casos)
+  let roomName = b.roomName || roomNameFallback || "";
   let apartmentName = roomName;
   
   if (!apartmentName && b.apiMessage) {
@@ -1285,38 +1291,31 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
 
   const arrivalDate = toDateOnly(b.arrival || b.checkin_date || b.checkin);
   const arrivalTime = toTimeOnly(b.arrivalTime || b.checkin_time || b.checkin);
-
   const departureDate = toDateOnly(b.departure || b.checkout_date || b.checkout);
   const departureTime = toTimeOnly(b.departureTime || b.checkout_time || b.checkout);
 
   return {
     apartment_id: String(b.roomId || roomIdFallback || ""),
     apartment_name: apartmentName,
-    room_name: roomName,  // 🆕 NUEVO CAMPO - nombre real de Beds24
-
+    room_name: roomName,
     booking_token: b.bookingToken || b.id ? `beds24_${b.id}` : `temp_${Date.now()}`,
     full_name: `${b.firstName || ""} ${b.lastName || ""}`.trim() || "Guest",
     email: b.email || "unknown@unknown.com",
     phone: b.phone || b.mobile || "+000000000",
-
     arrival_date: arrivalDate,
     arrival_time: arrivalTime,
-
     departure_date: departureDate,
     departure_time: departureTime,
-
     adults: Number(b.numAdult || 0),
     children: Number(b.numChild || 0),
-
     beds24_booking_id: b.id != null ? String(b.id) : null,
     beds24_room_id: String(b.roomId || roomIdFallback || ""),
-
     status: b.status || "confirmed",
     cancelled: String(b.status || "").toLowerCase() === "cancelled",
-
     beds24_raw: b,
     provider: "beds24",
   };
+}
 }
 
 async function upsertCheckinFromBeds24(row) {
@@ -2952,16 +2951,7 @@ app.post("/staff/checkins/:id/delete", async (req, res) => {
 // ===================== MANAGER: Sync Bookings manual =====================
 app.get("/manager/channels/bookingssync", async (req, res) => {
   try {
-    for (const b of bookings) {
-  // AGREGAR ESTAS LINEAS DE DEBUG AQUI:
-  console.log('=== BOOKING DEBUG ===');
-  console.log('Booking ID:', b.id);
-  console.log('roomId:', b.roomId);
-  console.log('roomName:', b.roomName);
-  console.log('room:', b.room);
-  console.log('Campos disponibles:', Object.keys(b));
-  console.log('===================');
-  
+   
   // Filtrar manualmente por fechas...
   const arrival = new Date(b.arrival || b.arrivalDate);
     const propertyIdForToken = "203178";
@@ -3219,6 +3209,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
