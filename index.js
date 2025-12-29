@@ -1266,43 +1266,6 @@ function toTimeOnly(v) {
   return null;
 }
 
-function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
-  let apartmentName = b.roomName || roomNameFallback || "";
-
-  if (!apartmentName && b.apiMessage) {
-    const match = String(b.apiMessage).match(/^Room:\s*(.+?)(\r?\n|$)/i);
-    if (match) apartmentName = match[1].trim();
-  }
-
-  if (!apartmentName) {
-    apartmentName = `Apartamento ${b.roomId || roomIdFallback || "sin id"}`;
-  }
-
-  const row = {
-    apartment_id: String(b.roomId || roomIdFallback || ""),   // may be empty
-    apartment_name: apartmentName,
-
-    arrival_date: toDateOnly(b.arrival || b.arrival_date || b.checkin || null),
-    arrival_time: toTimeOnly(b.arrivalTime || b.arrival_time || b.checkin || null),
-
-    departure_date: toDateOnly(b.departure || b.departure_date || b.checkout || null),
-    departure_time: toTimeOnly(b.departureTime || b.departure_time || b.checkout || null),
-
-    adults: Number(b.numAdult || 0),
-    children: Number(b.numChild || 0),
-
-    beds24_booking_id: b.id != null ? String(b.id) : null,
-    beds24_room_id: String(b.roomId || roomIdFallback || ""),
-
-    status: b.status || "confirmed",
-    cancelled: String(b.status || "").toLowerCase() === "cancelled",
-
-    beds24_raw: b,
-    provider: "beds24",
-  };
-
-  return row;
-}
 
 function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
   // Apartment name
@@ -1315,7 +1278,6 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
 
   const arrivalDate = toDateOnly(b.arrival || b.arrival_date || b.checkin);
   const arrivalTime = toTimeOnly(b.arrivalTime || b.arrival_time || b.checkin);
-
   const departureDate = toDateOnly(b.departure || b.departure_date || b.checkout);
   const departureTime = toTimeOnly(b.departureTime || b.departure_time || b.checkout);
 
@@ -1323,15 +1285,13 @@ function mapBeds24BookingToRow(b, roomNameFallback = "", roomIdFallback = "") {
     apartment_id: String(b.roomId || roomIdFallback || ""),
     apartment_name: apartmentName,
 
-    // ✅ AGREGAR ESTOS CAMPOS QUE FALTAN:
-    booking_token: b.bookingToken || b.id ? `beds24_${b.id}` : `temp_${Date.now()}`,
+    booking_token: b.id != null ? `beds24_${b.id}` : `temp_${Date.now()}`,
     full_name: `${b.firstName || ""} ${b.lastName || ""}`.trim() || "Guest",
     email: b.email || "unknown@unknown.com",
-    phone: b.phone || b.mobile || "+000000000",
+    phone: b.phone || b.mobile || "",
 
     arrival_date: arrivalDate,
     arrival_time: arrivalTime,
-
     departure_date: departureDate,
     departure_time: departureTime,
 
@@ -1463,8 +1423,7 @@ DO UPDATE SET
   row.children != null ? row.children : null,   // $12
   row.beds24_booking_id != null ? String(row.beds24_booking_id) : null, // $13
   row.apartment_name || null,           // $14
-  row.beds24_raw || null,               // $15
-]
+  row.beds24_raw ? JSON.stringify(row.beds24_raw) : null]
   );
 
   return { ok: true };
@@ -2683,17 +2642,15 @@ const arrivalsRes = await pool.query(
 // Build needsCleanSet
 const { rows: needsCleanRows } = await pool.query(
   `
-  SELECT DISTINCT c_today.apartment_id
-  FROM checkins c_today
-  JOIN checkins c_yesterday
-    ON c_today.apartment_id = c_yesterday.apartment_id
-  WHERE c_today.cancelled = false
-    AND c_yesterday.cancelled = false
-    -- arrival today
-    AND c_today.arrival_date = $1::date
-    -- occupied yesterday
-    AND c_yesterday.arrival_date <= $2::date
-    AND c_yesterday.departure_date > $2::date
+SELECT DISTINCT c_today.apartment_id
+FROM checkins c_today
+JOIN checkins c_yesterday
+  ON c_today.apartment_id = c_yesterday.apartment_id
+WHERE c_today.cancelled = false
+  AND c_yesterday.cancelled = false
+  AND c_today.arrival_date = $1::date
+  AND c_yesterday.arrival_date <= $2::date
+  AND c_yesterday.departure_date > $2::date
   `,
   [today, yesterday]
 );
@@ -3236,6 +3193,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
