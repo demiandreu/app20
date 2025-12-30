@@ -1520,6 +1520,53 @@ app.get("/debug/beds24", async (req, res) => {
 
 // ===================== MANAGER: Menu =====================
 // ===== MANAGER HOME: select apartment =====
+app.get("/manager", async (req, res) => {
+  try {
+    const { rows: apartments } = await pool.query(`
+      SELECT 
+        id, 
+       COALESCE(
+  NULLIF(apartment_name, ''),
+  custom_name,
+  'Apartment #' || id::text
+) as apartment_name
+      FROM beds24_rooms
+      WHERE is_active = true
+      ORDER BY apartment_name ASC
+    `);
+    
+    const options = apartments
+      .map((a) => 
+        `<option value="${a.id}">${escapeHtml(a.apartment_name)}</option>`
+      )
+      .join("");
+    
+    const html = `
+      <h1>Manager</h1>
+      <h3>Apartment settings</h3>
+      <form method="GET" action="/manager/apartment">
+        <label>Select apartment:</label><br/>
+        <select name="id" style="min-width:320px; padding:6px;">
+          ${options}
+        </select>
+        <button type="submit" style="padding:6px 10px;">Open</button>
+      </form>
+      <hr/>
+      <h3>Quick links</h3>
+      <ul>
+        <li><a href="/manager/channels/sync">Sync Rooms</a></li>
+        <li><a href="/manager/channels/bookingssync">Sync Bookings</a></li>
+        <li><a href="/staff/checkins">Staff · Check-ins</a></li>
+      </ul>
+    `;
+    
+    res.send(renderPage("Manager", html));
+  } catch (e) {
+    console.error("❌ /manager error:", e);
+    res.status(500).send("Manager error");
+  }
+});
+// ===== EDIT APARTMENT SETTINGS PAGE =====
 app.get("/manager/apartment", async (req, res) => {
   try {
     const id = Number(req.query.id);
@@ -1550,6 +1597,7 @@ app.get("/manager/apartment", async (req, res) => {
     
     const roomId = String(a.beds24_room_id || "").trim();
     const beds24Name = a.custom_name || "";
+    const displayName = a.apartment_name || beds24Name || `Apartment #${a.id}`;
     
     const html = `
       <h1>Apartment Settings</h1>
@@ -1566,14 +1614,15 @@ app.get("/manager/apartment", async (req, res) => {
         <input type="hidden" name="id" value="${a.id}" />
         
         <label>Apartment name</label><br/>
-        ${beds24Name ? `<p class="muted" style="margin:4px 0 8px;">Room ID: <strong>${escapeHtml(roomId)}</strong> · Beds24 name: <strong>${escapeHtml(beds24Name)}</strong></p>` : ''}
+        ${beds24Name ? `<p class="muted" style="margin:4px 0 8px;">Beds24 name: <strong>${escapeHtml(beds24Name)}</strong></p>` : ''}
+        ${roomId ? `<p class="muted">Room ID: <strong>${escapeHtml(roomId)}</strong> · Beds24 name: <strong>${escapeHtml(beds24Name)}</strong></p>` : ''}
         <input 
           name="apartment_name" 
-          value="${escapeHtml(beds24Name)}" 
-          placeholder="Custom apartment name"
+          value="${escapeHtml(a.apartment_name || "")}" 
+          placeholder="${beds24Name ? `Leave empty to use: ${escapeHtml(beds24Name)}` : 'Custom name'}"
           style="width:100%; max-width:700px;" 
         />
-        <p class="muted" style="margin:4px 0 12px;">This is the name from Beds24. Edit to customize or leave as is.</p>
+        <p class="muted" style="margin:4px 0 12px;">Leave empty to use the Beds24 name automatically</p>
         
         <label>Support WhatsApp (human)</label><br/>
         <input
@@ -3179,7 +3228,6 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
-
 
 
 
