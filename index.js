@@ -601,7 +601,52 @@ app.get("/manager/apartment/sections", async (req, res) => {
     );
   }
 });
+// ============================================
+// FUNCIONES HELPER PARA GUEST PANEL
+// ============================================
 
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function fmtDate(dateStr) {
+  if (!dateStr) return 'N/A';
+  try {
+    const d = new Date(dateStr);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  } catch (e) {
+    return dateStr;
+  }
+}
+
+function fmtTime(timeStr) {
+  if (!timeStr) return '';
+  return String(timeStr).substring(0, 5);
+}
+
+function toYouTubeEmbed(url) {
+  const u = String(url || "");
+  const m1 = u.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/);
+  const m2 = u.match(/[?&]v=([A-Za-z0-9_-]{6,})/);
+  const id = (m1 && m1[1]) || (m2 && m2[1]);
+  return id ? `https://www.youtube.com/embed/${id}` : null;
+}
+
+function toVimeoEmbed(url) {
+  const u = String(url || "");
+  const m = u.match(/vimeo\.com\/(\d+)/);
+  const id = m && m[1];
+  return id ? `https://player.vimeo.com/video/${id}` : null;
+}
 // ===================== HELPERS =====================
 function ymd(d) {
   const yyyy = d.getFullYear();
@@ -2374,12 +2419,38 @@ app.get("/guest/:bookingId", async (req, res) => {
   const { bookingId } = req.params;
   console.log("🔍 Request for bookingId:", bookingId);
   
+  // Detectar idioma
+  const lang = String(req.query.lang || 'es').toLowerCase().substring(0, 2);
+  const validLangs = ['es', 'en', 'fr', 'de', 'ru'];
+  const currentLang = validLangs.includes(lang) ? lang : 'es';
+  
   try {
-    const result = await pool.query(...);
+    // Buscar la reserva
+    const result = await pool.query(
+      `SELECT c.*, 
+              br.apartment_name as apartment_from_rooms,
+              br.address
+       FROM checkins c
+       LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.room_id::text
+       WHERE (
+         REPLACE(c.beds24_booking_id::text, ' ', '') = $1
+         OR c.booking_token = $2
+         OR c.booking_token = $3
+       )
+       AND (c.cancelled IS NULL OR c.cancelled = '[]'::jsonb OR c.cancelled = false)
+       LIMIT 1`,
+      [bookingId, bookingId, `beds24_${bookingId}`]
+    );
+    
     console.log("📊 Query result:", result.rows.length);
     
     if (result.rows.length === 0) {
-      return res.status(404).send(...);
+      console.log("❌ Booking not found for:", bookingId);
+      return res.status(404).send(renderPage("Not Found", `
+        <h1>❌ Reserva no encontrada</h1>
+        <p>La reserva ${bookingId} no existe.</p>
+        <p><a href="/" class="btn-link">← Volver</a></p>
+      `));
     }
     
     const r = result.rows[0];
@@ -2393,43 +2464,17 @@ app.get("/guest/:bookingId", async (req, res) => {
     const apartmentName = r.apartment_name || r.apartment_from_rooms || 'N/A';
     console.log("🏠 Apartment name:", apartmentName);
     
-    const secRes = await pool.query(...);
-    console.log("📋 Sections found:", secRes.rows.length);
-    
-    // Verificar que existan las funciones necesarias
-    console.log("🔧 Functions available:", {
-      fmtDate: typeof fmtDate,
-      fmtTime: typeof fmtTime,
-      escapeHtml: typeof escapeHtml,
-      getTranslatedText: typeof getTranslatedText
-    });
-    
-    // ... resto del código
-    
-  } catch (e) {
-    console.error("❌ Guest dashboard error:", e);
-    console.error("Stack:", e.stack);
-    return res.status(500).send(renderPage("Error", `
-      <div class="card">
-        <h1>Error</h1>
-        <p>${escapeHtml(e.message || String(e))}</p>
-      </div>
-    `));
-  }
-});
-  
-    
-    const r = result.rows[0];
-    
     // Cargar secciones del apartamento
     const secRes = await pool.query(
       `SELECT id, title, body, icon, new_media_type, new_media_url, translations
        FROM apartment_sections
-       WHERE room_id = $1
+       WHERE room_id::text = $1
          AND is_active = true
        ORDER BY sort_order ASC, id ASC`,
-      [r.room_id]
+      [String(r.room_id)]
     );
+    
+    console.log("📋 Sections found:", secRes.rows.length);
     
     // Textos traducidos
     const uiText = {
@@ -2444,7 +2489,6 @@ app.get("/guest/:bookingId", async (req, res) => {
         people: 'personas',
         accessCode: 'Código de acceso',
         showCode: 'Mostrar código',
-        codeUnavailable: 'Código aún no disponible',
         noShareCode: 'No compartas este código con terceros.',
         apartmentInfo: 'Información del apartamento',
         noInfo: 'Todavía no hay información para este apartamento.',
@@ -2460,7 +2504,6 @@ app.get("/guest/:bookingId", async (req, res) => {
         people: 'people',
         accessCode: 'Access code',
         showCode: 'Show code',
-        codeUnavailable: 'Code not yet available',
         noShareCode: 'Do not share this code with third parties.',
         apartmentInfo: 'Apartment information',
         noInfo: 'No information available yet for this apartment.',
@@ -2476,7 +2519,6 @@ app.get("/guest/:bookingId", async (req, res) => {
         people: 'человек',
         accessCode: 'Код доступа',
         showCode: 'Показать код',
-        codeUnavailable: 'Код еще недоступен',
         noShareCode: 'Не делитесь этим кодом с третьими лицами.',
         apartmentInfo: 'Информация о квартире',
         noInfo: 'Информация для этой квартиры пока недоступна.',
@@ -2492,7 +2534,6 @@ app.get("/guest/:bookingId", async (req, res) => {
         people: 'personnes',
         accessCode: "Code d'accès",
         showCode: 'Afficher le code',
-        codeUnavailable: 'Code pas encore disponible',
         noShareCode: 'Ne partagez pas ce code avec des tiers.',
         apartmentInfo: "Informations sur l'appartement",
         noInfo: "Aucune information disponible pour cet appartement pour le moment.",
@@ -2508,7 +2549,6 @@ app.get("/guest/:bookingId", async (req, res) => {
         people: 'Personen',
         accessCode: 'Zugangscode',
         showCode: 'Code anzeigen',
-        codeUnavailable: 'Code noch nicht verfügbar',
         noShareCode: 'Teilen Sie diesen Code nicht mit Dritten.',
         apartmentInfo: 'Wohnungsinformationen',
         noInfo: 'Für diese Wohnung sind noch keine Informationen verfügbar.',
@@ -2537,405 +2577,149 @@ app.get("/guest/:bookingId", async (req, res) => {
       return section[field] || '';
     }
     
-    // Generar HTML de secciones (usa tu código existente con toYouTubeEmbed, etc.)
+    // Verificar funciones
+    console.log("🔧 Functions available:", {
+      fmtDate: typeof fmtDate,
+      fmtTime: typeof fmtTime,
+      escapeHtml: typeof escapeHtml,
+      getTranslatedText: typeof getTranslatedText
+    });
+    
     // Generar HTML de secciones
-const sectionsHtml = secRes.rows.length === 0
-  ? `<div class="muted">${t.noInfo}</div>`
-  : `<h2 style="margin-top:18px;">${t.apartmentInfo}</h2>
-     <div id="guest-accordion">
-       ${secRes.rows.map((s) => {
-         const icon = s.icon ? `${s.icon} ` : '';
-         const translatedTitle = getTranslatedText(s, 'title', currentLang);
-         const title = icon + escapeHtml(translatedTitle);
-         const rawBody = getTranslatedText(s, 'body', currentLang);
-         
-         const bodyHtml = escapeHtml(rawBody)
-           .replace(/\n/g, "<br/>")
-           .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
-             const safeUrl = escapeHtml(url);
-             return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
-           });
-         
-         const panelId = `acc_${s.id}`;
-         
-         return `
-           <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
-             <button type="button" data-acc-btn="${panelId}"
-               style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;">
-               ${title}
-             </button>
-             <div id="${panelId}" style="display:none;padding:12px 14px;">
-               <div>${bodyHtml}</div>
-             </div>
-           </div>
-         `;
-       }).join('')}
-     </div>
-     <script>
-       (function () {
-         var buttons = document.querySelectorAll("[data-acc-btn]");
-         buttons.forEach(function (btn) {
-           btn.addEventListener("click", function () {
-             var id = btn.getAttribute("data-acc-btn");
-             var panel = document.getElementById(id);
-             if (!panel) return;
-             panel.style.display = (panel.style.display === "block") ? "none" : "block";
-           });
-         });
-       })();
-     </script>`;
+    const sectionsHtml = secRes.rows.length === 0
+      ? `<div class="muted">${t.noInfo}</div>`
+      : `<h2 style="margin-top:18px;">${t.apartmentInfo}</h2>
+         <div id="guest-accordion">
+           ${secRes.rows.map((s) => {
+             const icon = s.icon ? `${s.icon} ` : '';
+             const translatedTitle = getTranslatedText(s, 'title', currentLang);
+             const title = icon + escapeHtml(translatedTitle);
+             const rawBody = getTranslatedText(s, 'body', currentLang);
+             
+             const bodyHtml = escapeHtml(rawBody)
+               .replace(/\n/g, "<br/>")
+               .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+                 const safeUrl = escapeHtml(url);
+                 return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
+               });
+             
+             const panelId = `acc_${s.id}`;
+             
+             return `
+               <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
+                 <button type="button" data-acc-btn="${panelId}"
+                   style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;">
+                   ${title}
+                 </button>
+                 <div id="${panelId}" style="display:none;padding:12px 14px;">
+                   <div>${bodyHtml}</div>
+                 </div>
+               </div>
+             `;
+           }).join('')}
+         </div>
+         <script>
+           (function () {
+             var buttons = document.querySelectorAll("[data-acc-btn]");
+             buttons.forEach(function (btn) {
+               btn.addEventListener("click", function () {
+                 var id = btn.getAttribute("data-acc-btn");
+                 var panel = document.getElementById(id);
+                 if (!panel) return;
+                 panel.style.display = (panel.style.display === "block") ? "none" : "block";
+               });
+             });
+           })();
+         </script>`;
     
-  const html = `
-  <div style="text-align:right; margin-bottom:16px;">
-    <select onchange="window.location.href = window.location.pathname + '?lang=' + this.value" 
-            style="padding:8px 12px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:20px; cursor:pointer; width:100px;">
-      <option value="es" ${currentLang === 'es' ? 'selected' : ''}>🇪🇸</option>
-      <option value="en" ${currentLang === 'en' ? 'selected' : ''}>🇬🇧</option>
-      <option value="fr" ${currentLang === 'fr' ? 'selected' : ''}>🇫🇷</option>
-      <option value="de" ${currentLang === 'de' ? 'selected' : ''}>🇩🇪</option>
-      <option value="ru" ${currentLang === 'ru' ? 'selected' : ''}>🇷🇺</option>
-    </select>
-  </div>
-  
-  <div class="card">
-    <div style="text-align:center; margin-bottom:30px;">
-      <h1 style="margin-bottom:8px; font-size:28px;">${t.welcome}</h1>
-      <div style="font-size:18px; color:#6b7280;">${escapeHtml(r.apartment_name || "")}</div>
-      <div style="font-size:13px; color:#9ca3af; margin-top:8px;">${t.reservation}: ${escapeHtml(String(r.beds24_booking_id || ""))}</div>
-    </div>
-    
-    <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px;">
-      <div style="display:flex; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:16px;">
-        <div style="flex:1; min-width:140px;">
-          <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.arrival}</div>
-          <div style="font-size:16px; font-weight:600;">${fmtDate(r.arrival_date)}</div>
-          ${r.arrival_time ? `<div style="color:#6b7280; font-size:14px;">${fmtTime(r.arrival_time)}</div>` : ''}
-        </div>
-        <div style="width:1px; background:#e5e7eb;"></div>
-        <div style="flex:1; min-width:140px;">
-          <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.departure}</div>
-          <div style="font-size:16px; font-weight:600;">${fmtDate(r.departure_date)}</div>
-          ${r.departure_time ? `<div style="color:#6b7280; font-size:14px;">${fmtTime(r.departure_time)}</div>` : ''}
-        </div>
+    // Renderizar página
+    const html = `
+      <div style="text-align:right; margin-bottom:16px;">
+        <select onchange="window.location.href = window.location.pathname + '?lang=' + this.value" 
+                style="padding:8px 12px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:20px; cursor:pointer; width:100px;">
+          <option value="es" ${currentLang === 'es' ? 'selected' : ''}>🇪🇸</option>
+          <option value="en" ${currentLang === 'en' ? 'selected' : ''}>🇬🇧</option>
+          <option value="fr" ${currentLang === 'fr' ? 'selected' : ''}>🇫🇷</option>
+          <option value="de" ${currentLang === 'de' ? 'selected' : ''}>🇩🇪</option>
+          <option value="ru" ${currentLang === 'ru' ? 'selected' : ''}>🇷🇺</option>
+        </select>
       </div>
       
-      <div style="border-top:1px solid #e5e7eb; padding-top:16px;">
-        <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.guests}</div>
-        <div style="font-size:16px;"><span style="font-weight:600;">${totalGuests}</span> ${t.people} <span style="color:#9ca3af;">•</span> ${Number(r.adults) || 0} ${t.adults}, ${Number(r.children) || 0} ${t.children}</div>
-      </div>
-    </div>
-    
-    ${r.lock_visible && r.lock_code ? `
-      <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px; background:#f9fafb;">
-        <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:8px;">
-          🔑 ${t.accessCode}
+      <div class="card">
+        <div style="text-align:center; margin-bottom:30px;">
+          <h1 style="margin-bottom:8px; font-size:28px;">${t.welcome}</h1>
+          <div style="font-size:18px; color:#6b7280;">${escapeHtml(apartmentName)}</div>
+          <div style="font-size:13px; color:#9ca3af; margin-top:8px;">${t.reservation}: ${escapeHtml(String(r.beds24_booking_id || ""))}</div>
         </div>
-        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-          <span id="lockCodeMasked" style="font-size:22px; letter-spacing:3px; color:#374151; font-family:monospace;">••••</span>
-          <span id="lockCodeValue" style="display:none; font-size:28px; font-weight:700; letter-spacing:3px; color:#374151; font-family:monospace;">
-            ${escapeHtml(String(r.lock_code))}
-          </span>
-          <button type="button" onclick="toggleLockCode()"
-            style="display:inline-block; padding:10px 16px; background:#3b82f6; color:white; border:0; border-radius:8px; font-weight:600; cursor:pointer;">
-            ${t.showCode}
-          </button>
+        
+        <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px;">
+          <div style="display:flex; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:16px;">
+            <div style="flex:1; min-width:140px;">
+              <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.arrival}</div>
+              <div style="font-size:16px; font-weight:600;">${fmtDate(r.arrival_date)}</div>
+              ${r.arrival_time ? `<div style="color:#6b7280; font-size:14px;">${fmtTime(r.arrival_time)}</div>` : ''}
+            </div>
+            <div style="width:1px; background:#e5e7eb;"></div>
+            <div style="flex:1; min-width:140px;">
+              <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.departure}</div>
+              <div style="font-size:16px; font-weight:600;">${fmtDate(r.departure_date)}</div>
+              ${r.departure_time ? `<div style="color:#6b7280; font-size:14px;">${fmtTime(r.departure_time)}</div>` : ''}
+            </div>
+          </div>
+          
+          <div style="border-top:1px solid #e5e7eb; padding-top:16px;">
+            <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.guests}</div>
+            <div style="font-size:16px;"><span style="font-weight:600;">${totalGuests}</span> ${t.people} <span style="color:#9ca3af;">•</span> ${Number(r.adults) || 0} ${t.adults}, ${Number(r.children) || 0} ${t.children}</div>
+          </div>
         </div>
-        <p style="margin:10px 0 0; color:#6b7280; font-size:13px;">${t.noShareCode}</p>
+        
+        ${r.lock_visible && r.lock_code ? `
+          <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px; background:#f9fafb;">
+            <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:8px;">
+              🔑 ${t.accessCode}
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <span id="lockCodeMasked" style="font-size:22px; letter-spacing:3px; color:#374151; font-family:monospace;">••••</span>
+              <span id="lockCodeValue" style="display:none; font-size:28px; font-weight:700; letter-spacing:3px; color:#374151; font-family:monospace;">
+                ${escapeHtml(String(r.lock_code))}
+              </span>
+              <button type="button" onclick="toggleLockCode()"
+                style="display:inline-block; padding:10px 16px; background:#3b82f6; color:white; border:0; border-radius:8px; font-weight:600; cursor:pointer;">
+                ${t.showCode}
+              </button>
+            </div>
+            <p style="margin:10px 0 0; color:#6b7280; font-size:13px;">${t.noShareCode}</p>
+          </div>
+        ` : ''}
+        
+        ${sectionsHtml}
+        
+        <script>
+          function toggleLockCode() {
+            var masked = document.getElementById("lockCodeMasked");
+            var value = document.getElementById("lockCodeValue");
+            if (!masked || !value) return;
+            var isHidden = value.style.display === "none";
+            value.style.display = isHidden ? "inline" : "none";
+            masked.style.display = isHidden ? "none" : "inline";
+          }
+        </script>
       </div>
-    ` : ''}
-    
-    ${sectionsHtml}
-    
-    <script>
-      function toggleLockCode() {
-        var masked = document.getElementById("lockCodeMasked");
-        var value = document.getElementById("lockCodeValue");
-        if (!masked || !value) return;
-        var isHidden = value.style.display === "none";
-        value.style.display = isHidden ? "inline" : "none";
-        masked.style.display = isHidden ? "none" : "inline";
-      }
-    </script>
-  </div>
-`;
+    `;
     
     return res.send(renderPage("Panel del huésped", html));
     
   } catch (e) {
-    console.error("Guest dashboard error:", e);
+    console.error("❌ Guest dashboard error:", e);
+    console.error("Stack:", e.stack);
     return res.status(500).send(renderPage("Error", `
-      <div class="card">No se pudo cargar el panel: \${escapeHtml(e.message || String(e))}</div>
+      <div class="card">
+        <h1>Error</h1>
+        <p>${escapeHtml(e.message || String(e))}</p>
+      </div>
     `));
   }
 });
-
-app.get("/manager/whatsapp", async (req, res) => {
-  try {
-    // Cargar apartamentos para el selector
-    const { rows: apartments } = await pool.query(`
-      SELECT 
-        beds24_room_id,
-        apartment_name
-      FROM beds24_rooms
-      WHERE is_active = true
-      ORDER BY apartment_name ASC
-    `);
-
-    // Cargar respuestas existentes
-    const { rows: responses } = await pool.query(`
-      SELECT 
-        wr.*,
-        COALESCE(br.apartment_name, 'Global') as apartment_display_name  // ✅
-      FROM whatsapp_responses wr
-      LEFT JOIN beds24_rooms br ON br.beds24_room_id = wr.room_id
-      ORDER BY wr.category, wr.sort_order ASC, wr.id ASC
-    `);
-
-    // Categorías predefinidas
-    const categories = [
-      { value: "general", label: "📌 General" },
-      { value: "checkin", label: "🔑 Check-in" },
-      { value: "checkout", label: "🚪 Check-out" },
-      { value: "wifi", label: "📶 WiFi" },
-      { value: "parking", label: "🚗 Parking" },
-      { value: "location", label: "📍 Ubicación" },
-      { value: "amenities", label: "🏊 Servicios" },
-      { value: "emergency", label: "🚨 Emergencia" },
-      { value: "payment", label: "💳 Pago" },
-      { value: "cleaning", label: "🧹 Limpieza" },
-    ];
-
-    const apartmentOptions = apartments.map(a => 
-      `<option value="${escapeHtml(a.beds24_room_id)}">${escapeHtml(a.apartment_name)}</option>`
-    ).join('');
-
-    const categoryOptions = categories.map(c =>
-      `<option value="${c.value}">${c.label}</option>`
-    ).join('');
-
-    // Acordeón de respuestas
-    const responsesHtml = responses.map((r, index) => {
-      const keywords = Array.isArray(r.trigger_keywords) ? r.trigger_keywords.join(', ') : '';
-      const checked = r.is_active ? 'checked' : '';
-      const categoryLabel = categories.find(c => c.value === r.category)?.label || r.category;
-      
-      return `
-        <div class="accordion-item">
-          <div class="accordion-header" onclick="toggleAccordion(${r.id})">
-            <div class="accordion-title">
-              <span class="accordion-icon">${categoryLabel}</span>
-              <strong>${escapeHtml(keywords || 'Sin keywords')}</strong>
-              <span class="accordion-badge ${r.is_active ? 'active' : 'inactive'}">
-                ${r.is_active ? '✓ Activa' : '✗ Inactiva'}
-              </span>
-              <span class="muted" style="font-size:11px;">${escapeHtml(r.apartment_display_name)}</span>
-            </div>
-            <span class="accordion-arrow" id="arrow-${r.id}">▼</span>
-          </div>
-          
-          <div class="accordion-content" id="content-${r.id}">
-            <div class="accordion-body">
-              <div style="display:grid; gap:12px;">
-                <div>
-                  <label>Categoría</label>
-                  <select name="category_${r.id}" style="width:100%;">
-                    ${categories.map(c => 
-                      `<option value="${c.value}" ${r.category === c.value ? 'selected' : ''}>${c.label}</option>`
-                    ).join('')}
-                  </select>
-                </div>
-
-                <div>
-                  <label>Keywords (separadas por comas)</label>
-                  <input name="keywords_${r.id}" value="${escapeHtml(keywords)}" placeholder="wifi, contraseña, password" style="width:100%;" />
-                </div>
-
-                <div>
-                  <label>Respuesta automática</label>
-                  <textarea name="response_${r.id}" rows="4" style="width:100%;">${escapeHtml(r.response_text || '')}</textarea>
-                </div>
-
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                  <div>
-                    <label>Apartamento</label>
-                    <select name="room_id_${r.id}" style="width:100%;">
-                      <option value="" ${!r.room_id ? 'selected' : ''}>🌐 Global (todos)</option>
-                      ${apartments.map(a =>
-                        `<option value="${escapeHtml(a.beds24_room_id)}" ${r.room_id === a.beds24_room_id ? 'selected' : ''}>${escapeHtml(a.apartment_name)}</option>`
-                      ).join('')}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label>Estado</label>
-                    <label style="display:flex; gap:8px; align-items:center; padding:8px;">
-                      <input type="checkbox" name="is_active_${r.id}" ${checked}/>
-                      Activa
-                    </label>
-                  </div>
-                </div>
-
-                <div style="display:flex; gap:8px; padding-top:12px; border-top:1px solid #e5e7eb;">
-                  <button class="btn-mini" type="submit" name="move" value="up:${r.id}">↑ Subir</button>
-                  <button class="btn-mini" type="submit" name="move" value="down:${r.id}">↓ Bajar</button>
-                  <button class="btn-mini danger" type="submit" name="delete" value="${r.id}" onclick="return confirm('¿Eliminar esta respuesta?')">🗑️ Eliminar</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    const html = `
-      <style>
-        .accordion-item {
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          margin-bottom: 8px;
-          background: white;
-          overflow: hidden;
-        }
-        .accordion-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 16px;
-          cursor: pointer;
-          background: #f9fafb;
-          transition: background 0.2s;
-        }
-        .accordion-header:hover { background: #f3f4f6; }
-        .accordion-title {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          flex: 1;
-        }
-        .accordion-icon { font-size: 20px; }
-        .accordion-badge {
-          padding: 4px 10px;
-          border-radius: 12px;
-          font-size: 12px;
-          font-weight: 500;
-        }
-        .accordion-badge.active {
-          background: #d1fae5;
-          color: #065f46;
-        }
-        .accordion-badge.inactive {
-          background: #fee2e2;
-          color: #991b1b;
-        }
-        .accordion-arrow {
-          transition: transform 0.3s;
-          font-size: 12px;
-          color: #6b7280;
-        }
-        .accordion-arrow.rotated { transform: rotate(-180deg); }
-        .accordion-content {
-          max-height: 0;
-          overflow: hidden;
-          transition: max-height 0.3s ease;
-        }
-        .accordion-content.open { max-height: 2000px; }
-        .accordion-body {
-          padding: 16px;
-          border-top: 1px solid #e5e7eb;
-        }
-        .btn-mini {
-          padding: 6px 10px;
-          font-size: 14px;
-          cursor: pointer;
-          border: 1px solid #ddd;
-          background: #f9f9f9;
-          border-radius: 4px;
-        }
-        .btn-mini:hover { background: #e9e9e9; }
-        .danger {
-          background: #fee2e2;
-          border-color: #fca5a5;
-        }
-        .danger:hover { background: #fecaca; }
-        .muted { opacity: 0.65; font-size: 12px; }
-      </style>
-
-      <script>
-        function toggleAccordion(id) {
-          const content = document.getElementById('content-' + id);
-          const arrow = document.getElementById('arrow-' + id);
-          content.classList.toggle('open');
-          arrow.classList.toggle('rotated');
-        }
-      </script>
-
-      <h1>WhatsApp Respuestas Automáticas</h1>
-      <p><a href="/manager">← Back to Manager</a></p>
-
-      <form method="POST" action="/manager/whatsapp/save">
-        <!-- Añadir nueva respuesta -->
-        <div style="margin:12px 0; padding:16px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
-          <h2 style="margin:0 0 12px; font-size:16px;">➕ Añadir nueva respuesta automática</h2>
-          <div style="display:grid; gap:12px;">
-            <div>
-              <label>Categoría</label>
-              <select name="new_category" style="width:100%;">
-                ${categoryOptions}
-              </select>
-            </div>
-
-            <div>
-              <label>Keywords (separadas por comas)</label>
-              <input name="new_keywords" placeholder="wifi, contraseña, password" style="width:100%;" />
-              <p class="muted">El bot responderá cuando el mensaje contenga alguna de estas palabras</p>
-            </div>
-
-            <div>
-              <label>Respuesta automática</label>
-              <textarea name="new_response" rows="4" placeholder="La contraseña del WiFi es..." style="width:100%;"></textarea>
-            </div>
-
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-              <div>
-                <label>Apartamento</label>
-                <select name="new_room_id" style="width:100%;">
-                  <option value="">🌐 Global (todos los apartamentos)</option>
-                  ${apartmentOptions}
-                </select>
-              </div>
-
-              <div>
-                <label style="display:flex; gap:8px; align-items:center; padding:18px 0 0 0;">
-                  <input type="checkbox" name="new_is_active" checked />
-                  Activa
-                </label>
-              </div>
-            </div>
-
-            <button type="submit" name="add" value="1" style="padding:10px 20px;">Añadir respuesta</button>
-          </div>
-        </div>
-
-        <!-- Respuestas existentes -->
-        <div style="margin-top:16px; padding:16px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
-          <h2 style="margin:0 0 16px; font-size:16px;">📋 Respuestas configuradas</h2>
-          
-          <div class="accordion">
-            ${responsesHtml || '<p class="muted">No hay respuestas configuradas todavía.</p>'}
-          </div>
-
-          ${responses.length > 0 ? '<div style="margin-top:16px;"><button type="submit" name="save" value="1" style="padding:10px 20px;">💾 Guardar cambios</button></div>' : ''}
-        </div>
-      </form>
-    `;
-
-    res.send(renderPage("WhatsApp Responses", html));
-  } catch (e) {
-    console.error("❌ /manager/whatsapp error:", e);
-    res.status(500).send("Error loading WhatsApp page");
-  }
-});
-
 app.post("/manager/whatsapp/save", async (req, res) => {
   try {
     // 1) AÑADIR nueva respuesta
@@ -3738,6 +3522,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
