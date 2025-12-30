@@ -2731,7 +2731,7 @@ function getTranslatedText(section, field, lang) {
     // 5) Render page (Spanish UI)
   const html = `
   <div style="text-align:right; margin-bottom:16px; max-width:600px; margin-left:auto; margin-right:auto;">
-    <select onchange="window.location.href = window.location.pathname + '?lang=' + this.value" style="padding:8px 12px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:20px; cursor:pointer; width:60px;">
+    <select onchange="window.location.href = window.location.pathname + '?lang=' + this.value" style="padding:8px 12px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:20px; cursor:pointer; width:100px;">
       <option value="es" ${currentLang === 'es' ? 'selected' : ''}>🇪🇸</option>
       <option value="en" ${currentLang === 'en' ? 'selected' : ''}>🇬🇧</option>
       <option value="fr" ${currentLang === 'fr' ? 'selected' : ''}>🇫🇷</option>
@@ -3900,6 +3900,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
