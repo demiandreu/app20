@@ -1906,41 +1906,61 @@ if (req.body.add === "1") {
     }
 
     // 4) SAVE all existing sections
-    if (req.body.save === "1") {
-      const allSections = await pool.query(
-        `SELECT id FROM apartment_sections WHERE room_id::text = $1`,
-        [roomId]
-      );
+  // 4) SAVE all existing sections
+if (req.body.save === "1") {
+  const allSections = await pool.query(
+    `SELECT id FROM apartment_sections WHERE room_id::text = $1`,
+    [roomId]
+  );
 
-      for (const sec of allSections.rows) {
-        const id = sec.id;
-        const sortOrder = parseInt(req.body[`sort_order_${id}`], 10) || 0;
-        const isActive = req.body[`is_active_${id}`] === "on";
-        const title = String(req.body[`title_${id}`] || "").trim();
-        const body = String(req.body[`body_${id}`] || "").trim();
-        const icon = String(req.body[`icon_${id}`] || "").trim();
-        const mediaType = String(req.body[`new_media_type_${id}`] || "none").trim();
-        const mediaUrl = String(req.body[`new_media_url_${id}`] || "").trim();
+  for (const sec of allSections.rows) {
+    const id = sec.id;
+    const sortOrder = parseInt(req.body[`sort_order_${id}`], 10) || 0;
+    const isActive = req.body[`is_active_${id}`] === "on";
+    const title = String(req.body[`title_${id}`] || "").trim();
+    const body = String(req.body[`body_${id}`] || "").trim();
+    const icon = String(req.body[`icon_${id}`] || "").trim();
+    const mediaType = String(req.body[`new_media_type_${id}`] || "none").trim();
+    const mediaUrl = String(req.body[`new_media_url_${id}`] || "").trim();
 
-        await pool.query(
-          `
-          UPDATE apartment_sections
-          SET 
-            sort_order = $1,
-            is_active = $2,
-            title = $3,
-            body = $4,
-            icon = $5,
-            new_media_type = $6,
-            new_media_url = $7
-          WHERE id = $8
-          `,
-          [sortOrder, isActive, title, body, icon, mediaType, mediaUrl, id]
-        );
+    // Recoger traducciones (si existen)
+    const translations = {
+      title: {
+        es: title,
+        en: String(req.body[`title_${id}_en`] || "").trim(),
+        fr: String(req.body[`title_${id}_fr`] || "").trim(),
+        de: String(req.body[`title_${id}_de`] || "").trim(),
+        ru: String(req.body[`title_${id}_ru`] || "").trim(),
+      },
+      body: {
+        es: body,
+        en: String(req.body[`body_${id}_en`] || "").trim(),
+        fr: String(req.body[`body_${id}_fr`] || "").trim(),
+        de: String(req.body[`body_${id}_de`] || "").trim(),
+        ru: String(req.body[`body_${id}_ru`] || "").trim(),
       }
+    };
 
-      return res.redirect(`/manager/apartment/sections?room_id=${roomId}`);
-    }
+    await pool.query(
+      `
+      UPDATE apartment_sections
+      SET 
+        sort_order = $1,
+        is_active = $2,
+        title = $3,
+        body = $4,
+        icon = $5,
+        new_media_type = $6,
+        new_media_url = $7,
+        translations = $8
+      WHERE id = $9
+      `,
+      [sortOrder, isActive, title, body, icon, mediaType, mediaUrl, JSON.stringify(translations), id]
+    );
+  }
+
+  return res.redirect(`/manager/apartment/sections?room_id=${roomId}`);
+}
 
     return res.status(400).send("Unknown action");
   } catch (e) {
@@ -3778,6 +3798,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
