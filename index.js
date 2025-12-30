@@ -2532,7 +2532,8 @@ app.get("/guest/:bookingId", async (req, res) => {
                .replace(/\n/g, "<br/>")
                .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
                  const safeUrl = escapeHtml(url);
-                 return \`<a href="\${safeUrl}" target="_blank" rel="noopener" class="btn-link">\${safeUrl}</a>\`;
+// ✅ BIEN - usar comillas simples o escapar
+return '<a href="' + safeUrl + '" target="_blank" rel="noopener" class="btn-link">' + safeUrl + '</a>';
                });
              
              const panelId = \`acc_\${s.id}\`;
@@ -3717,6 +3718,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
