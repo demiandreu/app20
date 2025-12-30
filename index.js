@@ -1550,11 +1550,12 @@ app.get("/manager", async (req, res) => {
       </form>
       <hr/>
       <h3>Quick links</h3>
-      <ul>
-        <li><a href="/manager/channels/sync">Sync Rooms</a></li>
-        <li><a href="/manager/channels/bookingssync">Sync Bookings</a></li>
-        <li><a href="/staff/checkins">Staff · Check-ins</a></li>
-      </ul>
+     <ul>
+  <li><a href="/manager/channels/sync">Sync Rooms</a></li>
+  <li><a href="/manager/channels/bookingssync">Sync Bookings</a></li>
+  <li><a href="/staff/checkins">Staff · Check-ins</a></li>
+  <li><a href="/manager/whatsapp">💬 WhatsApp Responses</a></li>
+</ul>
     `;
     
     res.send(renderPage("Manager", html));
@@ -2804,6 +2805,119 @@ app.get("/manager/whatsapp", async (req, res) => {
   }
 });
 
+app.post("/manager/whatsapp/save", async (req, res) => {
+  try {
+    // 1) AÑADIR nueva respuesta
+    if (req.body.add === "1") {
+      const keywords = String(req.body.new_keywords || "").trim();
+      const keywordsArray = keywords ? keywords.split(',').map(k => k.trim()).filter(k => k) : [];
+      
+      await pool.query(
+        `
+        INSERT INTO whatsapp_responses 
+          (room_id, trigger_keywords, response_text, category, is_active)
+        VALUES ($1, $2, $3, $4, $5)
+        `,
+        [
+          req.body.new_room_id || null,
+          keywordsArray,
+          req.body.new_response || '',
+          req.body.new_category || 'general',
+          req.body.new_is_active === 'on'
+        ]
+      );
+
+      return res.redirect('/manager/whatsapp');
+    }
+
+    // 2) ELIMINAR respuesta
+    if (req.body.delete) {
+      const deleteId = parseInt(req.body.delete, 10);
+      await pool.query(
+        `DELETE FROM whatsapp_responses WHERE id = $1`,
+        [deleteId]
+      );
+      return res.redirect('/manager/whatsapp');
+    }
+
+    // 3) MOVER arriba/abajo
+    if (req.body.move) {
+      const [direction, idStr] = req.body.move.split(':');
+      const moveId = parseInt(idStr, 10);
+
+      const { rows } = await pool.query(
+        `SELECT id, sort_order FROM whatsapp_responses ORDER BY category, sort_order ASC, id ASC`
+      );
+
+      const arr = rows;
+      const idx = arr.findIndex(r => r.id === moveId);
+
+      if (idx !== -1) {
+        if (direction === 'up' && idx > 0) {
+          const temp = arr[idx].sort_order;
+          arr[idx].sort_order = arr[idx - 1].sort_order;
+          arr[idx - 1].sort_order = temp;
+        } else if (direction === 'down' && idx < arr.length - 1) {
+          const temp = arr[idx].sort_order;
+          arr[idx].sort_order = arr[idx + 1].sort_order;
+          arr[idx + 1].sort_order = temp;
+        }
+
+        for (const r of arr) {
+          await pool.query(
+            `UPDATE whatsapp_responses SET sort_order = $1 WHERE id = $2`,
+            [r.sort_order, r.id]
+          );
+        }
+      }
+
+      return res.redirect('/manager/whatsapp');
+    }
+
+    // 4) GUARDAR todas las respuestas existentes
+    if (req.body.save === "1") {
+      const { rows: allResponses } = await pool.query(
+        `SELECT id FROM whatsapp_responses`
+      );
+
+      for (const resp of allResponses.rows) {
+        const id = resp.id;
+        const keywords = String(req.body[`keywords_${id}`] || '').trim();
+        const keywordsArray = keywords ? keywords.split(',').map(k => k.trim()).filter(k => k) : [];
+        
+        await pool.query(
+          `
+          UPDATE whatsapp_responses
+          SET 
+            category = $1,
+            trigger_keywords = $2,
+            response_text = $3,
+            room_id = $4,
+            is_active = $5,
+            updated_at = now()
+          WHERE id = $6
+          `,
+          [
+            req.body[`category_${id}`] || 'general',
+            keywordsArray,
+            req.body[`response_${id}`] || '',
+            req.body[`room_id_${id}`] || null,
+            req.body[`is_active_${id}`] === 'on',
+            id
+          ]
+        );
+      }
+
+      return res.redirect('/manager/whatsapp');
+    }
+
+    return res.status(400).send("Unknown action");
+  } catch (e) {
+    console.error("❌ /manager/whatsapp/save error:", e);
+    res.status(500).send("Error saving WhatsApp responses");
+  }
+});
+
 // ===================== STAFF: CHECKINS LIST (FIXED) =====================
 app.get("/staff/checkins", async (req, res) => {
   try {
@@ -3491,6 +3605,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
