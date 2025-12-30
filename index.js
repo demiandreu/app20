@@ -1435,7 +1435,8 @@ async function upsertCheckinFromBeds24(row) {
   if (!row.arrival_date || !row.departure_date) {
     return { skipped: true, reason: "missing_dates" };
   }
-
+  const beds24RoomId = row.beds24_room_id != null ? String(row.beds24_room_id) : null;
+  let apartmentId = row.apartment_id ? String(row.apartment_id) : null;
 // Buscar el ID de beds24_rooms
 let roomDbId = null;
 if (beds24RoomId) {
@@ -3900,6 +3901,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
