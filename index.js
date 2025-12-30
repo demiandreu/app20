@@ -1470,31 +1470,31 @@ if (beds24RoomId) {
 
   await pool.query(
     `
-    INSERT INTO checkins (
-      apartment_id,
-      room_id,
-      booking_token,
-      full_name,
-      email,
-      phone,
-      arrival_date,
-      arrival_time,
-      departure_date,
-      departure_time,
-      adults,
-      children,
-      beds24_booking_id,
-      beds24_room_id,
-      apartment_name,
-      room_name,
-      beds24_raw
-    )
-    VALUES (
-      $1,$2,$3,$4,$5,
-      $6,$7,$8,$9,$10,
-      $11,$12,$13,$14,$15,
-      $16,$17::jsonb
-    )
+   INSERT INTO checkins (
+  apartment_id,    // 1
+  room_id,         // 2
+  booking_token,   // 3
+  full_name,       // 4
+  email,           // 5
+  phone,           // 6
+  arrival_date,    // 7
+  arrival_time,    // 8
+  departure_date,  // 9
+  departure_time,  // 10
+  adults,          // 11
+  children,        // 12
+  beds24_booking_id, // 13
+  beds24_room_id,  // 14 ← ESTÁ AQUÍ
+  apartment_name,  // 15
+  room_name,       // 16
+  beds24_raw       // 17
+)
+   VALUES (
+  $1,$2,$3,$4,$5,     // 1-5
+  $6,$7,$8,$9,$10,    // 6-10
+  $11,$12,$13,$14,$15, // 11-15
+  $16,$17::jsonb      // 16-17
+)
     ON CONFLICT (beds24_booking_id)
     DO UPDATE SET
       apartment_id     = EXCLUDED.apartment_id,
@@ -3900,6 +3900,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
