@@ -1782,7 +1782,7 @@ app.post("/manager/apartment", async (req, res) => {
     id,
     apartment_name,
     beds_room_id,
-     support_phone,
+    support_phone,
     default_arrival_time,
     default_departure_time,
     registration_url,
@@ -1815,7 +1815,8 @@ app.post("/manager/apartment", async (req, res) => {
 
   res.redirect(`/manager/apartment?id=${id}`);
 });
-  };
+
+// [AQUÍ EMPIEZA LA SIGUIENTE RUTA - no borres esto]
 
   await pool.query(
     `
@@ -4041,6 +4042,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
