@@ -1820,34 +1820,45 @@ app.post("/manager/apartment", async (req, res) => {
 // ========== POST: create new accordion section ==========
 // CREATE new section (from manager page)
 
-app.post("/manager/apartment/sections/save", async (req, res) => {
-  try {
-    const roomId = String(req.body.room_id || "").trim();
-    if (!roomId) {
-      return res.status(400).send("room_id required");
+// 1) ADD new section
+if (req.body.add === "1") {
+  const newTitle = String(req.body.new_title || "").trim();
+  const newBody = String(req.body.new_body || "").trim();
+  const newIcon = String(req.body.new_icon || "").trim();
+  const newMediaType = String(req.body.new_media_type || "none").trim();
+  const newMediaUrl = String(req.body.new_media_url || "").trim();
+  const newSortOrder = parseInt(req.body.new_sort_order, 10) || 1;
+  const newIsActive = req.body.new_is_active === "on";
+
+  // Recoger traducciones
+  const translations = {
+    title: {
+      es: newTitle,
+      en: String(req.body.new_title_en || "").trim(),
+      fr: String(req.body.new_title_fr || "").trim(),
+      de: String(req.body.new_title_de || "").trim(),
+      ru: String(req.body.new_title_ru || "").trim(),
+    },
+    body: {
+      es: newBody,
+      en: String(req.body.new_body_en || "").trim(),
+      fr: String(req.body.new_body_fr || "").trim(),
+      de: String(req.body.new_body_de || "").trim(),
+      ru: String(req.body.new_body_ru || "").trim(),
     }
+  };
 
-    // 1) ADD new section
-    if (req.body.add === "1") {
-      const newTitle = String(req.body.new_title || "").trim();
-      const newBody = String(req.body.new_body || "").trim();
-      const newIcon = String(req.body.new_icon || "").trim();
-      const newMediaType = String(req.body.new_media_type || "none").trim();
-      const newMediaUrl = String(req.body.new_media_url || "").trim();
-      const newSortOrder = parseInt(req.body.new_sort_order, 10) || 1;
-      const newIsActive = req.body.new_is_active === "on";
+  await pool.query(
+    `
+    INSERT INTO apartment_sections 
+      (room_id, title, body, icon, sort_order, is_active, new_media_type, new_media_url, translations)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    `,
+    [roomId, newTitle, newBody, newIcon, newSortOrder, newIsActive, newMediaType, newMediaUrl, JSON.stringify(translations)]
+  );
 
-      await pool.query(
-        `
-        INSERT INTO apartment_sections 
-          (room_id, title, body, icon, sort_order, is_active, new_media_type, new_media_url)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        `,
-        [roomId, newTitle, newBody, newIcon, newSortOrder, newIsActive, newMediaType, newMediaUrl]
-      );
-
-      return res.redirect(`/manager/apartment/sections?room_id=${roomId}`);
-    }
+  return res.redirect(`/manager/apartment/sections?room_id=${roomId}`);
+}
 
     // 2) DELETE a section
     if (req.body.delete) {
@@ -3767,6 +3778,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
