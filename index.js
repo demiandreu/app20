@@ -1446,22 +1446,7 @@ if (beds24RoomId) {
   );
   roomDbId = roomRes.rows?.[0]?.id ? String(roomRes.rows[0].id) : null;
 }
-    if (!beds24RoomId) return { skipped: true, reason: "missing_beds24_room_id" };
 
-    const aptRes = await pool.query(
-      `
-      SELECT id
-      FROM apartments
-      WHERE beds24_room_id::text = $1
-      LIMIT 1
-      `,
-      [beds24RoomId]
-    );
-
-    apartmentId = aptRes.rows?.[0]?.id ? String(aptRes.rows[0].id) : null;
-    if (!apartmentId) {
-      return { skipped: true, reason: `apartment_not_mapped_for_room_${beds24RoomId}` };
-  }
 
   const bookingToken =
     row.booking_token != null && String(row.booking_token).trim() !== ""
@@ -1518,7 +1503,7 @@ if (beds24RoomId) {
       beds24_raw       = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
     `,
     [
-      apartmentId,                           // $1
+      null,                           // $1
       roomDbId,                          // $2 room_id
       bookingToken,                          // $3 booking_token
       row.full_name || null,                 // $4
@@ -3899,6 +3884,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
