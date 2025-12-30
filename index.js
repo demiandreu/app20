@@ -3005,20 +3005,25 @@ function renderTable(rows, mode) {
     ? `Salidas <span class="muted">(${rows.length})</span>` 
     : `Llegadas <span class="muted">(${rows.length})</span>`;
   const dateColTitle = mode === "departures" ? "Salida" : "Llegada";
-
+  
   const tbody = rows.length ? rows.map(r => {
     const mainDate = mode === "departures" 
       ? `${fmtDate(r.departure_date)} ${fmtTime(r.departure_time)}`
       : `${fmtDate(r.arrival_date)} ${fmtTime(r.arrival_time)}`;
+    
+    // ✅ NUEVO - Determinar bookingId y URL del guest panel
+    const bookingId = r.beds24_booking_id 
+      ? String(r.beds24_booking_id).replace(/\s/g, '')
+      : r.booking_token || r.id;
 
-  const bookingRef = r.beds24_booking_id || r.booking_token || r.id;
-    const guestPortalUrl = r.room_id
-      ? `/guest/${encodeURIComponent(String(r.room_id))}/${encodeURIComponent(String(bookingRef))}`
+    const guestPortalUrl = bookingId
+      ? `/guest/${encodeURIComponent(bookingId)}`
       : null;
 
-const guestBtn = guestPortalUrl
-  ? `<a class="btn-small btn-ghost" href="${guestPortalUrl}" target="_blank">Abrir</a>`
-  : `<span class="muted">Sin link</span>`;
+    const guestBtn = guestPortalUrl
+      ? `<a class="btn-small btn-ghost" href="${guestPortalUrl}" target="_blank">Abrir</a>`
+      : `<span class="muted">Sin link</span>`;
+    
     return `
       <tr>
         <!-- 1. Limpieza -->
@@ -3521,6 +3526,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
