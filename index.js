@@ -2518,126 +2518,126 @@ app.get("/guest/:bookingId", async (req, res) => {
     }
     
     // Generar HTML de secciones (usa tu código existente con toYouTubeEmbed, etc.)
-    const sectionsHtml = secRes.rows.length === 0
-      ? `<div class="muted">${t.noInfo}</div>`
-      : `<h2 style="margin-top:18px;">${t.apartmentInfo}</h2>
-         <div id="guest-accordion">
-           ${secRes.rows.map((s) => {
-             const icon = s.icon ? `${s.icon} ` : '';
-             const translatedTitle = getTranslatedText(s, 'title', currentLang);
-             const title = icon + escapeHtml(translatedTitle);
-             const rawBody = getTranslatedText(s, 'body', currentLang);
-             
-             const bodyHtml = escapeHtml(rawBody)
-               .replace(/\n/g, "<br/>")
-               .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
-                 const safeUrl = escapeHtml(url);
-// ✅ BIEN - usar comillas simples o escapar
-return '<a href="' + safeUrl + '" target="_blank" rel="noopener" class="btn-link">' + safeUrl + '</a>';
-               });
-             
-             const panelId = \`acc_\${s.id}\`;
-             
-             return \`
-               <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
-                 <button type="button" data-acc-btn="\${panelId}"
-                   style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;">
-                   \${title}
-                 </button>
-                 <div id="\${panelId}" style="display:none;padding:12px 14px;">
-                   <div>\${bodyHtml}</div>
-                 </div>
-               </div>
-             \`;
-           }).join('')}
-         </div>
-         <script>
-           (function () {
-             var buttons = document.querySelectorAll("[data-acc-btn]");
-             buttons.forEach(function (btn) {
-               btn.addEventListener("click", function () {
-                 var id = btn.getAttribute("data-acc-btn");
-                 var panel = document.getElementById(id);
-                 if (!panel) return;
-                 panel.style.display = (panel.style.display === "block") ? "none" : "block";
-               });
-             });
-           })();
-         </script>`;
+    // Generar HTML de secciones
+const sectionsHtml = secRes.rows.length === 0
+  ? `<div class="muted">${t.noInfo}</div>`
+  : `<h2 style="margin-top:18px;">${t.apartmentInfo}</h2>
+     <div id="guest-accordion">
+       ${secRes.rows.map((s) => {
+         const icon = s.icon ? `${s.icon} ` : '';
+         const translatedTitle = getTranslatedText(s, 'title', currentLang);
+         const title = icon + escapeHtml(translatedTitle);
+         const rawBody = getTranslatedText(s, 'body', currentLang);
+         
+         const bodyHtml = escapeHtml(rawBody)
+           .replace(/\n/g, "<br/>")
+           .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+             const safeUrl = escapeHtml(url);
+             return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
+           });
+         
+         const panelId = `acc_${s.id}`;
+         
+         return `
+           <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
+             <button type="button" data-acc-btn="${panelId}"
+               style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;">
+               ${title}
+             </button>
+             <div id="${panelId}" style="display:none;padding:12px 14px;">
+               <div>${bodyHtml}</div>
+             </div>
+           </div>
+         `;
+       }).join('')}
+     </div>
+     <script>
+       (function () {
+         var buttons = document.querySelectorAll("[data-acc-btn]");
+         buttons.forEach(function (btn) {
+           btn.addEventListener("click", function () {
+             var id = btn.getAttribute("data-acc-btn");
+             var panel = document.getElementById(id);
+             if (!panel) return;
+             panel.style.display = (panel.style.display === "block") ? "none" : "block";
+           });
+         });
+       })();
+     </script>`;
     
-    const html = \`
-      <div style="text-align:right; margin-bottom:16px;">
-        <select onchange="window.location.href = window.location.pathname + '?lang=' + this.value" 
-                style="padding:8px 12px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:20px; cursor:pointer; width:100px;">
-          <option value="es" \${currentLang === 'es' ? 'selected' : ''}>🇪🇸</option>
-          <option value="en" \${currentLang === 'en' ? 'selected' : ''}>🇬🇧</option>
-          <option value="fr" \${currentLang === 'fr' ? 'selected' : ''}>🇫🇷</option>
-          <option value="de" \${currentLang === 'de' ? 'selected' : ''}>🇩🇪</option>
-          <option value="ru" \${currentLang === 'ru' ? 'selected' : ''}>🇷🇺</option>
-        </select>
+  const html = `
+  <div style="text-align:right; margin-bottom:16px;">
+    <select onchange="window.location.href = window.location.pathname + '?lang=' + this.value" 
+            style="padding:8px 12px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:20px; cursor:pointer; width:100px;">
+      <option value="es" ${currentLang === 'es' ? 'selected' : ''}>🇪🇸</option>
+      <option value="en" ${currentLang === 'en' ? 'selected' : ''}>🇬🇧</option>
+      <option value="fr" ${currentLang === 'fr' ? 'selected' : ''}>🇫🇷</option>
+      <option value="de" ${currentLang === 'de' ? 'selected' : ''}>🇩🇪</option>
+      <option value="ru" ${currentLang === 'ru' ? 'selected' : ''}>🇷🇺</option>
+    </select>
+  </div>
+  
+  <div class="card">
+    <div style="text-align:center; margin-bottom:30px;">
+      <h1 style="margin-bottom:8px; font-size:28px;">${t.welcome}</h1>
+      <div style="font-size:18px; color:#6b7280;">${escapeHtml(r.apartment_name || "")}</div>
+      <div style="font-size:13px; color:#9ca3af; margin-top:8px;">${t.reservation}: ${escapeHtml(String(r.beds24_booking_id || ""))}</div>
+    </div>
+    
+    <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:16px;">
+        <div style="flex:1; min-width:140px;">
+          <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.arrival}</div>
+          <div style="font-size:16px; font-weight:600;">${fmtDate(r.arrival_date)}</div>
+          ${r.arrival_time ? `<div style="color:#6b7280; font-size:14px;">${fmtTime(r.arrival_time)}</div>` : ''}
+        </div>
+        <div style="width:1px; background:#e5e7eb;"></div>
+        <div style="flex:1; min-width:140px;">
+          <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.departure}</div>
+          <div style="font-size:16px; font-weight:600;">${fmtDate(r.departure_date)}</div>
+          ${r.departure_time ? `<div style="color:#6b7280; font-size:14px;">${fmtTime(r.departure_time)}</div>` : ''}
+        </div>
       </div>
       
-      <div class="card">
-        <div style="text-align:center; margin-bottom:30px;">
-          <h1 style="margin-bottom:8px; font-size:28px;">\${t.welcome}</h1>
-          <div style="font-size:18px; color:#6b7280;">\${escapeHtml(r.apartment_name || "")}</div>
-          <div style="font-size:13px; color:#9ca3af; margin-top:8px;">\${t.reservation}: \${escapeHtml(String(r.beds24_booking_id || ""))}</div>
-        </div>
-        
-        <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px;">
-          <div style="display:flex; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:16px;">
-            <div style="flex:1; min-width:140px;">
-              <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">\${t.arrival}</div>
-              <div style="font-size:16px; font-weight:600;">\${fmtDate(r.arrival_date)}</div>
-              \${r.arrival_time ? \`<div style="color:#6b7280; font-size:14px;">\${fmtTime(r.arrival_time)}</div>\` : ''}
-            </div>
-            <div style="width:1px; background:#e5e7eb;"></div>
-            <div style="flex:1; min-width:140px;">
-              <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">\${t.departure}</div>
-              <div style="font-size:16px; font-weight:600;">\${fmtDate(r.departure_date)}</div>
-              \${r.departure_time ? \`<div style="color:#6b7280; font-size:14px;">\${fmtTime(r.departure_time)}</div>\` : ''}
-            </div>
-          </div>
-          
-          <div style="border-top:1px solid #e5e7eb; padding-top:16px;">
-            <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">\${t.guests}</div>
-            <div style="font-size:16px;"><span style="font-weight:600;">\${totalGuests}</span> \${t.people} <span style="color:#9ca3af;">•</span> \${Number(r.adults) || 0} \${t.adults}, \${Number(r.children) || 0} \${t.children}</div>
-          </div>
-        </div>
-        
-        \${r.lock_visible && r.lock_code ? \`
-          <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px; background:#f9fafb;">
-            <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:8px;">
-              🔑 \${t.accessCode}
-            </div>
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-              <span id="lockCodeMasked" style="font-size:22px; letter-spacing:3px; color:#374151; font-family:monospace;">••••</span>
-              <span id="lockCodeValue" style="display:none; font-size:28px; font-weight:700; letter-spacing:3px; color:#374151; font-family:monospace;">
-                \${escapeHtml(String(r.lock_code))}
-              </span>
-              <button type="button" onclick="toggleLockCode()"
-                style="display:inline-block; padding:10px 16px; background:#3b82f6; color:white; border:0; border-radius:8px; font-weight:600; cursor:pointer;">
-                \${t.showCode}
-              </button>
-            </div>
-            <p style="margin:10px 0 0; color:#6b7280; font-size:13px;">\${t.noShareCode}</p>
-          </div>
-        \` : ''}
-        
-        \${sectionsHtml}
-        
-        <script>
-          function toggleLockCode() {
-            var masked = document.getElementById("lockCodeMasked");
-            var value = document.getElementById("lockCodeValue");
-            if (!masked || !value) return;
-            var isHidden = value.style.display === "none";
-            value.style.display = isHidden ? "inline" : "none";
-            masked.style.display = isHidden ? "none" : "inline";
-          }
-        </script>
+      <div style="border-top:1px solid #e5e7eb; padding-top:16px;">
+        <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.guests}</div>
+        <div style="font-size:16px;"><span style="font-weight:600;">${totalGuests}</span> ${t.people} <span style="color:#9ca3af;">•</span> ${Number(r.adults) || 0} ${t.adults}, ${Number(r.children) || 0} ${t.children}</div>
       </div>
-    \`;
+    </div>
+    
+    ${r.lock_visible && r.lock_code ? `
+      <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px; background:#f9fafb;">
+        <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:8px;">
+          🔑 ${t.accessCode}
+        </div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span id="lockCodeMasked" style="font-size:22px; letter-spacing:3px; color:#374151; font-family:monospace;">••••</span>
+          <span id="lockCodeValue" style="display:none; font-size:28px; font-weight:700; letter-spacing:3px; color:#374151; font-family:monospace;">
+            ${escapeHtml(String(r.lock_code))}
+          </span>
+          <button type="button" onclick="toggleLockCode()"
+            style="display:inline-block; padding:10px 16px; background:#3b82f6; color:white; border:0; border-radius:8px; font-weight:600; cursor:pointer;">
+            ${t.showCode}
+          </button>
+        </div>
+        <p style="margin:10px 0 0; color:#6b7280; font-size:13px;">${t.noShareCode}</p>
+      </div>
+    ` : ''}
+    
+    ${sectionsHtml}
+    
+    <script>
+      function toggleLockCode() {
+        var masked = document.getElementById("lockCodeMasked");
+        var value = document.getElementById("lockCodeValue");
+        if (!masked || !value) return;
+        var isHidden = value.style.display === "none";
+        value.style.display = isHidden ? "inline" : "none";
+        masked.style.display = isHidden ? "none" : "inline";
+      }
+    </script>
+  </div>
+`;
     
     return res.send(renderPage("Panel del huésped", html));
     
@@ -3718,6 +3718,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
