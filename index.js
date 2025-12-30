@@ -2367,472 +2367,286 @@ app.get("/guest/:token", async (req, res) => {
   }
   
   const booking = result.rows[0];
-  
-  // ... resto de tu código del dashboard
+
 });
-
-// ===================== GUEST DASHBOARD =====================
-// URL final: /guest/:roomId/:bookingReference
-/* app.get("/guest/:bookingId/:bookingReference", async (req, res) => {
-  const { roomId, bookingReference } = req.params;
-  // Detectar idioma (por defecto español)
-const lang = String(req.query.lang || 'es').toLowerCase().substring(0, 2);
-const validLangs = ['es', 'en', 'fr', 'de', 'ru'];
-const currentLang = validLangs.includes(lang) ? lang : 'es';
-
-// Textos de UI traducidos
-const uiText = {
-  es: {
-    welcome: 'Bienvenido',
-    reservation: 'Reserva',
-    arrival: 'Llegada',
-    departure: 'Salida',
-    guests: 'Huéspedes',
-    adults: 'adultos',
-    children: 'niños',
-    people: 'personas',
-    accessCode: 'Código de acceso',
-    showCode: 'Mostrar código',
-    codeUnavailable: 'Código aún no disponible',
-    noShareCode: 'No compartas este código con terceros.',
-    apartmentInfo: 'Información del apartamento',
-    noInfo: 'Todavía no hay información para este apartamento.',
-  },
-  en: {
-    welcome: 'Welcome',
-    reservation: 'Reservation',
-    arrival: 'Arrival',
-    departure: 'Departure',
-    guests: 'Guests',
-    adults: 'adults',
-    children: 'children',
-    people: 'people',
-    accessCode: 'Access code',
-    showCode: 'Show code',
-    codeUnavailable: 'Code not yet available',
-    noShareCode: 'Do not share this code with third parties.',
-    apartmentInfo: 'Apartment information',
-    noInfo: 'No information available yet for this apartment.',
-  },
-  fr: {
-    welcome: 'Bienvenue',
-    reservation: 'Réservation',
-    arrival: 'Arrivée',
-    departure: 'Départ',
-    guests: 'Invités',
-    adults: 'adultes',
-    children: 'enfants',
-    people: 'personnes',
-    accessCode: "Code d'accès",
-    showCode: 'Afficher le code',
-    codeUnavailable: 'Code pas encore disponible',
-    noShareCode: 'Ne partagez pas ce code avec des tiers.',
-    apartmentInfo: "Informations sur l'appartement",
-    noInfo: "Aucune information disponible pour cet appartement pour le moment.",
-  },
-  de: {
-    welcome: 'Willkommen',
-    reservation: 'Reservierung',
-    arrival: 'Ankunft',
-    departure: 'Abreise',
-    guests: 'Gäste',
-    adults: 'Erwachsene',
-    children: 'Kinder',
-    people: 'Personen',
-    accessCode: 'Zugangscode',
-    showCode: 'Code anzeigen',
-    codeUnavailable: 'Code noch nicht verfügbar',
-    noShareCode: 'Teilen Sie diesen Code nicht mit Dritten.',
-    apartmentInfo: 'Wohnungsinformationen',
-    noInfo: 'Für diese Wohnung sind noch keine Informationen verfügbar.',
-  },
-  ru: {
-    welcome: 'Добро пожаловать',
-    reservation: 'Бронирование',
-    arrival: 'Прибытие',
-    departure: 'Отъезд',
-    guests: 'Гости',
-    adults: 'взрослых',
-    children: 'детей',
-    people: 'человек',
-    accessCode: 'Код доступа',
-    showCode: 'Показать код',
-    codeUnavailable: 'Код еще недоступен',
-    noShareCode: 'Не делитесь этим кодом с третьими лицами.',
-    apartmentInfo: 'Информация о квартире',
-    noInfo: 'Информация для этой квартиры пока недоступна.',
-  },
-}; */
-
-/* const t = uiText[currentLang] || uiText.es;
-
-  function toYouTubeEmbed(url) {
-    const u = String(url || "");
-    const m1 = u.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/);
-    const m2 = u.match(/[?&]v=([A-Za-z0-9_-]{6,})/);
-    const id = (m1 && m1[1]) || (m2 && m2[1]);
-    return id ? `https://www.youtube.com/embed/${id}` : null;
-  }
-
-  function toVimeoEmbed(url) {
-    const u = String(url || "");
-    const m = u.match(/vimeo\.com\/(\d+)/);
-    const id = m && m[1];
-    return id ? `https://player.vimeo.com/video/${id}` : null;
-  }
+app.get("/guest/:bookingId", async (req, res) => {
+  const { bookingId } = req.params;
+  
+  // Detectar idioma
+  const lang = String(req.query.lang || 'es').toLowerCase().substring(0, 2);
+  const validLangs = ['es', 'en', 'fr', 'de', 'ru'];
+  const currentLang = validLangs.includes(lang) ? lang : 'es';
+  
   try {
-    const ref = String(bookingReference || "").trim();
-    const refNoStart = ref.toUpperCase().startsWith("START_") ? ref.slice(6) : ref;
-
-    // 1) Load check-in record by RoomID + Booking Reference
-    const checkinRes = await pool.query(
-      `
-      SELECT *
-      FROM checkins c
-      WHERE c.room_id::text = $1
-        AND (
-          c.booking_token::text = $2
-          OR c.beds24_booking_id::text = $2
-          OR c.booking_id_from_start::text = $2
-          OR c.booking_id_from_start::text = $3
-          OR c.booking_id::text = $2
-          OR c.external_booking_id::text = $2
-          OR c.provider_booking_id::text = $2
-        )
-        AND c.cancelled IS DISTINCT FROM true
-      ORDER BY c.id DESC
-      LIMIT 1
-      `,
-      [String(roomId), ref, refNoStart]
+    // Buscar por beds24_booking_id
+    const result = await pool.query(
+      `SELECT c.*, 
+              br.apartment_name,
+              br.address
+       FROM checkins c
+       LEFT JOIN beds24_rooms br ON br.beds24_room_id = c.room_id
+       WHERE c.beds24_booking_id = $1
+         AND c.cancelled IS DISTINCT FROM true
+       LIMIT 1`,
+      [bookingId]
     );
-
-    if (!checkinRes.rows.length) {
-   const html = `
-   <div class="muted" style="font-size:12px;margin:8px 0;">
-  debug: lock_visible=${escapeHtml(String(r.lock_visible))}, lock_code=${escapeHtml(String(r.lock_code))}
-</div>
-  <style>
-    @media (max-width: 480px) {
-      .card {
-        margin: 0 !important;
-        padding: 12px !important;
-        border-radius: 0 !important;
-        max-width: 100% !important;
-      }
-      body {
-        padding: 0 !important;
-        margin: 0 !important;
-      }
-      h1 {
-        font-size: 24px !important;
-        margin-bottom: 6px !important;
-      }
-      .info-card {
-        padding: 14px !important;
-        margin-bottom: 14px !important;
-      }
-      .header-section {
-        margin-bottom: 20px !important;
-      }
-    }
-  </style>
-  <div class="card">
-    <div class="header-section" style="text-align:center; margin-bottom:30px;">
-     <h1 style="margin-bottom:8px; font-size:28px;">${t.welcome}</h1>
-      <div style="font-size:18px; color:#6b7280;">${escapeHtml(r.apartment_name || "")}</div>
-      ${r.beds24_booking_id || r.booking_token ? `
-        <div style="font-size:13px; color:#9ca3af; margin-top:8px;">Reserva: ${escapeHtml(String(r.beds24_booking_id || r.booking_token || ""))}</div>
-      ` : ''}
-    </div>
     
-    <div class="info-card" style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px;">
-      <div style="display:flex; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:16px;">
-        <div style="flex:1; min-width:140px;">
-<div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.arrival}</div>
-<div style="font-size:15px; font-weight:600;">${fmtDate(r.arrival_date)}</div>
-          ${r.arrival_time ? `<div style="color:#6b7280; font-size:13px;">${fmtTime(r.arrival_time)}</div>` : ''}
-        </div>
-        <div style="width:1px; background:#e5e7eb;"></div>
-        <div style="flex:1; min-width:140px;">
-         <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.departure}</div>
-          <div style="font-size:15px; font-weight:600;">${fmtDate(r.departure_date)}</div>
-          ${r.departure_time ? `<div style="color:#6b7280; font-size:13px;">${fmtTime(r.departure_time)}</div>` : ''}
-        </div>
+    if (result.rows.length === 0) {
+      return res.status(404).send(renderPage("Not Found", `
+        <h1>❌ Reserva no encontrada</h1>
+        <p>La reserva ${bookingId} no existe.</p>
+        <p><a href="/" class="btn-link">← Volver</a></p>
+      `));
+    }
+    
+    const r = result.rows[0];
+    
+    // Cargar secciones del apartamento
+    const secRes = await pool.query(
+      `SELECT id, title, body, icon, new_media_type, new_media_url, translations
+       FROM apartment_sections
+       WHERE room_id = $1
+         AND is_active = true
+       ORDER BY sort_order ASC, id ASC`,
+      [r.room_id]
+    );
+    
+    // Textos traducidos
+    const uiText = {
+      es: {
+        welcome: 'Bienvenido',
+        reservation: 'Reserva',
+        arrival: 'Llegada',
+        departure: 'Salida',
+        guests: 'Huéspedes',
+        adults: 'adultos',
+        children: 'niños',
+        people: 'personas',
+        accessCode: 'Código de acceso',
+        showCode: 'Mostrar código',
+        codeUnavailable: 'Código aún no disponible',
+        noShareCode: 'No compartas este código con terceros.',
+        apartmentInfo: 'Información del apartamento',
+        noInfo: 'Todavía no hay información para este apartamento.',
+      },
+      en: {
+        welcome: 'Welcome',
+        reservation: 'Reservation',
+        arrival: 'Arrival',
+        departure: 'Departure',
+        guests: 'Guests',
+        adults: 'adults',
+        children: 'children',
+        people: 'people',
+        accessCode: 'Access code',
+        showCode: 'Show code',
+        codeUnavailable: 'Code not yet available',
+        noShareCode: 'Do not share this code with third parties.',
+        apartmentInfo: 'Apartment information',
+        noInfo: 'No information available yet for this apartment.',
+      },
+      ru: {
+        welcome: 'Добро пожаловать',
+        reservation: 'Бронирование',
+        arrival: 'Прибытие',
+        departure: 'Отъезд',
+        guests: 'Гости',
+        adults: 'взрослых',
+        children: 'детей',
+        people: 'человек',
+        accessCode: 'Код доступа',
+        showCode: 'Показать код',
+        codeUnavailable: 'Код еще недоступен',
+        noShareCode: 'Не делитесь этим кодом с третьими лицами.',
+        apartmentInfo: 'Информация о квартире',
+        noInfo: 'Информация для этой квартиры пока недоступна.',
+      },
+      fr: {
+        welcome: 'Bienvenue',
+        reservation: 'Réservation',
+        arrival: 'Arrivée',
+        departure: 'Départ',
+        guests: 'Invités',
+        adults: 'adultes',
+        children: 'enfants',
+        people: 'personnes',
+        accessCode: "Code d'accès",
+        showCode: 'Afficher le code',
+        codeUnavailable: 'Code pas encore disponible',
+        noShareCode: 'Ne partagez pas ce code avec des tiers.',
+        apartmentInfo: "Informations sur l'appartement",
+        noInfo: "Aucune information disponible pour cet appartement pour le moment.",
+      },
+      de: {
+        welcome: 'Willkommen',
+        reservation: 'Reservierung',
+        arrival: 'Ankunft',
+        departure: 'Abreise',
+        guests: 'Gäste',
+        adults: 'Erwachsene',
+        children: 'Kinder',
+        people: 'Personen',
+        accessCode: 'Zugangscode',
+        showCode: 'Code anzeigen',
+        codeUnavailable: 'Code noch nicht verfügbar',
+        noShareCode: 'Teilen Sie diesen Code nicht mit Dritten.',
+        apartmentInfo: 'Wohnungsinformationen',
+        noInfo: 'Für diese Wohnung sind noch keine Informationen verfügbar.',
+      },
+    };
+    
+    const t = uiText[currentLang] || uiText.es;
+    const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
+    
+    // Helper para traducciones
+    function getTranslatedText(section, field, lang) {
+      if (!section.translations) return section[field] || '';
+      
+      try {
+        const trans = typeof section.translations === 'string' 
+          ? JSON.parse(section.translations) 
+          : section.translations;
+        
+        if (trans[field] && trans[field][lang]) {
+          return trans[field][lang];
+        }
+      } catch (e) {
+        console.error('Translation parse error:', e);
+      }
+      
+      return section[field] || '';
+    }
+    
+    // Generar HTML de secciones (usa tu código existente con toYouTubeEmbed, etc.)
+    const sectionsHtml = secRes.rows.length === 0
+      ? `<div class="muted">${t.noInfo}</div>`
+      : `<h2 style="margin-top:18px;">${t.apartmentInfo}</h2>
+         <div id="guest-accordion">
+           ${secRes.rows.map((s) => {
+             const icon = s.icon ? `${s.icon} ` : '';
+             const translatedTitle = getTranslatedText(s, 'title', currentLang);
+             const title = icon + escapeHtml(translatedTitle);
+             const rawBody = getTranslatedText(s, 'body', currentLang);
+             
+             const bodyHtml = escapeHtml(rawBody)
+               .replace(/\n/g, "<br/>")
+               .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+                 const safeUrl = escapeHtml(url);
+                 return \`<a href="\${safeUrl}" target="_blank" rel="noopener" class="btn-link">\${safeUrl}</a>\`;
+               });
+             
+             const panelId = \`acc_\${s.id}\`;
+             
+             return \`
+               <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
+                 <button type="button" data-acc-btn="\${panelId}"
+                   style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;">
+                   \${title}
+                 </button>
+                 <div id="\${panelId}" style="display:none;padding:12px 14px;">
+                   <div>\${bodyHtml}</div>
+                 </div>
+               </div>
+             \`;
+           }).join('')}
+         </div>
+         <script>
+           (function () {
+             var buttons = document.querySelectorAll("[data-acc-btn]");
+             buttons.forEach(function (btn) {
+               btn.addEventListener("click", function () {
+                 var id = btn.getAttribute("data-acc-btn");
+                 var panel = document.getElementById(id);
+                 if (!panel) return;
+                 panel.style.display = (panel.style.display === "block") ? "none" : "block";
+               });
+             });
+           })();
+         </script>`;
+    
+    const html = \`
+      <div style="text-align:right; margin-bottom:16px;">
+        <select onchange="window.location.href = window.location.pathname + '?lang=' + this.value" 
+                style="padding:8px 12px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:20px; cursor:pointer; width:100px;">
+          <option value="es" \${currentLang === 'es' ? 'selected' : ''}>🇪🇸</option>
+          <option value="en" \${currentLang === 'en' ? 'selected' : ''}>🇬🇧</option>
+          <option value="fr" \${currentLang === 'fr' ? 'selected' : ''}>🇫🇷</option>
+          <option value="de" \${currentLang === 'de' ? 'selected' : ''}>🇩🇪</option>
+          <option value="ru" \${currentLang === 'ru' ? 'selected' : ''}>🇷🇺</option>
+        </select>
       </div>
       
-      <div style="border-top:1px solid #e5e7eb; padding-top:12px;">
-        <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.guests}</div>
-        <div style="font-size:14px;"><span style="font-weight:600;">${totalGuests}</span> ${t.people} <span style="color:#9ca3af;">•</span> ${Number(r.adults) || 0} ${t.adults}, ${Number(r.children) || 0} ${t.children}</div>
-      </div>
-    </div>
-      `;
-      return res.send(renderPage("Panel del huésped", html));
-    }
-
-    const r = checkinRes.rows[0];
-
-    // 2) Load apartment sections by room_id
-   const secRes = await pool.query(
-  `
-  SELECT id, title, body, icon, new_media_type, new_media_url, translations
-  FROM apartment_sections
-  WHERE room_id::text = $1
-    AND is_active = true
-  ORDER BY sort_order ASC, id ASC
-  `,
-  [String(roomId)]
-);
-    // Helper para obtener texto traducido de una sección
-function getTranslatedText(section, field, lang) {
-  if (!section.translations) return section[field] || '';
-  
-  try {
-    const trans = typeof section.translations === 'string' 
-      ? JSON.parse(section.translations) 
-      : section.translations;
-    
-    if (trans[field] && trans[field][lang]) {
-      return trans[field][lang];
-    }
-  } catch (e) {
-    console.error('Translation parse error:', e);
-  }
-  
-  return section[field] || '';
-}
-
-    const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
-
-    // 3) Lock code visibility via ?show=1 (only if lock_visible=true)
-    const show = req.query.show === "1";
-
-    // 4) Accordion sections
-    const sectionsHtml =
-      secRes.rows.length === 0
-        ? `<div class="muted">${t.noInfo}</div>`
-        : `
-          <h2 style="margin-top:18px;">${t.apartmentInfo}</h2>
-          <div id="guest-accordion">
-            ${secRes.rows
-             .map((s) => {
-  const icon = s.icon ? `${s.icon} ` : '';
-  const translatedTitle = getTranslatedText(s, 'title', currentLang);
-  const title = icon + escapeHtml(translatedTitle);
-  const rawBody = getTranslatedText(s, 'body', currentLang);
-                
-                const bodyHtml = escapeHtml(rawBody)
-                  .replace(/\n/g, "<br/>")
-                  .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
-                    const safeUrl = escapeHtml(url);
-                    return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
-                  });
-
-                const mediaType = String(s.new_media_type || "").toLowerCase().trim();
-                const mediaUrlRaw = String(s.new_media_url || "").trim();
-                let media = "";
-
-                if (mediaUrlRaw) {
-                  if (mediaType === "image") {
-                    const images = mediaUrlRaw
-                      .split(/\r?\n/)
-                      .map((u) => u.trim())
-                      .filter(Boolean);
-
-                    media = images
-                      .map(
-                        (url) => `
-                          <div style="margin-top:10px;">
-                            <img src="${escapeHtml(
-                              url
-                            )}" style="max-width:100%;border-radius:12px;display:block;" loading="lazy" />
-                          </div>
-                        `
-                      )
-                      .join("");
-                  } else if (mediaType === "video") {
-                    const lower = mediaUrlRaw.toLowerCase();
-
-                    if (lower.endsWith(".mp4")) {
-                      media = `
-                        <div style="margin-top:10px;">
-                          <video controls playsinline style="width:100%;border-radius:12px;">
-                            <source src="${escapeHtml(mediaUrlRaw)}" type="video/mp4">
-                          </video>
-                        </div>
-                      `;
-                    } else {
-                      const yt = toYouTubeEmbed(mediaUrlRaw);
-                      const vm = toVimeoEmbed(mediaUrlRaw);
-                      const embed = yt || vm;
-
-                      media = embed
-                        ? `
-                          <div style="margin-top:10px;">
-                            <iframe
-                              src="${escapeHtml(embed)}"
-                              style="width:100%;aspect-ratio:16/9;border:0;border-radius:12px;"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowfullscreen
-                            ></iframe>
-                          </div>
-                        `
-                        : `
-                          <div style="margin-top:10px;">
-                            <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
-                              ▶ Abrir vídeo
-                            </a>
-                          </div>
-                        `;
-                    }
-                  } else {
-                    media = `
-                      <div style="margin-top:10px;">
-                        <a href="${escapeHtml(mediaUrlRaw)}" target="_blank" rel="noopener" class="btn-link">
-                          🔗 Abrir enlace
-                        </a>
-                      </div>
-                    `;
-                  }
-                }
-
-                const panelId = `acc_${s.id}`;
-
-                return `
-                  <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
-                    <button
-                      type="button"
-                      data-acc-btn="${panelId}"
-                      style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;"
-                    >
-                      ${title}
-                    </button>
-                    <div id="${panelId}" style="display:none;padding:12px 14px;">
-                      <div>${bodyHtml}</div>
-                      ${media}
-                    </div>
-                  </div>
-                `;
-              })
-              .join("")}
-          </div>
-
-          <script>
-            (function () {
-              var buttons = document.querySelectorAll("[data-acc-btn]");
-              buttons.forEach(function (btn) {
-                btn.addEventListener("click", function () {
-                  var id = btn.getAttribute("data-acc-btn");
-                  var panel = document.getElementById(id);
-                  if (!panel) return;
-                  panel.style.display = (panel.style.display === "block") ? "none" : "block";
-                });
-              });
-            })();
-          </script>
-        `;
-
-    // 5) Render page (Spanish UI)
-  const html = `
-  <div style="text-align:right; margin-bottom:16px; max-width:600px; margin-left:auto; margin-right:auto;">
-    <select onchange="window.location.href = window.location.pathname + '?lang=' + this.value" style="padding:8px 12px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:20px; cursor:pointer; width:100px;">
-      <option value="es" ${currentLang === 'es' ? 'selected' : ''}>🇪🇸</option>
-      <option value="en" ${currentLang === 'en' ? 'selected' : ''}>🇬🇧</option>
-      <option value="fr" ${currentLang === 'fr' ? 'selected' : ''}>🇫🇷</option>
-      <option value="de" ${currentLang === 'de' ? 'selected' : ''}>🇩🇪</option>
-      <option value="ru" ${currentLang === 'ru' ? 'selected' : ''}>🇷🇺</option>
-    </select>
-  </div>
-  
-  <div class="card">
-    <div style="text-align:center; margin-bottom:30px;">
-           <h1 style="margin-bottom:8px; font-size:28px;">${t.welcome}</h1>
-          <div style="font-size:18px; color:#6b7280;">${escapeHtml(r.apartment_name || "")}</div>
-          ${r.beds24_booking_id || r.booking_token ? `
-<div style="font-size:13px; color:#9ca3af; margin-top:8px;">${t.reservation}: ${escapeHtml(String(r.beds24_booking_id || r.booking_token || ""))}</div>          ` : ''}
+      <div class="card">
+        <div style="text-align:center; margin-bottom:30px;">
+          <h1 style="margin-bottom:8px; font-size:28px;">\${t.welcome}</h1>
+          <div style="font-size:18px; color:#6b7280;">\${escapeHtml(r.apartment_name || "")}</div>
+          <div style="font-size:13px; color:#9ca3af; margin-top:8px;">\${t.reservation}: \${escapeHtml(String(r.beds24_booking_id || ""))}</div>
         </div>
         
         <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px;">
           <div style="display:flex; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:16px;">
             <div style="flex:1; min-width:140px;">
-<div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.arrival}</div>
-<div style="font-size:16px; font-weight:600;">${fmtDate(r.arrival_date)}</div>
-              ${r.arrival_time ? `<div style="color:#6b7280; font-size:14px;">${fmtTime(r.arrival_time)}</div>` : ''}
+              <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">\${t.arrival}</div>
+              <div style="font-size:16px; font-weight:600;">\${fmtDate(r.arrival_date)}</div>
+              \${r.arrival_time ? \`<div style="color:#6b7280; font-size:14px;">\${fmtTime(r.arrival_time)}</div>\` : ''}
             </div>
             <div style="width:1px; background:#e5e7eb;"></div>
             <div style="flex:1; min-width:140px;">
-<div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.departure}</div>
-<div style="font-size:16px; font-weight:600;">${fmtDate(r.departure_date)}</div>
-              ${r.departure_time ? `<div style="color:#6b7280; font-size:14px;">${fmtTime(r.departure_time)}</div>` : ''}
+              <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">\${t.departure}</div>
+              <div style="font-size:16px; font-weight:600;">\${fmtDate(r.departure_date)}</div>
+              \${r.departure_time ? \`<div style="color:#6b7280; font-size:14px;">\${fmtTime(r.departure_time)}</div>\` : ''}
             </div>
           </div>
           
           <div style="border-top:1px solid #e5e7eb; padding-top:16px;">
-<div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.guests}</div>
-<div style="font-size:16px;"><span style="font-weight:600;">${totalGuests}</span> ${t.people} <span style="color:#9ca3af;">•</span> ${Number(r.adults) || 0} ${t.adults}, ${Number(r.children) || 0} ${t.children}</div>          </div>
+            <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">\${t.guests}</div>
+            <div style="font-size:16px;"><span style="font-weight:600;">\${totalGuests}</span> \${t.people} <span style="color:#9ca3af;">•</span> \${Number(r.adults) || 0} \${t.adults}, \${Number(r.children) || 0} \${t.children}</div>
+          </div>
         </div>
         
-   ${r.lock_visible ? `
-  <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px; background:#f9fafb;">
-    <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:8px;">
-🔑 ${t.accessCode}
-</div>
-
-    ${r.lock_code ? `
-      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-        <span id="lockCodeMasked" style="font-size:22px; letter-spacing:3px; color:#374151; font-family:monospace;">••••</span>
-
-        <span id="lockCodeValue" style="display:none; font-size:28px; font-weight:700; letter-spacing:3px; color:#374151; font-family:monospace;">
-          ${escapeHtml(String(r.lock_code))}
-        </span>
-
-        <button
-          type="button"
-          onclick="toggleLockCode()"
-          style="display:inline-block; padding:10px 16px; background:#3b82f6; color:white; border:0; border-radius:8px; font-weight:600; cursor:pointer;"
-        >
-          ${t.showCode}
-        </button>
-      </div>
-
-      <p style="margin:10px 0 0; color:#6b7280; font-size:13px;">
-  ${t.noShareCode}
-</p>
-    ` : `
-      <p style="margin:0; color:#6b7280;">
-        ${t.noShareCode}
-      </p>
-    `}
-  </div>
-` : ''}
+        \${r.lock_visible && r.lock_code ? \`
+          <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px; background:#f9fafb;">
+            <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:8px;">
+              🔑 \${t.accessCode}
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <span id="lockCodeMasked" style="font-size:22px; letter-spacing:3px; color:#374151; font-family:monospace;">••••</span>
+              <span id="lockCodeValue" style="display:none; font-size:28px; font-weight:700; letter-spacing:3px; color:#374151; font-family:monospace;">
+                \${escapeHtml(String(r.lock_code))}
+              </span>
+              <button type="button" onclick="toggleLockCode()"
+                style="display:inline-block; padding:10px 16px; background:#3b82f6; color:white; border:0; border-radius:8px; font-weight:600; cursor:pointer;">
+                \${t.showCode}
+              </button>
+            </div>
+            <p style="margin:10px 0 0; color:#6b7280; font-size:13px;">\${t.noShareCode}</p>
+          </div>
+        \` : ''}
         
-        ${sectionsHtml}
+        \${sectionsHtml}
+        
         <script>
-  function toggleLockCode() {
-    var masked = document.getElementById("lockCodeMasked");
-    var value = document.getElementById("lockCodeValue");
-    if (!masked || !value) return;
-
-    var isHidden = value.style.display === "none";
-    value.style.display = isHidden ? "inline" : "none";
-    masked.style.display = isHidden ? "none" : "inline";
-  }
-</script>
+          function toggleLockCode() {
+            var masked = document.getElementById("lockCodeMasked");
+            var value = document.getElementById("lockCodeValue");
+            if (!masked || !value) return;
+            var isHidden = value.style.display === "none";
+            value.style.display = isHidden ? "inline" : "none";
+            masked.style.display = isHidden ? "none" : "inline";
+          }
+        </script>
       </div>
-    `;
-
+    \`;
+    
     return res.send(renderPage("Panel del huésped", html));
+    
   } catch (e) {
     console.error("Guest dashboard error:", e);
-    return res
-      .status(500)
-      .send(
-        renderPage(
-          "Panel del huésped",
-          `<div class="card">No se pudo cargar el panel: ${escapeHtml(e.detail || e.message || String(e))}</div>`
-        )
-      );
+    return res.status(500).send(renderPage("Error", \`
+      <div class="card">No se pudo cargar el panel: \${escapeHtml(e.message || String(e))}</div>
+    \`));
   }
-}); */
+});
 
 app.get("/manager/whatsapp", async (req, res) => {
   try {
@@ -3903,6 +3717,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
