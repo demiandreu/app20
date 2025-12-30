@@ -2547,15 +2547,15 @@ const t = uiText[currentLang] || uiText.es;
         </div>
         <div style="width:1px; background:#e5e7eb;"></div>
         <div style="flex:1; min-width:140px;">
-          <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">Salida</div>
+         <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.departure}</div>
           <div style="font-size:15px; font-weight:600;">${fmtDate(r.departure_date)}</div>
           ${r.departure_time ? `<div style="color:#6b7280; font-size:13px;">${fmtTime(r.departure_time)}</div>` : ''}
         </div>
       </div>
       
       <div style="border-top:1px solid #e5e7eb; padding-top:12px;">
-        <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">Huéspedes</div>
-        <div style="font-size:14px;"><span style="font-weight:600;">${totalGuests}</span> personas <span style="color:#9ca3af;">•</span> ${Number(r.adults) || 0} adultos, ${Number(r.children) || 0} niños</div>
+        <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.guests}</div>
+        <div style="font-size:14px;"><span style="font-weight:600;">${totalGuests}</span> ${t.people} <span style="color:#9ca3af;">•</span> ${Number(r.adults) || 0} ${t.adults}, ${Number(r.children) || 0} ${t.children}</div>
       </div>
     </div>
       `;
@@ -2726,19 +2726,19 @@ function getTranslatedText(section, field, lang) {
 
     // 5) Render page (Spanish UI)
     const html = `
-      <div class="card">
-       <div class="card">
-  <div style="text-align:right; margin-bottom:16px;">
-    <select onchange="window.location.href = window.location.pathname + '?lang=' + this.value" style="padding:8px 12px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:14px; cursor:pointer;">
-      <option value="es" ${currentLang === 'es' ? 'selected' : ''}>🇪🇸 Español</option>
-      <option value="en" ${currentLang === 'en' ? 'selected' : ''}>🇬🇧 English</option>
-      <option value="fr" ${currentLang === 'fr' ? 'selected' : ''}>🇫🇷 Français</option>
-      <option value="de" ${currentLang === 'de' ? 'selected' : ''}>🇩🇪 Deutsch</option>
-      <option value="ru" ${currentLang === 'ru' ? 'selected' : ''}>🇷🇺 Русский</option>
+  const html = `
+  <div style="text-align:right; margin-bottom:16px; max-width:600px; margin-left:auto; margin-right:auto;">
+    <select onchange="window.location.href = window.location.pathname + '?lang=' + this.value" style="padding:8px 12px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:20px; cursor:pointer; width:60px;">
+      <option value="es" ${currentLang === 'es' ? 'selected' : ''}>🇪🇸</option>
+      <option value="en" ${currentLang === 'en' ? 'selected' : ''}>🇬🇧</option>
+      <option value="fr" ${currentLang === 'fr' ? 'selected' : ''}>🇫🇷</option>
+      <option value="de" ${currentLang === 'de' ? 'selected' : ''}>🇩🇪</option>
+      <option value="ru" ${currentLang === 'ru' ? 'selected' : ''}>🇷🇺</option>
     </select>
   </div>
   
-  <div style="text-align:center; margin-bottom:30px;">
+  <div class="card">
+    <div style="text-align:center; margin-bottom:30px;">
            <h1 style="margin-bottom:8px; font-size:28px;">${t.welcome}</h1>
           <div style="font-size:18px; color:#6b7280;">${escapeHtml(r.apartment_name || "")}</div>
           ${r.beds24_booking_id || r.booking_token ? `
@@ -2754,7 +2754,7 @@ function getTranslatedText(section, field, lang) {
             </div>
             <div style="width:1px; background:#e5e7eb;"></div>
             <div style="flex:1; min-width:140px;">
-<div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">Huéspedes</div>
+<div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.departure}</div>
 <div style="font-size:16px; font-weight:600;">${fmtDate(r.departure_date)}</div>
               ${r.departure_time ? `<div style="color:#6b7280; font-size:14px;">${fmtTime(r.departure_time)}</div>` : ''}
             </div>
@@ -2789,8 +2789,8 @@ function getTranslatedText(section, field, lang) {
       </div>
 
       <p style="margin:10px 0 0; color:#6b7280; font-size:13px;">
-        No compartas este código con terceros.
-      </p>
+  ${t.noShareCode}
+</p>
     ` : `
       <p style="margin:0; color:#6b7280;">
         ${t.noShareCode}
@@ -3897,6 +3897,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
