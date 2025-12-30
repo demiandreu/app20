@@ -2429,7 +2429,6 @@ app.get("/guest/:bookingId", async (req, res) => {
     const result = await pool.query(
       `SELECT c.*, 
               br.apartment_name as apartment_from_rooms,
-              br.address
        FROM checkins c
        LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.room_id::text
        WHERE (
@@ -3522,6 +3521,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
