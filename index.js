@@ -2426,7 +2426,7 @@ app.get("/guest/:bookingId", async (req, res) => {
   
   try {
     // Buscar la reserva
-   const result = await pool.query(
+ const result = await pool.query(
   `SELECT c.*, 
           br.apartment_name as apartment_from_rooms
    FROM checkins c
@@ -2436,7 +2436,7 @@ app.get("/guest/:bookingId", async (req, res) => {
      OR c.booking_token = $2
      OR c.booking_token = $3
    )
-   AND (c.cancelled IS NULL OR c.cancelled = '[]'::jsonb OR c.cancelled = false)
+   AND (c.cancelled IS NULL OR c.cancelled = false)
    LIMIT 1`,
   [bookingId, bookingId, `beds24_${bookingId}`]
 );
@@ -3521,6 +3521,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
