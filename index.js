@@ -2373,7 +2373,7 @@ app.get("/guest/:token", async (req, res) => {
 
 // ===================== GUEST DASHBOARD =====================
 // URL final: /guest/:roomId/:bookingReference
-app.get("/guest/:bookingId/:bookingReference", async (req, res) => {
+/* app.get("/guest/:bookingId/:bookingReference", async (req, res) => {
   const { roomId, bookingReference } = req.params;
   // Detectar idioma (por defecto español)
 const lang = String(req.query.lang || 'es').toLowerCase().substring(0, 2);
@@ -2462,9 +2462,9 @@ const uiText = {
     apartmentInfo: 'Информация о квартире',
     noInfo: 'Информация для этой квартиры пока недоступна.',
   },
-};
+}; */
 
-const t = uiText[currentLang] || uiText.es;
+/* const t = uiText[currentLang] || uiText.es;
 
   function toYouTubeEmbed(url) {
     const u = String(url || "");
@@ -2832,7 +2832,7 @@ function getTranslatedText(section, field, lang) {
         )
       );
   }
-});
+}); */
 
 app.get("/manager/whatsapp", async (req, res) => {
   try {
@@ -3903,6 +3903,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
