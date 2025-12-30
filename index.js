@@ -2145,37 +2145,46 @@ app.post("/webhooks/beds24", async (req, res) => {
       "";
 
     // ---- 🌐 DETECTAR IDIOMA DEL HUÉSPED ----
-    const guestLanguageRaw = (
-      booking.language || 
-      booking.guestLanguage || 
-      guest.language || 
-      booking.languageCode ||
-      booking.locale ||
-      'es'
-    ).toLowerCase().substring(0, 2);
+// ---- 🌐 DETECTAR IDIOMA DEL HUÉSPED CON FALLBACK ----
+const guestLanguageRaw = (
+  payload.guestLanguage ||
+  booking.guestLanguage || 
+  guest.language || 
+  booking.language || 
+  booking.languageCode ||
+  booking.locale ||
+  'en'
+).toLowerCase();
 
-    // Mapear códigos ISO a nuestros idiomas
-    const langMap = {
-      'en': 'en', 'eng': 'en',
-      'es': 'es', 'esp': 'es', 'spa': 'es',
-      'fr': 'fr', 'fra': 'fr', 'fre': 'fr',
-      'de': 'de', 'deu': 'de', 'ger': 'de',
-      'ru': 'ru', 'rus': 'ru'
-    };
+// Mapear códigos ISO a nuestros idiomas
+const langMap = {
+  'en': 'en', 'eng': 'en', 'english': 'en',
+  'es': 'es', 'esp': 'es', 'spa': 'es', 'spanish': 'es',
+  'fr': 'fr', 'fra': 'fr', 'fre': 'fr', 'french': 'fr',
+  'de': 'de', 'deu': 'de', 'ger': 'de', 'german': 'de',
+  'ru': 'ru', 'rus': 'ru', 'russian': 'ru'
+};
 
-    const guestLanguage = langMap[guestLanguageRaw] || 'es';
+// Idiomas soportados (alemán no soportado → inglés)
+const supportedLangs = ['es', 'en', 'fr', 'ru'];
 
-    // 🔍 LOG TEMPORAL - Ver qué campos de idioma envía Beds24
-    console.log("🌐 Language detection:", {
-      raw: {
-        language: booking.language,
-        guestLanguage: booking.guestLanguage,
-        guest_language: guest.language,
-        languageCode: booking.languageCode,
-        locale: booking.locale
-      },
-      detected: guestLanguage
-    });
+// Obtener código de 2 letras
+let guestLanguage = langMap[guestLanguageRaw.substring(0, 3)] || 
+                    langMap[guestLanguageRaw.substring(0, 2)] || 
+                    'en';
+
+// Si NO está soportado → fallback a inglés
+const isFallback = !supportedLangs.includes(guestLanguage);
+if (isFallback) {
+  guestLanguage = 'en';
+}
+
+// 🔍 LOG - Ver detección de idioma
+console.log("🌐 Language detection:", {
+  raw: guestLanguageRaw,
+  detected: guestLanguage,
+  fallback: isFallback ? `(unsupported: ${guestLanguageRaw})` : false
+});
 
     // ---- adults / children (Beds24) ----
     const adults = Number.isFinite(Number(booking?.numAdult)) ? Number(booking.numAdult) : 0;
@@ -3985,6 +3994,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
