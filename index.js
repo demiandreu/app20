@@ -2236,37 +2236,37 @@ app.get("/", (req, res) => {
 
 // --- Booking page ---
 // ✅ RUTAS CORREGIDAS - Solo con bookingId
-app.get("/booking/:bookingId/:token", async (req, res) => {
-  const { bookingId, token } = req.params;
+// ✅ RUTAS SIMPLES - Solo con token
+app.get("/booking/:token", async (req, res) => {
+  const { token } = req.params;
   
-  // Buscar la reserva en tu DB para obtener info del apartamento
+  // Buscar la reserva por token
   const result = await pool.query(
-    'SELECT * FROM checkins WHERE booking_id = $1 AND booking_token = $2',
-    [bookingId, token]
+    'SELECT * FROM checkins WHERE booking_token = $1',
+    [token]
   );
   
-  const booking = result.rows[0];
-  if (!booking) {
+  if (result.rows.length === 0) {
     return res.status(404).send("Booking not found");
   }
   
+  const booking = result.rows[0];
+  
   const html = `
     <h1>Booking ${token}</h1>
-    <p>Apartment: <strong>${booking.apartment_name || bookingId}</strong></p>
-    <p><a href="/checkin/${bookingId}/${token}" class="btn-primary">Go to check-in</a></p>
+    <p>Apartment: <strong>${booking.apartment_name || 'N/A'}</strong></p>
+    <p><a href="/checkin/${token}" class="btn-primary">Go to check-in</a></p>
     <p><a href="/" class="btn-link">← Back</a></p>
   `;
   res.send(renderPage("Booking " + token, html));
 });
 
-// Check-in form
-app.get("/checkin/:bookingId/:token", async (req, res) => {
-  const { bookingId, token } = req.params;
+app.get("/checkin/:token", async (req, res) => {
+  const { token } = req.params;
   
-  // Verificar que la reserva existe
   const result = await pool.query(
-    'SELECT * FROM checkins WHERE booking_id = $1 AND booking_token = $2',
-    [bookingId, token]
+    'SELECT * FROM checkins WHERE booking_token = $1',
+    [token]
   );
   
   if (result.rows.length === 0) {
@@ -2281,8 +2281,7 @@ app.get("/checkin/:bookingId/:token", async (req, res) => {
   
   const html = `
     <h1>Check-in • ${token}</h1>
-    <p class="muted">Booking ID: <strong>${bookingId}</strong></p>
-    <form method="POST" action="/checkin/${bookingId}/${token}">
+    <form method="POST" action="/checkin/${token}">
       <div style="margin-bottom:12px;">
         <label>Full name</label>
         <input name="fullName" required />
@@ -2321,21 +2320,21 @@ app.get("/checkin/:bookingId/:token", async (req, res) => {
       </div>
       <button type="submit" class="btn-primary">Submit</button>
     </form>
-    <p style="margin-top:16px;"><a href="/booking/${bookingId}/${token}" class="btn-link">← Back</a></p>
+    <p style="margin-top:16px;"><a href="/booking/${token}" class="btn-link">← Back</a></p>
   `;
   res.send(renderPage("Check-in", html));
 });
 
-// Check-in submit
-app.post("/checkin/:bookingId/:token", async (req, res) => {
-  const { bookingId, token } = req.params;
+app.post("/checkin/:token", async (req, res) => {
+  const { token } = req.params;
+  
   try {
     await pool.query(
       `UPDATE checkins 
        SET full_name = $1, email = $2, phone = $3,
            arrival_date = $4, arrival_time = $5, 
            departure_date = $6, departure_time = $7
-       WHERE booking_id = $8 AND booking_token = $9`,
+       WHERE booking_token = $8`,
       [
         req.body.fullName,
         req.body.email,
@@ -2344,17 +2343,32 @@ app.post("/checkin/:bookingId/:token", async (req, res) => {
         req.body.arrivalTime || "16:00",
         req.body.departureDate,
         req.body.departureTime || "11:00",
-        bookingId,
         token
       ]
     );
     
-    // Redirect to guest dashboard
-    return res.redirect(`/guest/${bookingId}/${token}`);
+    return res.redirect(`/guest/${token}`);
   } catch (e) {
     console.error("DB update error:", e);
     res.status(500).send("❌ DB error while saving check-in");
   }
+});
+
+app.get("/guest/:token", async (req, res) => {
+  const { token } = req.params;
+  
+  const result = await pool.query(
+    'SELECT * FROM checkins WHERE booking_token = $1',
+    [token]
+  );
+  
+  if (result.rows.length === 0) {
+    return res.status(404).send("Booking not found");
+  }
+  
+  const booking = result.rows[0];
+  
+  // ... resto de tu código del dashboard
 });
 
 // ===================== GUEST DASHBOARD =====================
@@ -3889,6 +3903,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
