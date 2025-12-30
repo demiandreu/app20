@@ -2343,6 +2343,96 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
 // URL final: /guest/:roomId/:bookingReference
 app.get("/guest/:roomId/:bookingReference", async (req, res) => {
   const { roomId, bookingReference } = req.params;
+  // Detectar idioma (por defecto español)
+const lang = String(req.query.lang || 'es').toLowerCase().substring(0, 2);
+const validLangs = ['es', 'en', 'fr', 'de', 'ru'];
+const currentLang = validLangs.includes(lang) ? lang : 'es';
+
+// Textos de UI traducidos
+const uiText = {
+  es: {
+    welcome: 'Bienvenido',
+    reservation: 'Reserva',
+    arrival: 'Llegada',
+    departure: 'Salida',
+    guests: 'Huéspedes',
+    adults: 'adultos',
+    children: 'niños',
+    people: 'personas',
+    accessCode: 'Código de acceso',
+    showCode: 'Mostrar código',
+    codeUnavailable: 'Código aún no disponible',
+    noShareCode: 'No compartas este código con terceros.',
+    apartmentInfo: 'Información del apartamento',
+    noInfo: 'Todavía no hay información para este apartamento.',
+  },
+  en: {
+    welcome: 'Welcome',
+    reservation: 'Reservation',
+    arrival: 'Arrival',
+    departure: 'Departure',
+    guests: 'Guests',
+    adults: 'adults',
+    children: 'children',
+    people: 'people',
+    accessCode: 'Access code',
+    showCode: 'Show code',
+    codeUnavailable: 'Code not yet available',
+    noShareCode: 'Do not share this code with third parties.',
+    apartmentInfo: 'Apartment information',
+    noInfo: 'No information available yet for this apartment.',
+  },
+  fr: {
+    welcome: 'Bienvenue',
+    reservation: 'Réservation',
+    arrival: 'Arrivée',
+    departure: 'Départ',
+    guests: 'Invités',
+    adults: 'adultes',
+    children: 'enfants',
+    people: 'personnes',
+    accessCode: "Code d'accès",
+    showCode: 'Afficher le code',
+    codeUnavailable: 'Code pas encore disponible',
+    noShareCode: 'Ne partagez pas ce code avec des tiers.',
+    apartmentInfo: "Informations sur l'appartement",
+    noInfo: "Aucune information disponible pour cet appartement pour le moment.",
+  },
+  de: {
+    welcome: 'Willkommen',
+    reservation: 'Reservierung',
+    arrival: 'Ankunft',
+    departure: 'Abreise',
+    guests: 'Gäste',
+    adults: 'Erwachsene',
+    children: 'Kinder',
+    people: 'Personen',
+    accessCode: 'Zugangscode',
+    showCode: 'Code anzeigen',
+    codeUnavailable: 'Code noch nicht verfügbar',
+    noShareCode: 'Teilen Sie diesen Code nicht mit Dritten.',
+    apartmentInfo: 'Wohnungsinformationen',
+    noInfo: 'Für diese Wohnung sind noch keine Informationen verfügbar.',
+  },
+  ru: {
+    welcome: 'Добро пожаловать',
+    reservation: 'Бронирование',
+    arrival: 'Прибытие',
+    departure: 'Отъезд',
+    guests: 'Гости',
+    adults: 'взрослых',
+    children: 'детей',
+    people: 'человек',
+    accessCode: 'Код доступа',
+    showCode: 'Показать код',
+    codeUnavailable: 'Код еще недоступен',
+    noShareCode: 'Не делитесь этим кодом с третьими лицами.',
+    apartmentInfo: 'Информация о квартире',
+    noInfo: 'Информация для этой квартиры пока недоступна.',
+  },
+};
+
+const t = uiText[currentLang] || uiText.es;
 
   function toYouTubeEmbed(url) {
     const u = String(url || "");
@@ -2416,7 +2506,7 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
   </style>
   <div class="card">
     <div class="header-section" style="text-align:center; margin-bottom:30px;">
-      <h1 style="margin-bottom:8px; font-size:28px;">Bienvenido</h1>
+     <h1 style="margin-bottom:8px; font-size:28px;">${t.welcome}</h1>
       <div style="font-size:18px; color:#6b7280;">${escapeHtml(r.apartment_name || "")}</div>
       ${r.beds24_booking_id || r.booking_token ? `
         <div style="font-size:13px; color:#9ca3af; margin-top:8px;">Reserva: ${escapeHtml(String(r.beds24_booking_id || r.booking_token || ""))}</div>
@@ -2426,8 +2516,8 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
     <div class="info-card" style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px;">
       <div style="display:flex; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:16px;">
         <div style="flex:1; min-width:140px;">
-          <div style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">Llegada</div>
-          <div style="font-size:15px; font-weight:600;">${fmtDate(r.arrival_date)}</div>
+<div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.arrival}</div>
+<div style="font-size:15px; font-weight:600;">${fmtDate(r.arrival_date)}</div>
           ${r.arrival_time ? `<div style="color:#6b7280; font-size:13px;">${fmtTime(r.arrival_time)}</div>` : ''}
         </div>
         <div style="width:1px; background:#e5e7eb;"></div>
@@ -2450,16 +2540,34 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
     const r = checkinRes.rows[0];
 
     // 2) Load apartment sections by room_id
-    const secRes = await pool.query(
-      `
-      SELECT id, title, body, icon, new_media_type, new_media_url
-      FROM apartment_sections
-      WHERE room_id::text = $1
-        AND is_active = true
-      ORDER BY sort_order ASC, id ASC
-      `,
-      [String(roomId)]
-    );
+   const secRes = await pool.query(
+  `
+  SELECT id, title, body, icon, new_media_type, new_media_url, translations
+  FROM apartment_sections
+  WHERE room_id::text = $1
+    AND is_active = true
+  ORDER BY sort_order ASC, id ASC
+  `,
+  [String(roomId)]
+);
+    // Helper para obtener texto traducido de una sección
+function getTranslatedText(section, field, lang) {
+  if (!section.translations) return section[field] || '';
+  
+  try {
+    const trans = typeof section.translations === 'string' 
+      ? JSON.parse(section.translations) 
+      : section.translations;
+    
+    if (trans[field] && trans[field][lang]) {
+      return trans[field][lang];
+    }
+  } catch (e) {
+    console.error('Translation parse error:', e);
+  }
+  
+  return section[field] || '';
+}
 
     const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
 
@@ -2469,15 +2577,16 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
     // 4) Accordion sections
     const sectionsHtml =
       secRes.rows.length === 0
-        ? `<div class="muted">Todavía no hay información para este apartamento.</div>`
+        ? `<div class="muted">${t.noInfo}</div>`
         : `
-          <h2 style="margin-top:18px;">Información del apartamento</h2>
+          <h2 style="margin-top:18px;">${t.apartmentInfo}</h2>
           <div id="guest-accordion">
             ${secRes.rows
-              .map((s) => {
-                const icon = s.icon ? `${s.icon} ` : '';
-                const title = icon + escapeHtml(s.title || "");
-                const rawBody = String(s.body || "");
+             .map((s) => {
+  const icon = s.icon ? `${s.icon} ` : '';
+  const translatedTitle = getTranslatedText(s, 'title', currentLang);
+  const title = icon + escapeHtml(translatedTitle);
+  const rawBody = getTranslatedText(s, 'body', currentLang);
                 
                 const bodyHtml = escapeHtml(rawBody)
                   .replace(/\n/g, "<br/>")
@@ -2593,40 +2702,49 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
     // 5) Render page (Spanish UI)
     const html = `
       <div class="card">
-        <div style="text-align:center; margin-bottom:30px;">
-          <h1 style="margin-bottom:8px; font-size:28px;">Bienvenido</h1>
+       <div class="card">
+  <div style="text-align:right; margin-bottom:16px;">
+    <select onchange="window.location.href = window.location.pathname + '?lang=' + this.value" style="padding:8px 12px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:14px; cursor:pointer;">
+      <option value="es" ${currentLang === 'es' ? 'selected' : ''}>🇪🇸 Español</option>
+      <option value="en" ${currentLang === 'en' ? 'selected' : ''}>🇬🇧 English</option>
+      <option value="fr" ${currentLang === 'fr' ? 'selected' : ''}>🇫🇷 Français</option>
+      <option value="de" ${currentLang === 'de' ? 'selected' : ''}>🇩🇪 Deutsch</option>
+      <option value="ru" ${currentLang === 'ru' ? 'selected' : ''}>🇷🇺 Русский</option>
+    </select>
+  </div>
+  
+  <div style="text-align:center; margin-bottom:30px;">
+           <h1 style="margin-bottom:8px; font-size:28px;">${t.welcome}</h1>
           <div style="font-size:18px; color:#6b7280;">${escapeHtml(r.apartment_name || "")}</div>
           ${r.beds24_booking_id || r.booking_token ? `
-            <div style="font-size:13px; color:#9ca3af; margin-top:8px;">Reserva: ${escapeHtml(String(r.beds24_booking_id || r.booking_token || ""))}</div>
-          ` : ''}
+<div style="font-size:13px; color:#9ca3af; margin-top:8px;">${t.reservation}: ${escapeHtml(String(r.beds24_booking_id || r.booking_token || ""))}</div>          ` : ''}
         </div>
         
         <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px;">
           <div style="display:flex; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:16px;">
             <div style="flex:1; min-width:140px;">
-              <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">Llegada</div>
-              <div style="font-size:16px; font-weight:600;">${fmtDate(r.arrival_date)}</div>
+<div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.arrival}</div>
+<div style="font-size:16px; font-weight:600;">${fmtDate(r.arrival_date)}</div>
               ${r.arrival_time ? `<div style="color:#6b7280; font-size:14px;">${fmtTime(r.arrival_time)}</div>` : ''}
             </div>
             <div style="width:1px; background:#e5e7eb;"></div>
             <div style="flex:1; min-width:140px;">
-              <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">Salida</div>
-              <div style="font-size:16px; font-weight:600;">${fmtDate(r.departure_date)}</div>
+<div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">Huéspedes</div>
+<div style="font-size:16px; font-weight:600;">${fmtDate(r.departure_date)}</div>
               ${r.departure_time ? `<div style="color:#6b7280; font-size:14px;">${fmtTime(r.departure_time)}</div>` : ''}
             </div>
           </div>
           
           <div style="border-top:1px solid #e5e7eb; padding-top:16px;">
-            <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">Huéspedes</div>
-            <div style="font-size:16px;"><span style="font-weight:600;">${totalGuests}</span> personas <span style="color:#9ca3af;">•</span> ${Number(r.adults) || 0} adultos, ${Number(r.children) || 0} niños</div>
-          </div>
+<div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.guests}</div>
+<div style="font-size:16px;"><span style="font-weight:600;">${totalGuests}</span> ${t.people} <span style="color:#9ca3af;">•</span> ${Number(r.adults) || 0} ${t.adults}, ${Number(r.children) || 0} ${t.children}</div>          </div>
         </div>
         
    ${r.lock_visible ? `
   <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px; background:#f9fafb;">
     <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:8px;">
-      🔑 Código de acceso
-    </div>
+🔑 ${t.accessCode}
+</div>
 
     ${r.lock_code ? `
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
@@ -2641,7 +2759,7 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
           onclick="toggleLockCode()"
           style="display:inline-block; padding:10px 16px; background:#3b82f6; color:white; border:0; border-radius:8px; font-weight:600; cursor:pointer;"
         >
-          Mostrar código
+          ${t.showCode}
         </button>
       </div>
 
@@ -2650,7 +2768,7 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
       </p>
     ` : `
       <p style="margin:0; color:#6b7280;">
-        Código aún no disponible.
+        ${t.noShareCode}
       </p>
     `}
   </div>
@@ -3798,6 +3916,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
