@@ -1627,11 +1627,11 @@ app.get("/debug/beds24", async (req, res) => {
 app.get("/manager", async (req, res) => {
   try {
     const { rows: apartments } = await pool.query(`
-  SELECT 
-    id, 
-    beds24_room_id,
-    COALESCE(custom_name, apartment_name, 'Apartment #' || id::text) as apartment_name
-  FROM beds24_rooms
+ SELECT 
+  id, 
+  beds24_room_id,
+  COALESCE(apartment_name, 'Apartment #' || id::text) as apartment_name  // ✅
+FROM beds24_rooms
   WHERE is_active = true
   ORDER BY apartment_name ASC
 `);
@@ -2823,7 +2823,7 @@ app.get("/manager/whatsapp", async (req, res) => {
     const { rows: apartments } = await pool.query(`
       SELECT 
         beds24_room_id,
-        COALESCE(custom_name, apartment_name) as apartment_name
+        apartment_name
       FROM beds24_rooms
       WHERE is_active = true
       ORDER BY apartment_name ASC
@@ -3886,6 +3886,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
