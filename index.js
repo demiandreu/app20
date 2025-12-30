@@ -1679,7 +1679,6 @@ app.get("/manager/apartment", async (req, res) => {
       SELECT
         id,
         apartment_name,
-        custom_name,
         beds24_room_id,
         support_phone,
         default_arrival_time,
@@ -1698,7 +1697,7 @@ app.get("/manager/apartment", async (req, res) => {
     const a = rows[0];
     
     const roomId = String(a.beds24_room_id || "").trim();
-    const beds24Name = a.custom_name || "";
+   const beds24Name = a.apartment_name || "";  // ✅
     const displayName = a.apartment_name || beds24Name || `Apartment #${a.id}`;
     
     const html = `
@@ -2833,7 +2832,7 @@ app.get("/manager/whatsapp", async (req, res) => {
     const { rows: responses } = await pool.query(`
       SELECT 
         wr.*,
-        COALESCE(br.custom_name, br.apartment_name, 'Global') as apartment_display_name
+        COALESCE(br.apartment_name, 'Global') as apartment_display_name  // ✅
       FROM whatsapp_responses wr
       LEFT JOIN beds24_rooms br ON br.beds24_room_id = wr.room_id
       ORDER BY wr.category, wr.sort_order ASC, wr.id ASC
@@ -3886,6 +3885,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
