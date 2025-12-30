@@ -2086,8 +2086,6 @@ app.post("/webhooks/beds24", async (req, res) => {
     console.log("✅ Booking received:", booking.id);
     
     // ---- room / apartment name ----
-    //vremenno
-    // ---- room / apartment (from DB mapping) ----
     const beds24RoomId = String(
       booking?.roomId ?? booking?.room?.id ?? booking?.unitId ?? ""
     );
@@ -2098,13 +2096,10 @@ app.post("/webhooks/beds24", async (req, res) => {
 
     if (beds24RoomId) {
       const roomRes = await pool.query(
-        `
-        SELECT apartment_name
-        FROM beds24_rooms
-        WHERE beds24_room_id = $1
-          AND is_active = true
-        LIMIT 1
-        `,
+        `SELECT apartment_name
+         FROM beds24_rooms
+         WHERE beds24_room_id = $1 AND is_active = true
+         LIMIT 1`,
         [beds24RoomId]
       );
 
@@ -2126,7 +2121,6 @@ app.post("/webhooks/beds24", async (req, res) => {
 
     const beds24BookingId = booking?.id ?? null;
     const beds24Raw = payload;
-    //vremenno
     
     // ---- guest fields ----
     const guest = payload.guest || booking.guest || booking.guestData || {};
@@ -2149,6 +2143,39 @@ app.post("/webhooks/beds24", async (req, res) => {
       booking.mobile ||
       booking.phoneNumber ||
       "";
+
+    // ---- 🌐 DETECTAR IDIOMA DEL HUÉSPED ----
+    const guestLanguageRaw = (
+      booking.language || 
+      booking.guestLanguage || 
+      guest.language || 
+      booking.languageCode ||
+      booking.locale ||
+      'es'
+    ).toLowerCase().substring(0, 2);
+
+    // Mapear códigos ISO a nuestros idiomas
+    const langMap = {
+      'en': 'en', 'eng': 'en',
+      'es': 'es', 'esp': 'es', 'spa': 'es',
+      'fr': 'fr', 'fra': 'fr', 'fre': 'fr',
+      'de': 'de', 'deu': 'de', 'ger': 'de',
+      'ru': 'ru', 'rus': 'ru'
+    };
+
+    const guestLanguage = langMap[guestLanguageRaw] || 'es';
+
+    // 🔍 LOG TEMPORAL - Ver qué campos de idioma envía Beds24
+    console.log("🌐 Language detection:", {
+      raw: {
+        language: booking.language,
+        guestLanguage: booking.guestLanguage,
+        guest_language: guest.language,
+        languageCode: booking.languageCode,
+        locale: booking.locale
+      },
+      detected: guestLanguage
+    });
 
     // ---- adults / children (Beds24) ----
     const adults = Number.isFinite(Number(booking?.numAdult)) ? Number(booking.numAdult) : 0;
@@ -2175,28 +2202,23 @@ app.post("/webhooks/beds24", async (req, res) => {
     const arrivalTime = booking?.arrival?.time || booking?.arrivalTime || null;
     const departureTime = booking?.departure?.time || booking?.departureTime || null;
 
-    //vremenno
     // ---- save/refresh roomId -> apartmentName mapping (auto) ----
     if (beds24RoomId && beds24RoomId !== "undefined" && beds24RoomId !== "null") {
       await pool.query(
-        `
-        INSERT INTO beds24_rooms (beds24_room_id, apartment_name, is_active)
-        VALUES ($1, COALESCE($2, ''), true)
-        ON CONFLICT (beds24_room_id)
-        DO UPDATE SET
-          apartment_name = COALESCE(EXCLUDED.apartment_name, beds24_rooms.apartment_name),
-          is_active = true,
-          updated_at = NOW()
-        `,
+        `INSERT INTO beds24_rooms (beds24_room_id, apartment_name, is_active)
+         VALUES ($1, COALESCE($2, ''), true)
+         ON CONFLICT (beds24_room_id)
+         DO UPDATE SET
+           apartment_name = COALESCE(EXCLUDED.apartment_name, beds24_rooms.apartment_name),
+           is_active = true,
+           updated_at = NOW()`,
         [String(beds24RoomId), apartmentName ? String(apartmentName) : ""]
       );
     }
-    //vremenno
 
-    // ---- upsert ----
+    // ---- upsert con guest_language ----
     await pool.query(
-      `
-      INSERT INTO checkins (
+      `INSERT INTO checkins (
         apartment_id,
         booking_token,
         beds24_booking_id,
@@ -2211,60 +2233,62 @@ app.post("/webhooks/beds24", async (req, res) => {
         departure_time,
         adults,
         children,
-        beds24_raw
+        beds24_raw,
+        guest_language
       )
       VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8,
         $9, $10, $11, $12,
         $13, $14,
-        $15::jsonb
+        $15::jsonb,
+        $16
       )
       ON CONFLICT (beds24_booking_id)
-DO UPDATE SET
-  apartment_id        = EXCLUDED.apartment_id,
-  beds24_booking_id   = EXCLUDED.beds24_booking_id,
-  beds24_room_id      = COALESCE(EXCLUDED.beds24_room_id, checkins.beds24_room_id),
-  apartment_name      = COALESCE(EXCLUDED.apartment_name, checkins.apartment_name),
-  full_name           = EXCLUDED.full_name,
-  email               = EXCLUDED.email,
-  phone               = EXCLUDED.phone,
-  arrival_date        = COALESCE(EXCLUDED.arrival_date, checkins.arrival_date),
-  arrival_time        = COALESCE(EXCLUDED.arrival_time, checkins.arrival_time),
-  departure_date      = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
-  departure_time      = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
-  adults              = COALESCE(EXCLUDED.adults, checkins.adults),
-  children            = COALESCE(EXCLUDED.children, checkins.children),
-  beds24_raw          = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
-      `,
+      DO UPDATE SET
+        apartment_id        = EXCLUDED.apartment_id,
+        beds24_booking_id   = EXCLUDED.beds24_booking_id,
+        beds24_room_id      = COALESCE(EXCLUDED.beds24_room_id, checkins.beds24_room_id),
+        apartment_name      = COALESCE(EXCLUDED.apartment_name, checkins.apartment_name),
+        full_name           = EXCLUDED.full_name,
+        email               = EXCLUDED.email,
+        phone               = EXCLUDED.phone,
+        arrival_date        = COALESCE(EXCLUDED.arrival_date, checkins.arrival_date),
+        arrival_time        = COALESCE(EXCLUDED.arrival_time, checkins.arrival_time),
+        departure_date      = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
+        departure_time      = COALESCE(EXCLUDED.departure_time, checkins.departure_time),
+        adults              = COALESCE(EXCLUDED.adults, checkins.adults),
+        children            = COALESCE(EXCLUDED.children, checkins.children),
+        beds24_raw          = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw),
+        guest_language      = EXCLUDED.guest_language`,
       [
-        String(beds24RoomId || ""), // apartment_id
-       `beds24_${String(booking.id || "")}`, // booking_token  
-        beds24BookingId,            // beds24_booking_id
-        String(beds24RoomId || ""), // beds24_room_id
-        apartmentName,              // apartment_name
-        fullName,
-        email,
-        phone,
-        arrivalDate,
-        arrivalTime,
-        departureDate,
-        departureTime,
-        adults,
-        children,
-        JSON.stringify(beds24Raw),
+        String(beds24RoomId || ""),           // $1  apartment_id
+        `beds24_${String(booking.id || "")}`, // $2  booking_token  
+        beds24BookingId,                      // $3  beds24_booking_id
+        String(beds24RoomId || ""),           // $4  beds24_room_id
+        apartmentName,                        // $5  apartment_name
+        fullName,                             // $6
+        email,                                // $7
+        phone,                                // $8
+        arrivalDate,                          // $9
+        arrivalTime,                          // $10
+        departureDate,                        // $11
+        departureTime,                        // $12
+        adults,                               // $13
+        children,                             // $14
+        JSON.stringify(beds24Raw),            // $15
+        guestLanguage                         // $16 🌐 NUEVO
       ]
     );
 
     console.log("✅ webhook upsert done", booking.id);
-    console.log("✅ Booking saved:", booking.id);
+    console.log("✅ Booking saved:", booking.id, "| Language:", guestLanguage);
     res.status(200).send("OK");
   } catch (err) {
     console.error("❌ DB insert error:", err);
     res.status(500).send("DB error");
   }
 });
-
 
 // ===================== GUEST ROUTES =====================
 
@@ -3961,6 +3985,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
