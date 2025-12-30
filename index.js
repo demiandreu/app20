@@ -1523,17 +1523,17 @@ app.get("/debug/beds24", async (req, res) => {
 app.get("/manager", async (req, res) => {
   try {
     const { rows: apartments } = await pool.query(`
-      SELECT 
-        id, 
-       COALESCE(
-  NULLIF(apartment_name, ''),
-  custom_name,
-  'Apartment #' || id::text
-) as apartment_name
-      FROM beds24_rooms
-      WHERE is_active = true
-      ORDER BY apartment_name ASC
-    `);
+  SELECT 
+    id, 
+    COALESCE(
+      NULLIF(apartment_name, ''),
+      custom_name,
+      'Apartment #' || id::text
+    ) as apartment_name
+  FROM beds24_rooms
+  WHERE is_active = true
+  ORDER BY apartment_name ASC
+`);
     
     const options = apartments
       .map((a) => 
@@ -3227,6 +3227,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
