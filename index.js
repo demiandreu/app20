@@ -1724,7 +1724,7 @@ app.get("/manager/apartment", async (req, res) => {
         : `<span class="muted">⚠ Missing room_id for this apartment</span>`
       }
       
-      <form method="POST" action="/manager/apartment/save">
+      <form method="POST" action="/manager/apartment">
         <input type="hidden" name="id" value="${a.id}" />
         
         <label>Apartment name</label><br/>
@@ -2725,7 +2725,6 @@ function getTranslatedText(section, field, lang) {
         `;
 
     // 5) Render page (Spanish UI)
-    const html = `
   const html = `
   <div style="text-align:right; margin-bottom:16px; max-width:600px; margin-left:auto; margin-right:auto;">
     <select onchange="window.location.href = window.location.pathname + '?lang=' + this.value" style="padding:8px 12px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:20px; cursor:pointer; width:60px;">
@@ -3897,6 +3896,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
