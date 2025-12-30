@@ -2354,7 +2354,7 @@ app.post("/checkin/:token", async (req, res) => {
   }
 });
 
-app.get("/guest/:token", async (req, res) => {
+/* app.get("/guest/:token", async (req, res) => {
   const { token } = req.params;
   
   const result = await pool.query(
@@ -2368,7 +2368,7 @@ app.get("/guest/:token", async (req, res) => {
   
   const booking = result.rows[0];
 
-});
+}); */
 
 app.get("/guest/:bookingId", async (req, res) => {
   const { bookingId } = req.params;
@@ -2409,21 +2409,7 @@ app.get("/guest/:bookingId", async (req, res) => {
       `));
     }
     
-    const r = result.rows[0];
-    console.log("✅ Booking found:", r.beds24_booking_id, "for guest:", r.full_name);
-    
-    // Usar apartment_name del checkin o del join con beds24_rooms
-    const apartmentName = r.apartment_name || r.apartment_from_rooms || 'N/A';
-    
-    // Cargar secciones del apartamento
-    const secRes = await pool.query(
-      `SELECT id, title, body, icon, new_media_type, new_media_url, translations
-       FROM apartment_sections
-       WHERE room_id::text = $1
-         AND is_active = true
-       ORDER BY sort_order ASC, id ASC`,
-      [String(r.room_id)]
-    );
+  
     
     const r = result.rows[0];
     
@@ -3744,6 +3730,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
