@@ -1857,7 +1857,7 @@ if (req.body.add === "1") {
     [roomId, newTitle, newBody, newIcon, newSortOrder, newIsActive, newMediaType, newMediaUrl, JSON.stringify(translations)]
   );
 
-  return res.redirect(`/manager/apartment/sections?room_id=${roomId}`);
+ return res.redirect(`/manager/apartment/sections?room_id=${roomId}`);
 }
 
     // 2) DELETE a section
@@ -1867,7 +1867,7 @@ if (req.body.add === "1") {
         `DELETE FROM apartment_sections WHERE id = $1 AND room_id::text = $2`,
         [deleteId, roomId]
       );
-      return res.redirect(`/manager/apartment/sections?room_id=${roomId}`);
+     return res.redirect(`/manager/apartment/sections?room_id=${roomId}`);
     }
 
     // 3) MOVE up/down
@@ -3916,6 +3916,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
