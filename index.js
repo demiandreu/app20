@@ -404,14 +404,87 @@ app.get("/manager/apartment/sections", async (req, res) => {
       </style>
 
       <script>
-        function toggleAccordion(id) {
-          const content = document.getElementById('content-' + id);
-          const arrow = document.getElementById('arrow-' + id);
-          
-          content.classList.toggle('open');
-          arrow.classList.toggle('rotated');
+  function toggleAccordion(id) {
+    const content = document.getElementById('content-' + id);
+    const arrow = document.getElementById('arrow-' + id);
+    content.classList.toggle('open');
+    arrow.classList.toggle('rotated');
+  }
+
+  async function translateSection(sectionId, field, sourceLang = 'es') {
+    const sourceText = document.querySelector(\`[name="\${field}_\${sectionId}"]\`).value;
+    
+    if (!sourceText.trim()) {
+      alert('No hay texto para traducir');
+      return;
+    }
+
+    const languages = ['en', 'fr', 'de', 'ru'].filter(lang => lang !== sourceLang);
+    
+    for (const targetLang of languages) {
+      const btn = document.getElementById(\`translate_\${field}_\${sectionId}_\${targetLang}\`);
+      if (btn) btn.disabled = true;
+      
+      try {
+        const response = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: sourceText, targetLang })
+        });
+        
+        const data = await response.json();
+        
+        if (data.translated) {
+          const textarea = document.getElementById(\`\${field}_\${sectionId}_\${targetLang}\`);
+          if (textarea) {
+            textarea.value = data.translated;
+            textarea.style.background = '#d1fae5';
+            setTimeout(() => textarea.style.background = '', 2000);
+          }
         }
-      </script>
+      } catch (e) {
+        console.error('Translation error:', e);
+        alert('Error traduciendo a ' + targetLang);
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }
+  }
+
+  async function translateNewSection(field) {
+    const sourceText = document.querySelector(\`[name="new_\${field}"]\`).value;
+    
+    if (!sourceText.trim()) {
+      alert('No hay texto para traducir');
+      return;
+    }
+
+    const languages = ['en', 'fr', 'de', 'ru'];
+    
+    for (const targetLang of languages) {
+      try {
+        const response = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: sourceText, targetLang })
+        });
+        
+        const data = await response.json();
+        
+        if (data.translated) {
+          const textarea = document.getElementById(\`new_\${field}_\${targetLang}\`);
+          if (textarea) {
+            textarea.value = data.translated;
+            textarea.style.background = '#d1fae5';
+            setTimeout(() => textarea.style.background = '', 2000);
+          }
+        }
+      } catch (e) {
+        console.error('Translation error:', e);
+      }
+    }
+  }
+</script>
 
       <h1>Apartment Sections</h1>
 
@@ -428,40 +501,83 @@ app.get("/manager/apartment/sections", async (req, res) => {
 
       <form method="POST" action="/manager/apartment/sections/save">
         <input type="hidden" name="room_id" value="${escapeHtml(roomId)}" />
+       <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
+  <h2 style="margin:0 0 8px; font-size:16px;">➕ Añadir nueva sección</h2>
+  <div style="display:grid; gap:8px;">
+    <label>Icono</label>
+    ${createIconSelect("", "new_icon")}
 
-        <div style="margin:12px 0; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
-          <h2 style="margin:0 0 8px; font-size:16px;">➕ Añadir nueva sección</h2>
-          <div style="display:grid; gap:8px;">
-            <label>Icono</label>
-            ${createIconSelect("", "new_icon")}
+    <label>🇪🇸 Título (Español - idioma base)</label>
+    <div style="display:flex; gap:8px;">
+      <input name="new_title" placeholder="Título" style="flex:1;" />
+      <button type="button" onclick="translateNewSection('title')" style="padding:8px 16px; background:#6366f1; color:white; border:none; border-radius:6px; cursor:pointer; white-space:nowrap;">🌐 Traducir</button>
+    </div>
 
-            <label>Title</label>
-            <input name="new_title" placeholder="Título" />
+    <!-- Traducciones de título (ocultas por defecto) -->
+    <details style="margin-top:8px;">
+      <summary style="cursor:pointer; padding:8px; background:#f3f4f6; border-radius:6px; font-size:13px;">📝 Traducciones del título</summary>
+      <div style="display:grid; gap:8px; padding:12px; background:#f9fafb; border-radius:6px; margin-top:8px;">
+        <label>🇬🇧 English</label>
+        <textarea id="new_title_en" name="new_title_en" rows="1" placeholder="Auto-translated..."></textarea>
+        
+        <label>🇫🇷 Français</label>
+        <textarea id="new_title_fr" name="new_title_fr" rows="1" placeholder="Auto-translated..."></textarea>
+        
+        <label>🇩🇪 Deutsch</label>
+        <textarea id="new_title_de" name="new_title_de" rows="1" placeholder="Auto-translated..."></textarea>
+        
+        <label>🇷🇺 Русский</label>
+        <textarea id="new_title_ru" name="new_title_ru" rows="1" placeholder="Auto-translated..."></textarea>
+      </div>
+    </details>
 
-            <label>Text</label>
-            <textarea name="new_body" rows="4" placeholder="Texto para huéspedes..."></textarea>
+    <label>🇪🇸 Texto (Español - idioma base)</label>
+    <div style="display:flex; gap:8px; flex-direction:column;">
+      <textarea name="new_body" rows="4" placeholder="Texto para huéspedes..."></textarea>
+      <button type="button" onclick="translateNewSection('body')" style="padding:8px 16px; background:#6366f1; color:white; border:none; border-radius:6px; cursor:pointer; align-self:flex-start;">🌐 Traducir texto</button>
+    </div>
 
-            <label class="muted">Media type</label>
-            <select name="new_media_type">
-              <option value="none" selected>None</option>
-              <option value="image">Image</option>
-              <option value="video">Video</option>
-            </select>
+    <!-- Traducciones de texto (ocultas por defecto) -->
+    <details style="margin-top:8px;">
+      <summary style="cursor:pointer; padding:8px; background:#f3f4f6; border-radius:6px; font-size:13px;">📝 Traducciones del texto</summary>
+      <div style="display:grid; gap:8px; padding:12px; background:#f9fafb; border-radius:6px; margin-top:8px;">
+        <label>🇬🇧 English</label>
+        <textarea id="new_body_en" name="new_body_en" rows="3" placeholder="Auto-translated..."></textarea>
+        
+        <label>🇫🇷 Français</label>
+        <textarea id="new_body_fr" name="new_body_fr" rows="3" placeholder="Auto-translated..."></textarea>
+        
+        <label>🇩🇪 Deutsch</label>
+        <textarea id="new_body_de" name="new_body_de" rows="3" placeholder="Auto-translated..."></textarea>
+        
+        <label>🇷🇺 Русский</label>
+        <textarea id="new_body_ru" name="new_body_ru" rows="3" placeholder="Auto-translated..."></textarea>
+      </div>
+    </details>
 
-            <label class="muted">Media URL</label>
-            <input name="new_media_url" placeholder="https://..." style="width:100%;" />
+    <label class="muted">Media type</label>
+    <select name="new_media_type">
+      <option value="none" selected>None</option>
+      <option value="image">Image</option>
+      <option value="video">Video</option>
+    </select>
 
-            <div style="display:flex; gap:10px; align-items:center;">
-              <label class="muted">Order:</label>
-              <input name="new_sort_order" value="1" style="width:80px;" />
-              <label style="display:flex; gap:8px; align-items:center;">
-                <input type="checkbox" name="new_is_active" checked />
-                Active
-              </label>
-              <button type="submit" name="add" value="1">Add section</button>
-            </div>
-          </div>
-        </div>
+    <label class="muted">Media URL</label>
+    <input name="new_media_url" placeholder="https://..." style="width:100%;" />
+
+    <div style="display:flex; gap:10px; align-items:center;">
+      <label class="muted">Order:</label>
+      <input name="new_sort_order" value="1" style="width:80px;" />
+      <label style="display:flex; gap:8px; align-items:center;">
+        <input type="checkbox" name="new_is_active" checked />
+        Active
+      </label>
+      <button type="submit" name="add" value="1">Add section</button>
+    </div>
+  </div>
+</div>
+  
+        
 
         <div style="margin-top:12px; padding:12px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
           <h2 style="margin:0 0 16px; font-size:16px;">📋 Secciones existentes</h2>
@@ -3292,6 +3408,52 @@ app.post("/staff/checkins/:id/visibility", async (req, res) => {
     return res.status(500).send("Error updating visibility");
   }
 });
+// ========== DEEPL TRANSLATION API ==========
+async function translateText(text, targetLang) {
+  const apiKey = process.env.DEEPL_API_KEY;
+  
+  if (!apiKey) {
+    throw new Error('DEEPL_API_KEY not configured');
+  }
+
+  const response = await fetch('https://api-free.deepl.com/v2/translate', {
+    method: 'POST',
+    headers: {
+      'Authorization': `DeepL-Auth-Key ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      text: [text],
+      target_lang: targetLang.toUpperCase(),
+      source_lang: 'ES',
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`DeepL API error: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  return data.translations[0].text;
+}
+
+// API endpoint para traducir desde el frontend
+app.post("/api/translate", async (req, res) => {
+  try {
+    const { text, targetLang } = req.body;
+    
+    if (!text || !targetLang) {
+      return res.status(400).json({ error: 'Missing text or targetLang' });
+    }
+
+    const translated = await translateText(text, targetLang);
+    
+    res.json({ translated });
+  } catch (e) {
+    console.error('❌ Translation error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
 // ===================== MANAGER SETTINGS =====================
 
 app.post("/staff/checkins/:id/clean", async (req, res) => {
@@ -3605,6 +3767,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
