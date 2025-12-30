@@ -1614,11 +1614,10 @@ app.get("/manager/apartment", async (req, res) => {
         <input type="hidden" name="id" value="${a.id}" />
         
         <label>Apartment name</label><br/>
-        ${beds24Name ? `<p class="muted" style="margin:4px 0 8px;">Beds24 name: <strong>${escapeHtml(beds24Name)}</strong></p>` : ''}
-        ${roomId ? `<p class="muted">Room ID: <strong>${escapeHtml(roomId)}</strong> · Beds24 name: <strong>${escapeHtml(beds24Name)}</strong></p>` : ''}
+        ${roomId && beds24Name ? `<p class="muted" style="margin:4px 0 8px;">Room ID: <strong>${escapeHtml(roomId)}</strong> · Beds24 name: <strong>${escapeHtml(beds24Name)}</strong></p>` : ''}
         <input 
           name="apartment_name" 
-          value="${escapeHtml(a.apartment_name || "")}" 
+          value="${escapeHtml(a.apartment_name || beds24Name)}"
           placeholder="${beds24Name ? `Leave empty to use: ${escapeHtml(beds24Name)}` : 'Custom name'}"
           style="width:100%; max-width:700px;" 
         />
@@ -3228,6 +3227,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
