@@ -1630,7 +1630,7 @@ app.get("/manager", async (req, res) => {
  SELECT 
   id, 
   beds24_room_id,
-  COALESCE(apartment_name, 'Apartment #' || id::text) as apartment_name  // ✅
+  COALESCE(apartment_name, 'Apartment #' || id::text) as apartment_name  
 FROM beds24_rooms
   WHERE is_active = true
   ORDER BY apartment_name ASC
@@ -3885,6 +3885,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
