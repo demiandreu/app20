@@ -2426,20 +2426,20 @@ app.get("/guest/:bookingId", async (req, res) => {
   
   try {
     // Buscar la reserva
-    const result = await pool.query(
-      `SELECT c.*, 
-              br.apartment_name as apartment_from_rooms,
-       FROM checkins c
-       LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.room_id::text
-       WHERE (
-         REPLACE(c.beds24_booking_id::text, ' ', '') = $1
-         OR c.booking_token = $2
-         OR c.booking_token = $3
-       )
-       AND (c.cancelled IS NULL OR c.cancelled = '[]'::jsonb OR c.cancelled = false)
-       LIMIT 1`,
-      [bookingId, bookingId, `beds24_${bookingId}`]
-    );
+   const result = await pool.query(
+  `SELECT c.*, 
+          br.apartment_name as apartment_from_rooms
+   FROM checkins c
+   LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.room_id::text
+   WHERE (
+     REPLACE(c.beds24_booking_id::text, ' ', '') = $1
+     OR c.booking_token = $2
+     OR c.booking_token = $3
+   )
+   AND (c.cancelled IS NULL OR c.cancelled = '[]'::jsonb OR c.cancelled = false)
+   LIMIT 1`,
+  [bookingId, bookingId, `beds24_${bookingId}`]
+);
     
     console.log("📊 Query result:", result.rows.length);
     
@@ -3521,6 +3521,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
