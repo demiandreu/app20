@@ -2643,9 +2643,9 @@ const sectionsHtml = secRes.rows.length === 0
     
   } catch (e) {
     console.error("Guest dashboard error:", e);
-    return res.status(500).send(renderPage("Error", \`
+    return res.status(500).send(renderPage("Error", `
       <div class="card">No se pudo cargar el panel: \${escapeHtml(e.message || String(e))}</div>
-    \`));
+    `));
   }
 });
 
@@ -3718,6 +3718,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
