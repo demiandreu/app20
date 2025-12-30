@@ -1815,37 +1815,6 @@ app.post("/manager/apartment", async (req, res) => {
 
   res.redirect(`/manager/apartment?id=${id}`);
 });
-
-
-// ========== POST: create new accordion section ==========
-// CREATE new section (from manager page)
-
-// 1) ADD new section
-if (req.body.add === "1") {
-  const newTitle = String(req.body.new_title || "").trim();
-  const newBody = String(req.body.new_body || "").trim();
-  const newIcon = String(req.body.new_icon || "").trim();
-  const newMediaType = String(req.body.new_media_type || "none").trim();
-  const newMediaUrl = String(req.body.new_media_url || "").trim();
-  const newSortOrder = parseInt(req.body.new_sort_order, 10) || 1;
-  const newIsActive = req.body.new_is_active === "on";
-
-  // Recoger traducciones
-  const translations = {
-    title: {
-      es: newTitle,
-      en: String(req.body.new_title_en || "").trim(),
-      fr: String(req.body.new_title_fr || "").trim(),
-      de: String(req.body.new_title_de || "").trim(),
-      ru: String(req.body.new_title_ru || "").trim(),
-    },
-    body: {
-      es: newBody,
-      en: String(req.body.new_body_en || "").trim(),
-      fr: String(req.body.new_body_fr || "").trim(),
-      de: String(req.body.new_body_de || "").trim(),
-      ru: String(req.body.new_body_ru || "").trim(),
-    }
   };
 
   await pool.query(
@@ -4072,6 +4041,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
