@@ -1716,11 +1716,14 @@ app.get("/manager/apartment", async (req, res) => {
         <input type="hidden" name="id" value="${a.id}" />
         
         <label>Apartment name</label><br/>
-        ${roomId && beds24Name ? `<p class="muted" style="margin:4px 0 8px;">Room ID: <strong>${escapeHtml(roomId)}</strong> · Beds24 name: <strong>${escapeHtml(beds24Name)}</strong></p>` : ''}
-        <input 
-          name="apartment_name" 
-          value="${escapeHtml(a.apartment_name || beds24Name)}"
-          placeholder="${beds24Name ? `Leave empty to use: ${escapeHtml(beds24Name)}` : 'Custom name'}"
+   <p class="muted" style="margin:4px 0 8px;">
+  Room ID: <strong>${escapeHtml(roomId || 'N/A')}</strong>
+  ${beds24Name ? ` · Beds24: <strong>${escapeHtml(beds24Name)}</strong>` : ''}
+</p>
+<input 
+  name="apartment_name" 
+  value="${escapeHtml(a.apartment_name || beds24Name || '')}"
+  placeholder="Nombre del apartamento"
           style="width:100%; max-width:700px;" 
         />
         <p class="muted" style="margin:4px 0 12px;">Leave empty to use the Beds24 name automatically</p>
@@ -1778,10 +1781,9 @@ app.post("/manager/apartment", async (req, res) => {
     keys_instructions_url
   } = req.body;
 
-  await pool.query(
-    `
-    UPDATE beds24_rooms
-    SET
+ await pool.query(`
+  UPDATE beds24_rooms
+  SET
       apartment_name = $1,
       support_phone = $2,
       default_arrival_time = $3,
@@ -3884,6 +3886,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
