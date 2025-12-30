@@ -2536,7 +2536,274 @@ app.get("/guest/:roomId/:bookingReference", async (req, res) => {
       );
   }
 });
-// --- LIST + FILTER ---
+
+app.get("/manager/whatsapp", async (req, res) => {
+  try {
+    // Cargar apartamentos para el selector
+    const { rows: apartments } = await pool.query(`
+      SELECT 
+        beds24_room_id,
+        COALESCE(custom_name, apartment_name) as apartment_name
+      FROM beds24_rooms
+      WHERE is_active = true
+      ORDER BY apartment_name ASC
+    `);
+
+    // Cargar respuestas existentes
+    const { rows: responses } = await pool.query(`
+      SELECT 
+        wr.*,
+        COALESCE(br.custom_name, br.apartment_name, 'Global') as apartment_display_name
+      FROM whatsapp_responses wr
+      LEFT JOIN beds24_rooms br ON br.beds24_room_id = wr.room_id
+      ORDER BY wr.category, wr.sort_order ASC, wr.id ASC
+    `);
+
+    // Categorías predefinidas
+    const categories = [
+      { value: "general", label: "📌 General" },
+      { value: "checkin", label: "🔑 Check-in" },
+      { value: "checkout", label: "🚪 Check-out" },
+      { value: "wifi", label: "📶 WiFi" },
+      { value: "parking", label: "🚗 Parking" },
+      { value: "location", label: "📍 Ubicación" },
+      { value: "amenities", label: "🏊 Servicios" },
+      { value: "emergency", label: "🚨 Emergencia" },
+      { value: "payment", label: "💳 Pago" },
+      { value: "cleaning", label: "🧹 Limpieza" },
+    ];
+
+    const apartmentOptions = apartments.map(a => 
+      `<option value="${escapeHtml(a.beds24_room_id)}">${escapeHtml(a.apartment_name)}</option>`
+    ).join('');
+
+    const categoryOptions = categories.map(c =>
+      `<option value="${c.value}">${c.label}</option>`
+    ).join('');
+
+    // Acordeón de respuestas
+    const responsesHtml = responses.map((r, index) => {
+      const keywords = Array.isArray(r.trigger_keywords) ? r.trigger_keywords.join(', ') : '';
+      const checked = r.is_active ? 'checked' : '';
+      const categoryLabel = categories.find(c => c.value === r.category)?.label || r.category;
+      
+      return `
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(${r.id})">
+            <div class="accordion-title">
+              <span class="accordion-icon">${categoryLabel}</span>
+              <strong>${escapeHtml(keywords || 'Sin keywords')}</strong>
+              <span class="accordion-badge ${r.is_active ? 'active' : 'inactive'}">
+                ${r.is_active ? '✓ Activa' : '✗ Inactiva'}
+              </span>
+              <span class="muted" style="font-size:11px;">${escapeHtml(r.apartment_display_name)}</span>
+            </div>
+            <span class="accordion-arrow" id="arrow-${r.id}">▼</span>
+          </div>
+          
+          <div class="accordion-content" id="content-${r.id}">
+            <div class="accordion-body">
+              <div style="display:grid; gap:12px;">
+                <div>
+                  <label>Categoría</label>
+                  <select name="category_${r.id}" style="width:100%;">
+                    ${categories.map(c => 
+                      `<option value="${c.value}" ${r.category === c.value ? 'selected' : ''}>${c.label}</option>`
+                    ).join('')}
+                  </select>
+                </div>
+
+                <div>
+                  <label>Keywords (separadas por comas)</label>
+                  <input name="keywords_${r.id}" value="${escapeHtml(keywords)}" placeholder="wifi, contraseña, password" style="width:100%;" />
+                </div>
+
+                <div>
+                  <label>Respuesta automática</label>
+                  <textarea name="response_${r.id}" rows="4" style="width:100%;">${escapeHtml(r.response_text || '')}</textarea>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                  <div>
+                    <label>Apartamento</label>
+                    <select name="room_id_${r.id}" style="width:100%;">
+                      <option value="" ${!r.room_id ? 'selected' : ''}>🌐 Global (todos)</option>
+                      ${apartments.map(a =>
+                        `<option value="${escapeHtml(a.beds24_room_id)}" ${r.room_id === a.beds24_room_id ? 'selected' : ''}>${escapeHtml(a.apartment_name)}</option>`
+                      ).join('')}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label>Estado</label>
+                    <label style="display:flex; gap:8px; align-items:center; padding:8px;">
+                      <input type="checkbox" name="is_active_${r.id}" ${checked}/>
+                      Activa
+                    </label>
+                  </div>
+                </div>
+
+                <div style="display:flex; gap:8px; padding-top:12px; border-top:1px solid #e5e7eb;">
+                  <button class="btn-mini" type="submit" name="move" value="up:${r.id}">↑ Subir</button>
+                  <button class="btn-mini" type="submit" name="move" value="down:${r.id}">↓ Bajar</button>
+                  <button class="btn-mini danger" type="submit" name="delete" value="${r.id}" onclick="return confirm('¿Eliminar esta respuesta?')">🗑️ Eliminar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const html = `
+      <style>
+        .accordion-item {
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          margin-bottom: 8px;
+          background: white;
+          overflow: hidden;
+        }
+        .accordion-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 16px;
+          cursor: pointer;
+          background: #f9fafb;
+          transition: background 0.2s;
+        }
+        .accordion-header:hover { background: #f3f4f6; }
+        .accordion-title {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex: 1;
+        }
+        .accordion-icon { font-size: 20px; }
+        .accordion-badge {
+          padding: 4px 10px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 500;
+        }
+        .accordion-badge.active {
+          background: #d1fae5;
+          color: #065f46;
+        }
+        .accordion-badge.inactive {
+          background: #fee2e2;
+          color: #991b1b;
+        }
+        .accordion-arrow {
+          transition: transform 0.3s;
+          font-size: 12px;
+          color: #6b7280;
+        }
+        .accordion-arrow.rotated { transform: rotate(-180deg); }
+        .accordion-content {
+          max-height: 0;
+          overflow: hidden;
+          transition: max-height 0.3s ease;
+        }
+        .accordion-content.open { max-height: 2000px; }
+        .accordion-body {
+          padding: 16px;
+          border-top: 1px solid #e5e7eb;
+        }
+        .btn-mini {
+          padding: 6px 10px;
+          font-size: 14px;
+          cursor: pointer;
+          border: 1px solid #ddd;
+          background: #f9f9f9;
+          border-radius: 4px;
+        }
+        .btn-mini:hover { background: #e9e9e9; }
+        .danger {
+          background: #fee2e2;
+          border-color: #fca5a5;
+        }
+        .danger:hover { background: #fecaca; }
+        .muted { opacity: 0.65; font-size: 12px; }
+      </style>
+
+      <script>
+        function toggleAccordion(id) {
+          const content = document.getElementById('content-' + id);
+          const arrow = document.getElementById('arrow-' + id);
+          content.classList.toggle('open');
+          arrow.classList.toggle('rotated');
+        }
+      </script>
+
+      <h1>WhatsApp Respuestas Automáticas</h1>
+      <p><a href="/manager">← Back to Manager</a></p>
+
+      <form method="POST" action="/manager/whatsapp/save">
+        <!-- Añadir nueva respuesta -->
+        <div style="margin:12px 0; padding:16px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
+          <h2 style="margin:0 0 12px; font-size:16px;">➕ Añadir nueva respuesta automática</h2>
+          <div style="display:grid; gap:12px;">
+            <div>
+              <label>Categoría</label>
+              <select name="new_category" style="width:100%;">
+                ${categoryOptions}
+              </select>
+            </div>
+
+            <div>
+              <label>Keywords (separadas por comas)</label>
+              <input name="new_keywords" placeholder="wifi, contraseña, password" style="width:100%;" />
+              <p class="muted">El bot responderá cuando el mensaje contenga alguna de estas palabras</p>
+            </div>
+
+            <div>
+              <label>Respuesta automática</label>
+              <textarea name="new_response" rows="4" placeholder="La contraseña del WiFi es..." style="width:100%;"></textarea>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+              <div>
+                <label>Apartamento</label>
+                <select name="new_room_id" style="width:100%;">
+                  <option value="">🌐 Global (todos los apartamentos)</option>
+                  ${apartmentOptions}
+                </select>
+              </div>
+
+              <div>
+                <label style="display:flex; gap:8px; align-items:center; padding:18px 0 0 0;">
+                  <input type="checkbox" name="new_is_active" checked />
+                  Activa
+                </label>
+              </div>
+            </div>
+
+            <button type="submit" name="add" value="1" style="padding:10px 20px;">Añadir respuesta</button>
+          </div>
+        </div>
+
+        <!-- Respuestas existentes -->
+        <div style="margin-top:16px; padding:16px; border:1px solid #e5e7eb; border-radius:14px; background:#fff;">
+          <h2 style="margin:0 0 16px; font-size:16px;">📋 Respuestas configuradas</h2>
+          
+          <div class="accordion">
+            ${responsesHtml || '<p class="muted">No hay respuestas configuradas todavía.</p>'}
+          </div>
+
+          ${responses.length > 0 ? '<div style="margin-top:16px;"><button type="submit" name="save" value="1" style="padding:10px 20px;">💾 Guardar cambios</button></div>' : ''}
+        </div>
+      </form>
+    `;
+
+    res.send(renderPage("WhatsApp Responses", html));
+  } catch (e) {
+    console.error("❌ /manager/whatsapp error:", e);
+    res.status(500).send("Error loading WhatsApp page");
+  }
+});
+
 // ===================== STAFF: CHECKINS LIST (FIXED) =====================
 app.get("/staff/checkins", async (req, res) => {
   try {
@@ -3224,6 +3491,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
