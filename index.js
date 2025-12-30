@@ -1436,11 +1436,15 @@ async function upsertCheckinFromBeds24(row) {
     return { skipped: true, reason: "missing_dates" };
   }
 
-  // Resolve apartment_id using apartments.beds24_room_id mapping if needed
-  let apartmentId = row.apartment_id ? String(row.apartment_id) : null;
-  const beds24RoomId = row.beds24_room_id != null ? String(row.beds24_room_id) : null;
-
-  if (!apartmentId) {
+// Buscar el ID de beds24_rooms
+let roomDbId = null;
+if (beds24RoomId) {
+  const roomRes = await pool.query(
+    `SELECT id FROM beds24_rooms WHERE beds24_room_id::text = $1 LIMIT 1`,
+    [beds24RoomId]
+  );
+  roomDbId = roomRes.rows?.[0]?.id ? String(roomRes.rows[0].id) : null;
+}
     if (!beds24RoomId) return { skipped: true, reason: "missing_beds24_room_id" };
 
     const aptRes = await pool.query(
@@ -1516,7 +1520,7 @@ async function upsertCheckinFromBeds24(row) {
     `,
     [
       apartmentId,                           // $1
-      beds24RoomId,                          // $2 room_id
+      roomDbId,                          // $2 room_id
       bookingToken,                          // $3 booking_token
       row.full_name || null,                 // $4
       row.email || null,                     // $5
@@ -3896,6 +3900,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
