@@ -82,7 +82,7 @@ async function getProviderToken(provider, propertyExternalId) {
   );
 
   const token = r.rows?.[0]?.token || "";
-  if (!token) throw new Error(`Token not found for provider=${provider}, property=${propertyExternalId}`);
+if (!token) throw new Error(`Token not found for provider=${provider}, property=${propertyExternalId}`);
   return token;
 }
 
@@ -2338,6 +2338,162 @@ app.post("/checkin/:aptId/:token", async (req, res) => {
   }
 });
 
+app.post("/manager/apartment/sections/save", async (req, res) => {
+  try {
+    const roomId = String(req.body.room_id || "").trim();
+    if (!roomId) {
+      return res.status(400).send("room_id required");
+    }
+
+    // 1) ADD new section
+    if (req.body.add === "1") {
+      const newTitle = String(req.body.new_title || "").trim();
+      const newBody = String(req.body.new_body || "").trim();
+      const newIcon = String(req.body.new_icon || "").trim();
+      const newMediaType = String(req.body.new_media_type || "none").trim();
+      const newMediaUrl = String(req.body.new_media_url || "").trim();
+      const newSortOrder = parseInt(req.body.new_sort_order, 10) || 1;
+      const newIsActive = req.body.new_is_active === "on";
+
+      // Recoger traducciones
+      const translations = {
+        title: {
+          es: newTitle,
+          en: String(req.body.new_title_en || "").trim(),
+          fr: String(req.body.new_title_fr || "").trim(),
+          de: String(req.body.new_title_de || "").trim(),
+          ru: String(req.body.new_title_ru || "").trim(),
+        },
+        body: {
+          es: newBody,
+          en: String(req.body.new_body_en || "").trim(),
+          fr: String(req.body.new_body_fr || "").trim(),
+          de: String(req.body.new_body_de || "").trim(),
+          ru: String(req.body.new_body_ru || "").trim(),
+        }
+      };
+
+      await pool.query(
+        `
+        INSERT INTO apartment_sections 
+          (room_id, title, body, icon, sort_order, is_active, new_media_type, new_media_url, translations)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        `,
+        [roomId, newTitle, newBody, newIcon, newSortOrder, newIsActive, newMediaType, newMediaUrl, JSON.stringify(translations)]
+      );
+
+      return res.redirect(`/manager/apartment/sections?room_id=${roomId}`);
+    }
+
+    // 2) DELETE a section
+    if (req.body.delete) {
+      const deleteId = parseInt(req.body.delete, 10);
+      await pool.query(
+        `DELETE FROM apartment_sections WHERE id = $1 AND room_id::text = $2`,
+        [deleteId, roomId]
+      );
+      return res.redirect(`/manager/apartment/sections?room_id=${roomId}`);
+    }
+
+    // 3) MOVE up/down
+    if (req.body.move) {
+      const [direction, idStr] = req.body.move.split(":");
+      const moveId = parseInt(idStr, 10);
+
+      const sections = await pool.query(
+        `SELECT id, sort_order FROM apartment_sections WHERE room_id::text = $1 ORDER BY sort_order ASC, id ASC`,
+        [roomId]
+      );
+
+      const arr = sections.rows;
+      const idx = arr.findIndex((s) => s.id === moveId);
+
+      if (idx !== -1) {
+        if (direction === "up" && idx > 0) {
+          const temp = arr[idx].sort_order;
+          arr[idx].sort_order = arr[idx - 1].sort_order;
+          arr[idx - 1].sort_order = temp;
+        } else if (direction === "down" && idx < arr.length - 1) {
+          const temp = arr[idx].sort_order;
+          arr[idx].sort_order = arr[idx + 1].sort_order;
+          arr[idx + 1].sort_order = temp;
+        }
+
+        for (const sec of arr) {
+          await pool.query(
+            `UPDATE apartment_sections SET sort_order = $1 WHERE id = $2`,
+            [sec.sort_order, sec.id]
+          );
+        }
+      }
+
+      return res.redirect(`/manager/apartment/sections?room_id=${roomId}`);
+    }
+
+    // 4) SAVE all existing sections
+    if (req.body.save === "1") {
+      const allSections = await pool.query(
+        `SELECT id FROM apartment_sections WHERE room_id::text = $1`,
+        [roomId]
+      );
+
+      for (const sec of allSections.rows) {
+        const id = sec.id;
+        const sortOrder = parseInt(req.body[`sort_order_${id}`], 10) || 0;
+        const isActive = req.body[`is_active_${id}`] === "on";
+        const title = String(req.body[`title_${id}`] || "").trim();
+        const body = String(req.body[`body_${id}`] || "").trim();
+        const icon = String(req.body[`icon_${id}`] || "").trim();
+        const mediaType = String(req.body[`new_media_type_${id}`] || "none").trim();
+        const mediaUrl = String(req.body[`new_media_url_${id}`] || "").trim();
+
+        // Recoger traducciones (si existen)
+        const translations = {
+          title: {
+            es: title,
+            en: String(req.body[`title_${id}_en`] || "").trim(),
+            fr: String(req.body[`title_${id}_fr`] || "").trim(),
+            de: String(req.body[`title_${id}_de`] || "").trim(),
+            ru: String(req.body[`title_${id}_ru`] || "").trim(),
+          },
+          body: {
+            es: body,
+            en: String(req.body[`body_${id}_en`] || "").trim(),
+            fr: String(req.body[`body_${id}_fr`] || "").trim(),
+            de: String(req.body[`body_${id}_de`] || "").trim(),
+            ru: String(req.body[`body_${id}_ru`] || "").trim(),
+          }
+        };
+
+        await pool.query(
+          `
+          UPDATE apartment_sections
+          SET 
+            sort_order = $1,
+            is_active = $2,
+            title = $3,
+            body = $4,
+            icon = $5,
+            new_media_type = $6,
+            new_media_url = $7,
+            translations = $8
+          WHERE id = $9
+          `,
+          [sortOrder, isActive, title, body, icon, mediaType, mediaUrl, JSON.stringify(translations), id]
+        );
+      }
+
+      return res.redirect(`/manager/apartment/sections?room_id=${roomId}`);
+    }
+
+    return res.status(400).send("Unknown action");
+  } catch (e) {
+    console.error("sections save error:", e);
+    return res.status(500).send(
+      "Cannot save: " + (e.detail || e.message || String(e))
+    );
+  }
+});
 
 // ===================== GUEST DASHBOARD =====================
 // URL final: /guest/:roomId/:bookingReference
@@ -3916,6 +4072,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
