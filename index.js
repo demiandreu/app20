@@ -2369,6 +2369,7 @@ app.get("/guest/:token", async (req, res) => {
   const booking = result.rows[0];
 
 });
+
 app.get("/guest/:bookingId", async (req, res) => {
   const { bookingId } = req.params;
   
@@ -2378,26 +2379,51 @@ app.get("/guest/:bookingId", async (req, res) => {
   const currentLang = validLangs.includes(lang) ? lang : 'es';
   
   try {
-    // Buscar por beds24_booking_id
+    // 🔧 QUERY CORREGIDA - Elimina espacios y busca en múltiples campos
     const result = await pool.query(
       `SELECT c.*, 
-              br.apartment_name,
+              br.apartment_name as apartment_from_rooms,
               br.address
        FROM checkins c
-       LEFT JOIN beds24_rooms br ON br.beds24_room_id = c.room_id
-       WHERE c.beds24_booking_id = $1
-         AND c.cancelled IS DISTINCT FROM true
+       LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.room_id::text
+       WHERE (
+         REPLACE(c.beds24_booking_id::text, ' ', '') = $1
+         OR c.booking_token = $2
+         OR c.booking_token = $3
+       )
+       AND (c.cancelled IS NULL OR c.cancelled = '[]'::jsonb OR c.cancelled = false)
        LIMIT 1`,
-      [bookingId]
+      [
+        bookingId,                    // 79773778
+        bookingId,                    // 79773778
+        `beds24_${bookingId}`        // beds24_79773778
+      ]
     );
     
     if (result.rows.length === 0) {
+      console.log("❌ Booking not found for:", bookingId);
       return res.status(404).send(renderPage("Not Found", `
         <h1>❌ Reserva no encontrada</h1>
         <p>La reserva ${bookingId} no existe.</p>
         <p><a href="/" class="btn-link">← Volver</a></p>
       `));
     }
+    
+    const r = result.rows[0];
+    console.log("✅ Booking found:", r.beds24_booking_id, "for guest:", r.full_name);
+    
+    // Usar apartment_name del checkin o del join con beds24_rooms
+    const apartmentName = r.apartment_name || r.apartment_from_rooms || 'N/A';
+    
+    // Cargar secciones del apartamento
+    const secRes = await pool.query(
+      `SELECT id, title, body, icon, new_media_type, new_media_url, translations
+       FROM apartment_sections
+       WHERE room_id::text = $1
+         AND is_active = true
+       ORDER BY sort_order ASC, id ASC`,
+      [String(r.room_id)]
+    );
     
     const r = result.rows[0];
     
@@ -3718,6 +3744,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
