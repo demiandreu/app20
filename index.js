@@ -1500,7 +1500,6 @@ if (beds24RoomId) {
       apartment_id     = EXCLUDED.apartment_id,
       room_id          = EXCLUDED.room_id,
       booking_token    = COALESCE(NULLIF(EXCLUDED.booking_token, ''), checkins.booking_token),
-      beds24_room_id   = COALESCE(NULLIF(EXCLUDED.beds24_room_id, ''), checkins.beds24_room_id),
       apartment_name   = COALESCE(NULLIF(EXCLUDED.apartment_name, ''), checkins.apartment_name),
       room_name        = EXCLUDED.room_name,
       
@@ -3900,6 +3899,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
