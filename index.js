@@ -2372,43 +2372,51 @@ app.post("/checkin/:token", async (req, res) => {
 
 app.get("/guest/:bookingId", async (req, res) => {
   const { bookingId } = req.params;
-  
-  // Detectar idioma
-  const lang = String(req.query.lang || 'es').toLowerCase().substring(0, 2);
-  const validLangs = ['es', 'en', 'fr', 'de', 'ru'];
-  const currentLang = validLangs.includes(lang) ? lang : 'es';
+  console.log("🔍 Request for bookingId:", bookingId);
   
   try {
-    // 🔧 QUERY CORREGIDA - Elimina espacios y busca en múltiples campos
-    const result = await pool.query(
-      `SELECT c.*, 
-              br.apartment_name as apartment_from_rooms,
-              br.address
-       FROM checkins c
-       LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.room_id::text
-       WHERE (
-         REPLACE(c.beds24_booking_id::text, ' ', '') = $1
-         OR c.booking_token = $2
-         OR c.booking_token = $3
-       )
-       AND (c.cancelled IS NULL OR c.cancelled = '[]'::jsonb OR c.cancelled = false)
-       LIMIT 1`,
-      [
-        bookingId,                    // 79773778
-        bookingId,                    // 79773778
-        `beds24_${bookingId}`        // beds24_79773778
-      ]
-    );
+    const result = await pool.query(...);
+    console.log("📊 Query result:", result.rows.length);
     
     if (result.rows.length === 0) {
-      console.log("❌ Booking not found for:", bookingId);
-      return res.status(404).send(renderPage("Not Found", `
-        <h1>❌ Reserva no encontrada</h1>
-        <p>La reserva ${bookingId} no existe.</p>
-        <p><a href="/" class="btn-link">← Volver</a></p>
-      `));
+      return res.status(404).send(...);
     }
     
+    const r = result.rows[0];
+    console.log("✅ Booking data:", {
+      id: r.beds24_booking_id,
+      name: r.full_name,
+      room_id: r.room_id,
+      apartment: r.apartment_name
+    });
+    
+    const apartmentName = r.apartment_name || r.apartment_from_rooms || 'N/A';
+    console.log("🏠 Apartment name:", apartmentName);
+    
+    const secRes = await pool.query(...);
+    console.log("📋 Sections found:", secRes.rows.length);
+    
+    // Verificar que existan las funciones necesarias
+    console.log("🔧 Functions available:", {
+      fmtDate: typeof fmtDate,
+      fmtTime: typeof fmtTime,
+      escapeHtml: typeof escapeHtml,
+      getTranslatedText: typeof getTranslatedText
+    });
+    
+    // ... resto del código
+    
+  } catch (e) {
+    console.error("❌ Guest dashboard error:", e);
+    console.error("Stack:", e.stack);
+    return res.status(500).send(renderPage("Error", `
+      <div class="card">
+        <h1>Error</h1>
+        <p>${escapeHtml(e.message || String(e))}</p>
+      </div>
+    `));
+  }
+});
   
     
     const r = result.rows[0];
@@ -3730,6 +3738,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
