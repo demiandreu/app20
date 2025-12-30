@@ -2235,46 +2235,66 @@ app.get("/", (req, res) => {
 });
 
 // --- Booking page ---
-app.get("/booking/:aptId/:token", (req, res) => {
-  const { aptId, token } = req.params;
+// ✅ RUTAS CORREGIDAS - Solo con bookingId
+app.get("/booking/:bookingId/:token", async (req, res) => {
+  const { bookingId, token } = req.params;
+  
+  // Buscar la reserva en tu DB para obtener info del apartamento
+  const result = await pool.query(
+    'SELECT * FROM checkins WHERE booking_id = $1 AND booking_token = $2',
+    [bookingId, token]
+  );
+  
+  const booking = result.rows[0];
+  if (!booking) {
+    return res.status(404).send("Booking not found");
+  }
+  
   const html = `
     <h1>Booking ${token}</h1>
-    <p>Apartment: <strong>${aptId}</strong></p>
-    <p><a href="/checkin/${aptId}/${token}" class="btn-primary">Go to check-in</a></p>
+    <p>Apartment: <strong>${booking.apartment_name || bookingId}</strong></p>
+    <p><a href="/checkin/${bookingId}/${token}" class="btn-primary">Go to check-in</a></p>
     <p><a href="/" class="btn-link">← Back</a></p>
   `;
-  res.send(renderPage(`Booking ${token}`, html));
+  res.send(renderPage("Booking " + token, html));
 });
 
-// --- Check-in form ---
-app.get("/checkin/:aptId/:token", (req, res) => {
-  const { aptId, token } = req.params;
+// Check-in form
+app.get("/checkin/:bookingId/:token", async (req, res) => {
+  const { bookingId, token } = req.params;
+  
+  // Verificar que la reserva existe
+  const result = await pool.query(
+    'SELECT * FROM checkins WHERE booking_id = $1 AND booking_token = $2',
+    [bookingId, token]
+  );
+  
+  if (result.rows.length === 0) {
+    return res.status(404).send("Booking not found");
+  }
+  
   const now = new Date();
   const today = ymd(now);
   const tmr = new Date(now);
   tmr.setDate(now.getDate() + 1);
   const tomorrow = ymd(tmr);
-
+  
   const html = `
     <h1>Check-in • ${token}</h1>
-    <p class="muted">Apartment: <strong>${aptId}</strong></p>
-
-    <form method="POST" action="/checkin/${aptId}/${token}">
+    <p class="muted">Booking ID: <strong>${bookingId}</strong></p>
+    <form method="POST" action="/checkin/${bookingId}/${token}">
       <div style="margin-bottom:12px;">
         <label>Full name</label>
         <input name="fullName" required />
       </div>
-
       <div style="margin-bottom:12px;">
         <label>Email</label>
         <input type="email" name="email" required />
       </div>
-
       <div style="margin-bottom:12px;">
         <label>Phone (WhatsApp)</label>
         <input name="phone" required />
       </div>
-
       <div class="row" style="margin-bottom:12px;">
         <div>
           <label>Arrival date</label>
@@ -2287,7 +2307,6 @@ app.get("/checkin/:aptId/:token", (req, res) => {
           </select>
         </div>
       </div>
-
       <div class="row" style="margin-bottom:12px;">
         <div>
           <label>Departure date</label>
@@ -2300,62 +2319,47 @@ app.get("/checkin/:aptId/:token", (req, res) => {
           </select>
         </div>
       </div>
-
-      <button class="btn-base" "type="submit" class="btn-primary">Submit</button>
+      <button type="submit" class="btn-primary">Submit</button>
     </form>
-
-    <p style="margin-top:16px;"><a href="/booking/${aptId}/${token}" class="btn-link">← Back</a></p>
+    <p style="margin-top:16px;"><a href="/booking/${bookingId}/${token}" class="btn-link">← Back</a></p>
   `;
-
   res.send(renderPage("Check-in", html));
 });
 
-// --- Check-in submit -> DB ---
-app.post("/checkin/:aptId/:token", async (req, res) => {
-  const { aptId, token } = req.params;
-
-
-
+// Check-in submit
+app.post("/checkin/:bookingId/:token", async (req, res) => {
+  const { bookingId, token } = req.params;
   try {
-    // 👉 НОРМАЛИЗАЦИЯ ДАННЫХ (ОБЯЗАТЕЛЬНО)
-    const arrivalDate = req.body.arrivalDate;
-    const arrivalTime = req.body.arrivalTime || "16:00";
-    const departureDate = req.body.departureDate;
-    const departureTime = req.body.departureTime || "11:00";
-
     await pool.query(
-      `
-      INSERT INTO checkins (
-        apartment_id, booking_token, full_name, email, phone,
-        arrival_date, arrival_time, departure_date, departure_time
-      )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-      `,
+      `UPDATE checkins 
+       SET full_name = $1, email = $2, phone = $3,
+           arrival_date = $4, arrival_time = $5, 
+           departure_date = $6, departure_time = $7
+       WHERE booking_id = $8 AND booking_token = $9`,
       [
-        aptId,
-        token,
         req.body.fullName,
         req.body.email,
         req.body.phone,
         req.body.arrivalDate,
-        req.body.arrivalTime,
+        req.body.arrivalTime || "16:00",
         req.body.departureDate,
-        req.body.departureTime,
+        req.body.departureTime || "11:00",
+        bookingId,
+        token
       ]
     );
-
-    // AFTER CHECKIN -> REDIRECT TO DASHBOARD
-    return res.redirect(`/guest/${aptId}/${token}`);
+    
+    // Redirect to guest dashboard
+    return res.redirect(`/guest/${bookingId}/${token}`);
   } catch (e) {
-    console.error("DB insert error:", e);
+    console.error("DB update error:", e);
     res.status(500).send("❌ DB error while saving check-in");
   }
 });
 
-
 // ===================== GUEST DASHBOARD =====================
 // URL final: /guest/:roomId/:bookingReference
-app.get("/guest/:roomId/:bookingReference", async (req, res) => {
+app.get("/guest/:bookingId/:bookingReference", async (req, res) => {
   const { roomId, bookingReference } = req.params;
   // Detectar idioma (por defecto español)
 const lang = String(req.query.lang || 'es').toLowerCase().substring(0, 2);
@@ -3885,6 +3889,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
