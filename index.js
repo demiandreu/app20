@@ -1461,7 +1461,6 @@ if (beds24RoomId) {
     apartmentId = aptRes.rows?.[0]?.id ? String(aptRes.rows[0].id) : null;
     if (!apartmentId) {
       return { skipped: true, reason: `apartment_not_mapped_for_room_${beds24RoomId}` };
-    }
   }
 
   const bookingToken =
@@ -3901,6 +3900,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
