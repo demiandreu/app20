@@ -633,6 +633,8 @@ function fmtTime(timeStr) {
   return String(timeStr).substring(0, 5);
 }
 
+
+
 function toYouTubeEmbed(url) {
   const u = String(url || "");
   const m1 = u.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/);
@@ -672,6 +674,502 @@ function calcNights(arrive, depart) {
   return n > 0 ? n : "";
 }
 
+// ============================================
+// WHATSAPP BOT - MANEJO DE SOLICITUDES DE HORARIO
+// ============================================
+
+// Función auxiliar: Detectar si el mensaje es una hora válida
+function parseTime(text) {
+  // Acepta formatos: 14:00, 14, 2:00 PM, 14h, 14.00
+  const patterns = [
+    /^(\d{1,2}):(\d{2})$/,           // 14:00
+    /^(\d{1,2})$/,                    // 14
+    /^(\d{1,2})[h\.](\d{2})?$/,      // 14h, 14.00
+    /^(\d{1,2}):(\d{2})\s*(am|pm)$/i // 2:00 PM
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.trim().match(pattern);
+    if (match) {
+      let hours = parseInt(match[1]);
+      const minutes = match[2] ? parseInt(match[2]) : 0;
+      
+      // Convertir PM/AM a 24h
+      if (match[3]) {
+        const period = match[3].toLowerCase();
+        if (period === 'pm' && hours < 12) hours += 12;
+        if (period === 'am' && hours === 12) hours = 0;
+      }
+
+      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      }
+    }
+  }
+  return null;
+}
+
+// ============================================
+
+// Función: Calcular suplemento según reglas del apartamento
+async function calculateSupplement(apartmentId, requestedTime, type) {
+  // type: 'checkin' o 'checkout'
+  
+  const { rows: [rules] } = await pool.query(
+    `SELECT * FROM early_late_checkout_rules WHERE apartment_id = $1 AND is_active = true`,
+    [apartmentId]
+  );
+
+  if (!rules) {
+    return { supplement: 0, isEarly: false, isLate: false, options: [] };
+  }
+
+  const requested = requestedTime; // formato "14:00"
+  const standard = type === 'checkin' 
+    ? rules.standard_checkin_time 
+    : rules.standard_checkout_time;
+
+  // Comparar horas
+  const isEarly = type === 'checkin' && requested < standard;
+  const isLate = type === 'checkout' && requested > standard;
+
+  if (!isEarly && !isLate) {
+    return { supplement: 0, isEarly: false, isLate: false, options: [] };
+  }
+
+  // Construir opciones disponibles
+  const options = [];
+  
+  if (type === 'checkin' && isEarly) {
+    if (rules.early_checkin_option1_enabled && rules.early_checkin_option1_time) {
+      options.push({
+        time: rules.early_checkin_option1_time,
+        price: parseFloat(rules.early_checkin_option1_price),
+        label: '1'
+      });
+    }
+    if (rules.early_checkin_option2_enabled && rules.early_checkin_option2_time) {
+      options.push({
+        time: rules.early_checkin_option2_time,
+        price: parseFloat(rules.early_checkin_option2_price),
+        label: '2'
+      });
+    }
+    if (rules.early_checkin_option3_enabled && rules.early_checkin_option3_time) {
+      options.push({
+        time: rules.early_checkin_option3_time,
+        price: parseFloat(rules.early_checkin_option3_price),
+        label: '3'
+      });
+    }
+  }
+
+  if (type === 'checkout' && isLate) {
+    if (rules.late_checkout_option1_enabled && rules.late_checkout_option1_time) {
+      options.push({
+        time: rules.late_checkout_option1_time,
+        price: parseFloat(rules.late_checkout_option1_price),
+        label: '1'
+      });
+    }
+    if (rules.late_checkout_option2_enabled && rules.late_checkout_option2_time) {
+      options.push({
+        time: rules.late_checkout_option2_time,
+        price: parseFloat(rules.late_checkout_option2_price),
+        label: '2'
+      });
+    }
+    if (rules.late_checkout_option3_enabled && rules.late_checkout_option3_time) {
+      options.push({
+        time: rules.late_checkout_option3_time,
+        price: parseFloat(rules.late_checkout_option3_price),
+        label: '3'
+      });
+    }
+  }
+
+  // Ordenar opciones por hora
+  options.sort((a, b) => a.time.localeCompare(b.time));
+
+  // Encontrar la opción exacta o la más cercana
+  const exactMatch = options.find(opt => opt.time === requested);
+  
+  if (exactMatch) {
+    return {
+      supplement: exactMatch.price,
+      isEarly,
+      isLate,
+      options,
+      selectedOption: exactMatch
+    };
+  }
+
+  // Si no hay coincidencia exacta, devolver opciones disponibles
+  return {
+    supplement: 0,
+    isEarly,
+    isLate,
+    options,
+    selectedOption: null,
+    tooEarly: type === 'checkin' && requested < rules.earliest_possible_checkin,
+    tooLate: type === 'checkout' && requested > rules.latest_possible_checkout
+  };
+}
+
+// ============================================
+
+// Textos traducidos para solicitudes de horario
+const timeRequestTexts = {
+  es: {
+    arrivalPrompt: "Por favor, escribe tu hora de LLEGADA (formato 24h):\nEjemplo: 17:00",
+    departurePrompt: "Gracias. Ahora tu hora de SALIDA:\nEjemplo: 11:00",
+    
+    tooEarly: "⚠️ Lo siento, el check-in antes de las {time} no está disponible.\nPor favor, elige una hora entre las {earliest} y 20:00.",
+    tooLate: "⚠️ Lo siento, el check-out después de las {time} no está disponible.\nPor favor, elige una hora entre 08:00 y las {latest}.",
+    
+    earlyCheckinOptions: "El check-in estándar es a las {standard}.\n\n" +
+      "Para hacer check-in a las {requested}, hay un suplemento.\n\n" +
+      "¿Qué hora prefieres?\n\n" +
+      "{options}\n" +
+      "{standardOption}\n\n" +
+      "Responde con el número (1, 2, 3, etc.):",
+    
+    lateCheckoutOptions: "El check-out estándar es a las {standard}.\n\n" +
+      "Para hacer check-out a las {requested}, hay un suplemento.\n\n" +
+      "¿Qué hora prefieres?\n\n" +
+      "{options}\n" +
+      "{standardOption}\n\n" +
+      "Responde con el número (1, 2, etc.):",
+    
+    requestReceived: "✅ Solicitud recibida\n\n" +
+      "Hora de {type} solicitada: {time}\n" +
+      "Suplemento: {price}€\n\n" +
+      "Tu solicitud está siendo revisada.\n" +
+      "Te confirmaremos la disponibilidad en breve.",
+    
+    standardTime: "Check-in estándar a las {time} (gratis)",
+    standardTimeCheckout: "Check-out estándar a las {time} (gratis)",
+    
+    invalidTime: "⚠️ Formato de hora no válido.\nPor favor, escribe la hora en formato 24h (ejemplo: 17:00)"
+  },
+  
+  en: {
+    arrivalPrompt: "Please enter your ARRIVAL time (24h format):\nExample: 17:00",
+    departurePrompt: "Thank you. Now your DEPARTURE time:\nExample: 11:00",
+    
+    tooEarly: "⚠️ Sorry, check-in before {time} is not available.\nPlease choose a time between {earliest} and 20:00.",
+    tooLate: "⚠️ Sorry, check-out after {time} is not available.\nPlease choose a time between 08:00 and {latest}.",
+    
+    earlyCheckinOptions: "Standard check-in is at {standard}.\n\n" +
+      "For check-in at {requested}, there is a supplement.\n\n" +
+      "What time do you prefer?\n\n" +
+      "{options}\n" +
+      "{standardOption}\n\n" +
+      "Reply with the number (1, 2, 3, etc.):",
+    
+    lateCheckoutOptions: "Standard check-out is at {standard}.\n\n" +
+      "For check-out at {requested}, there is a supplement.\n\n" +
+      "What time do you prefer?\n\n" +
+      "{options}\n" +
+      "{standardOption}\n\n" +
+      "Reply with the number (1, 2, etc.):",
+    
+    requestReceived: "✅ Request received\n\n" +
+      "{type} time requested: {time}\n" +
+      "Supplement: {price}€\n\n" +
+      "Your request is being reviewed.\n" +
+      "We will confirm availability shortly.",
+    
+    standardTime: "Standard check-in at {time} (free)",
+    standardTimeCheckout: "Standard check-out at {time} (free)",
+    
+    invalidTime: "⚠️ Invalid time format.\nPlease enter time in 24h format (example: 17:00)"
+  },
+  
+  fr: {
+    arrivalPrompt: "Veuillez indiquer votre heure d'ARRIVÉE (format 24h):\nExemple: 17:00",
+    departurePrompt: "Merci. Maintenant votre heure de DÉPART:\nExemple: 11:00",
+    
+    tooEarly: "⚠️ Désolé, l'enregistrement avant {time} n'est pas disponible.\nVeuillez choisir une heure entre {earliest} et 20:00.",
+    tooLate: "⚠️ Désolé, le départ après {time} n'est pas disponible.\nVeuillez choisir une heure entre 08:00 et {latest}.",
+    
+    earlyCheckinOptions: "L'enregistrement standard est à {standard}.\n\n" +
+      "Pour un enregistrement à {requested}, il y a un supplément.\n\n" +
+      "Quelle heure préférez-vous?\n\n" +
+      "{options}\n" +
+      "{standardOption}\n\n" +
+      "Répondez avec le numéro (1, 2, 3, etc.):",
+    
+    lateCheckoutOptions: "Le départ standard est à {standard}.\n\n" +
+      "Pour un départ à {requested}, il y a un supplément.\n\n" +
+      "Quelle heure préférez-vous?\n\n" +
+      "{options}\n" +
+      "{standardOption}\n\n" +
+      "Répondez avec le numéro (1, 2, etc.):",
+    
+    requestReceived: "✅ Demande reçue\n\n" +
+      "Heure de {type} demandée: {time}\n" +
+      "Supplément: {price}€\n\n" +
+      "Votre demande est en cours d'examen.\n" +
+      "Nous vous confirmerons la disponibilité sous peu.",
+    
+    standardTime: "Enregistrement standard à {time} (gratuit)",
+    standardTimeCheckout: "Départ standard à {time} (gratuit)",
+    
+    invalidTime: "⚠️ Format d'heure non valide.\nVeuillez entrer l'heure au format 24h (exemple: 17:00)"
+  },
+  
+  ru: {
+    arrivalPrompt: "Пожалуйста, укажите время ПРИБЫТИЯ (формат 24ч):\nПример: 17:00",
+    departurePrompt: "Спасибо. Теперь время ВЫЕЗДА:\nПример: 11:00",
+    
+    tooEarly: "⚠️ Извините, заезд до {time} недоступен.\nПожалуйста, выберите время между {earliest} и 20:00.",
+    tooLate: "⚠️ Извините, выезд после {time} недоступен.\nПожалуйста, выберите время между 08:00 и {latest}.",
+    
+    earlyCheckinOptions: "Стандартный заезд в {standard}.\n\n" +
+      "Для заезда в {requested} требуется доплата.\n\n" +
+      "Какое время вы предпочитаете?\n\n" +
+      "{options}\n" +
+      "{standardOption}\n\n" +
+      "Ответьте номером (1, 2, 3 и т.д.):",
+    
+    lateCheckoutOptions: "Стандартный выезд в {standard}.\n\n" +
+      "Для выезда в {requested} требуется доплата.\n\n" +
+      "Какое время вы предпочитаете?\n\n" +
+      "{options}\n" +
+      "{standardOption}\n\n" +
+      "Ответьте номером (1, 2 и т.д.):",
+    
+    requestReceived: "✅ Запрос получен\n\n" +
+      "Запрошенное время {type}: {time}\n" +
+      "Доплата: {price}€\n\n" +
+      "Ваш запрос рассматривается.\n" +
+      "Мы подтвердим доступность в ближайшее время.",
+    
+    standardTime: "Стандартный заезд в {time} (бесплатно)",
+    standardTimeCheckout: "Стандартный выезд в {time} (бесплатно)",
+    
+    invalidTime: "⚠️ Неверный формат времени.\nПожалуйста, введите время в формате 24ч (пример: 17:00)"
+  }
+};
+
+// ============================================
+
+// INSERTAR ESTE CÓDIGO EN EL WEBHOOK DE WHATSAPP
+// Después de PAYOK y antes de LISTO
+
+// ================== SOLICITUD DE HORA DE LLEGADA ==================
+const timeText = parseTime(body);
+
+if (textUpper === "PAYOK") {
+  // ... código existente de PAYOK ...
+  
+  const last = await getSessionCheckin();
+  if (!last) {
+    // ... código existente ...
+  }
+
+  const lang = last.guest_language || 'es';
+  const t = translations[lang];
+  const tt = timeRequestTexts[lang];
+
+  await pool.query(
+    `UPDATE checkins SET pay_done = true, pay_done_at = NOW() WHERE id = $1`,
+    [last.id]
+  );
+
+  // En lugar de enviar mensaje de LISTO, pedir hora de llegada
+  await sendWhatsApp(from, tt.arrivalPrompt);
+  
+  return res.status(200).send("OK");
+}
+
+// ================== PROCESAR HORA (LLEGADA O SALIDA) ==================
+else if (timeText) {
+  const last = await getSessionCheckin();
+  if (!last) {
+    return res.status(200).send("OK");
+  }
+
+  const lang = last.guest_language || 'es';
+  const tt = timeRequestTexts[lang];
+
+  // Verificar si ya tiene hora de llegada guardada
+  const { rows: [timeSelection] } = await pool.query(
+    `SELECT * FROM checkin_time_selections WHERE checkin_id = $1`,
+    [last.id]
+  );
+
+  const hasArrival = timeSelection && timeSelection.requested_arrival_time;
+
+  // Si NO tiene hora de llegada → es solicitud de LLEGADA
+  if (!hasArrival) {
+    // Calcular suplemento
+    const calc = await calculateSupplement(last.apartment_id, timeText, 'checkin');
+
+    // Verificar si es demasiado temprano
+    if (calc.tooEarly) {
+      const { rows: [rules] } = await pool.query(
+        `SELECT earliest_possible_checkin FROM early_late_checkout_rules WHERE apartment_id = $1`,
+        [last.apartment_id]
+      );
+      
+      await sendWhatsApp(
+        from, 
+        tt.tooEarly
+          .replace('{time}', timeText)
+          .replace('{earliest}', rules?.earliest_possible_checkin || '14:00')
+      );
+      return res.status(200).send("OK");
+    }
+
+    // Si necesita suplemento y no eligió una opción exacta
+    if (calc.isEarly && calc.options.length > 0 && !calc.selectedOption) {
+      const { rows: [rules] } = await pool.query(
+        `SELECT standard_checkin_time FROM early_late_checkout_rules WHERE apartment_id = $1`,
+        [last.apartment_id]
+      );
+
+      const optionsText = calc.options
+        .map(opt => `${opt.label}️⃣ A las ${opt.time} (${opt.price}€)`)
+        .join('\n');
+      
+      const standardOptionNumber = calc.options.length + 1;
+      const standardText = `${standardOptionNumber}️⃣ ${tt.standardTime.replace('{time}', rules.standard_checkin_time)}`;
+
+      await sendWhatsApp(
+        from,
+        tt.earlyCheckinOptions
+          .replace('{standard}', rules.standard_checkin_time)
+          .replace('{requested}', timeText)
+          .replace('{options}', optionsText)
+          .replace('{standardOption}', standardText)
+      );
+
+      // Guardar en sesión temporal que está eligiendo hora de llegada
+      await pool.query(
+        `INSERT INTO checkin_time_selections (checkin_id, whatsapp_phone, created_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (checkin_id) DO NOTHING`,
+        [last.id, phone]
+      );
+
+      return res.status(200).send("OK");
+    }
+
+    // Guardar solicitud de llegada
+    await pool.query(
+      `INSERT INTO checkin_time_selections (
+        checkin_id,
+        requested_arrival_time,
+        confirmed_arrival_time,
+        early_checkin_supplement,
+        whatsapp_phone,
+        approval_status,
+        created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      ON CONFLICT (checkin_id)
+      DO UPDATE SET
+        requested_arrival_time = EXCLUDED.requested_arrival_time,
+        confirmed_arrival_time = EXCLUDED.confirmed_arrival_time,
+        early_checkin_supplement = EXCLUDED.early_checkin_supplement,
+        approval_status = 'pending'`,
+      [last.id, timeText, timeText, calc.supplement, phone, 'pending']
+    );
+
+    // Enviar confirmación y pedir hora de salida
+    if (calc.supplement > 0) {
+      await sendWhatsApp(
+        from,
+        tt.requestReceived
+          .replace('{type}', 'entrada')
+          .replace('{time}', timeText)
+          .replace('{price}', calc.supplement.toFixed(2))
+      );
+    }
+
+    // Pedir hora de salida
+    await sendWhatsApp(from, tt.departurePrompt);
+
+    return res.status(200).send("OK");
+  }
+
+  // Si YA tiene hora de llegada → es solicitud de SALIDA
+  else {
+    // Calcular suplemento de salida
+    const calc = await calculateSupplement(last.apartment_id, timeText, 'checkout');
+
+    // Verificar si es demasiado tarde
+    if (calc.tooLate) {
+      const { rows: [rules] } = await pool.query(
+        `SELECT latest_possible_checkout FROM early_late_checkout_rules WHERE apartment_id = $1`,
+        [last.apartment_id]
+      );
+      
+      await sendWhatsApp(
+        from,
+        tt.tooLate
+          .replace('{time}', timeText)
+          .replace('{latest}', rules?.latest_possible_checkout || '14:00')
+      );
+      return res.status(200).send("OK");
+    }
+
+    // Si necesita suplemento y no eligió opción exacta
+    if (calc.isLate && calc.options.length > 0 && !calc.selectedOption) {
+      const { rows: [rules] } = await pool.query(
+        `SELECT standard_checkout_time FROM early_late_checkout_rules WHERE apartment_id = $1`,
+        [last.apartment_id]
+      );
+
+      const optionsText = calc.options
+        .map(opt => `${opt.label}️⃣ A las ${opt.time} (${opt.price}€)`)
+        .join('\n');
+      
+      const standardOptionNumber = calc.options.length + 1;
+      const standardText = `${standardOptionNumber}️⃣ ${tt.standardTimeCheckout.replace('{time}', rules.standard_checkout_time)}`;
+
+      await sendWhatsApp(
+        from,
+        tt.lateCheckoutOptions
+          .replace('{standard}', rules.standard_checkout_time)
+          .replace('{requested}', timeText)
+          .replace('{options}', optionsText)
+          .replace('{standardOption}', standardText)
+      );
+
+      return res.status(200).send("OK");
+    }
+
+    // Guardar solicitud de salida
+    await pool.query(
+      `UPDATE checkin_time_selections
+       SET 
+         requested_departure_time = $1,
+         confirmed_departure_time = $2,
+         late_checkout_supplement = $3,
+         approval_status = 'pending',
+         updated_at = NOW()
+       WHERE checkin_id = $4`,
+      [timeText, timeText, calc.supplement, last.id]
+    );
+
+    // Enviar confirmación
+    const totalSupplement = (timeSelection?.early_checkin_supplement || 0) + calc.supplement;
+
+    await sendWhatsApp(
+      from,
+      tt.requestReceived
+        .replace('{type}', 'salida')
+        .replace('{time}', timeText)
+        .replace('{price}', totalSupplement.toFixed(2))
+    );
+
+    return res.status(200).send("OK");
+  }
+}
+
+// Continuar con el resto del código...
 // ==========================================
 // WEBHOOK DE WHATSAPP CON SOPORTE MULTIIDIOMA
 // ==========================================
@@ -4825,6 +5323,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
