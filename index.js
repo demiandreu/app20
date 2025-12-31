@@ -1343,151 +1343,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       }
     };
 
-    // ============================================
-// WHATSAPP BOT - MANEJO DE SOLICITUDES DE HORARIO
-// ============================================
 
-// Función auxiliar: Detectar si el mensaje es una hora válida
-function parseTime(text) {
-  // Acepta formatos: 14:00, 14, 2:00 PM, 14h, 14.00
-  const patterns = [
-    /^(\d{1,2}):(\d{2})$/,           // 14:00
-    /^(\d{1,2})$/,                    // 14
-    /^(\d{1,2})[h\.](\d{2})?$/,      // 14h, 14.00
-    /^(\d{1,2}):(\d{2})\s*(am|pm)$/i // 2:00 PM
-  ];
-
-  for (const pattern of patterns) {
-    const match = text.trim().match(pattern);
-    if (match) {
-      let hours = parseInt(match[1]);
-      const minutes = match[2] ? parseInt(match[2]) : 0;
-      
-      // Convertir PM/AM a 24h
-      if (match[3]) {
-        const period = match[3].toLowerCase();
-        if (period === 'pm' && hours < 12) hours += 12;
-        if (period === 'am' && hours === 12) hours = 0;
-      }
-
-      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-      }
-    }
-  }
-  return null;
-}
-
-// ============================================
-
-// Función: Calcular suplemento según reglas del apartamento
-async function calculateSupplement(apartmentId, requestedTime, type) {
-  // type: 'checkin' o 'checkout'
-  
-  const { rows: [rules] } = await pool.query(
-    `SELECT * FROM early_late_checkout_rules WHERE apartment_id = $1 AND is_active = true`,
-    [apartmentId]
-  );
-
-  if (!rules) {
-    return { supplement: 0, isEarly: false, isLate: false, options: [] };
-  }
-
-  const requested = requestedTime; // formato "14:00"
-  const standard = type === 'checkin' 
-    ? rules.standard_checkin_time 
-    : rules.standard_checkout_time;
-
-  // Comparar horas
-  const isEarly = type === 'checkin' && requested < standard;
-  const isLate = type === 'checkout' && requested > standard;
-
-  if (!isEarly && !isLate) {
-    return { supplement: 0, isEarly: false, isLate: false, options: [] };
-  }
-
-  // Construir opciones disponibles
-  const options = [];
-  
-  if (type === 'checkin' && isEarly) {
-    if (rules.early_checkin_option1_enabled && rules.early_checkin_option1_time) {
-      options.push({
-        time: rules.early_checkin_option1_time,
-        price: parseFloat(rules.early_checkin_option1_price),
-        label: '1'
-      });
-    }
-    if (rules.early_checkin_option2_enabled && rules.early_checkin_option2_time) {
-      options.push({
-        time: rules.early_checkin_option2_time,
-        price: parseFloat(rules.early_checkin_option2_price),
-        label: '2'
-      });
-    }
-    if (rules.early_checkin_option3_enabled && rules.early_checkin_option3_time) {
-      options.push({
-        time: rules.early_checkin_option3_time,
-        price: parseFloat(rules.early_checkin_option3_price),
-        label: '3'
-      });
-    }
-  }
-
-  if (type === 'checkout' && isLate) {
-    if (rules.late_checkout_option1_enabled && rules.late_checkout_option1_time) {
-      options.push({
-        time: rules.late_checkout_option1_time,
-        price: parseFloat(rules.late_checkout_option1_price),
-        label: '1'
-      });
-    }
-    if (rules.late_checkout_option2_enabled && rules.late_checkout_option2_time) {
-      options.push({
-        time: rules.late_checkout_option2_time,
-        price: parseFloat(rules.late_checkout_option2_price),
-        label: '2'
-      });
-    }
-    if (rules.late_checkout_option3_enabled && rules.late_checkout_option3_time) {
-      options.push({
-        time: rules.late_checkout_option3_time,
-        price: parseFloat(rules.late_checkout_option3_price),
-        label: '3'
-      });
-    }
-  }
-
-  // Ordenar opciones por hora
-  options.sort((a, b) => a.time.localeCompare(b.time));
-
-  // Encontrar la opción exacta o la más cercana
-  const exactMatch = options.find(opt => opt.time === requested);
-  
-  if (exactMatch) {
-    return {
-      supplement: exactMatch.price,
-      isEarly,
-      isLate,
-      options,
-      selectedOption: exactMatch
-    };
-  }
-
-  // Si no hay coincidencia exacta, devolver opciones disponibles
-  return {
-    supplement: 0,
-    isEarly,
-    isLate,
-    options,
-    selectedOption: null,
-    tooEarly: type === 'checkin' && requested < rules.earliest_possible_checkin,
-    tooLate: type === 'checkout' && requested > rules.latest_possible_checkout
-  };
-}
-
-// ============================================
-
-// Textos traducidos para solicitudes de horario
 const timeRequestTexts = {
   es: {
     arrivalPrompt: "Por favor, escribe tu hora de LLEGADA (formato 24h):\nEjemplo: 17:00",
@@ -5819,6 +5675,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
