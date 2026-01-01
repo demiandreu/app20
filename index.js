@@ -949,6 +949,9 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
     const phone = from.replace("whatsapp:", "").trim();
     const textUpper = body.toUpperCase().trim();
     console.log("📩 Twilio WhatsApp inbound:", { from, body });
+    console.log("🔍 DEBUG: About to check textUpper:", textUpper);
+    console.log("🔍 DEBUG: translations exists?", typeof translations !== 'undefined');
+    console.log("🔍 DEBUG: sendWhatsApp exists?", typeof sendWhatsApp !== 'undefined');
     
     // ===== Session helpers =====
     const getSessionCheckin = async () => {
