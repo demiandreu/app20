@@ -679,14 +679,40 @@ function calcNights(arrive, depart) {
 // ============================================
 
 // Función auxiliar: Detectar si el mensaje es una hora válida
+// ============================================
+// FUNCIONES AUXILIARES - SOLICITUDES DE HORARIO
+// ============================================
+
+// Función 1: Detectar si el mensaje es una hora válida
 function parseTime(text) {
-  // Acepta formatos: 14:00, 14, 2:00 PM, 14h, 14.00
   const patterns = [
-    /^(\d{1,2}):(\d{2})$/,           // 14:00
-    /^(\d{1,2})$/,                    // 14
-    /^(\d{1,2})[h\.](\d{2})?$/,      // 14h, 14.00
-    /^(\d{1,2}):(\d{2})\s*(am|pm)$/i // 2:00 PM
+    /^(\d{1,2}):(\d{2})$/,
+    /^(\d{1,2})$/,
+    /^(\d{1,2})[h\.](\d{2})?$/,
+    /^(\d{1,2}):(\d{2})\s*(am|pm)$/i
   ];
+
+  for (const pattern of patterns) {
+    const match = text.trim().match(pattern);
+    if (match) {
+      let hours = parseInt(match[1]);
+      const minutes = match[2] ? parseInt(match[2]) : 0;
+      
+      if (match[3]) {
+        const period = match[3].toLowerCase();
+        if (period === 'pm' && hours < 12) hours += 12;
+        if (period === 'am' && hours === 12) hours = 0;
+      }
+
+      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      }
+    }
+  }
+  return null;
+}
+
+// Función 2: Calcular suplemento según reglas del apartamento
 async function calculateSupplement(apartmentId, requestedTime, type) {
   console.log('🔍 calculateSupplement called:', { apartmentId, requestedTime, type });
   
@@ -792,26 +818,6 @@ async function calculateSupplement(apartmentId, requestedTime, type) {
     tooEarly: type === 'checkin' && requested < (rules.earliest_possible_checkin?.slice(0, 5) || '00:00'),
     tooLate: type === 'checkout' && requested > (rules.latest_possible_checkout?.slice(0, 5) || '23:59')
   };
-}
-  for (const pattern of patterns) {
-    const match = text.trim().match(pattern);
-    if (match) {
-      let hours = parseInt(match[1]);
-      const minutes = match[2] ? parseInt(match[2]) : 0;
-      
-      // Convertir PM/AM a 24h
-      if (match[3]) {
-        const period = match[3].toLowerCase();
-        if (period === 'pm' && hours < 12) hours += 12;
-        if (period === 'am' && hours === 12) hours = 0;
-      }
-
-      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-      }
-    }
-  }
-  return null;
 }
 
 // ============================================
@@ -5793,6 +5799,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
