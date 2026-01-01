@@ -1262,38 +1262,39 @@ if (timeText) {
   const hasArrival = timeSelection && timeSelection.requested_arrival_time;
   console.log('🎯 Has arrival?', hasArrival);
 
-  // Solicitud de LLEGADA
-  if (!hasArrival) {
-    console.log('🚀 Calling calculateSupplement for ARRIVAL');
-    const calc = await calculateSupplement(last.apartment_id, timeText, 'checkin');
-    console.log('💰 Calc result:', calc);
 
-    await pool.query(
-      `INSERT INTO checkin_time_selections (
-        checkin_id, requested_arrival_time, confirmed_arrival_time,
-        early_checkin_supplement, whatsapp_phone, approval_status, created_at
-      ) VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
-      ON CONFLICT (checkin_id) DO UPDATE SET
-        requested_arrival_time = EXCLUDED.requested_arrival_time,
-        confirmed_arrival_time = EXCLUDED.confirmed_arrival_time,
-        early_checkin_supplement = EXCLUDED.early_checkin_supplement,
-        approval_status = 'pending'`,
-      [last.id, timeText, timeText, calc.supplement, phone]
-    );
+ // Solicitud de LLEGADA
+if (!hasArrival) {
+  console.log('🚀 Calling calculateSupplement for ARRIVAL');
+  const calc = await calculateSupplement(last.apartment_id, timeText, 'checkin');
+  console.log('💰 Calc result:', calc);
 
-    const room = await getRoomSettings(last.apartment_id);
-    const standardTime = String(room.default_departure_time || "11:00").slice(0, 5);
+  await pool.query(
+    `INSERT INTO checkin_time_selections (
+      checkin_id, requested_arrival_time, confirmed_arrival_time,
+      early_checkin_supplement, whatsapp_phone, approval_status, created_at
+    ) VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
+    ON CONFLICT (checkin_id) DO UPDATE SET
+      requested_arrival_time = EXCLUDED.requested_arrival_time,
+      confirmed_arrival_time = EXCLUDED.confirmed_arrival_time,
+      early_checkin_supplement = EXCLUDED.early_checkin_supplement,
+      approval_status = 'pending'`,
+    [last.id, timeText, timeText, calc.supplement, phone]
+  );
 
-    await sendWhatsApp(
-      from,
-      tt.arrivalConfirmed
-        }', timeText)
-        .replace('{price}', calc.supplement.toFixed(2)) +
-      '\n\n' + tt.standardCheckout.replace('{time}', standardTime)
-    );
+  const room = await getRoomSettings(last.apartment_id);
+  const standardTime = String(room.default_departure_time || "11:00").slice(0, 5);
 
-    return res.status(200).send("OK");
-  }
+  await sendWhatsApp(
+    from,
+    tt.arrivalConfirmed
+      .replace('{time}', timeText)
+      .replace('{price}', calc.supplement.toFixed(2)) +
+    '\n\n' + tt.standardCheckout.replace('{time}', standardTime)
+  );
+
+  return res.status(200).send("OK");
+}
 
   // Solicitud de SALIDA
   else {
@@ -5769,6 +5770,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
