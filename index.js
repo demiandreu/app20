@@ -732,55 +732,61 @@ const standard = parseInt(String(standardTime).slice(0, 2));
 
   const options = [];
   
-  if (type === 'checkin' && isEarly) {
-    console.log('🕐 Building early checkin options...');
-    if (rules.early_checkin_option1_enabled && rules.early_checkin_option1_time) {
-      options.push({ 
-        hour: parseInt(String(rules.early_checkin_option1_time).slice(0, 2)),
-        price: parseFloat(rules.early_checkin_option1_price), 
-        label: '1' 
-      });
-    }
-    if (rules.early_checkin_option2_enabled && rules.early_checkin_option2_time) {
-  const hour2 = parseInt(String(rules.early_checkin_option2_time).slice(0, 2));
-  options.push({ 
-    hour: hour2,
-      });
-    }
-    if (rules.early_checkin_option3_enabled && rules.early_checkin_option3_time) {
-  const hour3 = parseInt(String(rules.early_checkin_option3_time).slice(0, 2));
-  options.push({
-    hour: hour3,
-    price: parseFloat(rules.early_checkin_option3_price),
-    label: '3'
-  });
+ if (type === 'checkin' && isEarly) {
+  console.log('🕐 Building early checkin options...');
+  if (rules.early_checkin_option1_enabled && rules.early_checkin_option1_time) {
+    const hour1 = parseInt(String(rules.early_checkin_option1_time).slice(0, 2));
+    options.push({ 
+      hour: hour1,
+      price: parseFloat(rules.early_checkin_option1_price), 
+      label: '1' 
+    });
+  }
+  if (rules.early_checkin_option2_enabled && rules.early_checkin_option2_time) {
+    const hour2 = parseInt(String(rules.early_checkin_option2_time).slice(0, 2));
+    options.push({ 
+      hour: hour2,
+      price: parseFloat(rules.early_checkin_option2_price), 
+      label: '2' 
+    });
+  }
+  if (rules.early_checkin_option3_enabled && rules.early_checkin_option3_time) {
+    const hour3 = parseInt(String(rules.early_checkin_option3_time).slice(0, 2));
+    options.push({
+      hour: hour3,
+      price: parseFloat(rules.early_checkin_option3_price),
+      label: '3'
+    });
+  }
 }
-  }
 
-  if (type === 'checkout' && isLate) {
-    console.log('🕐 Building late checkout options...');
-    if (rules.late_checkout_option1_enabled && rules.late_checkout_option1_time) {
-      options.push({ 
-        hour: rules.late_checkout_option1_time, 
-        price: parseFloat(rules.late_checkout_option1_price), 
-        label: '1' 
-      });
-    }
-    if (rules.late_checkout_option2_enabled && rules.late_checkout_option2_time) {
-      options.push({ 
-        hour: rules.late_checkout_option2_time, 
-        price: parseFloat(rules.late_checkout_option2_price), 
-        label: '2' 
-      });
-    }
-    if (rules.late_checkout_option3_enabled && rules.late_checkout_option3_time) {
-      options.push({ 
-        hour: rules.late_checkout_option3_time, 
-        price: parseFloat(rules.late_checkout_option3_price), 
-        label: '3' 
-      });
-    }
+if (type === 'checkout' && isLate) {
+  console.log('🕐 Building late checkout options...');
+  if (rules.late_checkout_option1_enabled && rules.late_checkout_option1_time) {
+    const hour1 = parseInt(String(rules.late_checkout_option1_time).slice(0, 2));
+    options.push({ 
+      hour: hour1, 
+      price: parseFloat(rules.late_checkout_option1_price), 
+      label: '1' 
+    });
   }
+  if (rules.late_checkout_option2_enabled && rules.late_checkout_option2_time) {
+    const hour2 = parseInt(String(rules.late_checkout_option2_time).slice(0, 2));
+    options.push({ 
+      hour: hour2, 
+      price: parseFloat(rules.late_checkout_option2_price), 
+      label: '2' 
+    });
+  }
+  if (rules.late_checkout_option3_enabled && rules.late_checkout_option3_time) {
+    const hour3 = parseInt(String(rules.late_checkout_option3_time).slice(0, 2));
+    options.push({ 
+      hour: hour3, 
+      price: parseFloat(rules.late_checkout_option3_price), 
+      label: '3' 
+    });
+  }
+}
 
   console.log('🎯 Options built:', options);
 
@@ -5611,6 +5617,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
