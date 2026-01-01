@@ -742,19 +742,19 @@ const standard = parseInt(String(standardTime).slice(0, 2));
       });
     }
     if (rules.early_checkin_option2_enabled && rules.early_checkin_option2_time) {
-      options.push({ 
-        hour: rules.early_checkin_option2_time, 
-        price: parseFloat(rules.early_checkin_option2_price), 
-        label: '2' 
+  const hour2 = parseInt(String(rules.early_checkin_option2_time).slice(0, 2));
+  options.push({ 
+    hour: hour2,
       });
     }
     if (rules.early_checkin_option3_enabled && rules.early_checkin_option3_time) {
-      options.push({ 
-        hour: rules.early_checkin_option3_time, 
-        price: parseFloat(rules.early_checkin_option3_price), 
-        label: '3' 
-      });
-    }
+  const hour3 = parseInt(String(rules.early_checkin_option3_time).slice(0, 2));
+  options.push({
+    hour: hour3,
+    price: parseFloat(rules.early_checkin_option3_price),
+    label: '3'
+  });
+}
   }
 
   if (type === 'checkout' && isLate) {
@@ -5611,6 +5611,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
