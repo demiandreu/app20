@@ -899,28 +899,47 @@ if (type === 'checkout' && isLate) {
       }
     };
 
-    const timeRequestTexts = {
-      es: {
-        arrivalConfirmed: "✅ Hora de llegada: {time}\nSuplemento: {price}€\n\nAhora tu hora de SALIDA:\nEjemplo: 11:00",
-        standardCheckout: "Check-out estándar: {time}",
-        requestReceived: "✅ Solicitud recibida!\n\n📅 Entrada: {arrival} ({arrivalPrice}€)\n📅 Salida: {departure} ({departurePrice}€)\n💰 Total suplemento: {total}€\n\nTu solicitud está en revisión.\nRecibirás confirmación pronto."
-      },
-      en: {
-        arrivalConfirmed: "✅ Arrival time: {time}\nSupplement: {price}€\n\nNow your DEPARTURE time:\nExample: 11:00",
-        standardCheckout: "Standard check-out: {time}",
-        requestReceived: "✅ Request received!\n\n📅 Check-in: {arrival} ({arrivalPrice}€)\n📅 Check-out: {departure} ({departurePrice}€)\n💰 Total supplement: {total}€\n\nYour request is under review.\nYou will receive confirmation soon."
-      },
-      fr: {
-        arrivalConfirmed: "✅ Heure d'arrivée: {time}\nSupplément: {price}€\n\nMaintenant votre heure de DÉPART:\nExemple: 11:00",
-        standardCheckout: "Départ standard: {time}",
-        requestReceived: "✅ Demande reçue!\n\n📅 Arrivée: {arrival} ({arrivalPrice}€)\n📅 Départ: {departure} ({departurePrice}€)\n💰 Supplément total: {total}€\n\nVotre demande est en cours d'examen.\nVous recevrez une confirmation bientôt."
-      },
-      ru: {
-        arrivalConfirmed: "✅ Время прибытия: {time}\nДоплата: {price}€\n\nТеперь время ВЫЕЗДА:\nПример: 11:00",
-        standardCheckout: "Стандартный выезд: {time}",
-        requestReceived: "✅ Запрос получен!\n\n📅 Заезд: {arrival} ({arrivalPrice}€)\n📅 Выезд: {departure} ({departurePrice}€)\n💰 Общая доплата: {total}€\n\nВаш запрос рассматривается.\nВы получите подтверждение в ближайшее время."
-      }
-    };
+  const timeRequestTexts = {
+  es: {
+    arrivalRequest: "Por favor, indica tu hora de LLEGADA.\n\nEscribe la hora en formato 24h:\nEjemplo: 14:00\n(o simplemente: 14)\n\nCheck-in estándar: {time}",
+    arrivalConfirmed: "✅ Hora de llegada: {time}\nSuplemento: {price}€",
+    standardCheckout: "\n\nAhora tu hora de SALIDA:\nEjemplo: 11\n\nCheck-out estándar: {time}",
+    requestReceived: "✅ Solicitud recibida!\n\n📅 Entrada: {arrival} ({arrivalPrice}€)\n📅 Salida: {departure} ({departurePrice}€)\n💰 Total suplemento: {total}€\n\nTu solicitud está en revisión.\nRecibirás confirmación pronto.",
+    tooEarly: "⚠️ Lo siento, el check-in antes de las {time} no está disponible.\nPor favor, elige una hora entre las {earliest} y 20:00.",
+    tooLate: "⚠️ Lo siento, el check-out después de las {time} no está disponible.\nPor favor, elige una hora entre 08:00 y las {latest}.",
+    invalidTime: "⚠️ Formato de hora no válido.\nPor favor, escribe la hora en formato 24h (ejemplo: 17:00)"
+  },
+  
+  en: {
+    arrivalRequest: "Please indicate your ARRIVAL time.\n\nWrite the time in 24h format:\nExample: 14:00\n(or simply: 14)\n\nStandard check-in: {time}",
+    arrivalConfirmed: "✅ Arrival time: {time}\nSupplement: {price}€",
+    standardCheckout: "\n\nNow your DEPARTURE time:\nExample: 11\n\nStandard check-out: {time}",
+    requestReceived: "✅ Request received!\n\n📅 Check-in: {arrival} ({arrivalPrice}€)\n📅 Check-out: {departure} ({departurePrice}€)\n💰 Total supplement: {total}€\n\nYour request is under review.\nYou will receive confirmation soon.",
+    tooEarly: "⚠️ Sorry, check-in before {time} is not available.\nPlease choose a time between {earliest} and 20:00.",
+    tooLate: "⚠️ Sorry, check-out after {time} is not available.\nPlease choose a time between 08:00 and {latest}.",
+    invalidTime: "⚠️ Invalid time format.\nPlease enter time in 24h format (example: 17:00)"
+  },
+  
+  fr: {
+    arrivalRequest: "Veuillez indiquer votre heure d'ARRIVÉE.\n\nÉcrivez l'heure au format 24h:\nExemple: 14:00\n(ou simplement: 14)\n\nEnregistrement standard: {time}",
+    arrivalConfirmed: "✅ Heure d'arrivée: {time}\nSupplément: {price}€",
+    standardCheckout: "\n\nMaintenant votre heure de DÉPART:\nExemple: 11\n\nDépart standard: {time}",
+    requestReceived: "✅ Demande reçue!\n\n📅 Arrivée: {arrival} ({arrivalPrice}€)\n📅 Départ: {departure} ({departurePrice}€)\n💰 Supplément total: {total}€\n\nVotre demande est en cours d'examen.\nVous recevrez une confirmation bientôt.",
+    tooEarly: "⚠️ Désolé, l'enregistrement avant {time} n'est pas disponible.\nVeuillez choisir une heure entre {earliest} et 20:00.",
+    tooLate: "⚠️ Désolé, le départ après {time} n'est pas disponible.\nVeuillez choisir une heure entre 08:00 et {latest}.",
+    invalidTime: "⚠️ Format d'heure non valide.\nVeuillez entrer l'heure au format 24h (exemple: 17:00)"
+  },
+  
+  ru: {
+    arrivalRequest: "Пожалуйста, укажите время ПРИБЫТИЯ.\n\nНапишите время в формате 24ч:\nПример: 14:00\n(или просто: 14)\n\nСтандартный заезд: {time}",
+    arrivalConfirmed: "✅ Время прибытия: {time}\nДоплата: {price}€",
+    standardCheckout: "\n\nТеперь время ВЫЕЗДА:\nПример: 11\n\nСтандартный выезд: {time}",
+    requestReceived: "✅ Запрос получен!\n\n📅 Заезд: {arrival} ({arrivalPrice}€)\n📅 Выезд: {departure} ({departurePrice}€)\n💰 Общая доплата: {total}€\n\nВаш запрос рассматривается.\nВы получите подтверждение в ближайшее время.",
+    tooEarly: "⚠️ Извините, заезд до {time} недоступен.\nПожалуйста, выберите время между {earliest} и 20:00.",
+    tooLate: "⚠️ Извините, выезд после {time} недоступен.\nПожалуйста, выберите время между 08:00 и {latest}.",
+    invalidTime: "⚠️ Неверный формат времени.\nПожалуйста, введите время в формате 24ч (пример: 17:00)"
+  }
+};
 
     // ================== REGOK ==================
     if (textUpper === "REGOK") {
@@ -5432,6 +5451,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
