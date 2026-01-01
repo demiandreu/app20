@@ -1234,13 +1234,13 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
         const room = await getRoomSettings(last.apartment_id);
         const standardTime = String(room.default_departure_time || "11:00").slice(0, 5);
 
-        await sendWhatsApp(
-          from,
-          tt.arrivalConfirmed
-            .replace('{time}', timeText)
-            .replace('{price}', parseFloat(timeSelection?.early_checkin_supplement || 0).toFixed(2))
-          '\n\n' + tt.standardCheckout.replace('{time}', standardTime)
-        );
+   await sendWhatsApp(
+  from,
+  (tt.arrivalConfirmed
+    .replace('{time}', timeText)
+    .replace('{price}', parseFloat(timeSelection?.early_checkin_supplement || 0).toFixed(2)) +
+  '\n\n' + tt.standardCheckout.replace('{time}', standardTime))
+);
 
         return res.status(200).send("OK");
       }
@@ -5746,6 +5746,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
