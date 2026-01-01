@@ -1089,34 +1089,34 @@ if (!hasArrival) {
 }
 
   // Solicitud de SALIDA
-  else {
-    console.log('🚀 Calling calculateSupplement for DEPARTURE');
-    const calc = await calculateSupplement(last.apartment_id, timeText, 'checkout');
-    console.log('💰 Calc result:', calc);
+ // Solicitud de SALIDA
+else {
+  console.log('🚀 Calling calculateSupplement for DEPARTURE');
+  const calc = await calculateSupplement(last.apartment_id, timeText, 'checkout');
+  console.log('💰 Calc result:', calc);
 
-    await pool.query(
-      `UPDATE checkin_time_selections SET 
-        requested_departure_time = $1, confirmed_departure_time = $2,
-        late_checkout_supplement = $3, approval_status = 'pending', updated_at = NOW()
-       WHERE checkin_id = $4`,
-      [timeText, timeText, calc.supplement, last.id]
-    );
+  await pool.query(
+    `UPDATE checkin_time_selections SET 
+      requested_departure_time = $1, confirmed_departure_time = $2,
+      late_checkout_supplement = $3, approval_status = 'pending', updated_at = NOW()
+     WHERE checkin_id = $4`,
+    [timeText, timeText, calc.supplement, last.id]
+  );
 
-    const totalSupplement = parseFloat(timeSelection?.early_checkin_supplement || 0) + calc.supplement;
-    const arrivalTime = timeSelection.requested_arrival_time.slice(0, 5);
+  const totalSupplement = parseFloat(timeSelection?.early_checkin_supplement || 0) + calc.supplement;
+  const arrivalTime = `${timeSelection.requested_arrival_time}:00`;
 
-    await sendWhatsApp(
-      from,
-      tt.requestReceived
-        .replace('{arrival}', arrivalTime)
-        .replace('{arrivalPrice}', parseFloat(timeSelection?.early_checkin_supplement || 0).toFixed(0))
-        .replace('{departure}', timeText)
-        .replace('{departurePrice}', calc.supplement.toFixed(0))
-        .replace('{total}', totalSupplement.toFixed(2))
-    );
+  await sendWhatsApp(
+    from,
+    tt.requestReceived
+      .replace('{arrival}', arrivalTime)
+      .replace('{arrivalPrice}', parseFloat(timeSelection?.early_checkin_supplement || 0).toFixed(0))
+      .replace('{departure}', `${timeText}:00`)
+      .replace('{departurePrice}', calc.supplement.toFixed(0))
+      .replace('{total}', totalSupplement.toFixed(2))
+  );
 
-    return res.status(200).send("OK");
-  }
+  return res.status(200).send("OK");
 }
 
     // ================== START ==================
@@ -5493,6 +5493,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
