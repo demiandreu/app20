@@ -1251,20 +1251,39 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
     }
 
     // ================== DETECTAR HORA ==================
-    const timeText = parseTime(body);
-    
-    if (timeText) {
-      console.log('🕐 parseTime result:', { body, timeText });  // ← AGREGA ESTA LÍNEA
-      const last = await getSessionCheckin();
-      if (!last) return res.status(200).send("OK");
+   const timeText = parseTime(body);
+console.log('🕐 parseTime result:', { body, timeText });
 
-      const lang = last.guest_language || 'es';
-      const tt = timeRequestTexts[lang];
+if (timeText) {
+  console.log('✅ timeText is truthy, entering block');
+  
+  const last = await getSessionCheckin();
+  console.log('👤 Session checkin:', last ? 'FOUND' : 'NOT FOUND');
+  
+  if (!last) return res.status(200).send("OK");
 
-      const { rows: [timeSelection] } = await pool.query(
-        `SELECT * FROM checkin_time_selections WHERE checkin_id = $1`,
-        [last.id]
-      );
+  console.log('🌐 Language and texts');
+  const lang = last.guest_language || 'es';
+  const tt = timeRequestTexts[lang];
+
+  console.log('🔎 Querying time selections...');
+  const { rows: [timeSelection] } = await pool.query(
+    `SELECT * FROM checkin_time_selections WHERE checkin_id = $1`,
+    [last.id]
+  );
+
+  console.log('📋 Time selection:', timeSelection);
+  const hasArrival = timeSelection && timeSelection.requested_arrival_time;
+  console.log('🎯 Has arrival?', hasArrival);
+
+  // Si NO tiene hora de llegada → es solicitud de LLEGADA
+  if (!hasArrival) {
+    console.log('🚀 Calling calculateSupplement for ARRIVAL');
+    const calc = await calculateSupplement(last.apartment_id, timeText, 'checkin');
+    console.log('💰 Calc result:', calc);
+    // ...
+  }
+}
 
       const hasArrival = timeSelection && timeSelection.requested_arrival_time;
 
@@ -5771,6 +5790,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
