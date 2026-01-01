@@ -4935,9 +4935,558 @@ function maskKey(k) {
   if (k.length <= 10) return k;
   return k.slice(0, 4) + "…" + k.slice(-4);
 }
-//vremenno3
-//vremenno
-// показать настройки
+// ============================================
+// RUTAS DEL MANAGER - CHECK-IN/CHECK-OUT RULES
+// ============================================
+
+// RUTA 1: Lista de apartamentos con enlace a configuración
+app.get("/manager/checkin-rules", async (req, res) => {
+  try {
+    const { rows: apartments } = await pool.query(`
+      SELECT 
+        br.beds24_room_id,
+        br.apartment_name,
+        elr.id as has_rules,
+        elr.standard_checkin_time,
+        elr.standard_checkout_time,
+        elr.is_active
+      FROM beds24_rooms br
+      LEFT JOIN early_late_checkout_rules elr ON elr.apartment_id = br.beds24_room_id
+      WHERE br.is_active = true
+      ORDER BY br.apartment_name ASC
+    `);
+
+    const html = `
+      <h1>Configuración de Check-in/Check-out</h1>
+      <p><a href="/manager">← Volver al Manager</a></p>
+
+      <div style="margin-top:20px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Apartamento</th>
+              <th>Check-in Estándar</th>
+              <th>Check-out Estándar</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${apartments.map(a => `
+              <tr>
+                <td><strong>${escapeHtml(a.apartment_name)}</strong></td>
+                <td>${a.standard_checkin_time || '-'}</td>
+                <td>${a.standard_checkout_time || '-'}</td>
+                <td>
+                  ${a.has_rules 
+                    ? `<span class="pill ${a.is_active ? 'pill-yes' : 'pill-no'}">${a.is_active ? 'Activo' : 'Inactivo'}</span>`
+                    : '<span class="muted">Sin configurar</span>'
+                  }
+                </td>
+                <td>
+                  <a href="/manager/checkin-rules/${encodeURIComponent(a.beds24_room_id)}" class="btn-small">
+                    ${a.has_rules ? 'Editar' : 'Configurar'}
+                  </a>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    res.send(renderPage("Reglas de Check-in/Check-out", html));
+  } catch (e) {
+    console.error("Error en /manager/checkin-rules:", e);
+    res.status(500).send("Error al cargar la página");
+  }
+});
+
+// RUTA 2: Configurar reglas para un apartamento específico
+app.get("/manager/checkin-rules/:apartmentId", async (req, res) => {
+  try {
+    const { apartmentId } = req.params;
+
+    const { rows: [apartment] } = await pool.query(
+      `SELECT apartment_name FROM beds24_rooms WHERE beds24_room_id = $1`,
+      [apartmentId]
+    );
+
+    if (!apartment) {
+      return res.status(404).send("Apartamento no encontrado");
+    }
+
+    const { rows: [rules] } = await pool.query(
+      `SELECT * FROM early_late_checkout_rules WHERE apartment_id = $1`,
+      [apartmentId]
+    );
+
+    const r = rules || {
+      standard_checkin_time: '17:00',
+      standard_checkout_time: '11:00',
+      early_checkin_option1_time: '14:00',
+      early_checkin_option1_price: 20,
+      early_checkin_option1_enabled: true,
+      early_checkin_option2_time: '15:00',
+      early_checkin_option2_price: 15,
+      early_checkin_option2_enabled: true,
+      early_checkin_option3_time: '16:00',
+      early_checkin_option3_price: 10,
+      early_checkin_option3_enabled: true,
+      late_checkout_option1_time: '12:00',
+      late_checkout_option1_price: 10,
+      late_checkout_option1_enabled: true,
+      late_checkout_option2_time: '13:00',
+      late_checkout_option2_price: 15,
+      late_checkout_option2_enabled: true,
+      late_checkout_option3_time: '14:00',
+      late_checkout_option3_price: 20,
+      late_checkout_option3_enabled: true,
+      earliest_possible_checkin: '14:00',
+      latest_possible_checkout: '14:00',
+      is_active: true
+    };
+
+    const html = `
+      <style>
+        .config-section {
+          background: white;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          padding: 20px;
+          margin-bottom: 20px;
+        }
+        .config-section h2 {
+          margin: 0 0 16px 0;
+          font-size: 18px;
+          color: #111827;
+        }
+        .form-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        .form-row {
+          display: grid;
+          grid-template-columns: 200px 100px 100px 80px;
+          gap: 12px;
+          align-items: center;
+          padding: 12px;
+          background: #f9fafb;
+          border-radius: 6px;
+          margin-bottom: 8px;
+        }
+        .form-row label {
+          font-weight: 500;
+        }
+        .form-row input[type="time"],
+        .form-row input[type="number"] {
+          padding: 8px;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+        }
+        .form-row input[type="number"] {
+          width: 80px;
+        }
+        @media (max-width: 768px) {
+          .form-grid { grid-template-columns: 1fr; }
+          .form-row {
+            grid-template-columns: 1fr;
+            gap: 8px;
+          }
+        }
+      </style>
+
+      <h1>Configurar Check-in/Check-out</h1>
+      <h2 style="color:#6b7280; font-weight:normal; margin:-10px 0 20px;">${escapeHtml(apartment.apartment_name)}</h2>
+      <p><a href="/manager/checkin-rules">← Volver a la lista</a></p>
+
+      <form method="POST" action="/manager/checkin-rules/${encodeURIComponent(apartmentId)}/save">
+        
+        <div class="config-section">
+          <h2>⏰ Horas Estándar</h2>
+          <div class="form-grid">
+            <div>
+              <label>Check-in estándar</label>
+              <input type="time" name="standard_checkin_time" value="${r.standard_checkin_time}" required />
+            </div>
+            <div>
+              <label>Check-out estándar</label>
+              <input type="time" name="standard_checkout_time" value="${r.standard_checkout_time}" required />
+            </div>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h2>🕐 Check-in Anticipado</h2>
+          <p class="muted" style="margin:0 0 12px;">Opciones que se ofrecerán a los huéspedes</p>
+          
+          <div class="form-row">
+            <label>Opción 1</label>
+            <input type="time" name="early_checkin_option1_time" value="${r.early_checkin_option1_time || ''}" />
+            <div style="display:flex; align-items:center; gap:4px;">
+              <input type="number" name="early_checkin_option1_price" value="${r.early_checkin_option1_price || 0}" min="0" step="0.01" />
+              <span>€</span>
+            </div>
+            <label style="display:flex; align-items:center; gap:6px;">
+              <input type="checkbox" name="early_checkin_option1_enabled" ${r.early_checkin_option1_enabled ? 'checked' : ''} />
+              Activa
+            </label>
+          </div>
+
+          <div class="form-row">
+            <label>Opción 2</label>
+            <input type="time" name="early_checkin_option2_time" value="${r.early_checkin_option2_time || ''}" />
+            <div style="display:flex; align-items:center; gap:4px;">
+              <input type="number" name="early_checkin_option2_price" value="${r.early_checkin_option2_price || 0}" min="0" step="0.01" />
+              <span>€</span>
+            </div>
+            <label style="display:flex; align-items:center; gap:6px;">
+              <input type="checkbox" name="early_checkin_option2_enabled" ${r.early_checkin_option2_enabled ? 'checked' : ''} />
+              Activa
+            </label>
+          </div>
+
+          <div class="form-row">
+            <label>Opción 3</label>
+            <input type="time" name="early_checkin_option3_time" value="${r.early_checkin_option3_time || ''}" />
+            <div style="display:flex; align-items:center; gap:4px;">
+              <input type="number" name="early_checkin_option3_price" value="${r.early_checkin_option3_price || 0}" min="0" step="0.01" />
+              <span>€</span>
+            </div>
+            <label style="display:flex; align-items:center; gap:6px;">
+              <input type="checkbox" name="early_checkin_option3_enabled" ${r.early_checkin_option3_enabled ? 'checked' : ''} />
+              Activa
+            </label>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h2>🕐 Check-out Tardío</h2>
+          <p class="muted" style="margin:0 0 12px;">Opciones que se ofrecerán a los huéspedes</p>
+          
+          <div class="form-row">
+            <label>Opción 1</label>
+            <input type="time" name="late_checkout_option1_time" value="${r.late_checkout_option1_time || ''}" />
+            <div style="display:flex; align-items:center; gap:4px;">
+              <input type="number" name="late_checkout_option1_price" value="${r.late_checkout_option1_price || 0}" min="0" step="0.01" />
+              <span>€</span>
+            </div>
+            <label style="display:flex; align-items:center; gap:6px;">
+              <input type="checkbox" name="late_checkout_option1_enabled" ${r.late_checkout_option1_enabled ? 'checked' : ''} />
+              Activa
+            </label>
+          </div>
+
+          <div class="form-row">
+            <label>Opción 2</label>
+            <input type="time" name="late_checkout_option2_time" value="${r.late_checkout_option2_time || ''}" />
+            <div style="display:flex; align-items:center; gap:4px;">
+              <input type="number" name="late_checkout_option2_price" value="${r.late_checkout_option2_price || 0}" min="0" step="0.01" />
+              <span>€</span>
+            </div>
+            <label style="display:flex; align-items:center; gap:6px;">
+              <input type="checkbox" name="late_checkout_option2_enabled" ${r.late_checkout_option2_enabled ? 'checked' : ''} />
+              Activa
+            </label>
+          </div>
+
+          <div class="form-row">
+            <label>Opción 3</label>
+            <input type="time" name="late_checkout_option3_time" value="${r.late_checkout_option3_time || ''}" />
+            <div style="display:flex; align-items:center; gap:4px;">
+              <input type="number" name="late_checkout_option3_price" value="${r.late_checkout_option3_price || 0}" min="0" step="0.01" />
+              <span>€</span>
+            </div>
+            <label style="display:flex; align-items:center; gap:6px;">
+              <input type="checkbox" name="late_checkout_option3_enabled" ${r.late_checkout_option3_enabled ? 'checked' : ''} />
+              Activa
+            </label>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <h2>⛔ Límites Absolutos</h2>
+          <p class="muted" style="margin:0 0 12px;">Horas antes/después de las cuales NO se permite</p>
+          <div class="form-grid">
+            <div>
+              <label>Check-in más temprano posible</label>
+              <input type="time" name="earliest_possible_checkin" value="${r.earliest_possible_checkin}" required />
+            </div>
+            <div>
+              <label>Check-out más tardío posible</label>
+              <input type="time" name="latest_possible_checkout" value="${r.latest_possible_checkout}" required />
+            </div>
+          </div>
+        </div>
+
+        <div class="config-section">
+          <label style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" name="is_active" ${r.is_active ? 'checked' : ''} />
+            <strong>Activar estas reglas para este apartamento</strong>
+          </label>
+        </div>
+
+        <button type="submit" style="padding:12px 24px; font-size:16px;">💾 Guardar Configuración</button>
+      </form>
+    `;
+
+    res.send(renderPage(`Configurar - ${apartment.apartment_name}`, html));
+  } catch (e) {
+    console.error("Error en /manager/checkin-rules/:apartmentId:", e);
+    res.status(500).send("Error al cargar la configuración");
+  }
+});
+
+// RUTA 3: Guardar configuración
+app.post("/manager/checkin-rules/:apartmentId/save", async (req, res) => {
+  try {
+    const { apartmentId } = req.params;
+    const {
+      standard_checkin_time, standard_checkout_time,
+      early_checkin_option1_time, early_checkin_option1_price, early_checkin_option1_enabled,
+      early_checkin_option2_time, early_checkin_option2_price, early_checkin_option2_enabled,
+      early_checkin_option3_time, early_checkin_option3_price, early_checkin_option3_enabled,
+      late_checkout_option1_time, late_checkout_option1_price, late_checkout_option1_enabled,
+      late_checkout_option2_time, late_checkout_option2_price, late_checkout_option2_enabled,
+      late_checkout_option3_time, late_checkout_option3_price, late_checkout_option3_enabled,
+      earliest_possible_checkin, latest_possible_checkout, is_active
+    } = req.body;
+
+    await pool.query(`
+      INSERT INTO early_late_checkout_rules (
+        apartment_id, standard_checkin_time, standard_checkout_time,
+        early_checkin_option1_time, early_checkin_option1_price, early_checkin_option1_enabled,
+        early_checkin_option2_time, early_checkin_option2_price, early_checkin_option2_enabled,
+        early_checkin_option3_time, early_checkin_option3_price, early_checkin_option3_enabled,
+        late_checkout_option1_time, late_checkout_option1_price, late_checkout_option1_enabled,
+        late_checkout_option2_time, late_checkout_option2_price, late_checkout_option2_enabled,
+        late_checkout_option3_time, late_checkout_option3_price, late_checkout_option3_enabled,
+        earliest_possible_checkin, latest_possible_checkout, is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+      ON CONFLICT (apartment_id)
+      DO UPDATE SET
+        standard_checkin_time = EXCLUDED.standard_checkin_time,
+        standard_checkout_time = EXCLUDED.standard_checkout_time,
+        early_checkin_option1_time = EXCLUDED.early_checkin_option1_time,
+        early_checkin_option1_price = EXCLUDED.early_checkin_option1_price,
+        early_checkin_option1_enabled = EXCLUDED.early_checkin_option1_enabled,
+        early_checkin_option2_time = EXCLUDED.early_checkin_option2_time,
+        early_checkin_option2_price = EXCLUDED.early_checkin_option2_price,
+        early_checkin_option2_enabled = EXCLUDED.early_checkin_option2_enabled,
+        early_checkin_option3_time = EXCLUDED.early_checkin_option3_time,
+        early_checkin_option3_price = EXCLUDED.early_checkin_option3_price,
+        early_checkin_option3_enabled = EXCLUDED.early_checkin_option3_enabled,
+        late_checkout_option1_time = EXCLUDED.late_checkout_option1_time,
+        late_checkout_option1_price = EXCLUDED.late_checkout_option1_price,
+        late_checkout_option1_enabled = EXCLUDED.late_checkout_option1_enabled,
+        late_checkout_option2_time = EXCLUDED.late_checkout_option2_time,
+        late_checkout_option2_price = EXCLUDED.late_checkout_option2_price,
+        late_checkout_option2_enabled = EXCLUDED.late_checkout_option2_enabled,
+        late_checkout_option3_time = EXCLUDED.late_checkout_option3_time,
+        late_checkout_option3_price = EXCLUDED.late_checkout_option3_price,
+        late_checkout_option3_enabled = EXCLUDED.late_checkout_option3_enabled,
+        earliest_possible_checkin = EXCLUDED.earliest_possible_checkin,
+        latest_possible_checkout = EXCLUDED.latest_possible_checkout,
+        is_active = EXCLUDED.is_active,
+        updated_at = NOW()
+    `, [
+      apartmentId, standard_checkin_time, standard_checkout_time,
+      early_checkin_option1_time || null, early_checkin_option1_price || 0, !!early_checkin_option1_enabled,
+      early_checkin_option2_time || null, early_checkin_option2_price || 0, !!early_checkin_option2_enabled,
+      early_checkin_option3_time || null, early_checkin_option3_price || 0, !!early_checkin_option3_enabled,
+      late_checkout_option1_time || null, late_checkout_option1_price || 0, !!late_checkout_option1_enabled,
+      late_checkout_option2_time || null, late_checkout_option2_price || 0, !!late_checkout_option2_enabled,
+      late_checkout_option3_time || null, late_checkout_option3_price || 0, !!late_checkout_option3_enabled,
+      earliest_possible_checkin, latest_possible_checkout, !!is_active
+    ]);
+
+    res.redirect(`/manager/checkin-rules/${apartmentId}?success=1`);
+  } catch (e) {
+    console.error("Error al guardar configuración:", e);
+    res.status(500).send("Error al guardar");
+  }
+});
+
+// ============================================
+// RUTAS DEL STAFF - APROBACIÓN DE SOLICITUDES
+// ============================================
+
+// RUTA 1: Ver solicitudes pendientes
+app.get("/staff/pending-requests", async (req, res) => {
+  try {
+    const { rows: requests } = await pool.query(`
+      SELECT 
+        cts.*,
+        c.full_name, c.phone, c.arrival_date, c.departure_date,
+        c.apartment_name, c.beds24_booking_id,
+        br.apartment_name as room_name
+      FROM checkin_time_selections cts
+      JOIN checkins c ON c.id = cts.checkin_id
+      LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.room_id::text
+      WHERE cts.approval_status = 'pending'
+      ORDER BY cts.created_at DESC
+    `);
+
+    const fmtDate = (d) => d ? String(d).slice(0, 10) : '-';
+
+    const html = `
+      <style>
+        .request-card {
+          background: white;
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          padding: 20px;
+          margin-bottom: 16px;
+        }
+        .request-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: start;
+          margin-bottom: 16px;
+          padding-bottom: 16px;
+          border-bottom: 1px solid #e5e7eb;
+        }
+        .btn-approve {
+          background: #10b981;
+          color: white;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 500;
+        }
+        .btn-approve:hover { background: #059669; }
+        .btn-reject {
+          background: #ef4444;
+          color: white;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 500;
+        }
+        .btn-reject:hover { background: #dc2626; }
+        .empty-state {
+          text-align: center;
+          padding: 60px 20px;
+          color: #6b7280;
+        }
+      </style>
+
+      <h1>📋 Solicitudes de Horario Pendientes</h1>
+      <p><a href="/staff/checkins">← Volver a Check-ins</a></p>
+
+      ${requests.length === 0 ? `
+        <div class="empty-state">
+          <h2>No hay solicitudes pendientes</h2>
+          <p>Todas las solicitudes han sido procesadas</p>
+        </div>
+      ` : requests.map(r => {
+        const arrivalRequested = r.requested_arrival_time ? r.requested_arrival_time.slice(0, 5) : null;
+        const departureRequested = r.requested_departure_time ? r.requested_departure_time.slice(0, 5) : null;
+        const hasEarlycheckin = r.early_checkin_supplement > 0;
+        const hasLateCheckout = r.late_checkout_supplement > 0;
+
+        return `
+          <div class="request-card">
+            <div class="request-header">
+              <div>
+                <h2 style="margin:0 0 4px;">${escapeHtml(r.full_name)}</h2>
+                <p style="margin:0; color:#6b7280;">
+                  ${escapeHtml(r.room_name || r.apartment_name || 'Apartamento')} • 
+                  Reserva: ${escapeHtml(r.beds24_booking_id)}
+                </p>
+              </div>
+              <div style="background:#fef3c7; padding:8px 16px; border-radius:6px; text-align:center;">
+                <div style="font-size:12px; color:#92400e;">TOTAL</div>
+                <div style="font-size:24px; font-weight:700; color:#92400e;">${r.total_supplement}€</div>
+              </div>
+            </div>
+
+            ${hasEarlycheckin ? `
+              <div style="background:#dbeafe; padding:16px; border-radius:6px; margin-bottom:12px;">
+                <strong>🕐 Check-in Anticipado</strong><br>
+                Hora: <strong>${arrivalRequested}</strong> | Suplemento: <strong>${r.early_checkin_supplement}€</strong>
+              </div>
+            ` : ''}
+
+            ${hasLateCheckout ? `
+              <div style="background:#fce7f3; padding:16px; border-radius:6px; margin-bottom:12px;">
+                <strong>🕐 Check-out Tardío</strong><br>
+                Hora: <strong>${departureRequested}</strong> | Suplemento: <strong>${r.late_checkout_supplement}€</strong>
+              </div>
+            ` : ''}
+
+            <form method="POST" action="/staff/pending-requests/${r.id}/process" style="margin-top:16px;">
+              <div style="margin-bottom:12px;">
+                <label style="display:block; margin-bottom:4px; font-weight:500;">📝 Notas (opcional)</label>
+                <textarea name="manager_notes" rows="2" style="width:100%; padding:8px; border:1px solid #d1d5db; border-radius:4px;"></textarea>
+              </div>
+              <button type="submit" name="action" value="approve" class="btn-approve">✅ Aprobar</button>
+              <button type="submit" name="action" value="reject" class="btn-reject" onclick="return confirm('¿Rechazar?')">❌ Rechazar</button>
+            </form>
+          </div>
+        `;
+      }).join('')}
+    `;
+
+    res.send(renderPage("Solicitudes Pendientes", html));
+  } catch (e) {
+    console.error("Error en /staff/pending-requests:", e);
+    res.status(500).send("Error");
+  }
+});
+
+// RUTA 2: Procesar aprobación/rechazo
+app.post("/staff/pending-requests/:id/process", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, manager_notes } = req.body;
+
+    const { rows: [request] } = await pool.query(
+      `SELECT cts.*, c.phone, c.guest_language, c.full_name 
+       FROM checkin_time_selections cts
+       JOIN checkins c ON c.id = cts.checkin_id
+       WHERE cts.id = $1`,
+      [id]
+    );
+
+    if (!request) {
+      return res.status(404).send("Solicitud no encontrada");
+    }
+
+    if (action === 'approve') {
+      await pool.query(`
+        UPDATE checkin_time_selections
+        SET approval_status = 'approved', approval_status_updated_at = NOW(),
+            approved_by = 'manager', manager_notes = $1
+        WHERE id = $2
+      `, [manager_notes || null, id]);
+
+      console.log(`✅ Solicitud ${id} aprobada`);
+    } else if (action === 'reject') {
+      await pool.query(`
+        UPDATE checkin_time_selections
+        SET approval_status = 'rejected', approval_status_updated_at = NOW(),
+            approved_by = 'manager', manager_notes = $1, rejection_reason = $1
+        WHERE id = $2
+      `, [manager_notes || 'No disponible', id]);
+
+      console.log(`❌ Solicitud ${id} rechazada`);
+    }
+
+    res.redirect("/staff/pending-requests");
+  } catch (e) {
+    console.error("Error al procesar solicitud:", e);
+    res.status(500).send("Error");
+  }
+});
+```
+
+**Guarda, haz commit y deploy.** Luego prueba visitando:
+```
+https://rcscheckin.com/manager/checkin-rules
 
 // ===================== START =====================
 (async () => {
@@ -4949,6 +5498,7 @@ function maskKey(k) {
     process.exit(1);
   }
 })();
+
 
 
 
