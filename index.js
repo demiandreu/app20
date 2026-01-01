@@ -1139,24 +1139,29 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
     }
 
     // ================== PAYOK ==================
-    if (textUpper === "PAYOK") {
-      const last = await getSessionCheckin();
-      if (!last) {
-        await sendWhatsApp(from, `${translations.es.noBooking} START 123456`);
-        return res.status(200).send("OK");
-      }
-      const lang = last.guest_language || 'es';
-      const t = translations[lang];
-      
-      await pool.query(`UPDATE checkins SET pay_done = true, pay_done_at = NOW() WHERE id = $1`, [last.id]);
-      
-      const room = await getRoomSettings(last.apartment_id);
-      const standardTime = String(room.default_arrival_time || "17:00").slice(0, 5);
-      
-      await sendWhatsApp(from, `${t.payConfirmed}\n\n${t.standardCheckin}', standardTime)}`);
-      return res.status(200).send("OK");
-    }
-
+   if (textUpper === "PAYOK") {
+  const last = await getSessionCheckin();
+  if (!last) {
+    await sendWhatsApp(from, `${translations.es.noBooking} START 123456`);
+    return res.status(200).send("OK");
+  }
+  
+  const lang = last.guest_language || 'es';
+  const t = translations[lang];
+  const tt = timeRequestTexts[lang];
+  
+  await pool.query(`UPDATE checkins SET pay_done = true, pay_done_at = NOW() WHERE id = $1`, [last.id]);
+  
+  const room = await getRoomSettings(last.apartment_id);
+  const standardTime = String(room.default_arrival_time || "17:00").slice(0, 5);
+  
+  await sendWhatsApp(
+    from, 
+    t.payConfirmed + '\n\n' + tt.arrivalRequest.replace('{time}', standardTime)
+  );
+  
+  return res.status(200).send("OK");
+}
     // ================== DETECTAR HORA ==================
   // ================== DETECTAR HORA ==================
 const timeText = parseTime(body);
@@ -5623,6 +5628,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
