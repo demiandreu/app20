@@ -1202,12 +1202,12 @@ if (!hasArrival) {
   const standardTime = String(room.default_departure_time || "11:00").slice(0, 5);
 
   await sendWhatsApp(
-    from,
-    tt.arrivalConfirmed
-      .replace('{time}', timeText)
-      .replace('{price}', calc.supplement.toFixed(2)) +
-    '\n\n' + tt.standardCheckout.replace('{time}', standardTime)
-  );
+  from,
+  tt.arrivalConfirmed
+    .replace('{time}', `${timeText}:00`)
+    .replace('{price}', calc.supplement.toFixed(2)) +
+  '\n\n' + tt.standardCheckout.replace('{time}', standardTime)
+);
 
   return res.status(200).send("OK");
 }
@@ -5617,6 +5617,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
