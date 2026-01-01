@@ -983,7 +983,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
 
     // ===== TEXTOS TRADUCIDOS =====
 
-   // ================== REGOK ==================
+// ================== REGOK ==================
 if (textUpper === "REGOK") {
   const last = await getSessionCheckin();
   if (!last) {
@@ -5442,7 +5442,6 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
   try {
     const { id } = req.params;
     const { action, manager_notes } = req.body;
-
     const { rows: [request] } = await pool.query(
       `SELECT cts.*, c.phone, c.guest_language, c.full_name 
        FROM checkin_time_selections cts
@@ -5450,11 +5449,9 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
        WHERE cts.id = $1`,
       [id]
     );
-
     if (!request) {
       return res.status(404).send("Solicitud no encontrada");
     }
-
     if (action === 'approve') {
       await pool.query(`
         UPDATE checkin_time_selections
@@ -5462,7 +5459,6 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
             approved_by = 'manager', manager_notes = $1
         WHERE id = $2
       `, [manager_notes || null, id]);
-
       console.log(`✅ Solicitud ${id} aprobada`);
     } else if (action === 'reject') {
       await pool.query(`
@@ -5471,10 +5467,8 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
             approved_by = 'manager', manager_notes = $1, rejection_reason = $1
         WHERE id = $2
       `, [manager_notes || 'No disponible', id]);
-
       console.log(`❌ Solicitud ${id} rechazada`);
     }
-
     res.redirect("/staff/pending-requests");
   } catch (e) {
     console.error("Error al procesar solicitud:", e);
@@ -5492,6 +5486,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
