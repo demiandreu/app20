@@ -5172,25 +5172,25 @@ async function calculateSupplement(apartmentId, requestedTime, type) {
   
   if (type === 'checkin' && isEarly) {
     if (rules.early_checkin_option1_enabled && rules.early_checkin_option1_time) {
-      options.push({ time: rules.early_checkin_option1_time, price: parseFloat(rules.early_checkin_option1_price), label: '1' });
+      options.push({ time: String(rules.early_checkin_option1_time).slice(0, 5), price: parseFloat(rules.early_checkin_option1_price), label: '1' });
     }
     if (rules.early_checkin_option2_enabled && rules.early_checkin_option2_time) {
-      options.push({ time: rules.early_checkin_option2_time, price: parseFloat(rules.early_checkin_option2_price), label: '2' });
+      options.push({ time: String(rules.early_checkin_option2_time).slice(0, 5), price: parseFloat(rules.early_checkin_option2_price), label: '2' });
     }
     if (rules.early_checkin_option3_enabled && rules.early_checkin_option3_time) {
-      options.push({ time: rules.early_checkin_option3_time, price: parseFloat(rules.early_checkin_option3_price), label: '3' });
+      options.push({ time: String(rules.early_checkin_option3_time).slice(0, 5), price: parseFloat(rules.early_checkin_option3_price), label: '3' });
     }
   }
 
   if (type === 'checkout' && isLate) {
     if (rules.late_checkout_option1_enabled && rules.late_checkout_option1_time) {
-      options.push({ time: rules.late_checkout_option1_time, price: parseFloat(rules.late_checkout_option1_price), label: '1' });
+      options.push({ time: String(rules.late_checkout_option1_time).slice(0, 5), price: parseFloat(rules.late_checkout_option1_price), label: '1' });
     }
     if (rules.late_checkout_option2_enabled && rules.late_checkout_option2_time) {
-      options.push({ time: rules.late_checkout_option2_time, price: parseFloat(rules.late_checkout_option2_price), label: '2' });
+      options.push({ time: String(rules.late_checkout_option2_time).slice(0, 5), price: parseFloat(rules.late_checkout_option2_price), label: '2' });
     }
     if (rules.late_checkout_option3_enabled && rules.late_checkout_option3_time) {
-      options.push({ time: rules.late_checkout_option3_time, price: parseFloat(rules.late_checkout_option3_price), label: '3' });
+      options.push({ time: String(rules.late_checkout_option3_time).slice(0, 5), price: parseFloat(rules.late_checkout_option3_price), label: '3' });
     }
   }
 
@@ -5770,6 +5770,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
