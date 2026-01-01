@@ -1082,6 +1082,89 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       return res.status(200).send("OK");
     }
 
+    // ================== DETECTAR HORA DE LLEGADA/SALIDA ==================
+    const timeText = parseTime(body);
+    
+    if (timeText) {
+      const last = await getSessionCheckin();
+      if (!last) {
+        return res.status(200).send("OK");
+      }
+
+      const lang = last.guest_language || 'es';
+      const tt = timeRequestTexts[lang];
+
+      // Verificar si ya tiene hora de llegada guardada
+      const { rows: [timeSelection] } = await pool.query(
+        `SELECT * FROM checkin_time_selections WHERE checkin_id = $1`,
+        [last.id]
+      );
+
+      const hasArrival = timeSelection && timeSelection.requested_arrival_time;
+
+      // Si NO tiene hora de llegada → es solicitud de LLEGADA
+      if (!hasArrival) {
+        // Calcular suplemento
+        const calc = await calculateSupplement(last.apartment_id, timeText, 'checkin');
+
+        // Guardar solicitud de llegada
+        await pool.query(
+          `INSERT INTO checkin_time_selections (
+            checkin_id, requested_arrival_time, confirmed_arrival_time,
+            early_checkin_supplement, whatsapp_phone, approval_status, created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+          ON CONFLICT (checkin_id) DO UPDATE SET
+            requested_arrival_time = EXCLUDED.requested_arrival_time,
+            confirmed_arrival_time = EXCLUDED.confirmed_arrival_time,
+            early_checkin_supplement = EXCLUDED.early_checkin_supplement,
+            approval_status = 'pending'`,
+          [last.id, timeText, timeText, calc.supplement, phone, 'pending']
+        );
+
+        // Enviar confirmación y pedir hora de salida
+        await sendWhatsApp(
+          from,
+          tt.requestReceived
+            .replace('{type}', lang === 'es' ? 'entrada' : lang === 'en' ? 'check-in' : lang === 'fr' ? 'arrivée' : 'заезда')
+            .replace('{time}', timeText)
+            .replace('{price}', calc.supplement.toFixed(2)) +
+          '\n\n' + tt.departurePrompt
+        );
+
+        return res.status(200).send("OK");
+      }
+
+      // Si YA tiene hora de llegada → es solicitud de SALIDA
+      else {
+        // Calcular suplemento de salida
+        const calc = await calculateSupplement(last.apartment_id, timeText, 'checkout');
+
+        // Guardar solicitud de salida
+        await pool.query(
+          `UPDATE checkin_time_selections SET 
+            requested_departure_time = $1, confirmed_departure_time = $2,
+            late_checkout_supplement = $3, approval_status = 'pending', updated_at = NOW()
+           WHERE checkin_id = $4`,
+          [timeText, timeText, calc.supplement, last.id]
+        );
+
+        // Enviar confirmación
+        const totalSupplement = (timeSelection?.early_checkin_supplement || 0) + calc.supplement;
+
+        await sendWhatsApp(
+          from,
+          tt.requestReceived
+            .replace('{type}', lang === 'es' ? 'salida' : lang === 'en' ? 'check-out' : lang === 'fr' ? 'départ' : 'выезда')
+            .replace('{time}', timeText)
+            .replace('{price}', totalSupplement.toFixed(2)) +
+          '\n\n' + 
+          (lang === 'es' ? 'Recibirás confirmación pronto.' : lang === 'en' ? 'You will receive confirmation soon.' : lang === 'fr' ? 'Vous recevrez une confirmation bientôt.' : 'Вы получите подтверждение в ближайшее время.')
+        );
+
+        return res.status(200).send("OK");
+      }
+    }
+
     // ================== START ==================
     const startMatch = textUpper.match(/^START[\s_:-]*([0-9]+)[\s_:-]*([A-Z]{2})?\s*$/);
     if (startMatch) {
@@ -4935,6 +5018,105 @@ function maskKey(k) {
   if (k.length <= 10) return k;
   return k.slice(0, 4) + "…" + k.slice(-4);
 }
+
+// ============================================
+// FUNCIONES AUXILIARES - SOLICITUDES DE HORARIO
+// ============================================
+
+// Función: Detectar si el mensaje es una hora válida
+function parseTime(text) {
+  const patterns = [
+    /^(\d{1,2}):(\d{2})$/,           // 14:00
+    /^(\d{1,2})$/,                    // 14
+    /^(\d{1,2})[h\.](\d{2})?$/,      // 14h, 14.00
+    /^(\d{1,2}):(\d{2})\s*(am|pm)$/i // 2:00 PM
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.trim().match(pattern);
+    if (match) {
+      let hours = parseInt(match[1]);
+      const minutes = match[2] ? parseInt(match[2]) : 0;
+      
+      if (match[3]) {
+        const period = match[3].toLowerCase();
+        if (period === 'pm' && hours < 12) hours += 12;
+        if (period === 'am' && hours === 12) hours = 0;
+      }
+
+      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      }
+    }
+  }
+  return null;
+}
+
+// Función: Calcular suplemento según reglas del apartamento
+async function calculateSupplement(apartmentId, requestedTime, type) {
+  const { rows: [rules] } = await pool.query(
+    `SELECT * FROM early_late_checkout_rules WHERE apartment_id = $1 AND is_active = true`,
+    [apartmentId]
+  );
+
+  if (!rules) {
+    return { supplement: 0, isEarly: false, isLate: false, options: [] };
+  }
+
+  const requested = requestedTime;
+  const standard = type === 'checkin' ? rules.standard_checkin_time : rules.standard_checkout_time;
+
+  const isEarly = type === 'checkin' && requested < standard;
+  const isLate = type === 'checkout' && requested > standard;
+
+  if (!isEarly && !isLate) {
+    return { supplement: 0, isEarly: false, isLate: false, options: [] };
+  }
+
+  const options = [];
+  
+  if (type === 'checkin' && isEarly) {
+    if (rules.early_checkin_option1_enabled && rules.early_checkin_option1_time) {
+      options.push({ time: rules.early_checkin_option1_time, price: parseFloat(rules.early_checkin_option1_price), label: '1' });
+    }
+    if (rules.early_checkin_option2_enabled && rules.early_checkin_option2_time) {
+      options.push({ time: rules.early_checkin_option2_time, price: parseFloat(rules.early_checkin_option2_price), label: '2' });
+    }
+    if (rules.early_checkin_option3_enabled && rules.early_checkin_option3_time) {
+      options.push({ time: rules.early_checkin_option3_time, price: parseFloat(rules.early_checkin_option3_price), label: '3' });
+    }
+  }
+
+  if (type === 'checkout' && isLate) {
+    if (rules.late_checkout_option1_enabled && rules.late_checkout_option1_time) {
+      options.push({ time: rules.late_checkout_option1_time, price: parseFloat(rules.late_checkout_option1_price), label: '1' });
+    }
+    if (rules.late_checkout_option2_enabled && rules.late_checkout_option2_time) {
+      options.push({ time: rules.late_checkout_option2_time, price: parseFloat(rules.late_checkout_option2_price), label: '2' });
+    }
+    if (rules.late_checkout_option3_enabled && rules.late_checkout_option3_time) {
+      options.push({ time: rules.late_checkout_option3_time, price: parseFloat(rules.late_checkout_option3_price), label: '3' });
+    }
+  }
+
+  options.sort((a, b) => a.time.localeCompare(b.time));
+  const exactMatch = options.find(opt => opt.time === requested);
+  
+  if (exactMatch) {
+    return { supplement: exactMatch.price, isEarly, isLate, options, selectedOption: exactMatch };
+  }
+
+  return {
+    supplement: 0,
+    isEarly,
+    isLate,
+    options,
+    selectedOption: null,
+    tooEarly: type === 'checkin' && requested < rules.earliest_possible_checkin,
+    tooLate: type === 'checkout' && requested > rules.latest_possible_checkout
+  };
+}
+
 // ============================================
 // RUTAS DEL MANAGER - CHECK-IN/CHECK-OUT RULES
 // ============================================
@@ -5493,6 +5675,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
