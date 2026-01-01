@@ -821,13 +821,9 @@ if (type === 'checkout' && isLate) {
 // Textos traducidos para solicitudes de horario
 const timeRequestTexts = {
   es: {
+    arrivalRequest: "Por favor, indica tu hora de LLEGADA.\n\nEscribe la hora en formato 24h:\nEjemplo: 14:00\n(o simplemente: 14)\n\nCheck-in estándar: {time}",
     arrivalConfirmed: "✅ Hora de llegada: {time}\nSuplemento: {price}€",
     standardCheckout: "\n\nAhora tu hora de SALIDA:\nEjemplo: 11\n\nCheck-out estándar: {time}",
-    arrivalRequest: "Por favor, indica tu hora de LLEGADA.\n\nEscribe la hora en formato 24h:\nEjemplo: 14:00\n(o simplemente: 14)\n\nCheck-in estándar: {time}",
-
-    
-    arrivalPrompt: "Por favor, escribe tu hora de LLEGADA (formato 24h):\nEjemplo: 17:00",
-    departurePrompt: "Gracias. Ahora tu hora de SALIDA:\nEjemplo: 11:00",
     
     tooEarly: "⚠️ Lo siento, el check-in antes de las {time} no está disponible.\nPor favor, elige una hora entre las {earliest} y 20:00.",
     tooLate: "⚠️ Lo siento, el check-out después de las {time} no está disponible.\nPor favor, elige una hora entre 08:00 y las {latest}.",
@@ -859,12 +855,9 @@ const timeRequestTexts = {
   },
   
   en: {
-   arrivalRequest: "Please indicate your ARRIVAL time.\n\nWrite the time in 24h format:\nExample: 14:00\n(or simply: 14)\n\nStandard check-in: {time}",
-   arrivalConfirmed: "✅ Arrival time: {time}\nSupplement: {price}€",
-   standardCheckout: "\n\nNow your DEPARTURE time:\nExample: 11\n\nStandard check-out: {time}",
-    
-    arrivalPrompt: "Please enter your ARRIVAL time (24h format):\nExample: 17:00",
-    departurePrompt: "Thank you. Now your DEPARTURE time:\nExample: 11:00",
+    arrivalRequest: "Please indicate your ARRIVAL time.\n\nWrite the time in 24h format:\nExample: 14:00\n(or simply: 14)\n\nStandard check-in: {time}",
+    arrivalConfirmed: "✅ Arrival time: {time}\nSupplement: {price}€",
+    standardCheckout: "\n\nNow your DEPARTURE time:\nExample: 11\n\nStandard check-out: {time}",
     
     tooEarly: "⚠️ Sorry, check-in before {time} is not available.\nPlease choose a time between {earliest} and 20:00.",
     tooLate: "⚠️ Sorry, check-out after {time} is not available.\nPlease choose a time between 08:00 and {latest}.",
@@ -896,13 +889,9 @@ const timeRequestTexts = {
   },
   
   fr: {
-   arrivalRequest: "Veuillez indiquer votre heure d'ARRIVÉE.\n\nÉcrivez l'heure au format 24h:\nExemple: 14:00\n(ou simplement: 14)\n\nEnregistrement standard: {time}",
-arrivalConfirmed: "✅ Heure d'arrivée: {time}\nSupplément: {price}€",
-standardCheckout: "\n\nMaintenant votre heure de DÉPART:\nExemple: 11\n\nDépart standard: {time}",
-
-    
-    arrivalPrompt: "Veuillez indiquer votre heure d'ARRIVÉE (format 24h):\nExemple: 17:00",
-    departurePrompt: "Merci. Maintenant votre heure de DÉPART:\nExemple: 11:00",
+    arrivalRequest: "Veuillez indiquer votre heure d'ARRIVÉE.\n\nÉcrivez l'heure au format 24h:\nExemple: 14:00\n(ou simplement: 14)\n\nEnregistrement standard: {time}",
+    arrivalConfirmed: "✅ Heure d'arrivée: {time}\nSupplément: {price}€",
+    standardCheckout: "\n\nMaintenant votre heure de DÉPART:\nExemple: 11\n\nDépart standard: {time}",
     
     tooEarly: "⚠️ Désolé, l'enregistrement avant {time} n'est pas disponible.\nVeuillez choisir une heure entre {earliest} et 20:00.",
     tooLate: "⚠️ Désolé, le départ après {time} n'est pas disponible.\nVeuillez choisir une heure entre 08:00 et {latest}.",
@@ -935,11 +924,8 @@ standardCheckout: "\n\nMaintenant votre heure de DÉPART:\nExemple: 11\n\nDépar
   
   ru: {
     arrivalRequest: "Пожалуйста, укажите время ПРИБЫТИЯ.\n\nНапишите время в формате 24ч:\nПример: 14:00\n(или просто: 14)\n\nСтандартный заезд: {time}",
-arrivalConfirmed: "✅ Время прибытия: {time}\nДоплата: {price}€",
-standardCheckout: "\n\nТеперь время ВЫЕЗДА:\nПример: 11\n\nСтандартный выезд: {time}",
-    
-    arrivalPrompt: "Пожалуйста, укажите время ПРИБЫТИЯ (формат 24ч):\nПример: 17:00",
-    departurePrompt: "Спасибо. Теперь время ВЫЕЗДА:\nПример: 11:00",
+    arrivalConfirmed: "✅ Время прибытия: {time}\nДоплата: {price}€",
+    standardCheckout: "\n\nТеперь время ВЫЕЗДА:\nПример: 11\n\nСтандартный выезд: {time}",
     
     tooEarly: "⚠️ Извините, заезд до {time} недоступен.\nПожалуйста, выберите время между {earliest} и 20:00.",
     tooLate: "⚠️ Извините, выезд после {time} недоступен.\nПожалуйста, выберите время между 08:00 и {latest}.",
@@ -970,7 +956,6 @@ standardCheckout: "\n\nТеперь время ВЫЕЗДА:\nПример: 11\n
     invalidTime: "⚠️ Неверный формат времени.\nПожалуйста, введите время в формате 24ч (пример: 17:00)"
   }
 };
-
 
 // Continuar con el resto del código...
 // ==========================================
@@ -5628,6 +5613,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
