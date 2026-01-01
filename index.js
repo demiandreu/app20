@@ -1280,40 +1280,7 @@ ${t.afterReg}`);
     return res.status(200).send("OK");
   }
 });
-    // ================== LISTO ==================
-    if (textUpper === "LISTO") {
-      const last = await getSessionCheckin();
-      if (!last) {
-        await sendWhatsApp(from, `${translations.es.noBooking} START 123456`);
-        return res.status(200).send("OK");
-      }
-      const lang = last.guest_language || 'es';
-      const t = translations[lang];
-
-      if (!last.reg_done || !last.pay_done) {
-        await sendWhatsApp(from, t.almostReady);
-        return res.status(200).send("OK");
-      }
-
-      const bookIdForLink = String(last.beds24_booking_id || last.booking_id_from_start || last.booking_token || "").replace(/\s/g, '');
-      const guestPanelUrl = `https://rcscheckin.com/guest/${bookIdForLink}?lang=${lang}`;
-
-      await sendWhatsApp(from, `${t.perfect}
-${t.apartmentInfo}
-
-${t.lockCodeInfo}
-
-${t.saveLink}
-${guestPanelUrl}`);
-      return res.status(200).send("OK");
-    }
-
-    return res.status(200).send("OK");
-  } catch (err) {
-    console.error("❌ WhatsApp inbound error:", err);
-    return res.status(200).send("OK");
-  }
-});
+ 
 // ===================== TWILIO CLIENT =====================
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || "";
@@ -5721,6 +5688,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
