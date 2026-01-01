@@ -1280,7 +1280,6 @@ ${t.afterReg}`);
     return res.status(200).send("OK");
   }
 });
-
     // ================== LISTO ==================
     if (textUpper === "LISTO") {
       const last = await getSessionCheckin();
@@ -5722,6 +5721,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
