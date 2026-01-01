@@ -1177,13 +1177,11 @@ ${t.afterReg}`);
       return res.status(200).send("OK");
     }
 
-    return res.status(200).send("OK");
-  } catch (err) {
-    console.error("❌ WhatsApp inbound error:", err);
-    return res.status(200).send("OK");
-  }
-});
- 
+   return res.status(200).send("OK");
+} catch (err) {  // ← Línea 1181
+  console.error("❌ WhatsApp inbound error:", err);
+  return res.status(200).send("OK");
+}
 // ===================== TWILIO CLIENT =====================
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || "";
@@ -5493,6 +5491,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
