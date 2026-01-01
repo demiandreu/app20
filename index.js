@@ -941,28 +941,28 @@ if (type === 'checkout' && isLate) {
   }
 };
 
-    // ================== REGOK ==================
-    if (textUpper === "REGOK") {
-      const last = await getSessionCheckin();
-      if (!last) {
-        await sendWhatsApp(from, `${translations.es.noBooking} START 123456`);
-        return res.status(200).send("OK");
-      }
-      const lang = last.guest_language || 'es';
-      const t = translations[lang];
-      
-      await pool.query(`UPDATE checkins SET reg_done = true, reg_done_at = NOW() WHERE id = $1`, [last.id]);
-      
-      const room = await getRoomSettings(last.apartment_id);
-      const bookIdForLinks = String(last.beds24_booking_id || last.booking_id_from_start || last.booking_token || "").replace(/\s/g, '');
-      const payLink = applyTpl(room.payment_url || "", bookIdForLinks);
-      
-      await sendWhatsApp(from, `${t.regConfirmed}\n\n${payLink || "—"}\n\n${t.afterPay}`);
-      return res.status(200).send("OK");
-    }
+   // ================== REGOK ==================
+if (textUpper === "REGOK") {
+  const last = await getSessionCheckin();
+  if (!last) {
+    await sendWhatsApp(from, `${translations.es.noBooking} START 123456`);
+    return res.status(200).send("OK");
+  }
+  const lang = last.guest_language || 'es';
+  const t = translations[lang];
+  
+  await pool.query(`UPDATE checkins SET reg_done = true, reg_done_at = NOW() WHERE id = $1`, [last.id]);
+  
+  const room = await getRoomSettings(last.apartment_id);
+  const bookIdForLinks = String(last.beds24_booking_id || last.booking_id_from_start || last.booking_token || "").replace(/\s/g, '');
+  const payLink = applyTpl(room.payment_url || "", bookIdForLinks);
+  
+  await sendWhatsApp(from, `${t.regConfirmed}\n\n${payLink || "—"}\n\n${t.afterPay}`);
+  return res.status(200).send("OK");
+}
 
-    // ================== PAYOK ==================
-   if (textUpper === "PAYOK") {
+// ================== PAYOK ==================
+if (textUpper === "PAYOK") {
   const last = await getSessionCheckin();
   if (!last) {
     await sendWhatsApp(from, `${translations.es.noBooking} START 123456`);
@@ -5451,6 +5451,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
