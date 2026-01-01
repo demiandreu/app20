@@ -941,6 +941,48 @@ if (type === 'checkout' && isLate) {
   }
 };
 
+app.post("/webhooks/twilio/whatsapp", async (req, res) => {
+  console.log("🔥 TWILIO HIT", req.body);
+  try {
+    const from = String(req.body.From || "");
+    const body = String(req.body.Body || "").trim();
+    const phone = from.replace("whatsapp:", "").trim();
+    const textUpper = body.toUpperCase().trim();
+    console.log("📩 Twilio WhatsApp inbound:", { from, body });
+    
+    // ===== Session helpers =====
+    const getSessionCheckin = async () => {
+      const q = await pool.query(
+        `SELECT c.* FROM whatsapp_sessions ws
+         JOIN checkins c ON c.id = ws.checkin_id
+         WHERE ws.phone = $1 ORDER BY ws.updated_at DESC LIMIT 1`,
+        [phone]
+      );
+      return q.rows[0] || null;
+    };
+    
+    const setSessionCheckin = async (checkinId) => {
+      await pool.query(
+        `INSERT INTO whatsapp_sessions (phone, checkin_id, created_at, updated_at)
+         VALUES ($1, $2, NOW(), NOW())
+         ON CONFLICT (phone) DO UPDATE SET checkin_id = EXCLUDED.checkin_id, updated_at = NOW()`,
+        [phone, checkinId]
+      );
+    };
+    
+    const getRoomSettings = async (apartmentId) => {
+      const roomRes = await pool.query(
+        `SELECT registration_url, payment_url, keys_instructions_url, default_arrival_time, default_departure_time
+         FROM beds24_rooms WHERE beds24_room_id = $1 OR id::text = $1 LIMIT 1`,
+        [String(apartmentId || "")]
+      );
+      return roomRes.rows[0] || {};
+    };
+    
+    const applyTpl = (tpl, bookId) => String(tpl || "").replace(/\[BOOKID\]/g, String(bookId || ""));
+
+    // ===== TEXTOS TRADUCIDOS =====
+
    // ================== REGOK ==================
 if (textUpper === "REGOK") {
   const last = await getSessionCheckin();
@@ -5451,6 +5493,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
