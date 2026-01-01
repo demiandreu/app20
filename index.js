@@ -1178,6 +1178,7 @@ ${t.afterReg}`);
     }
 
    return res.status(200).send("OK");
+  }
 } catch (err) {  // ← Línea 1181
   console.error("❌ WhatsApp inbound error:", err);
   return res.status(200).send("OK");
@@ -5491,6 +5492,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
