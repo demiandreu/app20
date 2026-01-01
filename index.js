@@ -987,7 +987,9 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
     // ===== TEXTOS TRADUCIDOS =====
 
 // ================== REGOK ==================
+console.log("🔍 DEBUG: Checking REGOK");
 if (textUpper === "REGOK") {
+  console.log("✅ DEBUG: REGOK matched!");
   const last = await getSessionCheckin();
   if (!last) {
     await sendWhatsApp(from, `${translations.es.noBooking} START 123456`);
@@ -1007,7 +1009,9 @@ if (textUpper === "REGOK") {
 }
 
 // ================== PAYOK ==================
+console.log("🔍 DEBUG: Checking PAYOK");
 if (textUpper === "PAYOK") {
+  console.log("✅ DEBUG: PAYOK matched!");
   const last = await getSessionCheckin();
   if (!last) {
     await sendWhatsApp(from, `${translations.es.noBooking} START 123456`);
@@ -1120,8 +1124,11 @@ else {
 }
 
     // ================== START ==================
+    console.log("🔍 DEBUG: Checking START pattern");
     const startMatch = textUpper.match(/^START[\s_:-]*([0-9]+)[\s_:-]*([A-Z]{2})?\s*$/);
+    console.log("🔍 DEBUG: startMatch result:", startMatch);
     if (startMatch) {
+      console.log("✅ DEBUG: START matched!");
       const bookingId = String(startMatch[1] || "").trim();
       const langCode = (startMatch[2] || 'es').toLowerCase();
       const supportedLangs = ['es', 'en', 'fr', 'ru'];
