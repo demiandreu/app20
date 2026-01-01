@@ -1254,6 +1254,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
     const timeText = parseTime(body);
     
     if (timeText) {
+      console.log('🕐 parseTime result:', { body, timeText });  // ← AGREGA ESTA LÍNEA
       const last = await getSessionCheckin();
       if (!last) return res.status(200).send("OK");
 
@@ -5147,35 +5148,6 @@ function maskKey(k) {
 // FUNCIONES AUXILIARES - SOLICITUDES DE HORARIO
 // ============================================
 
-// Función: Detectar si el mensaje es una hora válida
-function parseTime(text) {
-  const patterns = [
-    /^(\d{1,2}):(\d{2})$/,           // 14:00
-    /^(\d{1,2})$/,                    // 14
-    /^(\d{1,2})[h\.](\d{2})?$/,      // 14h, 14.00
-    /^(\d{1,2}):(\d{2})\s*(am|pm)$/i // 2:00 PM
-  ];
-
-  for (const pattern of patterns) {
-    const match = text.trim().match(pattern);
-    if (match) {
-      let hours = parseInt(match[1]);
-      const minutes = match[2] ? parseInt(match[2]) : 0;
-      
-      if (match[3]) {
-        const period = match[3].toLowerCase();
-        if (period === 'pm' && hours < 12) hours += 12;
-        if (period === 'am' && hours === 12) hours = 0;
-      }
-
-      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-      }
-    }
-  }
-  return null;
-}
-
 // Función: Calcular suplemento según reglas del apartamento
 async function calculateSupplement(apartmentId, requestedTime, type) {
   const { rows: [rules] } = await pool.query(
@@ -5799,6 +5771,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
