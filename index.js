@@ -5482,11 +5482,6 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     res.status(500).send("Error");
   }
 });
-```
-
-**Guarda, haz commit y deploy.** Luego prueba visitando:
-```
-https://rcscheckin.com/manager/checkin-rules
 
 // ===================== START =====================
 (async () => {
@@ -5498,6 +5493,7 @@ https://rcscheckin.com/manager/checkin-rules
     process.exit(1);
   }
 })();
+
 
 
 
