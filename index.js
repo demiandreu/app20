@@ -821,123 +821,123 @@ if (type === 'checkout' && isLate) {
 // Textos traducidos para solicitudes de horario
 
 
-    const applyTpl = (tpl, bookId) => String(tpl || "").replace(/\[BOOKID\]/g, String(bookId || ""));
+const applyTpl = (tpl, bookId) => String(tpl || "").replace(/\[BOOKID\]/g, String(bookId || ""));
 
-    // ===== TEXTOS TRADUCIDOS =====
-    const translations = {
-      es: {
-        greeting: "Hola",
-        bookingConfirmed: "Tu reserva está confirmada",
-        apartment: "Apartamento",
-        checkin: "Entrada",
-        checkout: "Salida",
-        guests: "Huéspedes",
-        adults: "adultos",
-        children: "niños",
-        registerInstructions: "Para recibir las instrucciones de las llaves, primero completa el registro:",
-        afterReg: "Cuando termines, escribe: REGOK",
-        regConfirmed: "✅ Registro completado!\n\nAhora revisa los pagos pendientes:\n💰 Depósito de seguridad (según plataforma)\n💰 Impuesto turístico obligatorio",
-        afterPay: "Cuando completes el pago, escribe: PAYOK",
-        payConfirmed: "✅ Pago confirmado!\n\nPor favor, indica tu hora de LLEGADA.\n\nEscribe la hora en formato 24h:\nEjemplo: 14:00\n(o simplemente: 14)",
-        standardCheckin: "Check-in estándar: {time}",
-        notFound: "Gracias 🙂\nNo encuentro tu reserva todavía.\nVerifica el número y vuelve a enviar:",
-        noBooking: "No encuentro tu reserva. Envía primero:"
-      },
-      en: {
-        greeting: "Hello",
-        bookingConfirmed: "Your booking is confirmed",
-        apartment: "Apartment",
-        checkin: "Check-in",
-        checkout: "Check-out",
-        guests: "Guests",
-        adults: "adults",
-        children: "children",
-        registerInstructions: "To receive the key instructions, first complete the registration:",
-        afterReg: "When done, write: REGOK",
-        regConfirmed: "✅ Registration completed!\n\nNow review pending payments:\n💰 Security deposit (depending on platform)\n💰 Mandatory tourist tax",
-        afterPay: "When payment is complete, write: PAYOK",
-        payConfirmed: "✅ Payment confirmed!\n\nPlease indicate your ARRIVAL time.\n\nWrite the time in 24h format:\nExample: 14:00\n(or simply: 14)",
-        standardCheckin: "Standard check-in: {time}",
-        notFound: "Thank you 🙂\nI can't find your booking yet.\nPlease verify the number and resend:",
-        noBooking: "I can't find your booking. First send:"
-      },
-      fr: {
-        greeting: "Bonjour",
-        bookingConfirmed: "Votre réservation est confirmée",
-        apartment: "Appartement",
-        checkin: "Arrivée",
-        checkout: "Départ",
-        guests: "Invités",
-        adults: "adultes",
-        children: "enfants",
-        registerInstructions: "Pour recevoir les instructions des clés, complétez d'abord l'enregistrement:",
-        afterReg: "Quand c'est fait, écrivez: REGOK",
-        regConfirmed: "✅ Enregistrement terminé!\n\nMaintenant vérifiez les paiements en attente:\n💰 Caution (selon la plateforme)\n💰 Taxe de séjour obligatoire",
-        afterPay: "Quand le paiement est terminé, écrivez: PAYOK",
-        payConfirmed: "✅ Paiement confirmé!\n\nVeuillez indiquer votre heure d'ARRIVÉE.\n\nÉcrivez l'heure en format 24h:\nExemple: 14:00\n(ou simplement: 14)",
-        standardCheckin: "Enregistrement standard: {time}",
-        notFound: "Merci 🙂\nJe ne trouve pas encore votre réservation.\nVérifiez le numéro et renvoyez:",
-        noBooking: "Je ne trouve pas votre réservation. Envoyez d'abord:"
-      },
-      ru: {
-        greeting: "Здравствуйте",
-        bookingConfirmed: "Ваше бронирование подтверждено",
-        apartment: "Апартамент",
-        checkin: "Заезд",
-        checkout: "Выезд",
-        guests: "Гости",
-        adults: "взрослых",
-        children: "детей",
-        registerInstructions: "Чтобы получить инструкции по ключам, сначала завершите регистрацию:",
-        afterReg: "Когда закончите, напишите: REGOK",
-        regConfirmed: "✅ Регистрация завершена!\n\nТеперь проверьте ожидающие платежи:\n💰 Депозит (в зависимости от платформы)\n💰 Обязательный туристический налог",
-        afterPay: "Когда оплата завершена, напишите: PAYOK",
-        payConfirmed: "✅ Оплата подтверждена!\n\nПожалуйста, укажите время ПРИБЫТИЯ.\n\nНапишите время в формате 24ч:\nПример: 14:00\n(или просто: 14)",
-        standardCheckin: "Стандартный заезд: {time}",
-        notFound: "Спасибо 🙂\nЯ пока не могу найти ваше бронирование.\nПроверьте номер и отправьте снова:",
-        noBooking: "Я не могу найти ваше бронирование. Сначала отправьте:"
-      }
-    };
+// ===== TEXTOS TRADUCIDOS =====
+const translations = {
+  es: {
+    greeting: "Hola",
+    bookingConfirmed: "Tu reserva está confirmada",
+    apartment: "Apartamento",
+    checkin: "Entrada",
+    checkout: "Salida",
+    guests: "Huéspedes",
+    adults: "adultos",
+    children: "niños",
+    registerInstructions: "Para recibir las instrucciones de las llaves, primero completa el registro:",
+    afterReg: "Cuando termines, escribe: REGOK",
+    regConfirmed: "✅ Registro completado!\n\nAhora revisa los pagos pendientes:\n💰 Depósito de seguridad (según plataforma)\n💰 Impuesto turístico obligatorio",
+    afterPay: "Cuando completes el pago, escribe: PAYOK",
+    payConfirmed: "✅ Pago confirmado!\n\nPor favor, indica tu hora de LLEGADA.\n\nEscribe la hora en formato 24h:\nEjemplo: 14:00\n(o simplemente: 14)",
+    standardCheckin: "Check-in estándar: {time}",
+    notFound: "Gracias 🙂\nNo encuentro tu reserva todavía.\nVerifica el número y vuelve a enviar:",
+    noBooking: "No encuentro tu reserva. Envía primero:"
+  },
+  en: {
+    greeting: "Hello",
+    bookingConfirmed: "Your booking is confirmed",
+    apartment: "Apartment",
+    checkin: "Check-in",
+    checkout: "Check-out",
+    guests: "Guests",
+    adults: "adults",
+    children: "children",
+    registerInstructions: "To receive the key instructions, first complete the registration:",
+    afterReg: "When done, write: REGOK",
+    regConfirmed: "✅ Registration completed!\n\nNow review pending payments:\n💰 Security deposit (depending on platform)\n💰 Mandatory tourist tax",
+    afterPay: "When payment is complete, write: PAYOK",
+    payConfirmed: "✅ Payment confirmed!\n\nPlease indicate your ARRIVAL time.\n\nWrite the time in 24h format:\nExample: 14:00\n(or simply: 14)",
+    standardCheckin: "Standard check-in: {time}",
+    notFound: "Thank you 🙂\nI can't find your booking yet.\nPlease verify the number and resend:",
+    noBooking: "I can't find your booking. First send:"
+  },
+  fr: {
+    greeting: "Bonjour",
+    bookingConfirmed: "Votre réservation est confirmée",
+    apartment: "Appartement",
+    checkin: "Arrivée",
+    checkout: "Départ",
+    guests: "Invités",
+    adults: "adultes",
+    children: "enfants",
+    registerInstructions: "Pour recevoir les instructions des clés, complétez d'abord l'enregistrement:",
+    afterReg: "Quand c'est fait, écrivez: REGOK",
+    regConfirmed: "✅ Enregistrement terminé!\n\nMaintenant vérifiez les paiements en attente:\n💰 Caution (selon la plateforme)\n💰 Taxe de séjour obligatoire",
+    afterPay: "Quand le paiement est terminé, écrivez: PAYOK",
+    payConfirmed: "✅ Paiement confirmé!\n\nVeuillez indiquer votre heure d'ARRIVÉE.\n\nÉcrivez l'heure en format 24h:\nExemple: 14:00\n(ou simplement: 14)",
+    standardCheckin: "Enregistrement standard: {time}",
+    notFound: "Merci 🙂\nJe ne trouve pas encore votre réservation.\nVérifiez le numéro et renvoyez:",
+    noBooking: "Je ne trouve pas votre réservation. Envoyez d'abord:"
+  },
+  ru: {
+    greeting: "Здравствуйте",
+    bookingConfirmed: "Ваше бронирование подтверждено",
+    apartment: "Апартамент",
+    checkin: "Заезд",
+    checkout: "Выезд",
+    guests: "Гости",
+    adults: "взрослых",
+    children: "детей",
+    registerInstructions: "Чтобы получить инструкции по ключам, сначала завершите регистрацию:",
+    afterReg: "Когда закончите, напишите: REGOK",
+    regConfirmed: "✅ Регистрация завершена!\n\nТеперь проверьте ожидающие платежи:\n💰 Депозит (в зависимости от платформы)\n💰 Обязательный туристический налог",
+    afterPay: "Когда оплата завершена, напишите: PAYOK",
+    payConfirmed: "✅ Оплата подтверждена!\n\nПожалуйста, укажите время ПРИБЫТИЯ.\n\nНапишите время в формате 24ч:\nПример: 14:00\n(или просто: 14)",
+    standardCheckin: "Стандартный заезд: {time}",
+    notFound: "Спасибо 🙂\nЯ пока не могу найти ваше бронирование.\nПроверьте номер и отправьте снова:",
+    noBooking: "Я не могу найти ваше бронирование. Сначала отправьте:"
+  }
+};
 
   const timeRequestTexts = {
   es: {
-    arrivalRequest: "Por favor, indica tu hora de LLEGADA.\n\nEscribe la hora en formato 24h:\nEjemplo: 14:00\n(o simplemente: 14)\n\nCheck-in estándar: {time}",
-    arrivalConfirmed: "✅ Hora de llegada: {time}\nSuplemento: {price}€",
-    standardCheckout: "\n\nAhora tu hora de SALIDA:\nEjemplo: 11\n\nCheck-out estándar: {time}",
-    requestReceived: "✅ Solicitud recibida!\n\n📅 Entrada: {arrival} ({arrivalPrice}€)\n📅 Salida: {departure} ({departurePrice}€)\n💰 Total suplemento: {total}€\n\nTu solicitud está en revisión.\nRecibirás confirmación pronto.",
-    tooEarly: "⚠️ Lo siento, el check-in antes de las {time} no está disponible.\nPor favor, elige una hora entre las {earliest} y 20:00.",
-    tooLate: "⚠️ Lo siento, el check-out después de las {time} no está disponible.\nPor favor, elige una hora entre 08:00 y las {latest}.",
-    invalidTime: "⚠️ Formato de hora no válido.\nPor favor, escribe la hora en formato 24h (ejemplo: 17:00)"
+arrivalRequest: "Por favor, indica tu hora de LLEGADA.\n\nEscribe la hora en formato 24h:\nEjemplo: 14:00\n(o simplemente: 14)\n\nCheck-in estándar: {time}",
+arrivalConfirmed: "✅ Hora de llegada: {time}\nSuplemento: {price}€",
+standardCheckout: "\n\nAhora tu hora de SALIDA:\nEjemplo: 11\n\nCheck-out estándar: {time}",
+requestReceived: "✅ Solicitud recibida!\n\n📅 Entrada: {arrival} ({arrivalPrice}€)\n📅 Salida: {departure} ({departurePrice}€)\n💰 Total suplemento: {total}€\n\nTu solicitud está en revisión.\nRecibirás confirmación pronto.",
+tooEarly: "⚠️ Lo siento, el check-in antes de las {time} no está disponible.\nPor favor, elige una hora entre las {earliest} y 20:00.",
+tooLate: "⚠️ Lo siento, el check-out después de las {time} no está disponible.\nPor favor, elige una hora entre 08:00 y las {latest}.",
+invalidTime: "⚠️ Formato de hora no válido.\nPor favor, escribe la hora en formato 24h (ejemplo: 17:00)"
   },
   
   en: {
-    arrivalRequest: "Please indicate your ARRIVAL time.\n\nWrite the time in 24h format:\nExample: 14:00\n(or simply: 14)\n\nStandard check-in: {time}",
-    arrivalConfirmed: "✅ Arrival time: {time}\nSupplement: {price}€",
-    standardCheckout: "\n\nNow your DEPARTURE time:\nExample: 11\n\nStandard check-out: {time}",
-    requestReceived: "✅ Request received!\n\n📅 Check-in: {arrival} ({arrivalPrice}€)\n📅 Check-out: {departure} ({departurePrice}€)\n💰 Total supplement: {total}€\n\nYour request is under review.\nYou will receive confirmation soon.",
-    tooEarly: "⚠️ Sorry, check-in before {time} is not available.\nPlease choose a time between {earliest} and 20:00.",
-    tooLate: "⚠️ Sorry, check-out after {time} is not available.\nPlease choose a time between 08:00 and {latest}.",
-    invalidTime: "⚠️ Invalid time format.\nPlease enter time in 24h format (example: 17:00)"
+arrivalRequest: "Please indicate your ARRIVAL time.\n\nWrite the time in 24h format:\nExample: 14:00\n(or simply: 14)\n\nStandard check-in: {time}",
+arrivalConfirmed: "✅ Arrival time: {time}\nSupplement: {price}€",
+standardCheckout: "\n\nNow your DEPARTURE time:\nExample: 11\n\nStandard check-out: {time}",
+requestReceived: "✅ Request received!\n\n📅 Check-in: {arrival} ({arrivalPrice}€)\n📅 Check-out: {departure} ({departurePrice}€)\n💰 Total supplement: {total}€\n\nYour request is under review.\nYou will receive confirmation soon.",
+tooEarly: "⚠️ Sorry, check-in before {time} is not available.\nPlease choose a time between {earliest} and 20:00.",
+tooLate: "⚠️ Sorry, check-out after {time} is not available.\nPlease choose a time between 08:00 and {latest}.",
+invalidTime: "⚠️ Invalid time format.\nPlease enter time in 24h format (example: 17:00)"
   },
   
   fr: {
-    arrivalRequest: "Veuillez indiquer votre heure d'ARRIVÉE.\n\nÉcrivez l'heure au format 24h:\nExemple: 14:00\n(ou simplement: 14)\n\nEnregistrement standard: {time}",
-    arrivalConfirmed: "✅ Heure d'arrivée: {time}\nSupplément: {price}€",
-    standardCheckout: "\n\nMaintenant votre heure de DÉPART:\nExemple: 11\n\nDépart standard: {time}",
-    requestReceived: "✅ Demande reçue!\n\n📅 Arrivée: {arrival} ({arrivalPrice}€)\n📅 Départ: {departure} ({departurePrice}€)\n💰 Supplément total: {total}€\n\nVotre demande est en cours d'examen.\nVous recevrez une confirmation bientôt.",
-    tooEarly: "⚠️ Désolé, l'enregistrement avant {time} n'est pas disponible.\nVeuillez choisir une heure entre {earliest} et 20:00.",
-    tooLate: "⚠️ Désolé, le départ après {time} n'est pas disponible.\nVeuillez choisir une heure entre 08:00 et {latest}.",
-    invalidTime: "⚠️ Format d'heure non valide.\nVeuillez entrer l'heure au format 24h (exemple: 17:00)"
+arrivalRequest: "Veuillez indiquer votre heure d'ARRIVÉE.\n\nÉcrivez l'heure au format 24h:\nExemple: 14:00\n(ou simplement: 14)\n\nEnregistrement standard: {time}",
+arrivalConfirmed: "✅ Heure d'arrivée: {time}\nSupplément: {price}€",
+standardCheckout: "\n\nMaintenant votre heure de DÉPART:\nExemple: 11\n\nDépart standard: {time}",
+requestReceived: "✅ Demande reçue!\n\n📅 Arrivée: {arrival} ({arrivalPrice}€)\n📅 Départ: {departure} ({departurePrice}€)\n💰 Supplément total: {total}€\n\nVotre demande est en cours d'examen.\nVous recevrez une confirmation bientôt.",
+tooEarly: "⚠️ Désolé, l'enregistrement avant {time} n'est pas disponible.\nVeuillez choisir une heure entre {earliest} et 20:00.",
+tooLate: "⚠️ Désolé, le départ après {time} n'est pas disponible.\nVeuillez choisir une heure entre 08:00 et {latest}.",
+invalidTime: "⚠️ Format d'heure non valide.\nVeuillez entrer l'heure au format 24h (exemple: 17:00)"
   },
   
   ru: {
-    arrivalRequest: "Пожалуйста, укажите время ПРИБЫТИЯ.\n\nНапишите время в формате 24ч:\nПример: 14:00\n(или просто: 14)\n\nСтандартный заезд: {time}",
-    arrivalConfirmed: "✅ Время прибытия: {time}\nДоплата: {price}€",
-    standardCheckout: "\n\nТеперь время ВЫЕЗДА:\nПример: 11\n\nСтандартный выезд: {time}",
-    requestReceived: "✅ Запрос получен!\n\n📅 Заезд: {arrival} ({arrivalPrice}€)\n📅 Выезд: {departure} ({departurePrice}€)\n💰 Общая доплата: {total}€\n\nВаш запрос рассматривается.\nВы получите подтверждение в ближайшее время.",
-    tooEarly: "⚠️ Извините, заезд до {time} недоступен.\nПожалуйста, выберите время между {earliest} и 20:00.",
-    tooLate: "⚠️ Извините, выезд после {time} недоступен.\nПожалуйста, выберите время между 08:00 и {latest}.",
-    invalidTime: "⚠️ Неверный формат времени.\nПожалуйста, введите время в формате 24ч (пример: 17:00)"
+arrivalRequest: "Пожалуйста, укажите время ПРИБЫТИЯ.\n\nНапишите время в формате 24ч:\nПример: 14:00\n(или просто: 14)\n\nСтандартный заезд: {time}",
+arrivalConfirmed: "✅ Время прибытия: {time}\nДоплата: {price}€",
+standardCheckout: "\n\nТеперь время ВЫЕЗДА:\nПример: 11\n\nСтандартный выезд: {time}",
+requestReceived: "✅ Запрос получен!\n\n📅 Заезд: {arrival} ({arrivalPrice}€)\n📅 Выезд: {departure} ({departurePrice}€)\n💰 Общая доплата: {total}€\n\nВаш запрос рассматривается.\nВы получите подтверждение в ближайшее время.",
+tooEarly: "⚠️ Извините, заезд до {time} недоступен.\nПожалуйста, выберите время между {earliest} и 20:00.",
+tooLate: "⚠️ Извините, выезд после {time} недоступен.\nПожалуйста, выберите время между 08:00 и {latest}.",
+invalidTime: "⚠️ Неверный формат времени.\nПожалуйста, введите время в формате 24ч (пример: 17:00)"
   }
 };
 
