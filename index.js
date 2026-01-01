@@ -695,9 +695,11 @@ async function calculateSupplement(apartmentId, requestedTime, type) {
     [apartmentId]
   );
 
-  console.log('📊 Rules found:', rules ? 'YES' : 'NO', rules);
+  console.log('📊 Rules found:', rules ? 'YES' : 'NO');
+  if (rules) console.log('📋 Rules data:', rules);
 
   if (!rules) {
+    console.log('❌ No rules found, returning 0');
     return { supplement: 0, isEarly: false, isLate: false, options: [] };
   }
 
@@ -712,20 +714,59 @@ async function calculateSupplement(apartmentId, requestedTime, type) {
   console.log('📌 Status:', { isEarly, isLate });
 
   if (!isEarly && !isLate) {
+    console.log('ℹ️ Not early/late, returning 0');
     return { supplement: 0, isEarly: false, isLate: false, options: [] };
   }
 
   const options = [];
   
   if (type === 'checkin' && isEarly) {
+    console.log('🕐 Building early checkin options...');
     if (rules.early_checkin_option1_enabled && rules.early_checkin_option1_time) {
-      options.push({ time: rules.early_checkin_option1_time, price: parseFloat(rules.early_checkin_option1_price), label: '1' });
+      options.push({ 
+        time: rules.early_checkin_option1_time.slice(0, 5), 
+        price: parseFloat(rules.early_checkin_option1_price), 
+        label: '1' 
+      });
     }
     if (rules.early_checkin_option2_enabled && rules.early_checkin_option2_time) {
-      options.push({ time: rules.early_checkin_option2_time, price: parseFloat(rules.early_checkin_option2_price), label: '2' });
+      options.push({ 
+        time: rules.early_checkin_option2_time.slice(0, 5), 
+        price: parseFloat(rules.early_checkin_option2_price), 
+        label: '2' 
+      });
     }
     if (rules.early_checkin_option3_enabled && rules.early_checkin_option3_time) {
-      options.push({ time: rules.early_checkin_option3_time, price: parseFloat(rules.early_checkin_option3_price), label: '3' });
+      options.push({ 
+        time: rules.early_checkin_option3_time.slice(0, 5), 
+        price: parseFloat(rules.early_checkin_option3_price), 
+        label: '3' 
+      });
+    }
+  }
+
+  if (type === 'checkout' && isLate) {
+    console.log('🕐 Building late checkout options...');
+    if (rules.late_checkout_option1_enabled && rules.late_checkout_option1_time) {
+      options.push({ 
+        time: rules.late_checkout_option1_time.slice(0, 5), 
+        price: parseFloat(rules.late_checkout_option1_price), 
+        label: '1' 
+      });
+    }
+    if (rules.late_checkout_option2_enabled && rules.late_checkout_option2_time) {
+      options.push({ 
+        time: rules.late_checkout_option2_time.slice(0, 5), 
+        price: parseFloat(rules.late_checkout_option2_price), 
+        label: '2' 
+      });
+    }
+    if (rules.late_checkout_option3_enabled && rules.late_checkout_option3_time) {
+      options.push({ 
+        time: rules.late_checkout_option3_time.slice(0, 5), 
+        price: parseFloat(rules.late_checkout_option3_price), 
+        label: '3' 
+      });
     }
   }
 
@@ -734,16 +775,22 @@ async function calculateSupplement(apartmentId, requestedTime, type) {
   options.sort((a, b) => a.time.localeCompare(b.time));
   const exactMatch = options.find(opt => opt.time === requested);
   
-  console.log('✅ Exact match:', exactMatch);
+  console.log('✅ Exact match search:', { requested, exactMatch });
 
   if (exactMatch) {
+    console.log('💰 Returning supplement:', exactMatch.price);
     return { supplement: exactMatch.price, isEarly, isLate, options, selectedOption: exactMatch };
   }
 
+  console.log('⚠️ No exact match, returning 0');
   return {
-    supplement: 0, isEarly, isLate, options, selectedOption: null,
-    tooEarly: type === 'checkin' && requested < rules.earliest_possible_checkin,
-    tooLate: type === 'checkout' && requested > rules.latest_possible_checkout
+    supplement: 0,
+    isEarly,
+    isLate,
+    options,
+    selectedOption: null,
+    tooEarly: type === 'checkin' && requested < (rules.earliest_possible_checkin?.slice(0, 5) || '00:00'),
+    tooLate: type === 'checkout' && requested > (rules.latest_possible_checkout?.slice(0, 5) || '23:59')
   };
 }
   for (const pattern of patterns) {
@@ -5746,6 +5793,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
