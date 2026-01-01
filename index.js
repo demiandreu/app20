@@ -1238,7 +1238,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
           from,
           tt.arrivalConfirmed
             .replace('{time}', timeText)
-            .replace('{price}', calc.supplement.toFixed(2)) +
+            .replace('{price}', parseFloat(timeSelection?.early_checkin_supplement || 0).toFixed(2))
           '\n\n' + tt.standardCheckout.replace('{time}', standardTime)
         );
 
@@ -5746,6 +5746,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
