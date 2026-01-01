@@ -715,7 +715,8 @@ async function calculateSupplement(apartmentId, requestedHour, type) {
   }
 
   const requested = requestedHour;
-  const standard = type === 'checkin' ? rules.standard_checkin_time : rules.standard_checkout_time;
+ const standardTime = type === 'checkin' ? rules.standard_checkin_time : rules.standard_checkout_time;
+const standard = parseInt(String(standardTime).slice(0, 2));
 
   console.log('⏰ Hours:', { requested, standard });
 
@@ -735,7 +736,7 @@ async function calculateSupplement(apartmentId, requestedHour, type) {
     console.log('🕐 Building early checkin options...');
     if (rules.early_checkin_option1_enabled && rules.early_checkin_option1_time) {
       options.push({ 
-        hour: rules.early_checkin_option1_time, 
+        hour: parseInt(String(rules.early_checkin_option1_time).slice(0, 2)),
         price: parseFloat(rules.early_checkin_option1_price), 
         label: '1' 
       });
@@ -807,110 +808,7 @@ async function calculateSupplement(apartmentId, requestedHour, type) {
 
 // ============================================
 
-// Función: Calcular suplemento según reglas del apartamento
-async function calculateSupplement(apartmentId, requestedTime, type) {
-  // type: 'checkin' o 'checkout'
-  
-  const { rows: [rules] } = await pool.query(
-    `SELECT * FROM early_late_checkout_rules WHERE apartment_id = $1 AND is_active = true`,
-    [apartmentId]
-  );
 
-  if (!rules) {
-    return { supplement: 0, isEarly: false, isLate: false, options: [] };
-  }
-
-  const requested = requestedTime; // formato "14:00"
-  const standard = type === 'checkin' 
-    ? rules.standard_checkin_time 
-    : rules.standard_checkout_time;
-
-  // Comparar horas
-  const isEarly = type === 'checkin' && requested < standard;
-  const isLate = type === 'checkout' && requested > standard;
-
-  if (!isEarly && !isLate) {
-    return { supplement: 0, isEarly: false, isLate: false, options: [] };
-  }
-
-  // Construir opciones disponibles
-  const options = [];
-  
-  if (type === 'checkin' && isEarly) {
-    if (rules.early_checkin_option1_enabled && rules.early_checkin_option1_time) {
-      options.push({
-        time: rules.early_checkin_option1_time,
-        price: parseFloat(rules.early_checkin_option1_price),
-        label: '1'
-      });
-    }
-    if (rules.early_checkin_option2_enabled && rules.early_checkin_option2_time) {
-      options.push({
-        time: rules.early_checkin_option2_time,
-        price: parseFloat(rules.early_checkin_option2_price),
-        label: '2'
-      });
-    }
-    if (rules.early_checkin_option3_enabled && rules.early_checkin_option3_time) {
-      options.push({
-        time: rules.early_checkin_option3_time,
-        price: parseFloat(rules.early_checkin_option3_price),
-        label: '3'
-      });
-    }
-  }
-
-  if (type === 'checkout' && isLate) {
-    if (rules.late_checkout_option1_enabled && rules.late_checkout_option1_time) {
-      options.push({
-        time: rules.late_checkout_option1_time,
-        price: parseFloat(rules.late_checkout_option1_price),
-        label: '1'
-      });
-    }
-    if (rules.late_checkout_option2_enabled && rules.late_checkout_option2_time) {
-      options.push({
-        time: rules.late_checkout_option2_time,
-        price: parseFloat(rules.late_checkout_option2_price),
-        label: '2'
-      });
-    }
-    if (rules.late_checkout_option3_enabled && rules.late_checkout_option3_time) {
-      options.push({
-        time: rules.late_checkout_option3_time,
-        price: parseFloat(rules.late_checkout_option3_price),
-        label: '3'
-      });
-    }
-  }
-
-  // Ordenar opciones por hora
-  options.sort((a, b) => a.time.localeCompare(b.time));
-
-  // Encontrar la opción exacta o la más cercana
-  const exactMatch = options.find(opt => opt.time === requested);
-  
-  if (exactMatch) {
-    return {
-      supplement: exactMatch.price,
-      isEarly,
-      isLate,
-      options,
-      selectedOption: exactMatch
-    };
-  }
-
-  // Si no hay coincidencia exacta, devolver opciones disponibles
-  return {
-    supplement: 0,
-    isEarly,
-    isLate,
-    options,
-    selectedOption: null,
-    tooEarly: type === 'checkin' && requested < rules.earliest_possible_checkin,
-    tooLate: type === 'checkout' && requested > rules.latest_possible_checkout
-  };
-}
 
 // ============================================
 
@@ -5147,75 +5045,6 @@ function maskKey(k) {
 // FUNCIONES AUXILIARES - SOLICITUDES DE HORARIO
 // ============================================
 
-// Función: Calcular suplemento según reglas del apartamento
-async function calculateSupplement(apartmentId, requestedTime, type) {
-  const { rows: [rules] } = await pool.query(
-    `SELECT * FROM early_late_checkout_rules WHERE apartment_id = $1 AND is_active = true`,
-    [apartmentId]
-  );
-
-  if (!rules) {
-    return { supplement: 0, isEarly: false, isLate: false, options: [] };
-  }
-
-  const requested = requestedTime;
-  const standard = type === 'checkin' ? rules.standard_checkin_time : rules.standard_checkout_time;
-
-  const isEarly = type === 'checkin' && requested < standard;
-  const isLate = type === 'checkout' && requested > standard;
-
-  if (!isEarly && !isLate) {
-    return { supplement: 0, isEarly: false, isLate: false, options: [] };
-  }
-
-  const options = [];
-  
-  if (type === 'checkin' && isEarly) {
-    if (rules.early_checkin_option1_enabled && rules.early_checkin_option1_time) {
-      options.push({ time: String(rules.early_checkin_option1_time).slice(0, 5), price: parseFloat(rules.early_checkin_option1_price), label: '1' });
-    }
-    if (rules.early_checkin_option2_enabled && rules.early_checkin_option2_time) {
-      options.push({ time: String(rules.early_checkin_option2_time).slice(0, 5), price: parseFloat(rules.early_checkin_option2_price), label: '2' });
-    }
-    if (rules.early_checkin_option3_enabled && rules.early_checkin_option3_time) {
-      options.push({ time: String(rules.early_checkin_option3_time).slice(0, 5), price: parseFloat(rules.early_checkin_option3_price), label: '3' });
-    }
-  }
-
-  if (type === 'checkout' && isLate) {
-    if (rules.late_checkout_option1_enabled && rules.late_checkout_option1_time) {
-      options.push({ time: String(rules.late_checkout_option1_time).slice(0, 5), price: parseFloat(rules.late_checkout_option1_price), label: '1' });
-    }
-    if (rules.late_checkout_option2_enabled && rules.late_checkout_option2_time) {
-      options.push({ time: String(rules.late_checkout_option2_time).slice(0, 5), price: parseFloat(rules.late_checkout_option2_price), label: '2' });
-    }
-    if (rules.late_checkout_option3_enabled && rules.late_checkout_option3_time) {
-      options.push({ time: String(rules.late_checkout_option3_time).slice(0, 5), price: parseFloat(rules.late_checkout_option3_price), label: '3' });
-    }
-  }
-
-  options.sort((a, b) => a.time.localeCompare(b.time));
-  const exactMatch = options.find(opt => opt.time === requested);
-  
-  if (exactMatch) {
-    return { supplement: exactMatch.price, isEarly, isLate, options, selectedOption: exactMatch };
-  }
-
-  return {
-    supplement: 0,
-    isEarly,
-    isLate,
-    options,
-    selectedOption: null,
-    tooEarly: type === 'checkin' && requested < rules.earliest_possible_checkin,
-    tooLate: type === 'checkout' && requested > rules.latest_possible_checkout
-  };
-}
-
-// ============================================
-// RUTAS DEL MANAGER - CHECK-IN/CHECK-OUT RULES
-// ============================================
-
 // RUTA 1: Lista de apartamentos con enlace a configuración
 app.get("/manager/checkin-rules", async (req, res) => {
   try {
@@ -5770,6 +5599,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
