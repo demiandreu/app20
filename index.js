@@ -1251,7 +1251,8 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
     }
 
     // ================== DETECTAR HORA ==================
-   const timeText = parseTime(body);
+  // ================== DETECTAR HORA ==================
+const timeText = parseTime(body);
 console.log('🕐 parseTime result:', { body, timeText });
 
 if (timeText) {
@@ -1262,11 +1263,11 @@ if (timeText) {
   
   if (!last) return res.status(200).send("OK");
 
-  console.log('🌐 Language and texts');
+  console.log('🌐 Language:', last.guest_language);
   const lang = last.guest_language || 'es';
   const tt = timeRequestTexts[lang];
 
-  console.log('🔎 Querying time selections...');
+  console.log('🔎 Querying time selections for checkin_id:', last.id);
   const { rows: [timeSelection] } = await pool.query(
     `SELECT * FROM checkin_time_selections WHERE checkin_id = $1`,
     [last.id]
@@ -1276,76 +1277,69 @@ if (timeText) {
   const hasArrival = timeSelection && timeSelection.requested_arrival_time;
   console.log('🎯 Has arrival?', hasArrival);
 
-  // Si NO tiene hora de llegada → es solicitud de LLEGADA
+  // Solicitud de LLEGADA
   if (!hasArrival) {
     console.log('🚀 Calling calculateSupplement for ARRIVAL');
     const calc = await calculateSupplement(last.apartment_id, timeText, 'checkin');
     console.log('💰 Calc result:', calc);
-    // ...
+
+    await pool.query(
+      `INSERT INTO checkin_time_selections (
+        checkin_id, requested_arrival_time, confirmed_arrival_time,
+        early_checkin_supplement, whatsapp_phone, approval_status, created_at
+      ) VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
+      ON CONFLICT (checkin_id) DO UPDATE SET
+        requested_arrival_time = EXCLUDED.requested_arrival_time,
+        confirmed_arrival_time = EXCLUDED.confirmed_arrival_time,
+        early_checkin_supplement = EXCLUDED.early_checkin_supplement,
+        approval_status = 'pending'`,
+      [last.id, timeText, timeText, calc.supplement, phone]
+    );
+
+    const room = await getRoomSettings(last.apartment_id);
+    const standardTime = String(room.default_departure_time || "11:00").slice(0, 5);
+
+    await sendWhatsApp(
+      from,
+      tt.arrivalConfirmed
+        .replace('{time}', timeText)
+        .replace('{price}', calc.supplement.toFixed(2)) +
+      '\n\n' + tt.standardCheckout.replace('{time}', standardTime)
+    );
+
+    return res.status(200).send("OK");
+  }
+
+  // Solicitud de SALIDA
+  else {
+    console.log('🚀 Calling calculateSupplement for DEPARTURE');
+    const calc = await calculateSupplement(last.apartment_id, timeText, 'checkout');
+    console.log('💰 Calc result:', calc);
+
+    await pool.query(
+      `UPDATE checkin_time_selections SET 
+        requested_departure_time = $1, confirmed_departure_time = $2,
+        late_checkout_supplement = $3, approval_status = 'pending', updated_at = NOW()
+       WHERE checkin_id = $4`,
+      [timeText, timeText, calc.supplement, last.id]
+    );
+
+    const totalSupplement = parseFloat(timeSelection?.early_checkin_supplement || 0) + calc.supplement;
+    const arrivalTime = timeSelection.requested_arrival_time.slice(0, 5);
+
+    await sendWhatsApp(
+      from,
+      tt.requestReceived
+        .replace('{arrival}', arrivalTime)
+        .replace('{arrivalPrice}', parseFloat(timeSelection?.early_checkin_supplement || 0).toFixed(0))
+        .replace('{departure}', timeText)
+        .replace('{departurePrice}', calc.supplement.toFixed(0))
+        .replace('{total}', totalSupplement.toFixed(2))
+    );
+
+    return res.status(200).send("OK");
   }
 }
-
-      const hasArrival = timeSelection && timeSelection.requested_arrival_time;
-
-      // Solicitud de LLEGADA
-      if (!hasArrival) {
-        const calc = await calculateSupplement(last.apartment_id, timeText, 'checkin');
-
-        await pool.query(
-          `INSERT INTO checkin_time_selections (
-            checkin_id, requested_arrival_time, confirmed_arrival_time,
-            early_checkin_supplement, whatsapp_phone, approval_status, created_at
-          ) VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
-          ON CONFLICT (checkin_id) DO UPDATE SET
-            requested_arrival_time = EXCLUDED.requested_arrival_time,
-            confirmed_arrival_time = EXCLUDED.confirmed_arrival_time,
-            early_checkin_supplement = EXCLUDED.early_checkin_supplement,
-            approval_status = 'pending'`,
-          [last.id, timeText, timeText, calc.supplement, phone]
-        );
-
-        const room = await getRoomSettings(last.apartment_id);
-        const standardTime = String(room.default_departure_time || "11:00").slice(0, 5);
-
-   await sendWhatsApp(
-  from,
-  (tt.arrivalConfirmed
-    .replace('{time}', timeText)
-    .replace('{price}', parseFloat(timeSelection?.early_checkin_supplement || 0).toFixed(2)) +
-  '\n\n' + tt.standardCheckout.replace('{time}', standardTime))
-);
-
-        return res.status(200).send("OK");
-      }
-
-      // Solicitud de SALIDA
-      else {
-        const calc = await calculateSupplement(last.apartment_id, timeText, 'checkout');
-
-        await pool.query(
-          `UPDATE checkin_time_selections SET 
-            requested_departure_time = $1, confirmed_departure_time = $2,
-            late_checkout_supplement = $3, approval_status = 'pending', updated_at = NOW()
-           WHERE checkin_id = $4`,
-          [timeText, timeText, calc.supplement, last.id]
-        );
-
-        const totalSupplement = (timeSelection?.early_checkin_supplement || 0) + calc.supplement;
-        const arrivalTime = timeSelection.requested_arrival_time.slice(0, 5);
-
-        await sendWhatsApp(
-          from,
-          tt.requestReceived
-            .replace('{arrival}', arrivalTime)
-            .replace('{arrivalPrice}', (timeSelection?.early_checkin_supplement || 0).toFixed(0))
-            .replace('{departure}', timeText)
-            .replace('{departurePrice}', calc.supplement.toFixed(0))
-            .replace('{total}', totalSupplement.toFixed(2))
-        );
-
-        return res.status(200).send("OK");
-      }
-    }
 
     // ================== START ==================
     const startMatch = textUpper.match(/^START[\s_:-]*([0-9]+)[\s_:-]*([A-Z]{2})?\s*$/);
@@ -5790,6 +5784,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
