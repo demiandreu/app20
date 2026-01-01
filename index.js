@@ -1004,56 +1004,100 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
     // ===== TEXTOS TRADUCIDOS =====
     const translations = {
       es: {
-        greeting: "Hola", bookingConfirmed: "Tu reserva está confirmada", apartment: "Apartamento",
-        checkin: "Entrada", checkout: "Salida", guests: "Huéspedes", adults: "adultos", children: "niños",
-        accessInstructions: "Para enviarte las instrucciones de acceso y el código de la caja de llaves, necesito 2 pasos:",
-        step1: "1️⃣ Registro de huéspedes:", step2: "2️⃣ Pago (tasa turística + depósito según la plataforma):",
-        step3: "3️⃣ Llaves:", afterReg: "Después escribe: REGOK", afterPay: "Después escribe: PAYOK",
-        lockedUntil: "🔒 Se mostrarán después de completar REGISTRO y PAGO",
-        whenReady: "Cuando lo tengas listo, escribe: LISTO",
-        regConfirmed: "✅ Registro confirmado.\nAhora realiza el pago y luego escribe: PAYOK",
-        payConfirmed: "✅ Pago confirmado.\nAhora indica tu hora de llegada.",
-        perfect: "✅ Perfecto 🙌\nAquí tienes el enlace con toda la información del apartamento:",
-        apartmentInfo: "📘 instrucciones de llegada\n📶 Wi-Fi\n❄️ aire acondicionado\n🚗 parking (si aplica)\ny otros detalles importantes para tu estancia.",
-        lockCodeInfo: "🔐 Código de la caja de llaves\nEl código se mostrará automáticamente en este mismo enlace el día de llegada,\n✅ siempre que el registro de huéspedes y el pago estén completados correctamente.",
-        saveLink: "Guarda este enlace, lo necesitarás durante tu estancia 😊",
+        greeting: "Hola",
+        bookingConfirmed: "Tu reserva está confirmada",
+        apartment: "Apartamento",
+        checkin: "Entrada",
+        checkout: "Salida",
+        guests: "Huéspedes",
+        adults: "adultos",
+        children: "niños",
+        registerInstructions: "Para recibir las instrucciones de las llaves, primero completa el registro:",
+        afterReg: "Cuando termines, escribe: REGOK",
+        regConfirmed: "✅ Registro completado!\n\nAhora revisa los pagos pendientes:\n💰 Depósito de seguridad (según plataforma)\n💰 Impuesto turístico obligatorio",
+        afterPay: "Cuando completes el pago, escribe: PAYOK",
+        payConfirmed: "✅ Pago confirmado!\n\nPor favor, indica tu hora de LLEGADA.\n\nEscribe la hora en formato 24h:\nEjemplo: 14:00\n(o simplemente: 14)",
+        standardCheckin: "Check-in estándar: {time}",
         notFound: "Gracias 🙂\nNo encuentro tu reserva todavía.\nVerifica el número y vuelve a enviar:",
-        noBooking: "No encuentro tu reserva. Envía primero:",
-        almostReady: "Casi listo 🙂\nAntes necesito:\n1) Registro (después escribe REGOK)\n2) Pago (después escribe PAYOK)"
+        noBooking: "No encuentro tu reserva. Envía primero:"
       },
       en: {
-        greeting: "Hello", bookingConfirmed: "Your booking is confirmed", apartment: "Apartment",
-        checkin: "Check-in", checkout: "Check-out", guests: "Guests", adults: "adults", children: "children",
-        accessInstructions: "To send you access instructions and the lockbox code, I need 2 steps:",
-        step1: "1️⃣ Guest registration:", step2: "2️⃣ Payment (tourist tax + deposit depending on platform):",
-        step3: "3️⃣ Keys:", afterReg: "Then write: REGOK", afterPay: "Then write: PAYOK",
-        lockedUntil: "🔒 Will be shown after completing REGISTRATION and PAYMENT",
-        whenReady: "When ready, write: LISTO",
-        regConfirmed: "✅ Registration confirmed.\nNow make the payment and then write: PAYOK",
-        payConfirmed: "✅ Payment confirmed.\nNow indicate your arrival time.",
-        perfect: "✅ Perfect 🙌\nHere's the link with all your apartment information:",
-        apartmentInfo: "📘 arrival instructions\n📶 Wi-Fi\n❄️ air conditioning\n🚗 parking (if applicable)\nand other important details for your stay.",
-        lockCodeInfo: "🔐 Lockbox code\nThe code will be shown automatically on this link on arrival day,\n✅ provided registration and payment are completed.",
-        saveLink: "Save this link, you'll need it during your stay 😊",
+        greeting: "Hello",
+        bookingConfirmed: "Your booking is confirmed",
+        apartment: "Apartment",
+        checkin: "Check-in",
+        checkout: "Check-out",
+        guests: "Guests",
+        adults: "adults",
+        children: "children",
+        registerInstructions: "To receive the key instructions, first complete the registration:",
+        afterReg: "When done, write: REGOK",
+        regConfirmed: "✅ Registration completed!\n\nNow review pending payments:\n💰 Security deposit (depending on platform)\n💰 Mandatory tourist tax",
+        afterPay: "When payment is complete, write: PAYOK",
+        payConfirmed: "✅ Payment confirmed!\n\nPlease indicate your ARRIVAL time.\n\nWrite the time in 24h format:\nExample: 14:00\n(or simply: 14)",
+        standardCheckin: "Standard check-in: {time}",
         notFound: "Thank you 🙂\nI can't find your booking yet.\nPlease verify the number and resend:",
-        noBooking: "I can't find your booking. First send:",
-        almostReady: "Almost ready 🙂\nFirst I need:\n1) Registration (then write REGOK)\n2) Payment (then write PAYOK)"
+        noBooking: "I can't find your booking. First send:"
       },
-      fr: { /* Igual que tienes */ },
-      ru: { /* Igual que tienes */ }
+      fr: {
+        greeting: "Bonjour",
+        bookingConfirmed: "Votre réservation est confirmée",
+        apartment: "Appartement",
+        checkin: "Arrivée",
+        checkout: "Départ",
+        guests: "Invités",
+        adults: "adultes",
+        children: "enfants",
+        registerInstructions: "Pour recevoir les instructions des clés, complétez d'abord l'enregistrement:",
+        afterReg: "Quand c'est fait, écrivez: REGOK",
+        regConfirmed: "✅ Enregistrement terminé!\n\nMaintenant vérifiez les paiements en attente:\n💰 Caution (selon la plateforme)\n💰 Taxe de séjour obligatoire",
+        afterPay: "Quand le paiement est terminé, écrivez: PAYOK",
+        payConfirmed: "✅ Paiement confirmé!\n\nVeuillez indiquer votre heure d'ARRIVÉE.\n\nÉcrivez l'heure en format 24h:\nExemple: 14:00\n(ou simplement: 14)",
+        standardCheckin: "Enregistrement standard: {time}",
+        notFound: "Merci 🙂\nJe ne trouve pas encore votre réservation.\nVérifiez le numéro et renvoyez:",
+        noBooking: "Je ne trouve pas votre réservation. Envoyez d'abord:"
+      },
+      ru: {
+        greeting: "Здравствуйте",
+        bookingConfirmed: "Ваше бронирование подтверждено",
+        apartment: "Апартамент",
+        checkin: "Заезд",
+        checkout: "Выезд",
+        guests: "Гости",
+        adults: "взрослых",
+        children: "детей",
+        registerInstructions: "Чтобы получить инструкции по ключам, сначала завершите регистрацию:",
+        afterReg: "Когда закончите, напишите: REGOK",
+        regConfirmed: "✅ Регистрация завершена!\n\nТеперь проверьте ожидающие платежи:\n💰 Депозит (в зависимости от платформы)\n💰 Обязательный туристический налог",
+        afterPay: "Когда оплата завершена, напишите: PAYOK",
+        payConfirmed: "✅ Оплата подтверждена!\n\nПожалуйста, укажите время ПРИБЫТИЯ.\n\nНапишите время в формате 24ч:\nПример: 14:00\n(или просто: 14)",
+        standardCheckin: "Стандартный заезд: {time}",
+        notFound: "Спасибо 🙂\nЯ пока не могу найти ваше бронирование.\nПроверьте номер и отправьте снова:",
+        noBooking: "Я не могу найти ваше бронирование. Сначала отправьте:"
+      }
     };
 
     const timeRequestTexts = {
       es: {
-        arrivalPrompt: "Por favor, escribe tu hora de LLEGADA (formato 24h):\nEjemplo: 17:00",
-        departurePrompt: "Gracias. Ahora tu hora de SALIDA:\nEjemplo: 11:00",
-        requestReceived: "✅ Solicitud recibida\n\nHora de {type} solicitada: {time}\nSuplemento: {price}€\n\nTu solicitud está siendo revisada.\nTe confirmaremos la disponibilidad en breve.",
-        standardTime: "Check-in estándar a las {time} (gratis)",
-        standardTimeCheckout: "Check-out estándar a las {time} (gratis)"
+        arrivalConfirmed: "✅ Hora de llegada: {time}\nSuplemento: {price}€\n\nAhora tu hora de SALIDA:\nEjemplo: 11:00",
+        standardCheckout: "Check-out estándar: {time}",
+        requestReceived: "✅ Solicitud recibida!\n\n📅 Entrada: {arrival} ({arrivalPrice}€)\n📅 Salida: {departure} ({departurePrice}€)\n💰 Total suplemento: {total}€\n\nTu solicitud está en revisión.\nRecibirás confirmación pronto."
       },
-      en: { /* Igual */ },
-      fr: { /* Igual */ },
-      ru: { /* Igual */ }
+      en: {
+        arrivalConfirmed: "✅ Arrival time: {time}\nSupplement: {price}€\n\nNow your DEPARTURE time:\nExample: 11:00",
+        standardCheckout: "Standard check-out: {time}",
+        requestReceived: "✅ Request received!\n\n📅 Check-in: {arrival} ({arrivalPrice}€)\n📅 Check-out: {departure} ({departurePrice}€)\n💰 Total supplement: {total}€\n\nYour request is under review.\nYou will receive confirmation soon."
+      },
+      fr: {
+        arrivalConfirmed: "✅ Heure d'arrivée: {time}\nSupplément: {price}€\n\nMaintenant votre heure de DÉPART:\nExemple: 11:00",
+        standardCheckout: "Départ standard: {time}",
+        requestReceived: "✅ Demande reçue!\n\n📅 Arrivée: {arrival} ({arrivalPrice}€)\n📅 Départ: {departure} ({departurePrice}€)\n💰 Supplément total: {total}€\n\nVotre demande est en cours d'examen.\nVous recevrez une confirmation bientôt."
+      },
+      ru: {
+        arrivalConfirmed: "✅ Время прибытия: {time}\nДоплата: {price}€\n\nТеперь время ВЫЕЗДА:\nПример: 11:00",
+        standardCheckout: "Стандартный выезд: {time}",
+        requestReceived: "✅ Запрос получен!\n\n📅 Заезд: {arrival} ({arrivalPrice}€)\n📅 Выезд: {departure} ({departurePrice}€)\n💰 Общая доплата: {total}€\n\nВаш запрос рассматривается.\nВы получите подтверждение в ближайшее время."
+      }
     };
 
     // ================== REGOK ==================
@@ -1064,8 +1108,15 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
         return res.status(200).send("OK");
       }
       const lang = last.guest_language || 'es';
+      const t = translations[lang];
+      
       await pool.query(`UPDATE checkins SET reg_done = true, reg_done_at = NOW() WHERE id = $1`, [last.id]);
-      await sendWhatsApp(from, translations[lang].regConfirmed);
+      
+      const room = await getRoomSettings(last.apartment_id);
+      const bookIdForLinks = String(last.beds24_booking_id || last.booking_id_from_start || last.booking_token || "").replace(/\s/g, '');
+      const payLink = applyTpl(room.payment_url || "", bookIdForLinks);
+      
+      await sendWhatsApp(from, `${t.regConfirmed}\n\n${payLink || "—"}\n\n${t.afterPay}`);
       return res.status(200).send("OK");
     }
 
@@ -1077,24 +1128,27 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
         return res.status(200).send("OK");
       }
       const lang = last.guest_language || 'es';
+      const t = translations[lang];
+      
       await pool.query(`UPDATE checkins SET pay_done = true, pay_done_at = NOW() WHERE id = $1`, [last.id]);
-      await sendWhatsApp(from, `${translations[lang].payConfirmed}\n\n${timeRequestTexts[lang].arrivalPrompt}`);
+      
+      const room = await getRoomSettings(last.apartment_id);
+      const standardTime = String(room.default_arrival_time || "17:00").slice(0, 5);
+      
+      await sendWhatsApp(from, `${t.payConfirmed}\n\n${t.standardCheckin.replace('{time}', standardTime)}`);
       return res.status(200).send("OK");
     }
 
-    // ================== DETECTAR HORA DE LLEGADA/SALIDA ==================
+    // ================== DETECTAR HORA ==================
     const timeText = parseTime(body);
     
     if (timeText) {
       const last = await getSessionCheckin();
-      if (!last) {
-        return res.status(200).send("OK");
-      }
+      if (!last) return res.status(200).send("OK");
 
       const lang = last.guest_language || 'es';
       const tt = timeRequestTexts[lang];
 
-      // Verificar si ya tiene hora de llegada guardada
       const { rows: [timeSelection] } = await pool.query(
         `SELECT * FROM checkin_time_selections WHERE checkin_id = $1`,
         [last.id]
@@ -1102,44 +1156,41 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
 
       const hasArrival = timeSelection && timeSelection.requested_arrival_time;
 
-      // Si NO tiene hora de llegada → es solicitud de LLEGADA
+      // Solicitud de LLEGADA
       if (!hasArrival) {
-        // Calcular suplemento
         const calc = await calculateSupplement(last.apartment_id, timeText, 'checkin');
 
-        // Guardar solicitud de llegada
         await pool.query(
           `INSERT INTO checkin_time_selections (
             checkin_id, requested_arrival_time, confirmed_arrival_time,
             early_checkin_supplement, whatsapp_phone, approval_status, created_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
+          ) VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
           ON CONFLICT (checkin_id) DO UPDATE SET
             requested_arrival_time = EXCLUDED.requested_arrival_time,
             confirmed_arrival_time = EXCLUDED.confirmed_arrival_time,
             early_checkin_supplement = EXCLUDED.early_checkin_supplement,
             approval_status = 'pending'`,
-          [last.id, timeText, timeText, calc.supplement, phone, 'pending']
+          [last.id, timeText, timeText, calc.supplement, phone]
         );
 
-        // Enviar confirmación y pedir hora de salida
+        const room = await getRoomSettings(last.apartment_id);
+        const standardTime = String(room.default_departure_time || "11:00").slice(0, 5);
+
         await sendWhatsApp(
           from,
-          tt.requestReceived
-            .replace('{type}', lang === 'es' ? 'entrada' : lang === 'en' ? 'check-in' : lang === 'fr' ? 'arrivée' : 'заезда')
+          tt.arrivalConfirmed
             .replace('{time}', timeText)
             .replace('{price}', calc.supplement.toFixed(2)) +
-          '\n\n' + tt.departurePrompt
+          '\n\n' + tt.standardCheckout.replace('{time}', standardTime)
         );
 
         return res.status(200).send("OK");
       }
 
-      // Si YA tiene hora de llegada → es solicitud de SALIDA
+      // Solicitud de SALIDA
       else {
-        // Calcular suplemento de salida
         const calc = await calculateSupplement(last.apartment_id, timeText, 'checkout');
 
-        // Guardar solicitud de salida
         await pool.query(
           `UPDATE checkin_time_selections SET 
             requested_departure_time = $1, confirmed_departure_time = $2,
@@ -1148,17 +1199,17 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
           [timeText, timeText, calc.supplement, last.id]
         );
 
-        // Enviar confirmación
         const totalSupplement = (timeSelection?.early_checkin_supplement || 0) + calc.supplement;
+        const arrivalTime = timeSelection.requested_arrival_time.slice(0, 5);
 
         await sendWhatsApp(
           from,
           tt.requestReceived
-            .replace('{type}', lang === 'es' ? 'salida' : lang === 'en' ? 'check-out' : lang === 'fr' ? 'départ' : 'выезда')
-            .replace('{time}', timeText)
-            .replace('{price}', totalSupplement.toFixed(2)) +
-          '\n\n' + 
-          (lang === 'es' ? 'Recibirás confirmación pronto.' : lang === 'en' ? 'You will receive confirmation soon.' : lang === 'fr' ? 'Vous recevrez une confirmation bientôt.' : 'Вы получите подтверждение в ближайшее время.')
+            .replace('{arrival}', arrivalTime)
+            .replace('{arrivalPrice}', (timeSelection?.early_checkin_supplement || 0).toFixed(0))
+            .replace('{departure}', timeText)
+            .replace('{departurePrice}', calc.supplement.toFixed(0))
+            .replace('{total}', totalSupplement.toFixed(2))
         );
 
         return res.status(200).send("OK");
@@ -1196,8 +1247,6 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       const room = await getRoomSettings(r.apartment_id);
       const bookIdForLinks = String(r.beds24_booking_id || r.booking_id_from_start || r.booking_token || "").replace(/\s/g, '');
       const regLink = applyTpl(room.registration_url || "", bookIdForLinks);
-      const payLink = applyTpl(room.payment_url || "", bookIdForLinks);
-      const keysLink = applyTpl(room.keys_instructions_url || "", bookIdForLinks);
 
       const name = r.full_name || "";
       const apt = r.apartment_name || r.apartment_id || "";
@@ -1208,31 +1257,29 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       const adults = Number(r.adults || 0);
       const children = Number(r.children || 0);
       const sText = adults || children ? `${adults} ${t.adults}${children ? `, ${children} ${t.children}` : ""}` : "—";
-      const showKeys = !!(r.reg_done && r.pay_done);
 
       await sendWhatsApp(from, `${t.greeting}, ${name} 👋
+
 ${t.bookingConfirmed} ✅
+
 🏠 ${t.apartment}: ${apt}
-📅 ${t.checkin}: ${arriveDate} ${arriveTime}
-📅 ${t.checkout}: ${departDate} ${departTime}
+📅 ${t.checkin}: ${arriveDate}, ${arriveTime}
+📅 ${t.checkout}: ${departDate}, ${departTime}
 👥 ${t.guests}: ${sText}
 
-${t.accessInstructions}
-
-${t.step1}
+${t.registerInstructions}
 ${regLink || "—"}
-${t.afterReg}
 
-${t.step2}
-${payLink || "—"}
-${t.afterPay}
-
-${t.step3}
-${showKeys ? (keysLink || "—") : t.lockedUntil}
-
-${t.whenReady}`);
+${t.afterReg}`);
       return res.status(200).send("OK");
     }
+
+    return res.status(200).send("OK");
+  } catch (err) {
+    console.error("❌ WhatsApp inbound error:", err);
+    return res.status(200).send("OK");
+  }
+});
 
     // ================== LISTO ==================
     if (textUpper === "LISTO") {
@@ -5675,6 +5722,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
