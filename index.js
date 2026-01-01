@@ -687,7 +687,65 @@ function parseTime(text) {
     /^(\d{1,2})[h\.](\d{2})?$/,      // 14h, 14.00
     /^(\d{1,2}):(\d{2})\s*(am|pm)$/i // 2:00 PM
   ];
+async function calculateSupplement(apartmentId, requestedTime, type) {
+  console.log('🔍 calculateSupplement called:', { apartmentId, requestedTime, type });
+  
+  const { rows: [rules] } = await pool.query(
+    `SELECT * FROM early_late_checkout_rules WHERE apartment_id = $1 AND is_active = true`,
+    [apartmentId]
+  );
 
+  console.log('📊 Rules found:', rules ? 'YES' : 'NO', rules);
+
+  if (!rules) {
+    return { supplement: 0, isEarly: false, isLate: false, options: [] };
+  }
+
+  const requested = requestedTime;
+  const standard = type === 'checkin' ? rules.standard_checkin_time : rules.standard_checkout_time;
+
+  console.log('⏰ Times:', { requested, standard });
+
+  const isEarly = type === 'checkin' && requested < standard;
+  const isLate = type === 'checkout' && requested > standard;
+
+  console.log('📌 Status:', { isEarly, isLate });
+
+  if (!isEarly && !isLate) {
+    return { supplement: 0, isEarly: false, isLate: false, options: [] };
+  }
+
+  const options = [];
+  
+  if (type === 'checkin' && isEarly) {
+    if (rules.early_checkin_option1_enabled && rules.early_checkin_option1_time) {
+      options.push({ time: rules.early_checkin_option1_time, price: parseFloat(rules.early_checkin_option1_price), label: '1' });
+    }
+    if (rules.early_checkin_option2_enabled && rules.early_checkin_option2_time) {
+      options.push({ time: rules.early_checkin_option2_time, price: parseFloat(rules.early_checkin_option2_price), label: '2' });
+    }
+    if (rules.early_checkin_option3_enabled && rules.early_checkin_option3_time) {
+      options.push({ time: rules.early_checkin_option3_time, price: parseFloat(rules.early_checkin_option3_price), label: '3' });
+    }
+  }
+
+  console.log('🎯 Options built:', options);
+
+  options.sort((a, b) => a.time.localeCompare(b.time));
+  const exactMatch = options.find(opt => opt.time === requested);
+  
+  console.log('✅ Exact match:', exactMatch);
+
+  if (exactMatch) {
+    return { supplement: exactMatch.price, isEarly, isLate, options, selectedOption: exactMatch };
+  }
+
+  return {
+    supplement: 0, isEarly, isLate, options, selectedOption: null,
+    tooEarly: type === 'checkin' && requested < rules.earliest_possible_checkin,
+    tooLate: type === 'checkout' && requested > rules.latest_possible_checkout
+  };
+}
   for (const pattern of patterns) {
     const match = text.trim().match(pattern);
     if (match) {
@@ -5688,6 +5746,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
