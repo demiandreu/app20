@@ -685,36 +685,21 @@ function calcNights(arrive, depart) {
 
 // Función 1: Detectar si el mensaje es una hora válida
 function parseTime(text) {
-  const patterns = [
-    /^(\d{1,2}):(\d{2})$/,
-    /^(\d{1,2})$/,
-    /^(\d{1,2})[h\.](\d{2})?$/,
-    /^(\d{1,2}):(\d{2})\s*(am|pm)$/i
-  ];
-
-  for (const pattern of patterns) {
-    const match = text.trim().match(pattern);
-    if (match) {
-      let hours = parseInt(match[1]);
-      const minutes = match[2] ? parseInt(match[2]) : 0;
-      
-      if (match[3]) {
-        const period = match[3].toLowerCase();
-        if (period === 'pm' && hours < 12) hours += 12;
-        if (period === 'am' && hours === 12) hours = 0;
-      }
-
-      if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-      }
+  // Solo acepta números enteros (14, 15, 16, etc.)
+  const match = text.trim().match(/^(\d{1,2})$/);
+  
+  if (match) {
+    const hour = parseInt(match[1]);
+    if (hour >= 0 && hour <= 23) {
+      return hour;  // Devuelve número entero
     }
   }
   return null;
 }
 
 // Función 2: Calcular suplemento según reglas del apartamento
-async function calculateSupplement(apartmentId, requestedTime, type) {
-  console.log('🔍 calculateSupplement called:', { apartmentId, requestedTime, type });
+async function calculateSupplement(apartmentId, requestedHour, type) {
+  console.log('🔍 calculateSupplement called:', { apartmentId, requestedHour, type });
   
   const { rows: [rules] } = await pool.query(
     `SELECT * FROM early_late_checkout_rules WHERE apartment_id = $1 AND is_active = true`,
@@ -729,10 +714,10 @@ async function calculateSupplement(apartmentId, requestedTime, type) {
     return { supplement: 0, isEarly: false, isLate: false, options: [] };
   }
 
-  const requested = requestedTime;
+  const requested = requestedHour;
   const standard = type === 'checkin' ? rules.standard_checkin_time : rules.standard_checkout_time;
 
-  console.log('⏰ Times:', { requested, standard });
+  console.log('⏰ Hours:', { requested, standard });
 
   const isEarly = type === 'checkin' && requested < standard;
   const isLate = type === 'checkout' && requested > standard;
@@ -750,21 +735,21 @@ async function calculateSupplement(apartmentId, requestedTime, type) {
     console.log('🕐 Building early checkin options...');
     if (rules.early_checkin_option1_enabled && rules.early_checkin_option1_time) {
       options.push({ 
-        time: rules.early_checkin_option1_time.slice(0, 5), 
+        hour: rules.early_checkin_option1_time, 
         price: parseFloat(rules.early_checkin_option1_price), 
         label: '1' 
       });
     }
     if (rules.early_checkin_option2_enabled && rules.early_checkin_option2_time) {
       options.push({ 
-        time: rules.early_checkin_option2_time.slice(0, 5), 
+        hour: rules.early_checkin_option2_time, 
         price: parseFloat(rules.early_checkin_option2_price), 
         label: '2' 
       });
     }
     if (rules.early_checkin_option3_enabled && rules.early_checkin_option3_time) {
       options.push({ 
-        time: rules.early_checkin_option3_time.slice(0, 5), 
+        hour: rules.early_checkin_option3_time, 
         price: parseFloat(rules.early_checkin_option3_price), 
         label: '3' 
       });
@@ -775,21 +760,21 @@ async function calculateSupplement(apartmentId, requestedTime, type) {
     console.log('🕐 Building late checkout options...');
     if (rules.late_checkout_option1_enabled && rules.late_checkout_option1_time) {
       options.push({ 
-        time: rules.late_checkout_option1_time.slice(0, 5), 
+        hour: rules.late_checkout_option1_time, 
         price: parseFloat(rules.late_checkout_option1_price), 
         label: '1' 
       });
     }
     if (rules.late_checkout_option2_enabled && rules.late_checkout_option2_time) {
       options.push({ 
-        time: rules.late_checkout_option2_time.slice(0, 5), 
+        hour: rules.late_checkout_option2_time, 
         price: parseFloat(rules.late_checkout_option2_price), 
         label: '2' 
       });
     }
     if (rules.late_checkout_option3_enabled && rules.late_checkout_option3_time) {
       options.push({ 
-        time: rules.late_checkout_option3_time.slice(0, 5), 
+        hour: rules.late_checkout_option3_time, 
         price: parseFloat(rules.late_checkout_option3_price), 
         label: '3' 
       });
@@ -798,8 +783,8 @@ async function calculateSupplement(apartmentId, requestedTime, type) {
 
   console.log('🎯 Options built:', options);
 
-  options.sort((a, b) => a.time.localeCompare(b.time));
-  const exactMatch = options.find(opt => opt.time === requested);
+  options.sort((a, b) => a.hour - b.hour);
+  const exactMatch = options.find(opt => opt.hour === requested);
   
   console.log('✅ Exact match search:', { requested, exactMatch });
 
@@ -815,8 +800,8 @@ async function calculateSupplement(apartmentId, requestedTime, type) {
     isLate,
     options,
     selectedOption: null,
-    tooEarly: type === 'checkin' && requested < (rules.earliest_possible_checkin?.slice(0, 5) || '00:00'),
-    tooLate: type === 'checkout' && requested > (rules.latest_possible_checkout?.slice(0, 5) || '23:59')
+    tooEarly: type === 'checkin' && requested < (rules.earliest_possible_checkin || 0),
+    tooLate: type === 'checkout' && requested > (rules.latest_possible_checkout || 23)
   };
 }
 
@@ -5784,6 +5769,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
