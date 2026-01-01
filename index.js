@@ -823,6 +823,8 @@ const timeRequestTexts = {
   es: {
     arrivalConfirmed: "✅ Hora de llegada: {time}\nSuplemento: {price}€",
     standardCheckout: "\n\nAhora tu hora de SALIDA:\nEjemplo: 11\n\nCheck-out estándar: {time}",
+    arrivalRequest: "Por favor, indica tu hora de LLEGADA.\n\nEscribe la hora en formato 24h:\nEjemplo: 14:00\n(o simplemente: 14)\n\nCheck-in estándar: {time}",
+
     
     arrivalPrompt: "Por favor, escribe tu hora de LLEGADA (formato 24h):\nEjemplo: 17:00",
     departurePrompt: "Gracias. Ahora tu hora de SALIDA:\nEjemplo: 11:00",
@@ -857,8 +859,9 @@ const timeRequestTexts = {
   },
   
   en: {
-    arrivalConfirmed: "✅ Arrival time: {time}\nSupplement: {price}€",
-    standardCheckout: "\n\nNow your DEPARTURE time:\nExample: 11\n\nStandard check-out: {time}",  
+   arrivalRequest: "Please indicate your ARRIVAL time.\n\nWrite the time in 24h format:\nExample: 14:00\n(or simply: 14)\n\nStandard check-in: {time}",
+   arrivalConfirmed: "✅ Arrival time: {time}\nSupplement: {price}€",
+   standardCheckout: "\n\nNow your DEPARTURE time:\nExample: 11\n\nStandard check-out: {time}",
     
     arrivalPrompt: "Please enter your ARRIVAL time (24h format):\nExample: 17:00",
     departurePrompt: "Thank you. Now your DEPARTURE time:\nExample: 11:00",
@@ -893,8 +896,10 @@ const timeRequestTexts = {
   },
   
   fr: {
-    arrivalConfirmed: "✅ Heure d'arrivée: {time}\nSupplément: {price}€",
-    standardCheckout: "\n\nMaintenant votre heure de DÉPART:\nExemple: 11\n\nDépart standard: {time}",
+   arrivalRequest: "Veuillez indiquer votre heure d'ARRIVÉE.\n\nÉcrivez l'heure au format 24h:\nExemple: 14:00\n(ou simplement: 14)\n\nEnregistrement standard: {time}",
+arrivalConfirmed: "✅ Heure d'arrivée: {time}\nSupplément: {price}€",
+standardCheckout: "\n\nMaintenant votre heure de DÉPART:\nExemple: 11\n\nDépart standard: {time}",
+
     
     arrivalPrompt: "Veuillez indiquer votre heure d'ARRIVÉE (format 24h):\nExemple: 17:00",
     departurePrompt: "Merci. Maintenant votre heure de DÉPART:\nExemple: 11:00",
@@ -929,8 +934,9 @@ const timeRequestTexts = {
   },
   
   ru: {
-    arrivalConfirmed: "✅ Время прибытия: {time}\nДоплата: {price}€",
-    standardCheckout: "\n\nТеперь время ВЫЕЗДА:\nПример: 11\n\nСтандартный выезд: {time}",
+    arrivalRequest: "Пожалуйста, укажите время ПРИБЫТИЯ.\n\nНапишите время в формате 24ч:\nПример: 14:00\n(или просто: 14)\n\nСтандартный заезд: {time}",
+arrivalConfirmed: "✅ Время прибытия: {time}\nДоплата: {price}€",
+standardCheckout: "\n\nТеперь время ВЫЕЗДА:\nПример: 11\n\nСтандартный выезд: {time}",
     
     arrivalPrompt: "Пожалуйста, укажите время ПРИБЫТИЯ (формат 24ч):\nПример: 17:00",
     departurePrompt: "Спасибо. Теперь время ВЫЕЗДА:\nПример: 11:00",
