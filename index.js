@@ -5476,13 +5476,6 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
   }
 });
 
-
-  return res.status(200).send("OK");
-  } catch (err) {
-    console.error("❌ WhatsApp inbound error:", err);
-    return res.status(200).send("OK");
-  }
-});
 // ===================== START =====================
 (async () => {
   try {
@@ -5493,46 +5486,6 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
