@@ -1144,7 +1144,11 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       const bookIdForLinks = String(last.beds24_booking_id || last.booking_id_from_start || last.booking_token || "").replace(/\s/g, '');
       const payLink = applyTpl(room.payment_url || "", bookIdForLinks);
       
-      await sendWhatsApp(from, `${t.regConfirmed}\n\n${payLink || "—"}\n\n${t.afterPay}`);
+// Obtener mensaje REGOK de la DB
+      const regokMessage = await getFlowMessage('REGOK', lang);
+      const finalRegokMessage = regokMessage || t.regConfirmed;
+      
+      await sendWhatsApp(from, `${finalRegokMessage}\n\n${payLink || "—"}\n\n${t.afterPay}`);
       return res.status(200).send("OK");
     }
 
@@ -1167,8 +1171,15 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
   
   await sendWhatsApp(
     from, 
-    t.payConfirmed + '\n\n' + tt.arrivalRequest.replace('{time}', standardTime)
+// Obtener mensaje PAYOK de la DB
+  const payokMessage = await getFlowMessage('PAYOK', lang);
+  const finalPayokMessage = payokMessage || t.payConfirmed;
+  
+  await sendWhatsApp(
+    from, 
+    finalPayokMessage + '\n\n' + t.payConfirmed.split('\n\n')[1] + '\n\n' + tt.standardCheckin.replace('{time}', standardTime)
   );
+     );
   
   return res.status(200).send("OK");
 }
@@ -5869,6 +5880,7 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
