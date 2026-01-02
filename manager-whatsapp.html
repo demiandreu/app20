@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager - WhatsApp Bot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            color: #374151;
+            padding: 20px 30px;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .header p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .tabs {
+            display: flex;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 14px 20px;
+            text-align: center;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b7280;
+            transition: all 0.2s ease;
+            position: relative;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .tab.active {
+            color: #111827;
+            background: white;
+            border-bottom: 2px solid #374151;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 30px;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .message-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .message-section h3 {
+            color: #374151;
+            margin-bottom: 12px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .language-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .lang-tab {
+            padding: 6px 14px;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: #6b7280;
+            transition: all 0.15s ease;
+        }
+
+        .lang-tab:hover {
+            border-color: #9ca3af;
+            color: #374151;
+        }
+
+        .lang-tab.active {
+            background: #374151;
+            color: white;
+            border-color: #374151;
+        }
+
+        .textarea-container {
+            display: none;
+        }
+
+        .textarea-container.active {
+            display: block;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.15s ease;
+            margin-bottom: 8px;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #9ca3af;
+        }
+
+        .btn-translate {
+            padding: 6px 12px;
+            background: #6b7280;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .btn-translate:hover {
+            background: #4b5563;
+        }
+
+        .btn-translate:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+        }
+
+        /* Auto-replies styles */
+        .auto-replies-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .auto-replies-header h2 {
+            font-size: 18px;
+            color: #111827;
+        }
+
+        .btn-add {
+            padding: 10px 18px;
+            background: #374151;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .btn-add:hover {
+            background: #1f2937;
+        }
+
+        .reply-card {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .reply-card.inactive {
+            opacity: 0.6;
+        }
+
+        .reply-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .reply-info h4 {
+            font-size: 15px;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+
+        .reply-info .category {
+            font-size: 12px;
+            color: #6b7280;
+            background: #e5e7eb;
+            padding: 2px 8px;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .reply-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #d1d5db;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .btn-icon:hover {
+            background: #f3f4f6;
+            border-color: #9ca3af;
+        }
+
+        .btn-icon.active {
+            background: #10b981;
+            border-color: #10b981;
+            color: white;
+        }
+
+        .btn-icon.inactive {
+            background: #ef4444;
+            border-color: #ef4444;
+            color: white;
+        }
+
+        .btn-icon.delete:hover {
+            background: #ef4444;
+            border-color: #ef4444;
+            color: white;
+        }
+
+        .reply-keywords {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .reply-keywords .label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+
+        .keywords-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .keyword-tag {
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            background: #374151;
+            color: white;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 18px;
+        }
+
+        .btn-close {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+        }
+
+        .btn-close:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #9ca3af;
+        }
+
+        .modal-footer {
+            padding: 16px 20px;
+            background: #f9fafb;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .btn-secondary {
+            padding: 8px 16px;
+            background: #e5e7eb;
+            color: #374151;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        .btn-primary {
+            padding: 8px 16px;
+            background: #374151;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: #1f2937;
+        }
+
+        .config-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .config-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .config-header h3 {
+            color: #374151;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #d1d5db;
+            transition: 0.3s;
+            border-radius: 24px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        input:checked + .toggle-slider {
+            background-color: #10b981;
+        }
+
+        input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+
+        .config-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .config-field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .config-field label {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .config-field input {
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .config-field input:focus {
+            outline: none;
+            border-color: #9ca3af;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .alert.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .alert.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .btn-save {
+            width: 100%;
+            padding: 12px;
+            background: #374151;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .btn-save:hover {
+            background: #1f2937;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #9ca3af;
+        }
+
+        .empty-state p {
+            font-size: 15px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Configuración WhatsApp Bot</h1>
+            <p>Gestiona los mensajes automáticos y configuración de tu bot</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('flow')">📱 Flujo Principal</button>
+            <button class="tab" onclick="switchTab('early-late')">⏰ Early/Late Check-in</button>
+            <button class="tab" onclick="switchTab('auto-replies')">💬 Respuestas Automáticas</button>
+        </div>
+
+        <!-- TAB 1: Flujo Principal -->
+        <div id="flow" class="tab-content active">
+            <div id="alert-flow" class="alert"></div>
+            <div id="loading-flow" class="loading">⏳ Cargando mensajes...</div>
+            <div id="flow-content" style="display: none;">
+                <!-- START -->
+                <div class="message-section">
+                    <h3>START - Mensaje Inicial</h3>
+                    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Primer contacto con el guest</p>
+                    
+                    <div class="language-tabs">
+                        <button class="lang-tab active" onclick="switchLang('START', 'es')">🇪🇸 ES</button>
+                        <button class="lang-tab" onclick="switchLang('START', 'en')">🇬🇧 EN</button>
+                        <button class="lang-tab" onclick="switchLang('START', 'fr')">🇫🇷 FR</button>
+                        <button class="lang-tab" onclick="switchLang('START', 'ru')">🇷🇺 RU</button>
+                    </div>
+                    
+                    <div class="textarea-container active" data-msg="START" data-lang="es">
+                        <textarea id="START_es" placeholder="Mensaje en español"></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="START" data-lang="en">
+                        <textarea id="START_en" placeholder="Message in English"></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="START" data-lang="fr">
+                        <textarea id="START_fr" placeholder="Message en français"></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="START" data-lang="ru">
+                        <textarea id="START_ru" placeholder="Сообщение на русском"></textarea>
+                    </div>
+                    
+                    <button class="btn-translate" onclick="translateMessage('START')">🌍 Traducir desde ES</button>
+                </div>
+
+                <!-- REGOK -->
+                <div class="message-section">
+                    <h3>REGOK - Registro Completado</h3>
+                    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Tras confirmar datos personales</p>
+                    
+                    <div class="language-tabs">
+                        <button class="lang-tab active" onclick="switchLang('REGOK', 'es')">🇪🇸 ES</button>
+                        <button class="lang-tab" onclick="switchLang('REGOK', 'en')">🇬🇧 EN</button>
+                        <button class="lang-tab" onclick="switchLang('REGOK', 'fr')">🇫🇷 FR</button>
+                        <button class="lang-tab" onclick="switchLang('REGOK', 'ru')">🇷🇺 RU</button>
+                    </div>
+                    
+                    <div class="textarea-container active" data-msg="REGOK" data-lang="es">
+                        <textarea id="REGOK_es" placeholder="Mensaje en español"></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="REGOK" data-lang="en">
+                        <textarea id="REGOK_en" placeholder="Message in English"></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="REGOK" data-lang="fr">
+                        <textarea id="REGOK_fr" placeholder="Message en français"></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="REGOK" data-lang="ru">
+                        <textarea id="REGOK_ru" placeholder="Сообщение на русском"></textarea>
+                    </div>
+                    
+                    <button class="btn-translate" onclick="translateMessage('REGOK')">🌍 Traducir desde ES</button>
+                </div>
+
+                <!-- PAYOK -->
+                <div class="message-section">
+                    <h3>PAYOK - Pago Confirmado</h3>
+                    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Tras recibir el pago</p>
+                    
+                    <div class="language-tabs">
+                        <button class="lang-tab active" onclick="switchLang('PAYOK', 'es')">🇪🇸 ES</button>
+                        <button class="lang-tab" onclick="switchLang('PAYOK', 'en')">🇬🇧 EN</button>
+                        <button class="lang-tab" onclick="switchLang('PAYOK', 'fr')">🇫🇷 FR</button>
+                        <button class="lang-tab" onclick="switchLang('PAYOK', 'ru')">🇷🇺 RU</button>
+                    </div>
+                    
+                    <div class="textarea-container active" data-msg="PAYOK" data-lang="es">
+                        <textarea id="PAYOK_es" placeholder="Mensaje en español"></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="PAYOK" data-lang="en">
+                        <textarea id="PAYOK_en" placeholder="Message in English"></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="PAYOK" data-lang="fr">
+                        <textarea id="PAYOK_fr" placeholder="Message en français"></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="PAYOK" data-lang="ru">
+                        <textarea id="PAYOK_ru" placeholder="Сообщение на русском"></textarea>
+                    </div>
+                    
+                    <button class="btn-translate" onclick="translateMessage('PAYOK')">🌍 Traducir desde ES</button>
+                </div>
+
+                <!-- ASK_ARRIVAL -->
+                <div class="message-section">
+                    <h3>ASK_ARRIVAL - Preguntar Hora de Llegada</h3>
+                    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Solicitar hora de llegada</p>
+                    
+                    <div class="language-tabs">
+                        <button class="lang-tab active" onclick="switchLang('ASK_ARRIVAL', 'es')">🇪🇸 ES</button>
+                        <button class="lang-tab" onclick="switchLang('ASK_ARRIVAL', 'en')">🇬🇧 EN</button>
+                        <button class="lang-tab" onclick="switchLang('ASK_ARRIVAL', 'fr')">🇫🇷 FR</button>
+                        <button class="lang-tab" onclick="switchLang('ASK_ARRIVAL', 'ru')">🇷🇺 RU</button>
+                    </div>
+                    
+                    <div class="textarea-container active" data-msg="ASK_ARRIVAL" data-lang="es">
+                        <textarea id="ASK_ARRIVAL_es" placeholder="Mensaje en español"></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="ASK_ARRIVAL" data-lang="en">
+                        <textarea id="ASK_ARRIVAL_en" placeholder="Message in English"></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="ASK_ARRIVAL" data-lang="fr">
+                        <textarea id="ASK_ARRIVAL_fr" placeholder="Message en français"></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="ASK_ARRIVAL" data-lang="ru">
+                        <textarea id="ASK_ARRIVAL_ru" placeholder="Сообщение на русском"></textarea>
+                    </div>
+                    
+                    <button class="btn-translate" onclick="translateMessage('ASK_ARRIVAL')">🌍 Traducir desde ES</button>
+                </div>
+
+                <!-- ASK_DEPARTURE -->
+                <div class="message-section">
+                    <h3>ASK_DEPARTURE - Preguntar Hora de Salida</h3>
+                    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Solicitar hora de salida</p>
+                    
+                    <div class="language-tabs">
+                        <button class="lang-tab active" onclick="switchLang('ASK_DEPARTURE', 'es')">🇪🇸 ES</button>
+                        <button class="lang-tab" onclick="switchLang('ASK_DEPARTURE', 'en')">🇬🇧 EN</button>
+                        <button class="lang-tab" onclick="switchLang('ASK_DEPARTURE', 'fr')">🇫🇷 FR</button>
+                        <button class="lang-tab" onclick="switchLang('ASK_DEPARTURE', 'ru')">🇷🇺 RU</button>
+                    </div>
+                    
+                    <div class="textarea-container active" data-msg="ASK_DEPARTURE" data-lang="es">
+                        <textarea id="ASK_DEPARTURE_es" placeholder="Mensaje en español"></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="ASK_DEPARTURE" data-lang="en">
+                        <textarea id="ASK_DEPARTURE_en" placeholder="Message in English"></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="ASK_DEPARTURE" data-lang="fr">
+                        <textarea id="ASK_DEPARTURE_fr" placeholder="Message en français"></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="ASK_DEPARTURE" data-lang="ru">
+                        <textarea id="ASK_DEPARTURE_ru" placeholder="Сообщение на русском"></textarea>
+                    </div>
+                    
+                    <button class="btn-translate" onclick="translateMessage('ASK_DEPARTURE')">🌍 Traducir desde ES</button>
+                </div>
+
+                <button class="btn-save" onclick="saveFlowMessages()">💾 Guardar Todos los Mensajes</button>
+            </div>
+        </div>
+
+        <!-- TAB 2: Early/Late (mantener el existente) -->
+        <div id="early-late" class="tab-content">
+            <div id="alert-early-late" class="alert"></div>
+            <div id="loading-early-late" class="loading">⏳ Cargando configuración...</div>
+            <div id="early-late-content" style="display: none;">
+                <!-- Tu contenido existente de early/late aquí -->
+                <p style="text-align: center; color: #6b7280;">Configuración Early/Late Check-in (mantener el existente)</p>
+            </div>
+        </div>
+
+        <!-- TAB 3: Respuestas Automáticas -->
+        <div id="auto-replies" class="tab-content">
+            <div id="alert-replies" class="alert"></div>
+            
+            <div class="auto-replies-header">
+                <h2>Respuestas Automáticas</h2>
+                <button class="btn-add" onclick="openModal()">+ Añadir Respuesta</button>
+            </div>
+
+            <div id="loading-replies" class="loading">⏳ Cargando respuestas...</div>
+            <div id="replies-list" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Modal para añadir/editar respuesta -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Nueva Respuesta Automática</h3>
+                <button class="btn-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Categoría</label>
+                    <select id="reply-category">
+                        <option value="info">ℹ️ Información</option>
+                        <option value="wifi">📶 WiFi</option>
+                        <option value="keys">🔑 Llaves</option>
+                        <option value="parking">🚗 Parking</option>
+                        <option value="payment">💳 Pago</option>
+                        <option value="checkout">🧳 Check-out</option>
+                        <option value="other">🔧 Otro</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Keywords (separadas por comas)</label>
+                    <input type="text" id="reply-keywords" placeholder="wifi, internet, contraseña">
+                    <small style="color: #6b7280; font-size: 12px;">Palabras que activarán esta respuesta</small>
+                </div>
+
+                <div class="form-group">
+                    <label>🇪🇸 Respuesta en Español</label>
+                    <textarea id="reply-es" rows="4" placeholder="La contraseña del WiFi es..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>🇬🇧 Respuesta en Inglés</label>
+                    <textarea id="reply-en" rows="4" placeholder="The WiFi password is..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>🇫🇷 Respuesta en Francés</label>
+                    <textarea id="reply-fr" rows="4" placeholder="Le mot de passe WiFi est..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>🇷🇺 Respuesta en Ruso</label>
+                    <textarea id="reply-ru" rows="4" placeholder="Пароль WiFi..."></textarea>
+                </div>
+
+                <button class="btn-translate" onclick="translateReply()" style="width: 100%; margin-bottom: 16px;">
+                    🌍 Traducir desde Español
+                </button>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+                <button class="btn-primary" onclick="saveReply()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentEditingId = null;
+
+        // Switch between tabs
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+
+            if (tabName === 'flow') loadFlowMessages();
+            if (tabName === 'early-late') loadEarlyLateConfig();
+            if (tabName === 'auto-replies') loadAutoReplies();
+        }
+
+        // Switch language in message sections
+        function switchLang(msgType, lang) {
+            const section = event.target.closest('.message-section');
+            section.querySelectorAll('.lang-tab').forEach(t => t.classList.remove('active'));
+            section.querySelectorAll('.textarea-container').forEach(c => c.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            section.querySelector(`[data-msg="${msgType}"][data-lang="${lang}"]`).classList.add('active');
+        }
+
+        // Show alert
+        function showAlert(elementId, message, type) {
+            const alert = document.getElementById(elementId);
+            alert.className = `alert ${type} show`;
+            alert.textContent = message;
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        // ============ FLOW MESSAGES ============
+
+        async function loadFlowMessages() {
+            try {
+                const response = await fetch('/api/whatsapp/flow-messages');
+                const data = await response.json();
+                
+                if (data.success) {
+                    data.messages.forEach(msg => {
+                        document.getElementById(`${msg.message_key}_es`).value = msg.content_es || '';
+                        document.getElementById(`${msg.message_key}_en`).value = msg.content_en || '';
+                        document.getElementById(`${msg.message_key}_fr`).value = msg.content_fr || '';
+                        document.getElementById(`${msg.message_key}_ru`).value = msg.content_ru || '';
+                    });
+                }
+                
+                document.getElementById('loading-flow').style.display = 'none';
+                document.getElementById('flow-content').style.display = 'block';
+            } catch (error) {
+                console.error('Error loading flow messages:', error);
+                showAlert('alert-flow', '❌ Error al cargar mensajes', 'error');
+            }
+        }
+
+        async function translateMessage(msgKey) {
+            const sourceText = document.getElementById(`${msgKey}_es`).value.trim();
+            
+            if (!sourceText) {
+                showAlert('alert-flow', '⚠️ Escribe primero el texto en español', 'error');
+                return;
+            }
+
+            const button = event.target;
+            button.disabled = true;
+            button.textContent = '⏳ Traduciendo...';
+
+            try {
+                // Translate to EN
+                let response = await fetch('/api/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: sourceText, targetLang: 'EN' })
+                });
+                let data = await response.json();
+                document.getElementById(`${msgKey}_en`).value = data.translated;
+
+                // Translate to FR
+                response = await fetch('/api/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: sourceText, targetLang: 'FR' })
+                });
+                data = await response.json();
+                document.getElementById(`${msgKey}_fr`).value = data.translated;
+
+                // Translate to RU
+                response = await fetch('/api/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: sourceText, targetLang: 'RU' })
+                });
+                data = await response.json();
+                document.getElementById(`${msgKey}_ru`).value = data.translated;
+
+                showAlert('alert-flow', '✅ Traducción completada', 'success');
+            } catch (error) {
+                console.error('Translation error:', error);
+                showAlert('alert-flow', '❌ Error al traducir', 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = '🌍 Traducir desde ES';
+            }
+        }
+
+        async function saveFlowMessages() {
+            const messages = ['START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE'].map(key => ({
+                message_key: key,
+                content_es: document.getElementById(`${key}_es`).value,
+                content_en: document.getElementById(`${key}_en`).value,
+                content_fr: document.getElementById(`${key}_fr`).value,
+                content_ru: document.getElementById(`${key}_ru`).value
+            }));
+
+            try {
+                const response = await fetch('/api/whatsapp/flow-messages', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('alert-flow', '✅ Mensajes guardados correctamente', 'success');
+                } else {
+                    showAlert('alert-flow', '❌ Error al guardar mensajes', 'error');
+                }
+            } catch (error) {
+                console.error('Error saving flow messages:', error);
+                showAlert('alert-flow', '❌ Error al guardar mensajes', 'error');
+            }
+        }
+
+        // ============ EARLY/LATE CONFIG ============
+
+        async function loadEarlyLateConfig() {
+            // Tu código existente aquí
+            document.getElementById('loading-early-late').style.display = 'none';
+            document.getElementById('early-late-content').style.display = 'block';
+        }
+
+        // ============ AUTO REPLIES ============
+
+        async function loadAutoReplies() {
+            try {
+                const response = await fetch('/api/whatsapp/auto-replies');
+                const data = await response.json();
+                
+                const list = document.getElementById('replies-list');
+                
+                if (data.success && data.replies.length > 0) {
+                    list.innerHTML = data.replies.map(reply => {
+                        const keywords = reply.keywords ? reply.keywords.split(',').map(k => k.trim()) : [];
+                        const categoryEmoji = {
+                            'info': 'ℹ️',
+                            'wifi': '📶',
+                            'keys': '🔑',
+                            'parking': '🚗',
+                            'payment': '💳',
+                            'checkout': '🧳',
+                            'other': '🔧'
+                        };
+                        
+                        return `
+                            <div class="reply-card ${reply.active ? '' : 'inactive'}">
+                                <div class="reply-header">
+                                    <div class="reply-info">
+                                        <h4>${categoryEmoji[reply.category] || '🔧'} ${keywords[0] || 'Sin keywords'}</h4>
+                                        <span class="category">${reply.category}</span>
+                                    </div>
+                                    <div class="reply-actions">
+                                        <button class="btn-icon ${reply.active ? 'active' : 'inactive'}" 
+                                                onclick="toggleReply(${reply.id}, ${reply.active})"
+                                                title="${reply.active ? 'Desactivar' : 'Activar'}">
+                                            ${reply.active ? '✓' : '○'}
+                                        </button>
+                                        <button class="btn-icon" onclick="editReply(${reply.id})" title="Editar">
+                                            ✎
+                                        </button>
+                                        <button class="btn-icon delete" onclick="deleteReply(${reply.id})" title="Eliminar">
+                                            🗑
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="reply-keywords">
+                                    <div class="label">Keywords:</div>
+                                    <div class="keywords-list">
+                                        ${keywords.map(k => `<span class="keyword-tag">${k}</span>`).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    list.innerHTML = `
+                        <div class="empty-state">
+                            <p>No hay respuestas automáticas configuradas</p>
+                            <button class="btn-add" onclick="openModal()">+ Crear primera respuesta</button>
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('loading-replies').style.display = 'none';
+                list.style.display = 'block';
+            } catch (error) {
+                console.error('Error loading auto replies:', error);
+                showAlert('alert-replies', '❌ Error al cargar respuestas', 'error');
+            }
+        }
+
+        function openModal(replyData = null) {
+            currentEditingId = replyData ? replyData.id : null;
+            
+            document.getElementById('modal-title').textContent = replyData ? 
+                'Editar Respuesta Automática' : 'Nueva Respuesta Automática';
+            
+            document.getElementById('reply-category').value = replyData ? replyData.category : 'info';
+            document.getElementById('reply-keywords').value = replyData ? replyData.keywords : '';
+            document.getElementById('reply-es').value = replyData ? replyData.response_es || '' : '';
+            document.getElementById('reply-en').value = replyData ? replyData.response_en || '' : '';
+            document.getElementById('reply-fr').value = replyData ? replyData.response_fr || '' : '';
+            document.getElementById('reply-ru').value = replyData ? replyData.response_ru || '' : '';
+            
+            document.getElementById('modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+            currentEditingId = null;
+        }
+
+        async function translateReply() {
+            const sourceText = document.getElementById('reply-es').value.trim();
+            
+            if (!sourceText) {
+                alert('⚠️ Escribe primero el texto en español');
+                return;
+            }
+
+            const button = event.target;
+            button.disabled = true;
+            button.textContent = '⏳ Traduciendo...';
+
+            try {
+                // Translate to EN
+                let response = await fetch('/api/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: sourceText, targetLang: 'EN' })
+                });
+                let data = await response.json();
+                document.getElementById('reply-en').value = data.translated;
+
+                // Translate to FR
+                response = await fetch('/api/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: sourceText, targetLang: 'FR' })
+                });
+                data = await response.json();
+                document.getElementById('reply-fr').value = data.translated;
+
+                // Translate to RU
+                response = await fetch('/api/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: sourceText, targetLang: 'RU' })
+                });
+                data = await response.json();
+                document.getElementById('reply-ru').value = data.translated;
+
+                alert('✅ Traducción completada');
+            } catch (error) {
+                console.error('Translation error:', error);
+                alert('❌ Error al traducir');
+            } finally {
+                button.disabled = false;
+                button.textContent = '🌍 Traducir desde Español';
+            }
+        }
+
+        async function saveReply() {
+            const category = document.getElementById('reply-category').value;
+            const keywords = document.getElementById('reply-keywords').value.trim();
+            const response_es = document.getElementById('reply-es').value.trim();
+            const response_en = document.getElementById('reply-en').value.trim();
+            const response_fr = document.getElementById('reply-fr').value.trim();
+            const response_ru = document.getElementById('reply-ru').value.trim();
+
+            if (!keywords || !response_es) {
+                alert('⚠️ Keywords y respuesta en español son obligatorios');
+                return;
+            }
+
+            try {
+                const url = currentEditingId ? 
+                    `/api/whatsapp/auto-replies/${currentEditingId}` : 
+                    '/api/whatsapp/auto-replies';
+                
+                const method = currentEditingId ? 'PUT' : 'POST';
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        category,
+                        keywords,
+                        response_es,
+                        response_en,
+                        response_fr,
+                        response_ru,
+                        active: true
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    closeModal();
+                    loadAutoReplies();
+                    showAlert('alert-replies', '✅ Respuesta guardada correctamente', 'success');
+                } else {
+                    alert('❌ Error al guardar respuesta');
+                }
+            } catch (error) {
+                console.error('Error saving reply:', error);
+                alert('❌ Error al guardar respuesta');
+            }
+        }
+
+        async function editReply(id) {
+            try {
+                const response = await fetch('/api/whatsapp/auto-replies');
+                const data = await response.json();
+                
+                const reply = data.replies.find(r => r.id === id);
+                if (reply) {
+                    openModal(reply);
+                }
+            } catch (error) {
+                console.error('Error loading reply:', error);
+                showAlert('alert-replies', '❌ Error al cargar respuesta', 'error');
+            }
+        }
+
+        async function toggleReply(id, currentStatus) {
+            try {
+                const response = await fetch(`/api/whatsapp/auto-replies/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ active: !currentStatus })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    loadAutoReplies();
+                    showAlert('alert-replies', `✅ Respuesta ${!currentStatus ? 'activada' : 'desactivada'}`, 'success');
+                }
+            } catch (error) {
+                console.error('Error toggling reply:', error);
+                showAlert('alert-replies', '❌ Error al actualizar respuesta', 'error');
+            }
+        }
+
+        async function deleteReply(id) {
+            if (!confirm('¿Estás seguro de eliminar esta respuesta automática?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/whatsapp/auto-replies/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    loadAutoReplies();
+                    showAlert('alert-replies', '✅ Respuesta eliminada', 'success');
+                }
+            } catch (error) {
+                console.error('Error deleting reply:', error);
+                showAlert('alert-replies', '❌ Error al eliminar respuesta', 'error');
+            }
+        }
+
+        // Load initial data
+        loadFlowMessages();
+    </script>
+</body>
+</html>
