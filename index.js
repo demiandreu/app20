@@ -3571,20 +3571,21 @@ app.get("/guest/:bookingId", async (req, res) => {
   
   try {
     // Buscar la reserva
- const result = await pool.query(
-  `SELECT c.*, 
-          br.apartment_name as apartment_from_rooms
-   FROM checkins c
-   LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.room_id::text
-   WHERE (
-     REPLACE(c.beds24_booking_id::text, ' ', '') = $1
-     OR c.booking_token = $2
-     OR c.booking_token = $3
-   )
-   AND (c.cancelled IS NULL OR c.cancelled = false)
-   LIMIT 1`,
-  [bookingId, bookingId, `beds24_${bookingId}`]
-);
+    const result = await pool.query(
+      `SELECT c.*, 
+              br.apartment_name as apartment_from_rooms,
+              br.beds24_room_id as room_id_from_rooms
+       FROM checkins c
+       LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.room_id::text
+       WHERE (
+         REPLACE(c.beds24_booking_id::text, ' ', '') = $1
+         OR c.booking_token = $2
+         OR c.booking_token = $3
+       )
+       AND (c.cancelled IS NULL OR c.cancelled = false)
+       LIMIT 1`,
+      [bookingId, bookingId, `beds24_${bookingId}`]
+    );
     
     console.log("📊 Query result:", result.rows.length);
     
@@ -3598,27 +3599,31 @@ app.get("/guest/:bookingId", async (req, res) => {
     }
     
     const r = result.rows[0];
+    const apartmentName = r.apartment_name || r.apartment_from_rooms || 'N/A';
+    
+    // ✅ ARREGLADO: Usar room_id si existe, si no usar el de beds24_rooms
+    const roomIdToUse = r.room_id || r.room_id_from_rooms;
+    
     console.log("✅ Booking data:", {
       id: r.beds24_booking_id,
       name: r.full_name,
       room_id: r.room_id,
-      apartment: r.apartment_name
+      room_id_from_rooms: r.room_id_from_rooms,
+      room_id_to_use: roomIdToUse,
+      apartment: apartmentName
     });
     
-    const apartmentName = r.apartment_name || r.apartment_from_rooms || 'N/A';
-    console.log("🏠 Apartment name:", apartmentName);
-    
-    // Cargar secciones del apartamento
+    // ✅ ARREGLADO: Buscar secciones usando el room_id correcto
     const secRes = await pool.query(
       `SELECT id, title, body, icon, new_media_type, new_media_url, translations
        FROM apartment_sections
        WHERE room_id::text = $1
          AND is_active = true
        ORDER BY sort_order ASC, id ASC`,
-      [String(r.room_id)]
+      [String(roomIdToUse)]
     );
     
-    console.log("📋 Sections found:", secRes.rows.length);
+    console.log("📋 Sections found:", secRes.rows.length, "for room_id:", roomIdToUse);
     
     // Textos traducidos
     const uiText = {
@@ -3720,14 +3725,6 @@ app.get("/guest/:bookingId", async (req, res) => {
       
       return section[field] || '';
     }
-    
-    // Verificar funciones
-    console.log("🔧 Functions available:", {
-      fmtDate: typeof fmtDate,
-      fmtTime: typeof fmtTime,
-      escapeHtml: typeof escapeHtml,
-      getTranslatedText: typeof getTranslatedText
-    });
     
     // Generar HTML de secciones
     const sectionsHtml = secRes.rows.length === 0
@@ -6183,6 +6180,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
