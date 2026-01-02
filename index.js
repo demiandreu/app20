@@ -130,27 +130,14 @@ async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
   `);
- await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_code TEXT;`);
   
-  // ... aquí estarán tus otras migraciones existentes ...
-
-  // 🆕 AÑADE ESTAS LÍNEAS AL FINAL (antes del último })
-  await pool.query(`
-    ALTER TABLE apartment_sections 
-    ADD COLUMN IF NOT EXISTS icon VARCHAR(10) DEFAULT '';
-  `);
-  console.log('✅ Columna icon verificada');
   // --- lock fields ---
   await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_code TEXT;`);
-  await pool.query(
-    `ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_visible BOOLEAN NOT NULL DEFAULT FALSE;`
-  );
-
+  await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS lock_visible BOOLEAN NOT NULL DEFAULT FALSE;`);
+  
   // --- clean status ---
-  await pool.query(
-    `ALTER TABLE checkins ADD COLUMN IF NOT EXISTS clean_ok BOOLEAN NOT NULL DEFAULT FALSE;`
-  );
-
+  await pool.query(`ALTER TABLE checkins ADD COLUMN IF NOT EXISTS clean_ok BOOLEAN NOT NULL DEFAULT FALSE;`);
+  
   // --- Beds24 fields for admin columns ---
   await pool.query(`
     ALTER TABLE checkins
@@ -160,15 +147,25 @@ async function initDb() {
       ADD COLUMN IF NOT EXISTS booking_id TEXT,
       ADD COLUMN IF NOT EXISTS beds24_raw JSONB;
   `);
-
-  await pool.query(
-    `CREATE INDEX IF NOT EXISTS idx_checkins_booking_id ON checkins(booking_id);`
-  );
-
-  console.log("✅ DB ready: checkins table ok (+ lock_code, lock_visible, clean_ok)");
+  
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_checkins_booking_id ON checkins(booking_id);`);
+  
+  // --- apartment_sections icon ---
+  await pool.query(`
+    ALTER TABLE apartment_sections 
+    ADD COLUMN IF NOT EXISTS icon VARCHAR(10) DEFAULT '';
+  `);
+  console.log('✅ Columna icon verificada');
+  
+  // 🆕 AÑADIR COLUMNA BOT_STATE PARA EL BOT DE WHATSAPP
+  await pool.query(`
+    ALTER TABLE checkins 
+    ADD COLUMN IF NOT EXISTS bot_state VARCHAR(50) DEFAULT 'IDLE';
+  `);
+  console.log('✅ Columna bot_state verificada');
+  
+  console.log("✅ DB ready: checkins table ok (+ lock_code, lock_visible, clean_ok, bot_state)");
 }
-
-   //vremenno
 // ====== MANAGER: Apartment Sections (Accordion content) ======
 app.get("/manager/apartment/sections", async (req, res) => {
   try {
@@ -1184,6 +1181,51 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       
       return res.status(200).send("OK");
     }
+    
+    // 3. VERIFICAR SI ESTAMOS ESPERANDO HORA DE LLEGADA
+const stateResult = await pool.query(`
+  SELECT bot_state FROM checkins WHERE id = $1
+`, [checkin.id]);
+
+const currentState = stateResult.rows[0]?.bot_state;
+
+if (currentState === 'WAITING_ARRIVAL') {
+  // Guardar hora de llegada
+  await pool.query(`
+    UPDATE checkins 
+    SET arrival_time = $1, bot_state = 'WAITING_DEPARTURE'
+    WHERE id = $2
+  `, [body.trim(), checkin.id]);
+  
+  console.log(`✅ Hora de llegada guardada: ${body.trim()}`);
+  
+  // Enviar ASK_DEPARTURE automáticamente
+  const askDepartureMsg = await getFlowMessage('ASK_DEPARTURE', language);
+  if (askDepartureMsg) {
+    await sendWhatsAppMessage(from, askDepartureMsg);
+    console.log(`✅ Enviado mensaje ASK_DEPARTURE automáticamente`);
+  }
+  return;
+}
+
+// 4. VERIFICAR SI ESTAMOS ESPERANDO HORA DE SALIDA
+if (currentState === 'WAITING_DEPARTURE') {
+  // Guardar hora de salida
+  await pool.query(`
+    UPDATE checkins 
+    SET departure_time = $1, bot_state = 'COMPLETED'
+    WHERE id = $2
+  `, [body.trim(), checkin.id]);
+  
+  console.log(`✅ Hora de salida guardada: ${body.trim()}`);
+  
+  // Mensaje de confirmación
+  await sendWhatsAppMessage(from, 
+    `✅ Perfecto, hemos guardado tus horarios.\n\n` +
+    `Si necesitas algo más, escríbeme.`
+  );
+  return;
+}
    
   // ================== DETECTAR HORA ==================
 const timeText = parseTime(body);
@@ -6049,14 +6091,33 @@ async function processWhatsAppMessage(from, body, messageId) {
       return;
     }
     
-    if (bodyLower === 'payok' || bodyLower.includes('ya he pagado') || bodyLower.includes('pagado')) {
-      const msg = await getFlowMessage('PAYOK', language);
-      if (msg) {
-        await sendWhatsAppMessage(from, msg);
-        console.log(`✅ Enviado mensaje PAYOK`);
-      }
-      return;
+    // 2. COMANDO: PAYOK (con ASK_ARRIVAL automático)
+if (bodyLower === 'payok' || bodyLower.includes('he pagado') || bodyLower.includes('pagado')) {
+  // Enviar PAYOK
+  const payokMsg = await getFlowMessage('PAYOK', language);
+  if (payokMsg) {
+    await sendWhatsAppMessage(from, payokMsg);
+    console.log(`✅ Enviado mensaje PAYOK`);
+    
+    // ✅ NUEVO: Esperar 2 segundos
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // ✅ NUEVO: Enviar ASK_ARRIVAL automáticamente
+    const askArrivalMsg = await getFlowMessage('ASK_ARRIVAL', language);
+    if (askArrivalMsg) {
+      await sendWhatsAppMessage(from, askArrivalMsg);
+      console.log(`✅ Enviado mensaje ASK_ARRIVAL automáticamente`);
+      
+      // ✅ NUEVO: Marcar que estamos esperando hora de llegada
+      await pool.query(`
+        UPDATE checkins 
+        SET bot_state = 'WAITING_ARRIVAL' 
+        WHERE id = $1
+      `, [checkin.id]);
     }
+  }
+  return; // Ahora sí termina después de enviar ambos mensajes
+}
     
     console.log(`💬 Mensaje libre, sin respuesta automática configurada`);
     
@@ -6170,6 +6231,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
