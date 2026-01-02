@@ -3576,7 +3576,7 @@ app.get("/guest/:bookingId", async (req, res) => {
               br.apartment_name as apartment_from_rooms,
               br.beds24_room_id as room_id_from_rooms
        FROM checkins c
-       LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.room_id::text
+       LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.apartment_id::text
        WHERE (
          REPLACE(c.beds24_booking_id::text, ' ', '') = $1
          OR c.booking_token = $2
@@ -6180,6 +6180,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
