@@ -5680,10 +5680,7 @@ app.get("/api/whatsapp/flow-messages", async (req, res) => {
   }
 });
 
-// API: Guardar mensajes del flujo principal
-app.post("/api/whatsapp/flow-messages", async (req, res) => {
-  const { messages } = req.body;
-  // ... resto del código POST que ya tienes ...
+
 // =============== MANAGER: WhatsApp Bot Configuration ===============
 app.get("/manager/whatsapp", (req, res) => {
   res.sendFile(require('path').join(__dirname, 'manager-whatsapp.html'));
@@ -5886,6 +5883,7 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
