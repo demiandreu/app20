@@ -3826,12 +3826,14 @@ app.get("/guest/:bookingId", async (req, res) => {
     `));
   }
 });
+
+
 // ============================================
 // RUTA: /manager/whatsapp
 // Gestión de respuestas automáticas de WhatsApp con traducción DeepL
 // ============================================
 
-app.get("/manager/whatsapp-old", async (req, res) => {
+/* app.get("/manager/whatsapp-old", async (req, res) => {
   try {
     // Cargar apartamentos para el selector
     const { rows: apartments } = await pool.query(`
@@ -4097,7 +4099,7 @@ app.get("/manager/whatsapp-old", async (req, res) => {
         }
         .danger:hover { background: #fecaca; }
         
-        /* Botones de traducir - COLORES SUAVES */
+        /* Botones de traducir - COLORES SUAVES 
         .btn-translate {
           padding: 6px 12px;
           font-size: 13px;
@@ -5601,7 +5603,228 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     console.error("Error al procesar solicitud:", e);
     res.status(500).send("Error");
   }
+}); */
+});  // ← línea 3828
+
+// =============== MANAGER: WhatsApp Bot Configuration ===============
+app.get("/manager/whatsapp", (req, res) => {
+  res.sendFile(__dirname + "/manager-whatsapp.html");
 });
+
+// API: Obtener mensajes del flujo principal (START, REGOK, PAYOK)
+app.get("/api/whatsapp/flow-messages", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT message_key, content_es, content_en, content_fr, content_ru, active
+      FROM whatsapp_flow_messages
+      WHERE message_key IN ('START', 'REGOK', 'PAYOK')
+      ORDER BY 
+        CASE message_key
+          WHEN 'START' THEN 1
+          WHEN 'REGOK' THEN 2
+          WHEN 'PAYOK' THEN 3
+        END
+    `);
+
+    res.json({
+      success: true,
+      messages: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching flow messages:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// API: Guardar mensajes del flujo principal
+app.post("/api/whatsapp/flow-messages", async (req, res) => {
+  const { messages } = req.body;
+
+  try {
+    for (const msg of messages) {
+      await pool.query(`
+        UPDATE whatsapp_flow_messages
+        SET 
+          content_es = $1,
+          content_en = $2,
+          content_fr = $3,
+          content_ru = $4,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE message_key = $5
+      `, [
+        msg.content_es,
+        msg.content_en,
+        msg.content_fr,
+        msg.content_ru,
+        msg.message_key
+      ]);
+    }
+
+    res.json({
+      success: true,
+      message: 'Messages updated successfully'
+    });
+  } catch (error) {
+    console.error('Error saving flow messages:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// API: Obtener configuración de Early/Late
+app.get("/api/whatsapp/early-late-config", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        config_type,
+        enabled,
+        standard_time,
+        price_1h,
+        price_2h,
+        price_3h,
+        price_4h,
+        message_es,
+        message_en,
+        message_fr,
+        message_ru,
+        requires_approval
+      FROM early_late_config
+      ORDER BY 
+        CASE config_type
+          WHEN 'early_checkin' THEN 1
+          WHEN 'late_checkout' THEN 2
+        END
+    `);
+
+    res.json({
+      success: true,
+      configs: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching early/late config:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// API: Guardar configuración de Early/Late
+app.post("/api/whatsapp/early-late-config", async (req, res) => {
+  const { configs } = req.body;
+
+  try {
+    for (const config of configs) {
+      await pool.query(`
+        UPDATE early_late_config
+        SET 
+          enabled = $1,
+          standard_time = $2,
+          price_1h = $3,
+          price_2h = $4,
+          price_3h = $5,
+          price_4h = $6,
+          message_es = $7,
+          message_en = $8,
+          message_fr = $9,
+          message_ru = $10,
+          requires_approval = $11,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE config_type = $12
+      `, [
+        config.enabled,
+        config.standard_time,
+        config.price_1h,
+        config.price_2h,
+        config.price_3h,
+        config.price_4h,
+        config.message_es,
+        config.message_en,
+        config.message_fr,
+        config.message_ru,
+        config.requires_approval,
+        config.config_type
+      ]);
+    }
+
+    res.json({
+      success: true,
+      message: 'Configuration updated successfully'
+    });
+  } catch (error) {
+    console.error('Error saving early/late config:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// API: Obtener solicitudes pendientes de aprobación
+app.get("/api/whatsapp/pending-requests", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        r.*,
+        c.full_name as guest_name,
+        c.email as guest_email,
+        c.apartment_name
+      FROM early_late_requests r
+      JOIN checkins c ON r.checkin_id = c.id
+      WHERE r.status = 'pending'
+      ORDER BY r.created_at DESC
+    `);
+
+    res.json({
+      success: true,
+      requests: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching pending requests:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// API: Aprobar/Rechazar solicitud
+app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
+  const { requestId } = req.params;
+  const { action, approved_by, rejection_reason } = req.body;
+
+  try {
+    const status = action === 'approve' ? 'approved' : 'rejected';
+
+    await pool.query(`
+      UPDATE early_late_requests
+      SET 
+        status = $1,
+        approved_by = $2,
+        approved_at = CURRENT_TIMESTAMP,
+        rejection_reason = $3,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $4
+    `, [status, approved_by, rejection_reason || null, requestId]);
+
+    res.json({
+      success: true,
+      message: `Request ${status} successfully`
+    });
+  } catch (error) {
+    console.error('Error approving/rejecting request:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 
 // ===================== START =====================
 (async () => {
@@ -5613,6 +5836,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
