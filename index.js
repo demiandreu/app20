@@ -5608,7 +5608,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
 
 // =============== MANAGER: WhatsApp Bot Configuration ===============
 app.get("/manager/whatsapp", (req, res) => {
-  res.sendFile(__dirname + "/manager-whatsapp.html");
+  res.sendFile(require('path').join(__dirname, 'manager-whatsapp.html'));
 });
 
 // API: Obtener mensajes del flujo principal (START, REGOK, PAYOK)
@@ -5836,6 +5836,7 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
