@@ -965,6 +965,31 @@ const timeRequestTexts = {
 app.post("/webhooks/twilio/whatsapp", async (req, res) => {
   console.log("🔥 TWILIO HIT", req.body);
 
+  // ===== Helper para obtener mensajes de la DB =====
+    const getFlowMessage = async (messageKey, lang = 'es') => {
+      try {
+        const result = await pool.query(
+          `SELECT content_es, content_en, content_fr, content_ru 
+           FROM whatsapp_flow_messages 
+           WHERE message_key = $1 AND active = true 
+           LIMIT 1`,
+          [messageKey]
+        );
+        
+        if (!result.rows.length) {
+          console.log(`⚠️ Message ${messageKey} not found in DB, using fallback`);
+          return null;
+        }
+        
+        const row = result.rows[0];
+        const langColumn = `content_${lang}`;
+        return row[langColumn] || row.content_es || row.content_en;
+      } catch (error) {
+        console.error(`❌ Error fetching message ${messageKey}:`, error);
+        return null;
+      }
+    };
+
   try {
     const from = String(req.body.From || "");
     const body = String(req.body.Body || "").trim();
@@ -1281,7 +1306,10 @@ if (!hasArrival) {
       const children = Number(r.children || 0);
       const sText = adults || children ? `${adults} ${t.adults}${children ? `, ${children} ${t.children}` : ""}` : "—";
 
-      await sendWhatsApp(from, `${t.greeting}, ${name} 👋
+// Obtener mensaje START de la DB
+      const startMessage = await getFlowMessage('START', lang);
+      
+      const defaultMessage = `${t.greeting}, ${name} 👋
 
 ${t.bookingConfirmed} ✅
 
@@ -1293,9 +1321,14 @@ ${t.bookingConfirmed} ✅
 ${t.registerInstructions}
 ${regLink || "—"}
 
-${t.afterReg}`);
-      return res.status(200).send("OK");
-    }
+${t.afterReg}`;
+
+      // Si hay mensaje en DB, usar ese; si no, usar el default
+      const finalMessage = startMessage 
+        ? `${startMessage}\n\n🏠 ${t.apartment}: ${apt}\n📅 ${t.checkin}: ${arriveDate}, ${arriveTime}\n📅 ${t.checkout}: ${departDate}, ${departTime}\n👥 ${t.guests}: ${sText}\n\n${t.registerInstructions}\n${regLink || "—"}\n\n${t.afterReg}`
+        : defaultMessage;
+
+      await sendWhatsApp(from, finalMessage);
 
     return res.status(200).send("OK");
   } catch (err) {
@@ -5836,6 +5869,7 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
