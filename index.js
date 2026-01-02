@@ -1273,6 +1273,7 @@ if (!hasArrival) {
 }
 
     // ================== START ==================
+  // ================== START ==================
     const startMatch = textUpper.match(/^START[\s_:-]*([0-9]+)[\s_:-]*([A-Z]{2})?\s*$/);
     if (startMatch) {
       const bookingId = String(startMatch[1] || "").trim();
@@ -1288,16 +1289,10 @@ if (!hasArrival) {
         [bookingId]
       );
 
-     await sendWhatsApp(from, finalMessage);
-      return res.status(200).send("OK");
-    }  // ← FALTA ESTA LLAVE
-
-    return res.status(200).send("OK");
-  } catch (err) {
-    console.error("❌ WhatsApp inbound error:", err);
-    return res.status(200).send("OK");
-  }
-});
+      if (!booking.rows.length) {
+        await sendWhatsApp(from, `${t.notFound}\nSTART ${bookingId}`);
+        return res.status(200).send("OK");
+      }
 
       const r = booking.rows[0];
       if (startMatch[2]) {
@@ -1320,7 +1315,7 @@ if (!hasArrival) {
       const children = Number(r.children || 0);
       const sText = adults || children ? `${adults} ${t.adults}${children ? `, ${children} ${t.children}` : ""}` : "—";
 
-// Obtener mensaje START de la DB
+      // Obtener mensaje START de la DB
       const startMessage = await getFlowMessage('START', lang);
       
       const defaultMessage = `${t.greeting}, ${name} 👋
@@ -1343,6 +1338,8 @@ ${t.afterReg}`;
         : defaultMessage;
 
       await sendWhatsApp(from, finalMessage);
+      return res.status(200).send("OK");
+    }
 
     return res.status(200).send("OK");
   } catch (err) {
@@ -5883,6 +5880,7 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
