@@ -1,4 +1,4 @@
-// ====================================================
+// ===================================================
 // RCS Guest Portal — Stable organized single-file version
 // (same logic, only reorganized and labeled)
 // ====================================================
@@ -11918,6 +11918,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
