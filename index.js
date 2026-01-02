@@ -1152,6 +1152,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       return res.status(200).send("OK");
     }
 
+
    // ================== PAYOK ==================
     if (textUpper === "PAYOK") {
       const last = await getSessionCheckin();
@@ -1173,14 +1174,17 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       const payokMessage = await getFlowMessage('PAYOK', lang);
       const finalPayokMessage = payokMessage || t.payConfirmed;
       
+      // Construir mensaje con hora estándar de check-in
+      const checkInInfo = `${t.standardCheckin}`.replace('{time}', standardTime);
+      
       await sendWhatsApp(
         from, 
-        finalPayokMessage + '\n\n' + tt.standardCheckin.replace('{time}', standardTime)
+        `${finalPayokMessage}\n\n${checkInInfo}`
       );
       
       return res.status(200).send("OK");
     }
-    // ================== DETECTAR HORA ==================
+   
   // ================== DETECTAR HORA ==================
 const timeText = parseTime(body);
 console.log('🕐 parseTime result:', { body, timeText });
@@ -5879,6 +5883,7 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
