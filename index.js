@@ -1288,10 +1288,16 @@ if (!hasArrival) {
         [bookingId]
       );
 
-      if (!booking.rows.length) {
-        await sendWhatsApp(from, `${t.notFound}\nSTART ${bookingId}`);
-        return res.status(200).send("OK");
-      }
+     await sendWhatsApp(from, finalMessage);
+      return res.status(200).send("OK");
+    }  // ← FALTA ESTA LLAVE
+
+    return res.status(200).send("OK");
+  } catch (err) {
+    console.error("❌ WhatsApp inbound error:", err);
+    return res.status(200).send("OK");
+  }
+});
 
       const r = booking.rows[0];
       if (startMatch[2]) {
@@ -5877,6 +5883,7 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
