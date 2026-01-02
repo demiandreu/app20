@@ -5603,8 +5603,8 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     console.error("Error al procesar solicitud:", e);
     res.status(500).send("Error");
   }
-}); */
-});  // ← línea 3828
+}); 
+});  // ← línea 3828*/
 
 // =============== MANAGER: WhatsApp Bot Configuration ===============
 app.get("/manager/whatsapp", (req, res) => {
@@ -5836,6 +5836,7 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
