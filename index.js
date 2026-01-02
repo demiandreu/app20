@@ -1182,50 +1182,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       return res.status(200).send("OK");
     }
     
-    // 3. VERIFICAR SI ESTAMOS ESPERANDO HORA DE LLEGADA
-const stateResult = await pool.query(`
-  SELECT bot_state FROM checkins WHERE id = $1
-`, [checkin.id]);
 
-const currentState = stateResult.rows[0]?.bot_state;
-
-if (currentState === 'WAITING_ARRIVAL') {
-  // Guardar hora de llegada
-  await pool.query(`
-    UPDATE checkins 
-    SET arrival_time = $1, bot_state = 'WAITING_DEPARTURE'
-    WHERE id = $2
-  `, [body.trim(), checkin.id]);
-  
-  console.log(`✅ Hora de llegada guardada: ${body.trim()}`);
-  
-  // Enviar ASK_DEPARTURE automáticamente
-  const askDepartureMsg = await getFlowMessage('ASK_DEPARTURE', language);
-  if (askDepartureMsg) {
-    await sendWhatsAppMessage(from, askDepartureMsg);
-    console.log(`✅ Enviado mensaje ASK_DEPARTURE automáticamente`);
-  }
-  return;
-}
-
-// 4. VERIFICAR SI ESTAMOS ESPERANDO HORA DE SALIDA
-if (currentState === 'WAITING_DEPARTURE') {
-  // Guardar hora de salida
-  await pool.query(`
-    UPDATE checkins 
-    SET departure_time = $1, bot_state = 'COMPLETED'
-    WHERE id = $2
-  `, [body.trim(), checkin.id]);
-  
-  console.log(`✅ Hora de salida guardada: ${body.trim()}`);
-  
-  // Mensaje de confirmación
-  await sendWhatsAppMessage(from, 
-    `✅ Perfecto, hemos guardado tus horarios.\n\n` +
-    `Si necesitas algo más, escríbeme.`
-  );
-  return;
-}
    
   // ================== DETECTAR HORA ==================
 const timeText = parseTime(body);
@@ -6232,6 +6189,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
