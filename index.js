@@ -1320,11 +1320,6 @@ if (!hasArrival) {
     // Texto por defecto si no hay mensaje en DB
     const defaultInstructions = t.registerInstructions || "Para recibir las instrucciones de las llaves, primero completa el registro:";
 
-    // NUEVA ESTRUCTURA: 
-    // 1. Saludo + datos del apartamento (automático)
-    // 2. Mensaje personalizable de la DB
-    // 3. Enlace (automático)
-    // 4. Instrucciones finales (automático)
     const finalMessage = `${t.greeting}, ${name} 👋
 
 ${t.bookingConfirmed} ✅
@@ -1412,69 +1407,6 @@ function hourOptions(selected = "") {
   }
   return out;
 }
-// ===================== TWILIO CLIENT =====================
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || "";
-
-const twilioClient =
-  TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN
-    ? twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-    : null;
-
-if (!twilioClient) {
-  console.log("ℹ️ Twilio not configured yet (missing TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN)");
-}
-async function sendWhatsApp(toE164, text) {
-  if (!twilioClient) {
-    console.log("ℹ️ Twilio client is null. Skip send.");
-    return;
-  }
-
-  const from = process.env.TWILIO_WHATSAPP_FROM || "";
-  if (!from) {
-    console.log("ℹ️ TWILIO_WHATSAPP_FROM missing. Skip send.");
-    return;
-  }
-
-  const to = String(toE164).startsWith("whatsapp:")
-    ? String(toE164)
-    : `whatsapp:${String(toE164).trim()}`;
-
-  const msg = await twilioClient.messages.create({
-    from,
-    to,
-    body: text,
-  });
-
-  console.log("✅ WhatsApp sent:", msg.sid);
-}
-
-
-// Render usually runs in UTC. For Spain apartments we use Europe/Madrid.
-function ymdInTz(date = new Date(), timeZone = "Europe/Madrid") {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-
-  const yyyy = parts.find((p) => p.type === "year").value;
-  const mm = parts.find((p) => p.type === "month").value;
-  const dd = parts.find((p) => p.type === "day").value;
-  return `${yyyy}-${mm}-${dd}`;
-}
-
-function hourOptions(selected = "") {
-  let out = "";
-  for (let h = 0; h < 24; h++) {
-    const hh = String(h).padStart(2, "0");
-    const value = `${hh}:00`;
-    out += `<option value="${value}" ${value === selected ? "selected" : ""}>${hh}:00</option>`;
-  }
-  return out;
-}
-
 // ===================== HTML LAYOUT =====================
 function fmtDate(d) {
   if (!d) return "";
@@ -5947,6 +5879,7 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
