@@ -1272,53 +1272,60 @@ if (!hasArrival) {
   }
 }
 
-    // ================== START ==================
   // ================== START ==================
-    const startMatch = textUpper.match(/^START[\s_:-]*([0-9]+)[\s_:-]*([A-Z]{2})?\s*$/);
-    if (startMatch) {
-      const bookingId = String(startMatch[1] || "").trim();
-      const langCode = (startMatch[2] || 'es').toLowerCase();
-      const supportedLangs = ['es', 'en', 'fr', 'ru'];
-      const lang = supportedLangs.includes(langCode) ? langCode : 'en';
-      const t = translations[lang];
+const startMatch = textUpper.match(/^START[\s_:-]*([0-9]+)[\s_:-]*([A-Z]{2})?\s*$/);
+if (startMatch) {
+  const bookingId = String(startMatch[1] || "").trim();
+  const langCode = (startMatch[2] || 'es').toLowerCase();
+  const supportedLangs = ['es', 'en', 'fr', 'ru'];
+  const lang = supportedLangs.includes(langCode) ? langCode : 'en';
+  const t = translations[lang];
 
-      const booking = await pool.query(
-        `SELECT * FROM checkins
-         WHERE booking_token = $1 OR beds24_booking_id::text = $1 OR REPLACE(beds24_booking_id::text, ' ', '') = $1 OR booking_id_from_start = $1
-         ORDER BY id DESC LIMIT 1`,
-        [bookingId]
-      );
+  const booking = await pool.query(
+    `SELECT * FROM checkins
+     WHERE booking_token = $1 OR beds24_booking_id::text = $1 OR REPLACE(beds24_booking_id::text, ' ', '') = $1 OR booking_id_from_start = $1
+     ORDER BY id DESC LIMIT 1`,
+    [bookingId]
+  );
 
-      if (!booking.rows.length) {
-        await sendWhatsApp(from, `${t.notFound}\nSTART ${bookingId}`);
-        return res.status(200).send("OK");
-      }
+  if (!booking.rows.length) {
+    await sendWhatsApp(from, `${t.notFound}\nSTART ${bookingId}`);
+    return res.status(200).send("OK");
+  }
 
-      const r = booking.rows[0];
-      if (startMatch[2]) {
-        await pool.query(`UPDATE checkins SET guest_language = $1 WHERE id = $2`, [lang, r.id]);
-      }
-      await setSessionCheckin(r.id);
-      await pool.query(`UPDATE checkins SET phone = COALESCE(NULLIF(phone, ''), $1) WHERE id = $2`, [phone, r.id]);
+  const r = booking.rows[0];
+  if (startMatch[2]) {
+    await pool.query(`UPDATE checkins SET guest_language = $1 WHERE id = $2`, [lang, r.id]);
+  }
+  await setSessionCheckin(r.id);
+  await pool.query(`UPDATE checkins SET phone = COALESCE(NULLIF(phone, ''), $1) WHERE id = $2`, [phone, r.id]);
 
-      const room = await getRoomSettings(r.apartment_id);
-      const bookIdForLinks = String(r.beds24_booking_id || r.booking_id_from_start || r.booking_token || "").replace(/\s/g, '');
-      const regLink = applyTpl(room.registration_url || "", bookIdForLinks);
+  const room = await getRoomSettings(r.apartment_id);
+  const bookIdForLinks = String(r.beds24_booking_id || r.booking_id_from_start || r.booking_token || "").replace(/\s/g, '');
+  const regLink = applyTpl(room.registration_url || "", bookIdForLinks);
 
-      const name = r.full_name || "";
-      const apt = r.apartment_name || r.apartment_id || "";
-      const arriveDate = r.arrival_date ? String(r.arrival_date).slice(0, 10) : "";
-      const departDate = r.departure_date ? String(r.departure_date).slice(0, 10) : "";
-      const arriveTime = (r.arrival_time ? String(r.arrival_time).slice(0, 5) : "") || String(room.default_arrival_time || "").slice(0, 5) || "17:00";
-      const departTime = (r.departure_time ? String(r.departure_time).slice(0, 5) : "") || String(room.default_departure_time || "").slice(0, 5) || "11:00";
-      const adults = Number(r.adults || 0);
-      const children = Number(r.children || 0);
-      const sText = adults || children ? `${adults} ${t.adults}${children ? `, ${children} ${t.children}` : ""}` : "—";
+  const name = r.full_name || "";
+  const apt = r.apartment_name || r.apartment_id || "";
+  const arriveDate = r.arrival_date ? String(r.arrival_date).slice(0, 10) : "";
+  const departDate = r.departure_date ? String(r.departure_date).slice(0, 10) : "";
+  const arriveTime = (r.arrival_time ? String(r.arrival_time).slice(0, 5) : "") || String(room.default_arrival_time || "").slice(0, 5) || "17:00";
+  const departTime = (r.departure_time ? String(r.departure_time).slice(0, 5) : "") || String(room.default_departure_time || "").slice(0, 5) || "11:00";
+  const adults = Number(r.adults || 0);
+  const children = Number(r.children || 0);
+  const sText = adults || children ? `${adults} ${t.adults}${children ? `, ${children} ${t.children}` : ""}` : "—";
 
-      // Obtener mensaje START de la DB
-      const startMessage = await getFlowMessage('START', lang);
-      
-      const defaultMessage = `${t.greeting}, ${name} 👋
+  // Obtener mensaje START personalizable de la DB
+  const startMessageFromDB = await getFlowMessage('START', lang);
+  
+  // Texto por defecto si no hay mensaje en DB
+  const defaultInstructions = t.registerInstructions || "Para recibir las instrucciones de las llaves, primero completa el registro:";
+
+  // NUEVA ESTRUCTURA: 
+  // 1. Saludo + datos del apartamento (automático)
+  // 2. Mensaje personalizable de la DB
+  // 3. Enlace (automático)
+  // 4. Instrucciones finales (automático)
+  const finalMessage = `${t.greeting}, ${name} 👋
 
 ${t.bookingConfirmed} ✅
 
@@ -1327,27 +1334,14 @@ ${t.bookingConfirmed} ✅
 📅 ${t.checkout}: ${departDate}, ${departTime}
 👥 ${t.guests}: ${sText}
 
-${t.registerInstructions}
+${startMessageFromDB || defaultInstructions}
 ${regLink || "—"}
 
 ${t.afterReg}`;
 
-      // Si hay mensaje en DB, usar ese; si no, usar el default
-      const finalMessage = startMessage 
-        ? `${startMessage}\n\n🏠 ${t.apartment}: ${apt}\n📅 ${t.checkin}: ${arriveDate}, ${arriveTime}\n📅 ${t.checkout}: ${departDate}, ${departTime}\n👥 ${t.guests}: ${sText}\n\n${t.registerInstructions}\n${regLink || "—"}\n\n${t.afterReg}`
-        : defaultMessage;
-
-      await sendWhatsApp(from, finalMessage);
-      return res.status(200).send("OK");
-    }
-
-    return res.status(200).send("OK");
-  } catch (err) {
-    console.error("❌ WhatsApp inbound error:", err);
-    return res.status(200).send("OK");
-  }
-});
- 
+  await sendWhatsApp(from, finalMessage);
+  return res.status(200).send("OK");
+}
 // ===================== TWILIO CLIENT =====================
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN || "";
@@ -5883,6 +5877,7 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
