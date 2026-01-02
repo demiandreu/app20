@@ -558,7 +558,61 @@
                         <textarea id="PAYOK_ru" placeholder="Сообщение на русском..."></textarea>
                     </div>
                 </div>
+                <!-- ASK_ARRIVAL Message -->
+                <div class="message-section">
+                    <h3>🕐 Pregunta Hora de Llegada (ASK_ARRIVAL)</h3>
+                    <p class="description-text">Mensaje que pregunta al huésped su hora preferida de check-in</p>
+                    
+                    <div class="language-tabs">
+                        <button class="lang-tab active" data-msg="ASK_ARRIVAL" data-lang="es">🇪🇸 Español</button>
+                        <button class="lang-tab" data-msg="ASK_ARRIVAL" data-lang="en">🇬🇧 English</button>
+                        <button class="lang-tab" data-msg="ASK_ARRIVAL" data-lang="fr">🇫🇷 Français</button>
+                        <button class="lang-tab" data-msg="ASK_ARRIVAL" data-lang="ru">🇷🇺 Русский</button>
+                    </div>
 
+                    <div class="textarea-container active" data-msg="ASK_ARRIVAL" data-lang="es">
+                        <textarea id="ASK_ARRIVAL_es" placeholder="Escribe en español..."></textarea>
+                        <button class="btn-translate" onclick="translateMessage('ASK_ARRIVAL')">🌍 Traducir automáticamente</button>
+                        <p class="translate-info">Escribe tu texto en español y haz clic para traducir a los demás idiomas</p>
+                    </div>
+                    <div class="textarea-container" data-msg="ASK_ARRIVAL" data-lang="en">
+                        <textarea id="ASK_ARRIVAL_en" placeholder="Message in English..."></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="ASK_ARRIVAL" data-lang="fr">
+                        <textarea id="ASK_ARRIVAL_fr" placeholder="Message en français..."></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="ASK_ARRIVAL" data-lang="ru">
+                        <textarea id="ASK_ARRIVAL_ru" placeholder="Сообщение на русском..."></textarea>
+                    </div>
+                </div>
+
+                <!-- ASK_DEPARTURE Message -->
+                <div class="message-section">
+                    <h3>🕐 Pregunta Hora de Salida (ASK_DEPARTURE)</h3>
+                    <p class="description-text">Mensaje que pregunta al huésped su hora preferida de check-out</p>
+                    
+                    <div class="language-tabs">
+                        <button class="lang-tab active" data-msg="ASK_DEPARTURE" data-lang="es">🇪🇸 Español</button>
+                        <button class="lang-tab" data-msg="ASK_DEPARTURE" data-lang="en">🇬🇧 English</button>
+                        <button class="lang-tab" data-msg="ASK_DEPARTURE" data-lang="fr">🇫🇷 Français</button>
+                        <button class="lang-tab" data-msg="ASK_DEPARTURE" data-lang="ru">🇷🇺 Русский</button>
+                    </div>
+
+                    <div class="textarea-container active" data-msg="ASK_DEPARTURE" data-lang="es">
+                        <textarea id="ASK_DEPARTURE_es" placeholder="Escribe en español..."></textarea>
+                        <button class="btn-translate" onclick="translateMessage('ASK_DEPARTURE')">🌍 Traducir automáticamente</button>
+                        <p class="translate-info">Escribe tu texto en español y haz clic para traducir a los demás idiomas</p>
+                    </div>
+                    <div class="textarea-container" data-msg="ASK_DEPARTURE" data-lang="en">
+                        <textarea id="ASK_DEPARTURE_en" placeholder="Message in English..."></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="ASK_DEPARTURE" data-lang="fr">
+                        <textarea id="ASK_DEPARTURE_fr" placeholder="Message en français..."></textarea>
+                    </div>
+                    <div class="textarea-container" data-msg="ASK_DEPARTURE" data-lang="ru">
+                        <textarea id="ASK_DEPARTURE_ru" placeholder="Сообщение на русском..."></textarea>
+                    </div>
+                </div>
                 <div class="save-btn-container">
                     <button class="btn btn-primary" onclick="saveFlowMessages()">💾 Guardar Cambios</button>
                 </div>
@@ -883,7 +937,7 @@
 
         // Save flow messages
         async function saveFlowMessages() {
-            const messages = ['START', 'REGOK', 'PAYOK'].map(key => ({
+            const messages = ['START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE'].map(key => ({
                 message_key: key,
                 content_es: document.getElementById(`${key}_es`).value,
                 content_en: document.getElementById(`${key}_en`).value,
