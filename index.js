@@ -5972,6 +5972,194 @@ app.delete("/api/whatsapp/auto-replies/:id", async (req, res) => {
     });
   }
 });
+
+// ================================================================================
+// CÓDIGO PARA AÑADIR AL FINAL DE TU index.js (ANTES DEL app.listen)
+// ================================================================================
+
+// ============ WEBHOOK DE WHATSAPP - PROCESAR MENSAJES ENTRANTES ============
+
+app.post("/api/whatsapp/webhook", async (req, res) => {
+  try {
+    const { From, Body, MessageSid } = req.body;
+    
+    console.log(`📱 WhatsApp mensaje recibido de ${From}: ${Body}`);
+    
+    // Responder a Twilio inmediatamente (200 OK)
+    res.status(200).send('OK');
+    
+    // Procesar mensaje en segundo plano
+    processWhatsAppMessage(From, Body, MessageSid).catch(err => {
+      console.error('Error procesando mensaje WhatsApp:', err);
+    });
+    
+  } catch (error) {
+    console.error('Error en webhook WhatsApp:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============ FUNCIÓN PARA PROCESAR MENSAJES ============
+
+async function processWhatsAppMessage(from, body, messageId) {
+  try {
+    // Normalizar número de teléfono
+    const phoneNumber = from.replace('whatsapp:', '').replace('+', '');
+    
+    console.log(`🔍 Buscando checkin para teléfono: ${phoneNumber}`);
+    
+    // Buscar checkin activo para este número
+    const checkinResult = await pool.query(`
+      SELECT c.id, c.full_name, c.email, c.apartment_name, c.booking_id
+      FROM checkins c
+      WHERE REPLACE(REPLACE(c.phone, '+', ''), ' ', '') = $1
+      ORDER BY c.created_at DESC
+      LIMIT 1
+    `, [phoneNumber]);
+    
+    if (checkinResult.rows.length === 0) {
+      console.log(`⚠️ No se encontró checkin para ${phoneNumber}`);
+      return;
+    }
+    
+    const checkin = checkinResult.rows[0];
+    console.log(`✅ Checkin encontrado: ${checkin.full_name} (ID: ${checkin.id})`);
+    
+    // Determinar idioma (por ahora usar español, luego mejoramos)
+    const language = 'es'; // TODO: Detectar desde Beds24
+    
+    // 1. BUSCAR RESPUESTA AUTOMÁTICA
+    const autoReply = await findAutoReply(body.toLowerCase(), language);
+    
+    if (autoReply) {
+      console.log(`🤖 Enviando respuesta automática`);
+      await sendWhatsAppMessage(from, autoReply);
+      return;
+    }
+    
+    // 2. RESPUESTAS ESPECIALES (REGOK, PAYOK, etc.)
+    const bodyLower = body.toLowerCase().trim();
+    
+    if (bodyLower === 'regok') {
+      const msg = await getFlowMessage('REGOK', language);
+      if (msg) {
+        await sendWhatsAppMessage(from, msg);
+        console.log(`✅ Enviado mensaje REGOK`);
+      }
+      return;
+    }
+    
+    if (bodyLower === 'payok' || bodyLower.includes('ya he pagado') || bodyLower.includes('pagado')) {
+      const msg = await getFlowMessage('PAYOK', language);
+      if (msg) {
+        await sendWhatsAppMessage(from, msg);
+        console.log(`✅ Enviado mensaje PAYOK`);
+      }
+      return;
+    }
+    
+    console.log(`💬 Mensaje libre, sin respuesta automática configurada`);
+    
+  } catch (error) {
+    console.error('Error procesando mensaje WhatsApp:', error);
+  }
+}
+
+// ============ BUSCAR RESPUESTA AUTOMÁTICA ============
+
+async function findAutoReply(text, language = 'es') {
+  const validLangs = ['es', 'en', 'fr', 'ru'];
+  const lang = validLangs.includes(language) ? language : 'es';
+  
+  try {
+    // Obtener todas las respuestas activas
+    const result = await pool.query(`
+      SELECT * FROM whatsapp_auto_replies 
+      WHERE active = true
+    `);
+    
+    const textLower = text.toLowerCase().trim();
+    
+    // Buscar coincidencia con keywords
+    for (const reply of result.rows) {
+      if (!reply.keywords) continue;
+      
+      const keywords = reply.keywords.split(',').map(k => k.trim().toLowerCase());
+      
+      for (const keyword of keywords) {
+        // Coincidencia exacta de palabra completa
+        const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+        if (regex.test(textLower)) {
+          // Retornar respuesta en el idioma correcto
+          const response = reply[`response_${lang}`] || reply.response_es;
+          console.log(`🎯 Keyword encontrada: "${keyword}" → Respuesta: ${response.substring(0, 50)}...`);
+          return response;
+        }
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error buscando auto-reply:', error);
+    return null;
+  }
+}
+
+// ============ OBTENER MENSAJE DEL FLUJO ============
+
+async function getFlowMessage(messageType, language = 'es') {
+  const validLangs = ['es', 'en', 'fr', 'ru'];
+  const lang = validLangs.includes(language) ? language : 'es';
+  
+  try {
+    const result = await pool.query(`
+      SELECT * FROM whatsapp_flow_messages 
+      WHERE message_key = $1
+    `, [messageType]);
+    
+    if (result.rows.length > 0) {
+      return result.rows[0][`content_${lang}`] || result.rows[0].content_es;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error obteniendo mensaje de flujo:', error);
+    return null;
+  }
+}
+
+// ============ ENVIAR MENSAJE DE WHATSAPP ============
+
+async function sendWhatsAppMessage(to, message) {
+  try {
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER;
+    
+    if (!accountSid || !authToken || !fromNumber) {
+      console.error('❌ Faltan credenciales de Twilio en variables de entorno');
+      return;
+    }
+    
+    const client = twilio(accountSid, authToken);
+    
+    const msg = await client.messages.create({
+      from: fromNumber,
+      to: to,
+      body: message
+    });
+    
+    console.log(`✅ WhatsApp enviado a ${to}: ${msg.sid}`);
+    return msg;
+    
+  } catch (error) {
+    console.error(`❌ Error enviando WhatsApp a ${to}:`, error.message);
+    throw error;
+  }
+}
+
+// ================================================================================
+// FIN DEL CÓDIGO PARA AÑADIR
+// ================================================================================
 // ===================== START =====================
 (async () => {
   try {
@@ -5982,6 +6170,7 @@ app.delete("/api/whatsapp/auto-replies/:id", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
