@@ -5609,7 +5609,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
   try {
     const { id } = req.params;
     const { action, manager_notes } = req.body;
-
+    
     const { rows: [request] } = await pool.query(
       `SELECT cts.*, c.phone, c.guest_language, c.full_name 
        FROM checkin_time_selections cts
@@ -5617,11 +5617,11 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
        WHERE cts.id = $1`,
       [id]
     );
-
+    
     if (!request) {
       return res.status(404).send("Solicitud no encontrada");
     }
-
+    
     if (action === 'approve') {
       await pool.query(`
         UPDATE checkin_time_selections
@@ -5629,7 +5629,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
             approved_by = 'manager', manager_notes = $1
         WHERE id = $2
       `, [manager_notes || null, id]);
-
+      
       console.log(`✅ Solicitud ${id} aprobada`);
     } else if (action === 'reject') {
       await pool.query(`
@@ -5638,49 +5638,20 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
             approved_by = 'manager', manager_notes = $1, rejection_reason = $1
         WHERE id = $2
       `, [manager_notes || 'No disponible', id]);
-
+      
       console.log(`❌ Solicitud ${id} rechazada`);
     }
-
+    
     res.redirect("/staff/pending-requests");
   } catch (e) {
     console.error("Error al procesar solicitud:", e);
     res.status(500).send("Error");
   }
-}); 
-});  // ← línea 3828*/
+});
 
 // =============== MANAGER: WhatsApp Bot Configuration ===============
 app.get("/manager/whatsapp", (req, res) => {
   res.sendFile(require('path').join(__dirname, 'manager-whatsapp.html'));
-});
-
-// API: Obtener mensajes del flujo principal (START, REGOK, PAYOK)
-app.get("/api/whatsapp/flow-messages", async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT message_key, content_es, content_en, content_fr, content_ru, active
-      FROM whatsapp_flow_messages
-      WHERE message_key IN ('START', 'REGOK', 'PAYOK')
-      ORDER BY 
-        CASE message_key
-          WHEN 'START' THEN 1
-          WHEN 'REGOK' THEN 2
-          WHEN 'PAYOK' THEN 3
-        END
-    `);
-
-    res.json({
-      success: true,
-      messages: result.rows
-    });
-  } catch (error) {
-    console.error('Error fetching flow messages:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
 });
 
 // API: Guardar mensajes del flujo principal
@@ -5880,6 +5851,7 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
