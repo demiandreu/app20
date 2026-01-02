@@ -5648,7 +5648,42 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     res.status(500).send("Error");
   }
 });
+app.get("/manager/whatsapp", (req, res) => {
+  res.sendFile(require('path').join(__dirname, 'manager-whatsapp.html'));
+});
 
+// API: Obtener mensajes del flujo principal (START, REGOK, PAYOK)
+app.get("/api/whatsapp/flow-messages", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT message_key, content_es, content_en, content_fr, content_ru, active
+      FROM whatsapp_flow_messages
+      WHERE message_key IN ('START', 'REGOK', 'PAYOK')
+      ORDER BY 
+        CASE message_key
+          WHEN 'START' THEN 1
+          WHEN 'REGOK' THEN 2
+          WHEN 'PAYOK' THEN 3
+        END
+    `);
+
+    res.json({
+      success: true,
+      messages: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching flow messages:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// API: Guardar mensajes del flujo principal
+app.post("/api/whatsapp/flow-messages", async (req, res) => {
+  const { messages } = req.body;
+  // ... resto del código POST que ya tienes ...
 // =============== MANAGER: WhatsApp Bot Configuration ===============
 app.get("/manager/whatsapp", (req, res) => {
   res.sendFile(require('path').join(__dirname, 'manager-whatsapp.html'));
@@ -5851,6 +5886,7 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
