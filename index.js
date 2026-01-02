@@ -3877,7 +3877,7 @@ app.get("/guest/:bookingId", async (req, res) => {
 // Gestión de respuestas automáticas de WhatsApp con traducción DeepL
 // ============================================
 
-/* app.get("/manager/whatsapp-old", async (req, res) => {
+ app.get("/manager/whatsapp-old", async (req, res) => {
   try {
     // Cargar apartamentos para el selector
     const { rows: apartments } = await pool.query(`
@@ -4418,7 +4418,7 @@ app.post("/manager/whatsapp/save", async (req, res) => {
     console.error("❌ /manager/whatsapp/save error:", e);
     res.status(500).send("Error saving WhatsApp responses");
   }
-}); */
+}); 
 
 // ===================== STAFF: CHECKINS LIST (FIXED) =====================
 app.get("/staff/checkins", async (req, res) => {
@@ -5880,6 +5880,7 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
