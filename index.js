@@ -1152,37 +1152,34 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       return res.status(200).send("OK");
     }
 
-    // ================== PAYOK ==================
-   if (textUpper === "PAYOK") {
-  const last = await getSessionCheckin();
-  if (!last) {
-    await sendWhatsApp(from, `${translations.es.noBooking} START 123456`);
-    return res.status(200).send("OK");
-  }
-  
-  const lang = last.guest_language || 'es';
-  const t = translations[lang];
-  const tt = timeRequestTexts[lang];
-  
-  await pool.query(`UPDATE checkins SET pay_done = true, pay_done_at = NOW() WHERE id = $1`, [last.id]);
-  
-  const room = await getRoomSettings(last.apartment_id);
-  const standardTime = String(room.default_arrival_time || "17:00").slice(0, 5);
-  
-  await sendWhatsApp(
-    from, 
-// Obtener mensaje PAYOK de la DB
-  const payokMessage = await getFlowMessage('PAYOK', lang);
-  const finalPayokMessage = payokMessage || t.payConfirmed;
-  
-  await sendWhatsApp(
-    from, 
-    finalPayokMessage + '\n\n' + t.payConfirmed.split('\n\n')[1] + '\n\n' + tt.standardCheckin.replace('{time}', standardTime)
-  );
-     );
-  
-  return res.status(200).send("OK");
-}
+   // ================== PAYOK ==================
+    if (textUpper === "PAYOK") {
+      const last = await getSessionCheckin();
+      if (!last) {
+        await sendWhatsApp(from, `${translations.es.noBooking} START 123456`);
+        return res.status(200).send("OK");
+      }
+      
+      const lang = last.guest_language || 'es';
+      const t = translations[lang];
+      const tt = timeRequestTexts[lang];
+      
+      await pool.query(`UPDATE checkins SET pay_done = true, pay_done_at = NOW() WHERE id = $1`, [last.id]);
+      
+      const room = await getRoomSettings(last.apartment_id);
+      const standardTime = String(room.default_arrival_time || "17:00").slice(0, 5);
+      
+      // Obtener mensaje PAYOK de la DB
+      const payokMessage = await getFlowMessage('PAYOK', lang);
+      const finalPayokMessage = payokMessage || t.payConfirmed;
+      
+      await sendWhatsApp(
+        from, 
+        finalPayokMessage + '\n\n' + tt.standardCheckin.replace('{time}', standardTime)
+      );
+      
+      return res.status(200).send("OK");
+    }
     // ================== DETECTAR HORA ==================
   // ================== DETECTAR HORA ==================
 const timeText = parseTime(body);
@@ -5880,6 +5877,7 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
