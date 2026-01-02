@@ -1032,7 +1032,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
     // ===== TEXTOS TRADUCIDOS =====
     const translations = {
       es: {
-        greeting: "Hola",
+        greeting: "¡Hola! 👋 Bienvenido a tu apartamento. Soy tu asistente virtual y estoy aquí para ayudarte con tu check-in.",
         bookingConfirmed: "Tu reserva está confirmada",
         apartment: "Apartamento",
         checkin: "Entrada",
@@ -5879,6 +5879,7 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
