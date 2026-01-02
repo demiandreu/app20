@@ -954,38 +954,33 @@ const timeRequestTexts = {
   }
 };
 
-// Continuar con el resto del código...
-// ==========================================
-// WEBHOOK DE WHATSAPP CON SOPORTE MULTIIDIOMA
-// ==========================================
-
 app.post("/webhooks/twilio/whatsapp", async (req, res) => {
   console.log("🔥 TWILIO HIT", req.body);
 
   // ===== Helper para obtener mensajes de la DB =====
-    const getFlowMessage = async (messageKey, lang = 'es') => {
-      try {
-        const result = await pool.query(
-          `SELECT content_es, content_en, content_fr, content_ru 
-           FROM whatsapp_flow_messages 
-           WHERE message_key = $1 AND active = true 
-           LIMIT 1`,
-          [messageKey]
-        );
-        
-        if (!result.rows.length) {
-          console.log(`⚠️ Message ${messageKey} not found in DB, using fallback`);
-          return null;
-        }
-        
-        const row = result.rows[0];
-        const langColumn = `content_${lang}`;
-        return row[langColumn] || row.content_es || row.content_en;
-      } catch (error) {
-        console.error(`❌ Error fetching message ${messageKey}:`, error);
+  const getFlowMessage = async (messageKey, lang = 'es') => {
+    try {
+      const result = await pool.query(
+        `SELECT content_es, content_en, content_fr, content_ru 
+         FROM whatsapp_flow_messages 
+         WHERE message_key = $1 AND active = true 
+         LIMIT 1`,
+        [messageKey]
+      );
+      
+      if (!result.rows.length) {
+        console.log(`⚠️ Message ${messageKey} not found in DB, using fallback`);
         return null;
       }
-    };
+      
+      const row = result.rows[0];
+      const langColumn = `content_${lang}`;
+      return row[langColumn] || row.content_es || row.content_en;
+    } catch (error) {
+      console.error(`❌ Error fetching message ${messageKey}:`, error);
+      return null;
+    }
+  };
 
   try {
     const from = String(req.body.From || "");
@@ -1141,7 +1136,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       const bookIdForLinks = String(last.beds24_booking_id || last.booking_id_from_start || last.booking_token || "").replace(/\s/g, '');
       const payLink = applyTpl(room.payment_url || "", bookIdForLinks);
       
-// Obtener mensaje REGOK de la DB
+      // Obtener mensaje REGOK de la DB
       const regokMessage = await getFlowMessage('REGOK', lang);
       const finalRegokMessage = regokMessage || t.regConfirmed;
       
@@ -1149,8 +1144,7 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       return res.status(200).send("OK");
     }
 
-
-   // ================== PAYOK ==================
+    // ================== PAYOK ==================
     if (textUpper === "PAYOK") {
       const last = await getSessionCheckin();
       if (!last) {
@@ -1160,7 +1154,6 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       
       const lang = last.guest_language || 'es';
       const t = translations[lang];
-      const tt = timeRequestTexts[lang];
       
       await pool.query(`UPDATE checkins SET pay_done = true, pay_done_at = NOW() WHERE id = $1`, [last.id]);
       
@@ -1181,157 +1174,145 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
       
       return res.status(200).send("OK");
     }
-    
 
-   
-  // ================== DETECTAR HORA ==================
-const timeText = parseTime(body);
-console.log('🕐 parseTime result:', { body, timeText });
+    // ================== DETECTAR HORA ==================
+    const timeText = parseTime(body);
+    console.log('🕐 parseTime result:', { body, timeText });
 
-if (timeText) {
-  console.log('✅ timeText is truthy, entering block');
-  
-  const last = await getSessionCheckin();
-  console.log('👤 Session checkin:', last ? 'FOUND' : 'NOT FOUND');
-  
-  if (!last) return res.status(200).send("OK");
+    if (timeText) {
+      console.log('✅ timeText is truthy, entering block');
+      
+      const last = await getSessionCheckin();
+      console.log('👤 Session checkin:', last ? 'FOUND' : 'NOT FOUND');
+      
+      if (!last) return res.status(200).send("OK");
 
-  console.log('🌐 Language:', last.guest_language);
-  const lang = last.guest_language || 'es';
-  const tt = timeRequestTexts[lang];
+      console.log('🌐 Language:', last.guest_language);
+      const lang = last.guest_language || 'es';
+      const tt = timeRequestTexts[lang];
 
-  console.log('🔎 Querying time selections for checkin_id:', last.id);
-  const { rows: [timeSelection] } = await pool.query(
-    `SELECT * FROM checkin_time_selections WHERE checkin_id = $1`,
-    [last.id]
-  );
+      console.log('🔎 Querying time selections for checkin_id:', last.id);
+      const { rows: [timeSelection] } = await pool.query(
+        `SELECT * FROM checkin_time_selections WHERE checkin_id = $1`,
+        [last.id]
+      );
 
-  console.log('📋 Time selection:', timeSelection);
-  const hasArrival = timeSelection && timeSelection.requested_arrival_time;
-  console.log('🎯 Has arrival?', hasArrival);
+      console.log('📋 Time selection:', timeSelection);
+      const hasArrival = timeSelection && timeSelection.requested_arrival_time;
+      console.log('🎯 Has arrival?', hasArrival);
 
+      // Solicitud de LLEGADA
+      if (!hasArrival) {
+        console.log('🚀 Calling calculateSupplement for ARRIVAL');
+        const calc = await calculateSupplement(last.apartment_id, timeText, 'checkin');
+        console.log('💰 Calc result:', calc);
 
- // Solicitud de LLEGADA
-if (!hasArrival) {
-  console.log('🚀 Calling calculateSupplement for ARRIVAL');
-  const calc = await calculateSupplement(last.apartment_id, timeText, 'checkin');
-  console.log('💰 Calc result:', calc);
+        await pool.query(
+          `INSERT INTO checkin_time_selections (
+            checkin_id, requested_arrival_time, confirmed_arrival_time,
+            early_checkin_supplement, whatsapp_phone, approval_status, created_at
+          ) VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
+          ON CONFLICT (checkin_id) DO UPDATE SET
+            requested_arrival_time = EXCLUDED.requested_arrival_time,
+            confirmed_arrival_time = EXCLUDED.confirmed_arrival_time,
+            early_checkin_supplement = EXCLUDED.early_checkin_supplement,
+            approval_status = 'pending'`,
+          [last.id, timeText, timeText, calc.supplement, phone]
+        );
 
-  await pool.query(
-    `INSERT INTO checkin_time_selections (
-      checkin_id, requested_arrival_time, confirmed_arrival_time,
-      early_checkin_supplement, whatsapp_phone, approval_status, created_at
-    ) VALUES ($1, $2, $3, $4, $5, 'pending', NOW())
-    ON CONFLICT (checkin_id) DO UPDATE SET
-      requested_arrival_time = EXCLUDED.requested_arrival_time,
-      confirmed_arrival_time = EXCLUDED.confirmed_arrival_time,
-      early_checkin_supplement = EXCLUDED.early_checkin_supplement,
-      approval_status = 'pending'`,
-    [last.id, timeText, timeText, calc.supplement, phone]
-  );
+        const room = await getRoomSettings(last.apartment_id);
+        const standardTime = String(room.default_departure_time || "11:00").slice(0, 5);
 
-  const room = await getRoomSettings(last.apartment_id);
-  const standardTime = String(room.default_departure_time || "11:00").slice(0, 5);
+        await sendWhatsApp(
+          from,
+          tt.arrivalConfirmed
+            .replace('{time}', `${timeText}:00`)
+            .replace('{price}', calc.supplement.toFixed(2)) +
+          '\n\n' + tt.standardCheckout.replace('{time}', standardTime)
+        );
 
-  await sendWhatsApp(
-  from,
-  tt.arrivalConfirmed
-    .replace('{time}', `${timeText}:00`)
-    .replace('{price}', calc.supplement.toFixed(2)) +
-  '\n\n' + tt.standardCheckout.replace('{time}', standardTime)
-);
+        return res.status(200).send("OK");
+      }
 
-  return res.status(200).send("OK");
-}
+      // Solicitud de SALIDA
+      else {
+        console.log('🚀 Calling calculateSupplement for DEPARTURE');
+        const calc = await calculateSupplement(last.apartment_id, timeText, 'checkout');
+        console.log('💰 Calc result:', calc);
 
-  // Solicitud de SALIDA
-  else {
-    console.log('🚀 Calling calculateSupplement for DEPARTURE');
-    const calc = await calculateSupplement(last.apartment_id, timeText, 'checkout');
-    console.log('💰 Calc result:', calc);
+        await pool.query(
+          `UPDATE checkin_time_selections SET 
+            requested_departure_time = $1, confirmed_departure_time = $2,
+            late_checkout_supplement = $3, approval_status = 'pending', updated_at = NOW()
+           WHERE checkin_id = $4`,
+          [timeText, timeText, calc.supplement, last.id]
+        );
 
-    await pool.query(
-      `UPDATE checkin_time_selections SET 
-        requested_departure_time = $1, confirmed_departure_time = $2,
-        late_checkout_supplement = $3, approval_status = 'pending', updated_at = NOW()
-       WHERE checkin_id = $4`,
-      [timeText, timeText, calc.supplement, last.id]
-    );
+        const totalSupplement = parseFloat(timeSelection?.early_checkin_supplement || 0) + calc.supplement;
+        const arrivalTime = timeSelection.requested_arrival_time.slice(0, 5);
 
-    const totalSupplement = parseFloat(timeSelection?.early_checkin_supplement || 0) + calc.supplement;
-    const arrivalTime = timeSelection.requested_arrival_time.slice(0, 5);
+        await sendWhatsApp(
+          from,
+          tt.requestReceived
+            .replace('{arrival}', arrivalTime)
+            .replace('{arrivalPrice}', parseFloat(timeSelection?.early_checkin_supplement || 0).toFixed(0))
+            .replace('{departure}', timeText)
+            .replace('{departurePrice}', calc.supplement.toFixed(0))
+            .replace('{total}', totalSupplement.toFixed(2))
+        );
 
-    await sendWhatsApp(
-      from,
-      tt.requestReceived
-        .replace('{arrival}', arrivalTime)
-        .replace('{arrivalPrice}', parseFloat(timeSelection?.early_checkin_supplement || 0).toFixed(0))
-        .replace('{departure}', timeText)
-        .replace('{departurePrice}', calc.supplement.toFixed(0))
-        .replace('{total}', totalSupplement.toFixed(2))
-    );
+        return res.status(200).send("OK");
+      }
+    }
 
-    return res.status(200).send("OK");
-  }
-}
+    // ================== START ==================
+    const startMatch = textUpper.match(/^START[\s_:-]*([0-9]+)[\s_:-]*([A-Z]{2})?\s*$/);
+    if (startMatch) {
+      const bookingId = String(startMatch[1] || "").trim();
+      const langCode = (startMatch[2] || 'es').toLowerCase();
+      const supportedLangs = ['es', 'en', 'fr', 'ru'];
+      const lang = supportedLangs.includes(langCode) ? langCode : 'en';
+      const t = translations[lang];
 
-// ================== START ==================
-// ================== START - VERSIÓN CORREGIDA ==================
-const startMatch = textUpper.match(/^START[\s_:-]*([0-9]+)[\s_:-]*([A-Z]{2})?\s*$/);
-if (startMatch) {
-  const bookingId = String(startMatch[1] || "").trim();
-  const langCode = (startMatch[2] || 'es').toLowerCase();
-  const supportedLangs = ['es', 'en', 'fr', 'ru'];
-  const lang = supportedLangs.includes(langCode) ? langCode : 'en';
-  const t = translations[lang];
+      const booking = await pool.query(
+        `SELECT * FROM checkins
+         WHERE booking_token = $1 OR beds24_booking_id::text = $1 OR REPLACE(beds24_booking_id::text, ' ', '') = $1 OR booking_id_from_start = $1
+         ORDER BY id DESC LIMIT 1`,
+        [bookingId]
+      );
 
-  const booking = await pool.query(
-    `SELECT * FROM checkins
-     WHERE booking_token = $1 OR beds24_booking_id::text = $1 OR REPLACE(beds24_booking_id::text, ' ', '') = $1 OR booking_id_from_start = $1
-     ORDER BY id DESC LIMIT 1`,
-    [bookingId]
-  );
+      if (!booking.rows.length) {
+        await sendWhatsApp(from, `${t.notFound}\nSTART ${bookingId}`);
+        return res.status(200).send("OK");
+      }
 
-  if (!booking.rows.length) {
-    await sendWhatsApp(from, `${t.notFound}\nSTART ${bookingId}`);
-    return res.status(200).send("OK");
-  }
+      const r = booking.rows[0];
+      
+      if (startMatch[2]) {
+        await pool.query(`UPDATE checkins SET guest_language = $1 WHERE id = $2`, [lang, r.id]);
+      }
+      
+      await setSessionCheckin(r.id);
+      await pool.query(`UPDATE checkins SET phone = COALESCE(NULLIF(phone, ''), $1) WHERE id = $2`, [phone, r.id]);
 
-  const r = booking.rows[0];
-  
-  // ✅ CORREGIDO: Añadido paréntesis (
-  if (startMatch[2]) {
-    await pool.query(`UPDATE checkins SET guest_language = $1 WHERE id = $2`, [lang, r.id]);
-  }
-  
-  await setSessionCheckin(r.id);
-  
-  // ✅ CORREGIDO: Añadido paréntesis (
-  await pool.query(`UPDATE checkins SET phone = COALESCE(NULLIF(phone, ''), $1) WHERE id = $2`, [phone, r.id]);
+      const room = await getRoomSettings(r.apartment_id);
+      const bookIdForLinks = String(r.beds24_booking_id || r.booking_id_from_start || r.booking_token || "").replace(/\s/g, '');
+      const regLink = applyTpl(room.registration_url || "", bookIdForLinks);
 
-  const room = await getRoomSettings(r.apartment_id);
-  const bookIdForLinks = String(r.beds24_booking_id || r.booking_id_from_start || r.booking_token || "").replace(/\s/g, '');
-  const regLink = applyTpl(room.registration_url || "", bookIdForLinks);
+      const name = r.full_name || "";
+      const apt = r.apartment_name || r.apartment_id || "";
+      const arriveDate = r.arrival_date ? String(r.arrival_date).slice(0, 10) : "";
+      const departDate = r.departure_date ? String(r.departure_date).slice(0, 10) : "";
+      const arriveTime = (r.arrival_time ? String(r.arrival_time).slice(0, 5) : "") || String(room.default_arrival_time || "").slice(0, 5) || "17:00";
+      const departTime = (r.departure_time ? String(r.departure_time).slice(0, 5) : "") || String(room.default_departure_time || "").slice(0, 5) || "11:00";
+      const adults = Number(r.adults || 0);
+      const children = Number(r.children || 0);
+      const sText = adults || children ? `${adults} ${t.adults}${children ? `, ${children} ${t.children}` : ""}` : "—";
 
-  const name = r.full_name || "";
-  const apt = r.apartment_name || r.apartment_id || "";
-  const arriveDate = r.arrival_date ? String(r.arrival_date).slice(0, 10) : "";
-  const departDate = r.departure_date ? String(r.departure_date).slice(0, 10) : "";
-  const arriveTime = (r.arrival_time ? String(r.arrival_time).slice(0, 5) : "") || String(room.default_arrival_time || "").slice(0, 5) || "17:00";
-  const departTime = (r.departure_time ? String(r.departure_time).slice(0, 5) : "") || String(room.default_departure_time || "").slice(0, 5) || "11:00";
-  const adults = Number(r.adults || 0);
-  const children = Number(r.children || 0);
-  
-  // ✅ CORREGIDO: Añadido } de cierre después de t.children
-  const sText = adults || children ? `${adults} ${t.adults}${children ? `, ${children} ${t.children}` : ""}` : "—";
+      const startMessageFromDB = await getFlowMessage('START', lang);
+      const defaultInstructions = t.registerInstructions || "Para recibir las instrucciones de las llaves, primero completa el registro:";
 
-  // Obtener mensaje START personalizable de la DB
-  const startMessageFromDB = await getFlowMessage('START', lang);
-  
-  // Texto por defecto si no hay mensaje en DB
-  const defaultInstructions = t.registerInstructions || "Para recibir las instrucciones de las llaves, primero completa el registro:";
-
-  const finalMessage = `${t.greeting}, ${name} 👋
+      const finalMessage = `${t.greeting}, ${name} 👋
 
 ${t.bookingConfirmed} ✅
 
@@ -1345,9 +1326,16 @@ ${regLink || "—"}
 
 ${t.afterReg}`;
 
-  await sendWhatsApp(from, finalMessage);
-  return res.status(200).send("OK");
-}
+      await sendWhatsApp(from, finalMessage);
+      return res.status(200).send("OK");
+    }
+
+    return res.status(200).send("OK");
+  } catch (err) {
+    console.error("❌ WhatsApp inbound error:", err);
+    return res.status(200).send("OK");
+  }
+});
 
 // ===================== TWILIO CLIENT =====================
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
@@ -6189,6 +6177,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
