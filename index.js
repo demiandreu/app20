@@ -3831,7 +3831,7 @@ app.get("/guest/:bookingId", async (req, res) => {
 // Gestión de respuestas automáticas de WhatsApp con traducción DeepL
 // ============================================
 
-app.get("/manager/whatsapp", async (req, res) => {
+app.get("/manager/whatsapp-old", async (req, res) => {
   try {
     // Cargar apartamentos para el selector
     const { rows: apartments } = await pool.query(`
@@ -5613,6 +5613,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     process.exit(1);
   }
 })();
+
 
 
 
