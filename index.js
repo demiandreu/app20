@@ -3832,11 +3832,14 @@ const departuresRes = await pool.query(
   wDep.params
 );
     const arrivals = arrivalsRes.rows || [];
-    console.log('📊 ARRIVALS DEBUG:');
+  // 🔍 DEBUG - Ver qué datos llegan
+console.log('📊 ARRIVALS DEBUG:');
 arrivals.slice(0, 3).forEach(r => {
   console.log(`  ID: ${r.id}, Name: ${r.full_name}`);
   console.log(`    arrival_time: ${r.arrival_time}`);
   console.log(`    departure_time: ${r.departure_time}`);
+  console.log(`    early_checkin_requested: ${r.early_checkin_requested}`);  // ✅ AÑADIR
+  console.log(`    late_checkout_requested: ${r.late_checkout_requested}`);  // ✅ AÑADIR
 });
     const departures = departuresRes.rows || [];
 
@@ -6263,6 +6266,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
