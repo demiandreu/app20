@@ -5799,16 +5799,14 @@ app.delete("/api/whatsapp/auto-replies/:id", async (req, res) => {
 
 // ============ WEBHOOK DE WHATSAPP - PROCESAR MENSAJES ENTRANTES ============
 
-app.post("/api/whatsapp/webhook", async (req, res) => {
+app.post("/webhooks/twilio/whatsapp", async (req, res) => {
   try {
     const { From, Body, MessageSid } = req.body;
     
     console.log(`📱 WhatsApp mensaje recibido de ${From}: ${Body}`);
     
-    // Responder a Twilio inmediatamente (200 OK)
     res.status(200).send('OK');
     
-    // Procesar mensaje en segundo plano
     processWhatsAppMessage(From, Body, MessageSid).catch(err => {
       console.error('❌ Error procesando mensaje WhatsApp:', err);
     });
@@ -6451,6 +6449,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
