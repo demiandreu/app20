@@ -6189,6 +6189,24 @@ app.delete("/api/whatsapp/auto-replies/:id", async (req, res) => {
 
 // ============ WEBHOOK DE WHATSAPP - PROCESAR MENSAJES ENTRANTES ============
 
+// ================================================================================
+// 🤖 WEBHOOK DE WHATSAPP - VERSIÓN MEJORADA CON MÁQUINA DE ESTADOS
+// ================================================================================
+// 
+// FLUJO COMPLETO:
+// START → REGOK → PAYOK → WAITING_ARRIVAL → WAITING_DEPARTURE → DONE
+//
+// Estados posibles en bot_state:
+// - IDLE: Sin actividad
+// - WAITING_REGOK: Esperando que el guest complete registro
+// - WAITING_PAYOK: Esperando confirmación de pago
+// - WAITING_ARRIVAL: Esperando hora de llegada
+// - WAITING_DEPARTURE: Esperando hora de salida
+// - DONE: Flujo completado
+// ================================================================================
+
+// ============ WEBHOOK DE WHATSAPP - PROCESAR MENSAJES ENTRANTES ============
+
 app.post("/api/whatsapp/webhook", async (req, res) => {
   try {
     const { From, Body, MessageSid } = req.body;
@@ -6311,9 +6329,9 @@ function detectLanguage(guestLanguage) {
   const langLower = guestLanguage.toLowerCase();
   
   // Mapeo de códigos comunes de Beds24
+  // Solo soportamos: ES, EN, FR, RU (los idiomas que tienes en la BD)
   if (langLower.includes('en') || langLower.includes('english')) return 'en';
   if (langLower.includes('fr') || langLower.includes('french') || langLower.includes('français')) return 'fr';
-  if (langLower.includes('de') || langLower.includes('german') || langLower.includes('deutsch')) return 'de';
   if (langLower.includes('ru') || langLower.includes('russian') || langLower.includes('русский')) return 'ru';
   
   return 'es'; // Default español
@@ -6516,7 +6534,6 @@ function getErrorMessage(errorType, language) {
       es: '⚠️ Por favor, indica la hora en formato válido. Ejemplos: 17, 18:30, 5pm',
       en: '⚠️ Please provide the time in a valid format. Examples: 17, 18:30, 5pm',
       fr: '⚠️ Veuillez indiquer l\'heure dans un format valide. Exemples: 17, 18:30, 17h',
-      de: '⚠️ Bitte geben Sie die Uhrzeit in einem gültigen Format an. Beispiele: 17, 18:30',
       ru: '⚠️ Пожалуйста, укажите время в правильном формате. Примеры: 17, 18:30'
     }
   };
@@ -6527,7 +6544,7 @@ function getErrorMessage(errorType, language) {
 // ============ BUSCAR RESPUESTA AUTOMÁTICA (FAQ) ============
 
 async function findAutoReply(text, language = 'es') {
-  const validLangs = ['es', 'en', 'fr', 'de', 'ru'];
+  const validLangs = ['es', 'en', 'fr', 'ru'];
   const lang = validLangs.includes(language) ? language : 'es';
   
   try {
@@ -6567,7 +6584,7 @@ async function findAutoReply(text, language = 'es') {
 // ============ OBTENER MENSAJE DEL FLUJO ============
 
 async function getFlowMessage(messageType, language = 'es') {
-  const validLangs = ['es', 'en', 'fr', 'de', 'ru'];
+  const validLangs = ['es', 'en', 'fr', 'ru'];
   const lang = validLangs.includes(language) ? language : 'es';
   
   try {
@@ -6619,6 +6636,7 @@ async function sendWhatsAppMessage(to, message) {
 // ================================================================================
 // FIN DEL CÓDIGO MEJORADO
 // ================================================================================
+
 // ===================== START =====================
 (async () => {
   try {
@@ -6629,6 +6647,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
