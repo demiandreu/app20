@@ -5486,6 +5486,8 @@ function replaceVariables(message, checkin, room) {
   
   // Reemplazar todas las variables
   return message
+    .replace(/\{booking_id\}/g, bookIdForLinks)           // ← AÑADIR ESTA LÍNEA
+    .replace(/\[BOOKID\]/g, bookIdForLinks)               // ← AÑADIR ESTA LÍNEA
     .replace(/\{guest_name\}/g, name)
     .replace(/\{apartment_name\}/g, apt)
     .replace(/\{apartment_id\}/g, checkin.apartment_id || "")
@@ -6111,6 +6113,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
