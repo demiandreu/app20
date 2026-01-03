@@ -401,6 +401,33 @@
             <div id="flow-content" style="display: none;">
                 <!-- START -->
               <!-- ASK_RULES -->
+                <!-- START -->
+<div class="message-section">
+    <h3>START - Mensaje Inicial</h3>
+    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Primer mensaje al iniciar conversación</p>
+    
+    <div class="language-tabs">
+        <button class="lang-tab active" onclick="switchLang('START', 'es')">🇪🇸 ES</button>
+        <button class="lang-tab" onclick="switchLang('START', 'en')">🇬🇧 EN</button>
+        <button class="lang-tab" onclick="switchLang('START', 'fr')">🇫🇷 FR</button>
+        <button class="lang-tab" onclick="switchLang('START', 'ru')">🇷🇺 RU</button>
+    </div>
+    
+    <div class="textarea-container active" data-msg="START" data-lang="es">
+        <textarea id="START_es" placeholder="¡Hola, {guest_name}! Soy tu conserje personal..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="START" data-lang="en">
+        <textarea id="START_en" placeholder="Hello, {guest_name}! I'm your personal concierge..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="START" data-lang="fr">
+        <textarea id="START_fr" placeholder="Bonjour, {guest_name}! Je suis votre concierge personnel..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="START" data-lang="ru">
+        <textarea id="START_ru" placeholder="Здравствуйте, {guest_name}! Я ваш личный консьерж..."></textarea>
+    </div>
+    
+    <button class="btn-translate" onclick="translateMessage('START')">🌍 Traducir desde ES</button>
+</div>
 <div class="message-section">
     <h3>ASK_RULES - Aceptar Normas de Casa</h3>
     <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Normas que el huésped debe aceptar escribiendo ACEPTO</p>
