@@ -539,7 +539,61 @@
                     
                     <button class="btn-translate" onclick="translateMessage('ASK_DEPARTURE')">🌍 Traducir desde ES</button>
                 </div>
+                 <!-- EARLY_CHECKIN_NOTICE -->
+<div class="message-section">
+    <h3>EARLY_CHECKIN_NOTICE - Aviso Early Check-in</h3>
+    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Mensaje automático cuando solicitan entrada antes de las 17:00h</p>
+    
+    <div class="language-tabs">
+        <button class="lang-tab active" onclick="switchLang('EARLY_CHECKIN_NOTICE', 'es')">🇪🇸 ES</button>
+        <button class="lang-tab" onclick="switchLang('EARLY_CHECKIN_NOTICE', 'en')">🇬🇧 EN</button>
+        <button class="lang-tab" onclick="switchLang('EARLY_CHECKIN_NOTICE', 'fr')">🇫🇷 FR</button>
+        <button class="lang-tab" onclick="switchLang('EARLY_CHECKIN_NOTICE', 'ru')">🇷🇺 RU</button>
+    </div>
+    
+    <div class="textarea-container active" data-msg="EARLY_CHECKIN_NOTICE" data-lang="es">
+        <textarea id="EARLY_CHECKIN_NOTICE_es" placeholder="Lo siento, la entrada estándar es a las 17:00h..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="EARLY_CHECKIN_NOTICE" data-lang="en">
+        <textarea id="EARLY_CHECKIN_NOTICE_en" placeholder="Sorry, standard check-in is at 5:00pm..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="EARLY_CHECKIN_NOTICE" data-lang="fr">
+        <textarea id="EARLY_CHECKIN_NOTICE_fr" placeholder="Désolé, l'enregistrement standard..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="EARLY_CHECKIN_NOTICE" data-lang="ru">
+        <textarea id="EARLY_CHECKIN_NOTICE_ru" placeholder="Извините, стандартная регистрация..."></textarea>
+    </div>
+    
+    <button class="btn-translate" onclick="translateMessage('EARLY_CHECKIN_NOTICE')">🌍 Traducir desde ES</button>
+</div>
 
+<!-- LATE_CHECKOUT_NOTICE -->
+<div class="message-section">
+    <h3>LATE_CHECKOUT_NOTICE - Aviso Late Checkout</h3>
+    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Mensaje automático cuando solicitan salida después de las 11:00h</p>
+    
+    <div class="language-tabs">
+        <button class="lang-tab active" onclick="switchLang('LATE_CHECKOUT_NOTICE', 'es')">🇪🇸 ES</button>
+        <button class="lang-tab" onclick="switchLang('LATE_CHECKOUT_NOTICE', 'en')">🇬🇧 EN</button>
+        <button class="lang-tab" onclick="switchLang('LATE_CHECKOUT_NOTICE', 'fr')">🇫🇷 FR</button>
+        <button class="lang-tab" onclick="switchLang('LATE_CHECKOUT_NOTICE', 'ru')">🇷🇺 RU</button>
+    </div>
+    
+    <div class="textarea-container active" data-msg="LATE_CHECKOUT_NOTICE" data-lang="es">
+        <textarea id="LATE_CHECKOUT_NOTICE_es" placeholder="Lo siento, la salida estándar es a las 11:00h..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="LATE_CHECKOUT_NOTICE" data-lang="en">
+        <textarea id="LATE_CHECKOUT_NOTICE_en" placeholder="Sorry, standard check-out is at 11:00am..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="LATE_CHECKOUT_NOTICE" data-lang="fr">
+        <textarea id="LATE_CHECKOUT_NOTICE_fr" placeholder="Désolé, le départ standard..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="LATE_CHECKOUT_NOTICE" data-lang="ru">
+        <textarea id="LATE_CHECKOUT_NOTICE_ru" placeholder="Извините, стандартное время выезда..."></textarea>
+    </div>
+    
+    <button class="btn-translate" onclick="translateMessage('LATE_CHECKOUT_NOTICE')">🌍 Traducir desde ES</button>
+</div>
                 <!-- CONFIRMATION -->
                 <div class="message-section">
                     <h3>CONFIRMATION - Confirmación Final</h3>
@@ -654,7 +708,7 @@
                 
                 if (data.success) {
                     data.messages.forEach(msg => {
-                        const keys = ['START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE', 'ASK_RULES', 'CONFIRMATION'];
+                        const keys = ['START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE', 'ASK_RULES', 'EARLY_CHECKIN_NOTICE', 'LATE_CHECKOUT_NOTICE', 'CONFIRMATION'];
                         if (keys.includes(msg.message_key)) {
                             document.getElementById(`${msg.message_key}_es`).value = msg.content_es || '';
                             document.getElementById(`${msg.message_key}_en`).value = msg.content_en || '';
@@ -725,7 +779,7 @@
 
         // Save flow messages
         async function saveFlowMessages() {
-            const messages = ['START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE', 'ASK_RULES', 'CONFIRMATION'].map(key => ({
+            const messages = ['START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE', 'ASK_RULES', 'EARLY_CHECKIN_NOTICE', 'LATE_CHECKOUT_NOTICE', 'CONFIRMATION'].map(key => ({
                 message_key: key,
                 content_es: document.getElementById(`${key}_es`).value,
                 content_en: document.getElementById(`${key}_en`).value,
