@@ -1485,6 +1485,53 @@ td.apartment-cell.needs-clean {
 .vis-form{
   white-space: nowrap;
 }
+/* ========================================
+     🎨 COLOR CODING PARA EARLY/LATE CHECK-IN
+     ======================================== */
+  
+  /* 🟠 Early check-in (llegada antes de 17:00) */
+  tr.early-request {
+    background-color: #fff3e0 !important;
+    border-left: 4px solid #ff9800;
+  }
+  
+  tr.early-request:hover td {
+    background-color: #ffe0b2 !important;
+  }
+
+  /* 🔴 Late checkout (salida después de 11:00) */
+  tr.late-request {
+    background-color: #ffebee !important;
+    border-left: 4px solid #f44336;
+  }
+  
+  tr.late-request:hover td {
+    background-color: #ffcdd2 !important;
+  }
+
+  /* 🟣 Ambos (early + late) */
+  tr.early-late-both {
+    background-color: #f3e5f5 !important;
+    border-left: 4px solid #9c27b0;
+  }
+  
+  tr.early-late-both:hover td {
+    background-color: #e1bee7 !important;
+  }
+
+  /* Asegurar que sticky columns mantengan el color */
+  tr.early-request td.sticky-col,
+  tr.late-request td.sticky-col,
+  tr.early-late-both td.sticky-col {
+    background-color: inherit !important;
+  }
+
+  /* Prioridad: early/late sobre needs-clean */
+  tr.early-request td.apartment-cell.needs-clean,
+  tr.late-request td.apartment-cell.needs-clean,
+  tr.early-late-both td.apartment-cell.needs-clean {
+    background-color: inherit !important;
+  }
 
   </style>
 </head>
@@ -3823,10 +3870,43 @@ function getColumnClass(id) {
   if (needsCleanSet.has(String(id))) return "needs-clean"; // 🩶
   return ""; // ⚪
 }
+
+// 🎨 NUEVA FUNCIÓN - Color coding para early/late check-in
+function getEarlyLateClass(checkin) {
+  const hasEarly = checkin.early_checkin_requested === true;
+  const hasLate = checkin.late_checkout_requested === true;
+  
+  if (hasEarly && hasLate) return "early-late-both"; // 🟣 Morado
+  if (hasEarly) return "early-request";               // 🟠 Naranja
+  if (hasLate) return "late-request";                 // 🔴 Rojo
+  return "";                                           // ⚪ Normal
+}
+
 // Toolbar
 const toolbar = `
   <h1>Staff · Llegadas y Salidas</h1>
   <p class="muted">Zona horaria: España (Europe/Madrid)</p>
+  
+  <!-- 🎨 LEYENDA DE COLORES -->
+  <div style="display:flex; gap:16px; margin:12px 0; padding:12px; background:#f9f9f9; border-radius:8px; flex-wrap:wrap;">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <div style="width:20px; height:20px; background:#fff3e0; border-left:4px solid #ff9800; border-radius:4px;"></div>
+      <span style="font-size:14px;">🟠 Early check-in (&lt;17:00)</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <div style="width:20px; height:20px; background:#ffebee; border-left:4px solid #f44336; border-radius:4px;"></div>
+      <span style="font-size:14px;">🔴 Late checkout (&gt;11:00)</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <div style="width:20px; height:20px; background:#f3e5f5; border-left:4px solid #9c27b0; border-radius:4px;"></div>
+      <span style="font-size:14px;">🟣 Ambos</span>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px;">
+      <div style="width:20px; height:20px; background:#f5f5f5; border-left:4px solid #9e9e9e; border-radius:4px;"></div>
+      <span style="font-size:14px;">🩶 Requiere limpieza</span>
+    </div>
+  </div>
+  
   <form method="GET" action="/staff/checkins" style="margin:20px 0;">
     <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
       <div>
@@ -3876,8 +3956,10 @@ function renderTable(rows, mode) {
       ? `<a class="btn-small btn-ghost" href="${guestPortalUrl}" target="_blank">Abrir</a>`
       : `<span class="muted">Sin link</span>`;
     
-    return `
-      <tr>
+   const earlyLateClass = getEarlyLateClass(r);
+
+return `
+  <tr class="${earlyLateClass}">
         <!-- 1. Limpieza -->
         <td class="sticky-col">
           <form method="POST" action="/staff/checkins/${r.id}/clean">
@@ -6181,6 +6263,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
