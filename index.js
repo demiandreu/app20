@@ -4918,7 +4918,7 @@ app.get("/api/whatsapp/flow-messages", async (req, res) => {
     const result = await pool.query(`
       SELECT message_key, content_es, content_en, content_fr, content_ru, active
       FROM whatsapp_flow_messages
-      WHERE message_key IN ('START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE', 'ASK_RULES', 'CONFIRMATION')
+      WHERE message_key IN ('START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE', 'ASK_RULES', 'CONFIRMATION', 'EARLY_CHECKIN_NOTICE', 'LATE_CHECKOUT_NOTICE')
       ORDER BY 
         CASE message_key
           WHEN 'START' THEN 1
@@ -4928,6 +4928,8 @@ app.get("/api/whatsapp/flow-messages", async (req, res) => {
           WHEN 'ASK_DEPARTURE' THEN 5
           WHEN 'ASK_RULES' THEN 6
           WHEN 'CONFIRMATION' THEN 7
+          WHEN 'EARLY_CHECKIN_NOTICE' THEN 8
+          WHEN 'LATE_CHECKOUT_NOTICE' THEN 9
         END
     `);
     
@@ -4943,6 +4945,7 @@ app.get("/api/whatsapp/flow-messages", async (req, res) => {
     });
   }
 });
+
 // =============== MANAGER: WhatsApp Bot Configuration ===============
 app.get("/manager/whatsapp", (req, res) => {
   res.sendFile(require('path').join(__dirname, 'manager-whatsapp.html'));
@@ -6108,6 +6111,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
