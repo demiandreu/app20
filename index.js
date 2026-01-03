@@ -5607,7 +5607,7 @@ ${paymentLink}
     res.redirect("/manager/early-late");
 
   } catch (err) {
-    console.error("Error al enviar link de pago:"
+    console.error("Error al enviar link de pago:", err);
 
 // =============== API: RESPUESTAS AUTOMÁTICAS WHATSAPP ===============
 
@@ -6641,6 +6641,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
