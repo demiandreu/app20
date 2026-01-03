@@ -167,6 +167,7 @@ async function initDb() {
   console.log("✅ DB ready: checkins table ok (+ lock_code, lock_visible, clean_ok, bot_state)");
 }
 // ====== MANAGER: Apartment Sections (Accordion content) ======
+
 app.get("/manager/apartment/sections", async (req, res) => {
   try {
     const roomId = String(req.query.room_id || "").trim();
@@ -179,9 +180,10 @@ app.get("/manager/apartment/sections", async (req, res) => {
     const apt = aptRes.rows[0] || null;
     const backHref = apt ? `/manager/apartment?id=${apt.id}` : `/manager`;
 
+    // 🆕 CARGAR TAMBIÉN LAS TRADUCCIONES
     const secRes = await pool.query(
       `
-      SELECT id, title, body, sort_order, is_active, new_media_type, new_media_url, icon
+      SELECT id, title, body, sort_order, is_active, new_media_type, new_media_url, icon, translations
       FROM apartment_sections
       WHERE room_id::text = $1
       ORDER BY sort_order ASC, id ASC
@@ -227,9 +229,34 @@ app.get("/manager/apartment/sections", async (req, res) => {
       `;
     };
 
+    // 🆕 HELPER PARA OBTENER TRADUCCIONES
+    const getTranslation = (section, field, lang) => {
+      if (!section.translations) return '';
+      try {
+        const trans = typeof section.translations === 'string' 
+          ? JSON.parse(section.translations) 
+          : section.translations;
+        return trans[field] && trans[field][lang] ? trans[field][lang] : '';
+      } catch (e) {
+        return '';
+      }
+    };
+
     const accordionItems = secRes.rows
       .map((s, index) => {
         const checked = s.is_active ? "checked" : "";
+        
+        // Obtener traducciones para esta sección
+        const titleEn = getTranslation(s, 'title', 'en');
+        const titleFr = getTranslation(s, 'title', 'fr');
+        const titleDe = getTranslation(s, 'title', 'de');
+        const titleRu = getTranslation(s, 'title', 'ru');
+        
+        const bodyEn = getTranslation(s, 'body', 'en');
+        const bodyFr = getTranslation(s, 'body', 'fr');
+        const bodyDe = getTranslation(s, 'body', 'de');
+        const bodyRu = getTranslation(s, 'body', 'ru');
+        
         return `
           <div class="accordion-item">
             <div class="accordion-header" onclick="toggleAccordion(${s.id})">
@@ -265,13 +292,55 @@ app.get("/manager/apartment/sections", async (req, res) => {
                 </div>
                 
                 <div style="margin-bottom:12px;">
-                  <label class="muted">Título</label>
-                  <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" class="sec-title" placeholder="Título opcional" />
+                  <label class="muted">🇪🇸 Título (Español - idioma base)</label>
+                  <div style="display:flex; gap:8px;">
+                    <input name="title_${s.id}" value="${escapeHtml(s.title || "")}" class="sec-title" placeholder="Título opcional" style="flex:1;" />
+                    <button type="button" onclick="translateSection(${s.id}, 'title')" style="padding:8px 16px; background:#6366f1; color:white; border:none; border-radius:6px; cursor:pointer; white-space:nowrap;">🌐 Traducir</button>
+                  </div>
+                  
+                  <!-- 🆕 TRADUCCIONES DEL TÍTULO -->
+                  <details style="margin-top:8px;">
+                    <summary style="cursor:pointer; padding:8px; background:#f3f4f6; border-radius:6px; font-size:13px;">📝 Traducciones del título</summary>
+                    <div style="display:grid; gap:8px; padding:12px; background:#f9fafb; border-radius:6px; margin-top:8px;">
+                      <label>🇬🇧 English</label>
+                      <textarea id="title_${s.id}_en" name="title_${s.id}_en" rows="1">${escapeHtml(titleEn)}</textarea>
+                      
+                      <label>🇫🇷 Français</label>
+                      <textarea id="title_${s.id}_fr" name="title_${s.id}_fr" rows="1">${escapeHtml(titleFr)}</textarea>
+                      
+                      <label>🇩🇪 Deutsch</label>
+                      <textarea id="title_${s.id}_de" name="title_${s.id}_de" rows="1">${escapeHtml(titleDe)}</textarea>
+                      
+                      <label>🇷🇺 Русский</label>
+                      <textarea id="title_${s.id}_ru" name="title_${s.id}_ru" rows="1">${escapeHtml(titleRu)}</textarea>
+                    </div>
+                  </details>
                 </div>
                 
                 <div style="margin-bottom:12px;">
-                  <label class="muted">Texto</label>
-                  <textarea name="body_${s.id}" rows="5" class="sec-body" placeholder="Texto...">${escapeHtml(s.body || "")}</textarea>
+                  <label class="muted">🇪🇸 Texto (Español - idioma base)</label>
+                  <div style="display:flex; gap:8px; flex-direction:column;">
+                    <textarea name="body_${s.id}" rows="5" class="sec-body" placeholder="Texto...">${escapeHtml(s.body || "")}</textarea>
+                    <button type="button" onclick="translateSection(${s.id}, 'body')" style="padding:8px 16px; background:#6366f1; color:white; border:none; border-radius:6px; cursor:pointer; align-self:flex-start;">🌐 Traducir texto</button>
+                  </div>
+                  
+                  <!-- 🆕 TRADUCCIONES DEL TEXTO -->
+                  <details style="margin-top:8px;">
+                    <summary style="cursor:pointer; padding:8px; background:#f3f4f6; border-radius:6px; font-size:13px;">📝 Traducciones del texto</summary>
+                    <div style="display:grid; gap:8px; padding:12px; background:#f9fafb; border-radius:6px; margin-top:8px;">
+                      <label>🇬🇧 English</label>
+                      <textarea id="body_${s.id}_en" name="body_${s.id}_en" rows="3">${escapeHtml(bodyEn)}</textarea>
+                      
+                      <label>🇫🇷 Français</label>
+                      <textarea id="body_${s.id}_fr" name="body_${s.id}_fr" rows="3">${escapeHtml(bodyFr)}</textarea>
+                      
+                      <label>🇩🇪 Deutsch</label>
+                      <textarea id="body_${s.id}_de" name="body_${s.id}_de" rows="3">${escapeHtml(bodyDe)}</textarea>
+                      
+                      <label>🇷🇺 Русский</label>
+                      <textarea id="body_${s.id}_ru" name="body_${s.id}_ru" rows="3">${escapeHtml(bodyRu)}</textarea>
+                    </div>
+                  </details>
                 </div>
 
                 <div style="display:grid; gap:8px; margin-bottom:16px;">
@@ -358,16 +427,17 @@ app.get("/manager/apartment/sections", async (req, res) => {
           background: #d1fae5;
           color: #065f46;
         }
+        
         .lock-actions {
-  display: flex;
-  gap: 6px;
-  margin-top: 4px;
-}
+          display: flex;
+          gap: 6px;
+          margin-top: 4px;
+        }
 
-.btn-danger {
-  background: #fee2e2;
-  color: #991b1b;
-}
+        .btn-danger {
+          background: #fee2e2;
+          color: #991b1b;
+        }
         
         .accordion-badge.inactive {
           background: #fee2e2;
@@ -391,7 +461,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
         }
         
         .accordion-content.open {
-          max-height: 2000px;
+          max-height: 3000px;
         }
         
         .accordion-body {
@@ -419,9 +489,6 @@ app.get("/manager/apartment/sections", async (req, res) => {
     const languages = ['en', 'fr', 'de', 'ru'].filter(lang => lang !== sourceLang);
     
     for (const targetLang of languages) {
-      const btn = document.getElementById(\`translate_\${field}_\${sectionId}_\${targetLang}\`);
-      if (btn) btn.disabled = true;
-      
       try {
         const response = await fetch('/api/translate', {
           method: 'POST',
@@ -442,8 +509,6 @@ app.get("/manager/apartment/sections", async (req, res) => {
       } catch (e) {
         console.error('Translation error:', e);
         alert('Error traduciendo a ' + targetLang);
-      } finally {
-        if (btn) btn.disabled = false;
       }
     }
   }
@@ -598,6 +663,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
     );
   }
 });
+
 // ============================================
 // FUNCIONES HELPER PARA GUEST PANEL
 // ============================================
@@ -6252,6 +6318,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
