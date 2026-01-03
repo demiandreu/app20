@@ -4056,7 +4056,7 @@ return `
           <tr>
             <th class="sticky-col">Limpieza</th>
             <th>ID</th>
-            <th>Huésped</th>
+            <th>Portal</th>
             <th>${dateColTitle}</th>
             <th>Noches</th>
             <th>A|C</th>
@@ -6263,6 +6263,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
