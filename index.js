@@ -3908,7 +3908,7 @@ app.get("/guest/:bookingId", async (req, res) => {
                        style="display:inline-block;padding:12px 24px;background:#3b82f6;color:white;text-decoration:none;border-radius:8px;font-weight:600;transition:background 0.2s;"
                        onmouseover="this.style.background='#2563eb'" 
                        onmouseout="this.style.background='#3b82f6'">
-                       🔗 Abrir enlace
+                       🔗 Open link
                      </a>
                    </div>
                  `;
@@ -6351,6 +6351,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
