@@ -5041,6 +5041,8 @@ app.get("/api/whatsapp/flow-messages", async (req, res) => {
   }
 });
 
+
+
 // =============== MANAGER: WhatsApp Bot Configuration ===============
 app.get("/manager/whatsapp", (req, res) => {
   res.sendFile(require('path').join(__dirname, 'manager-whatsapp.html'));
@@ -5235,6 +5237,198 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
       success: false,
       error: error.message
     });
+  }
+});
+
+// ============================================================
+// 📋 MANAGER - EARLY/LATE CHECK-IN REQUESTS
+// ============================================================
+app.get("/manager/early-late", requireLogin, async (req, res) => {
+  try {
+    const user = req.session.user;
+
+    // 🔍 Query para obtener solicitudes
+    const { rows: requests } = await pool.query(`
+      SELECT 
+        elr.id,
+        elr.checkin_id,
+        elr.request_type,
+        elr.requested_time,
+        elr.price,
+        elr.status,
+        elr.approved_at,
+        elr.rejected_at,
+        elr.payment_link,
+        elr.payment_status,
+        elr.created_at,
+        c.beds24_booking_id,
+        c.booking_token,
+        c.full_name,
+        c.phone,
+        c.apartment_name,
+        c.room_name,
+        c.arrival_date,
+        c.arrival_time,
+        c.departure_date,
+        c.departure_time
+      FROM early_late_requests elr
+      JOIN checkins c ON c.id = elr.checkin_id
+      WHERE c.cancelled = false
+        ${user.amdSql ? user.amdSql.replace('AND', 'AND c.') : ''}
+      ORDER BY 
+        CASE elr.status 
+          WHEN 'pending' THEN 1 
+          WHEN 'approved' THEN 2 
+          WHEN 'rejected' THEN 3 
+        END,
+        elr.created_at DESC
+    `);
+
+    // 📊 Separar pendientes y historial
+    const pending = requests.filter(r => r.status === 'pending');
+    const history = requests.filter(r => r.status !== 'pending');
+
+    // 🎨 Función para renderizar cada request
+    function renderRequest(r, isPending = true) {
+      const typeIcon = r.request_type === 'early_checkin' ? '🟠' : 
+                       r.request_type === 'late_checkout' ? '🔴' : '🟣';
+      
+      const typeText = r.request_type === 'early_checkin' ? 'Early Check-in' : 
+                       r.request_type === 'late_checkout' ? 'Late Checkout' : 
+                       'Early Check-in + Late Checkout';
+
+      const timeInfo = r.request_type === 'early_checkin' 
+        ? `Llegada: ${r.requested_time} (normal: 17:00)`
+        : r.request_type === 'late_checkout'
+        ? `Salida: ${r.requested_time} (normal: 11:00)`
+        : `Llegada: ${r.arrival_time} | Salida: ${r.departure_time}`;
+
+      const priceText = r.price ? `€${r.price}` : 'Gratis';
+
+      const statusBadge = r.status === 'approved' 
+        ? '<span class="pill pill-yes">✅ Aprobado</span>'
+        : r.status === 'rejected'
+        ? '<span class="pill pill-no">❌ Rechazado</span>'
+        : '<span class="pill" style="background:#fff3cd; color:#856404;">⏳ Pendiente</span>';
+
+      const paymentBadge = r.payment_status === 'paid'
+        ? '<span class="pill pill-yes">💰 Pagado</span>'
+        : r.payment_link
+        ? '<span class="pill" style="background:#e0e7ff; color:#3730a3;">🔗 Link enviado</span>'
+        : '';
+
+      const actions = isPending ? `
+        <div style="display:flex; gap:8px; margin-top:12px;">
+          <form method="POST" action="/manager/early-late/${r.id}/approve" style="margin:0;">
+            <button type="submit" class="btn-small" style="background:#dcfce7; color:#166534; border:1px solid #86efac;">
+              ✅ Aprobar
+            </button>
+          </form>
+          <form method="POST" action="/manager/early-late/${r.id}/reject" style="margin:0;">
+            <button type="submit" class="btn-small" style="background:#fee2e2; color:#991b1b; border:1px solid #fca5a5;">
+              ❌ Rechazar
+            </button>
+          </form>
+          ${r.price && r.price > 0 ? `
+            <form method="POST" action="/manager/early-late/${r.id}/send-payment" style="margin:0;">
+              <button type="submit" class="btn-small" style="background:#dbeafe; color:#1e40af; border:1px solid #93c5fd;">
+                💰 Enviar link (€${r.price})
+              </button>
+            </form>
+          ` : ''}
+        </div>
+      ` : `
+        <div style="margin-top:8px; font-size:12px; color:#6b7280;">
+          ${r.approved_at ? `Aprobado: ${new Date(r.approved_at).toLocaleDateString('es-ES')}` : ''}
+          ${r.rejected_at ? `Rechazado: ${new Date(r.rejected_at).toLocaleDateString('es-ES')}` : ''}
+        </div>
+      `;
+
+      return `
+        <div class="card" style="margin-bottom:16px; border-left:4px solid ${
+          r.request_type === 'early_checkin' ? '#ff9800' : 
+          r.request_type === 'late_checkout' ? '#f44336' : '#9c27b0'
+        };">
+          <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;">
+            <div>
+              <h3 style="margin:0 0 4px; font-size:16px;">
+                ${typeIcon} ${typeText}
+              </h3>
+              <p style="margin:0; font-size:14px; color:#374151;">
+                <strong>${escapeHtml(r.full_name || 'Sin nombre')}</strong>
+              </p>
+              <p style="margin:4px 0 0; font-size:13px; color:#6b7280;">
+                ${escapeHtml(r.room_name || r.apartment_name || 'Sin apartamento')}
+                · ${r.arrival_date ? new Date(r.arrival_date).toLocaleDateString('es-ES') : ''}
+              </p>
+            </div>
+            <div style="text-align:right;">
+              ${statusBadge}
+              ${paymentBadge}
+            </div>
+          </div>
+          
+          <div style="background:#f9fafb; padding:10px; border-radius:8px; margin:8px 0;">
+            <p style="margin:0; font-size:13px; color:#374151;">
+              ⏰ ${timeInfo}
+            </p>
+            <p style="margin:4px 0 0; font-size:13px; color:#374151;">
+              💵 Precio: <strong>${priceText}</strong>
+            </p>
+            <p style="margin:4px 0 0; font-size:12px; color:#6b7280;">
+              📱 ${escapeHtml(r.phone || 'Sin teléfono')}
+            </p>
+          </div>
+
+          ${actions}
+        </div>
+      `;
+    }
+
+    // 🎨 Renderizar página
+    const pageContent = `
+      <div style="margin-bottom:24px;">
+        <h1>📋 Solicitudes Early/Late Check-in</h1>
+        <p class="muted">Gestiona las solicitudes de llegadas tempranas y salidas tardías</p>
+      </div>
+
+      <!-- Pendientes -->
+      <div style="margin-bottom:32px;">
+        <h2 style="margin:0 0 16px;">
+          ⏳ Pendientes 
+          <span class="muted">(${pending.length})</span>
+        </h2>
+        
+        ${pending.length > 0 
+          ? pending.map(r => renderRequest(r, true)).join('')
+          : '<p class="muted">No hay solicitudes pendientes</p>'
+        }
+      </div>
+
+      <!-- Historial -->
+      <div>
+        <h2 style="margin:0 0 16px;">
+          📜 Historial 
+          <span class="muted">(${history.length})</span>
+        </h2>
+        
+        ${history.length > 0 
+          ? history.map(r => renderRequest(r, false)).join('')
+          : '<p class="muted">No hay historial</p>'
+        }
+      </div>
+    `;
+
+    res.send(renderPage("Early/Late Requests", pageContent));
+
+  } catch (err) {
+    console.error("Error en /manager/early-late:", err);
+    res.status(500).send(renderPage("Error", `
+      <div class="card">
+        <h1 style="color:#991b1b;">❌ Error</h1>
+        <p>${escapeHtml(err.message)}</p>
+      </div>
+    `));
   }
 });
 
@@ -6270,6 +6464,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
