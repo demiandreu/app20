@@ -4948,12 +4948,12 @@ app.get("/manager/whatsapp", (req, res) => {
 
 app.post("/api/whatsapp/flow-messages", async (req, res) => {
   const { messages } = req.body;
-
+  
   try {
     console.log('📝 Guardando mensajes:', messages);
     
     for (const msg of messages) {
-      const result = await pool.query(`
+      await pool.query(`
         INSERT INTO whatsapp_flow_messages 
           (message_key, content_es, content_en, content_fr, content_ru, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -4974,7 +4974,7 @@ app.post("/api/whatsapp/flow-messages", async (req, res) => {
       
       console.log(`✅ Guardado ${msg.message_key}`);
     }
-
+    
     console.log('✅ Todos los mensajes guardados');
     res.json({
       success: true,
@@ -6028,6 +6028,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
