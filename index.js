@@ -5243,8 +5243,13 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
 // ============================================================
 // 📋 MANAGER - EARLY/LATE CHECK-IN REQUESTS
 // ============================================================
-app.get("/manager/early-late", requireLogin, async (req, res) => {
+app.get("/manager/early-late", async (req, res) => {
   try {
+    // ✅ Verificar sesión manualmente
+    if (!req.session || !req.session.user) {
+      return res.redirect("/login");
+    }
+
     const user = req.session.user;
 
     // 🔍 Query para obtener solicitudes
@@ -5318,7 +5323,7 @@ app.get("/manager/early-late", requireLogin, async (req, res) => {
         : '';
 
       const actions = isPending ? `
-        <div style="display:flex; gap:8px; margin-top:12px;">
+        <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
           <form method="POST" action="/manager/early-late/${r.id}/approve" style="margin:0;">
             <button type="submit" class="btn-small" style="background:#dcfce7; color:#166534; border:1px solid #86efac;">
               ✅ Aprobar
@@ -5364,7 +5369,7 @@ app.get("/manager/early-late", requireLogin, async (req, res) => {
             </div>
             <div style="text-align:right;">
               ${statusBadge}
-              ${paymentBadge}
+              ${paymentBadge ? `<br>${paymentBadge}` : ''}
             </div>
           </div>
           
@@ -5401,7 +5406,7 @@ app.get("/manager/early-late", requireLogin, async (req, res) => {
         
         ${pending.length > 0 
           ? pending.map(r => renderRequest(r, true)).join('')
-          : '<p class="muted">No hay solicitudes pendientes</p>'
+          : '<div class="card"><p class="muted">No hay solicitudes pendientes</p></div>'
         }
       </div>
 
@@ -5414,7 +5419,7 @@ app.get("/manager/early-late", requireLogin, async (req, res) => {
         
         ${history.length > 0 
           ? history.map(r => renderRequest(r, false)).join('')
-          : '<p class="muted">No hay historial</p>'
+          : '<div class="card"><p class="muted">No hay historial</p></div>'
         }
       </div>
     `;
@@ -5431,6 +5436,178 @@ app.get("/manager/early-late", requireLogin, async (req, res) => {
     `));
   }
 });
+
+// ============================================================
+// 📋 MANAGER - APROBAR SOLICITUD EARLY/LATE
+// ============================================================
+app.post("/manager/early-late/:id/approve", async (req, res) => {
+  try {
+    if (!req.session || !req.session.user) {
+      return res.redirect("/login");
+    }
+
+    const { id } = req.params;
+    const user = req.session.user;
+
+    // Verificar que la solicitud existe y pertenece al manager
+    const { rows } = await pool.query(`
+      SELECT elr.*, c.apartment_id
+      FROM early_late_requests elr
+      JOIN checkins c ON c.id = elr.checkin_id
+      WHERE elr.id = $1
+        ${user.amdSql ? user.amdSql.replace('AND', 'AND c.') : ''}
+    `, [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).send("Solicitud no encontrada");
+    }
+
+    // Actualizar estado a aprobado
+    await pool.query(`
+      UPDATE early_late_requests
+      SET status = 'approved',
+          approved_at = NOW()
+      WHERE id = $1
+    `, [id]);
+
+    console.log(`✅ Solicitud early/late ${id} aprobada por manager`);
+
+    res.redirect("/manager/early-late");
+
+  } catch (err) {
+    console.error("Error al aprobar solicitud:", err);
+    res.status(500).send("Error al aprobar solicitud");
+  }
+});
+
+// ============================================================
+// 📋 MANAGER - RECHAZAR SOLICITUD EARLY/LATE
+// ============================================================
+app.post("/manager/early-late/:id/reject", async (req, res) => {
+  try {
+    if (!req.session || !req.session.user) {
+      return res.redirect("/login");
+    }
+
+    const { id } = req.params;
+    const user = req.session.user;
+
+    // Verificar que la solicitud existe y pertenece al manager
+    const { rows } = await pool.query(`
+      SELECT elr.*, c.apartment_id
+      FROM early_late_requests elr
+      JOIN checkins c ON c.id = elr.checkin_id
+      WHERE elr.id = $1
+        ${user.amdSql ? user.amdSql.replace('AND', 'AND c.') : ''}
+    `, [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).send("Solicitud no encontrada");
+    }
+
+    // Actualizar estado a rechazado
+    await pool.query(`
+      UPDATE early_late_requests
+      SET status = 'rejected',
+          rejected_at = NOW()
+      WHERE id = $1
+    `, [id]);
+
+    console.log(`❌ Solicitud early/late ${id} rechazada por manager`);
+
+    res.redirect("/manager/early-late");
+
+  } catch (err) {
+    console.error("Error al rechazar solicitud:", err);
+    res.status(500).send("Error al rechazar solicitud");
+  }
+});
+
+// ============================================================
+// 📋 MANAGER - ENVIAR LINK DE PAGO EARLY/LATE
+// ============================================================
+app.post("/manager/early-late/:id/send-payment", async (req, res) => {
+  try {
+    if (!req.session || !req.session.user) {
+      return res.redirect("/login");
+    }
+
+    const { id } = req.params;
+    const user = req.session.user;
+
+    // Obtener datos de la solicitud
+    const { rows } = await pool.query(`
+      SELECT 
+        elr.*,
+        c.apartment_id,
+        c.phone,
+        c.full_name,
+        c.beds24_booking_id,
+        c.booking_token
+      FROM early_late_requests elr
+      JOIN checkins c ON c.id = elr.checkin_id
+      WHERE elr.id = $1
+        ${user.amdSql ? user.amdSql.replace('AND', 'AND c.') : ''}
+    `, [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).send("Solicitud no encontrada");
+    }
+
+    const request = rows[0];
+
+    if (!request.price || request.price <= 0) {
+      return res.status(400).send("Esta solicitud no tiene precio configurado");
+    }
+
+    if (!request.phone) {
+      return res.status(400).send("El huésped no tiene teléfono registrado");
+    }
+
+    // 💰 Generar link de pago (usando la misma lógica que payment_url)
+    const bookingId = request.beds24_booking_id || request.booking_token || request.checkin_id;
+    const paymentLink = `https://rcscheckin.com/guest/${encodeURIComponent(bookingId)}?payment=early_late&request_id=${id}`;
+
+    // Guardar link en BD
+    await pool.query(`
+      UPDATE early_late_requests
+      SET payment_link = $1
+      WHERE id = $2
+    `, [paymentLink, id]);
+
+    // 📱 Enviar mensaje por WhatsApp
+    const typeText = request.request_type === 'early_checkin' ? 'early check-in' : 
+                     request.request_type === 'late_checkout' ? 'late checkout' : 
+                     'early check-in y late checkout';
+
+    const message = `Hola ${request.full_name}! 👋
+
+Tu solicitud de ${typeText} ha sido aprobada.
+
+💵 Precio: €${request.price}
+
+Para confirmar tu reserva, por favor realiza el pago en el siguiente enlace:
+
+${paymentLink}
+
+¡Gracias!`;
+
+    // Enviar WhatsApp
+    const phoneClean = request.phone.replace(/\D/g, '');
+    const whatsappPhone = phoneClean.startsWith('34') ? phoneClean : `34${phoneClean}`;
+
+    await twilioClient.messages.create({
+      from: `whatsapp:${TWILIO_WHATSAPP_NUMBER}`,
+      to: `whatsapp:+${whatsappPhone}`,
+      body: message
+    });
+
+    console.log(`💰 Link de pago enviado para solicitud ${id} a ${whatsappPhone}`);
+
+    res.redirect("/manager/early-late");
+
+  } catch (err) {
+    console.error("Error al enviar link de pago:"
 
 // =============== API: RESPUESTAS AUTOMÁTICAS WHATSAPP ===============
 
@@ -6464,6 +6641,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
