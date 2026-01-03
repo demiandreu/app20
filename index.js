@@ -5938,17 +5938,14 @@ async function handleDepartureTime(from, checkin, body, language) {
   // Esperar 1 segundo
   await new Promise(resolve => setTimeout(resolve, 1000));
   
-  // Enviar CONFIRMATION
-  let confirmMsg = await getFlowMessage('CONFIRMATION', language);
-  if (confirmMsg) {
-    confirmMsg = replaceVariables(confirmMsg, checkin, room);
-    await sendWhatsAppMessage(from, confirmMsg);
-    console.log(`✅ Enviado mensaje CONFIRMATION`);
+  // Enviar ASK_RULES (en ambos casos)
+  let askRulesMsg = await getFlowMessage('ASK_RULES', language);
+  if (askRulesMsg) {
+    askRulesMsg = replaceVariables(askRulesMsg, checkin, room);
+    await sendWhatsAppMessage(from, askRulesMsg);
+    console.log(`✅ Enviado mensaje ASK_RULES`);
   }
-  
-  console.log(`🎉 FLUJO COMPLETADO para checkin ${checkin.id}`);
 }
-
 // ============ MANEJAR ACEPTACIÓN DE NORMAS ============
 async function handleRulesAcceptance(from, checkin, body, language) {
   console.log(`📋 Procesando aceptación de normas: "${body}"`);
@@ -6177,6 +6174,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
