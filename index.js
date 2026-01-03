@@ -5816,7 +5816,7 @@ async function handleArrivalTime(from, checkin, body, language) {
     await pool.query(`
       INSERT INTO early_late_requests 
         (checkin_id, request_type, requested_time, hours_difference, status, guest_phone, created_at)
-      VALUES ($1, 'early_checkin', $2, $3, 'pending', $4, NOW())
+      VVALUES ($1, 'early_checkin', $2, $3, 'pending', $4, NOW(), NULL)
     `, [checkin.id, parsedTime, hoursDiff, from]);
     
     console.log(`📝 Solicitud de early check-in creada (${hoursDiff}h antes)`);
@@ -6174,6 +6174,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
