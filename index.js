@@ -5779,21 +5779,18 @@ app.delete("/api/whatsapp/auto-replies/:id", async (req, res) => {
 });
 
 // ================================================================================
-// CÓDIGO PARA AÑADIR AL FINAL DE TU index.js (ANTES DEL app.listen)
-// ================================================================================
-
-// ============ WEBHOOK DE WHATSAPP - PROCESAR MENSAJES ENTRANTES ============
-
-// ================================================================================
-// 🤖 WEBHOOK DE WHATSAPP - VERSIÓN MEJORADA CON MÁQUINA DE ESTADOS
+// 🤖 WEBHOOK DE WHATSAPP - CON SISTEMA DE SESIONES
 // ================================================================================
 // 
-// FLUJO COMPLETO:
-// START → REGOK → PAYOK → WAITING_ARRIVAL → WAITING_DEPARTURE → DONE
+// FLUJO:
+// 1. Usuario envía START_123456 desde cualquier número → Crea sesión
+// 2. Bot vincula ese número con esa reserva en whatsapp_sessions
+// 3. Usuario puede usar REGOK, PAYOK, enviar horas, etc.
+// 4. OTRO número puede enviar START_123456 y también trabajar con esa reserva
 //
 // Estados posibles en bot_state:
 // - IDLE: Sin actividad
-// - WAITING_REGOK: Esperando que el guest complete registro
+// - WAITING_REGOK: Esperando que complete registro
 // - WAITING_PAYOK: Esperando confirmación de pago
 // - WAITING_ARRIVAL: Esperando hora de llegada
 // - WAITING_DEPARTURE: Esperando hora de salida
@@ -5802,35 +5799,16 @@ app.delete("/api/whatsapp/auto-replies/:id", async (req, res) => {
 
 // ============ WEBHOOK DE WHATSAPP - PROCESAR MENSAJES ENTRANTES ============
 
-// ================================================================================
-// 🤖 WEBHOOK DE WHATSAPP - VERSIÓN MEJORADA CON MÁQUINA DE ESTADOS
-// ================================================================================
-// 
-// FLUJO COMPLETO:
-// START → REGOK → PAYOK → WAITING_ARRIVAL → WAITING_DEPARTURE → DONE
-//
-// Estados posibles en bot_state:
-// - IDLE: Sin actividad
-// - WAITING_REGOK: Esperando que el guest complete registro
-// - WAITING_PAYOK: Esperando confirmación de pago
-// - WAITING_ARRIVAL: Esperando hora de llegada
-// - WAITING_DEPARTURE: Esperando hora de salida
-// - DONE: Flujo completado
-// ================================================================================
-
-// ============ WEBHOOK DE WHATSAPP - PROCESAR MENSAJES ENTRANTES ============
-
-// Mantener compatibilidad con ruta vieja (redireccionar)
-app.post("/webhooks/twilio/whatsapp", async (req, res) => {
-  console.log("⚠️ Usando ruta vieja - considera actualizar Twilio a /api/whatsapp/webhook");
-  
+app.post("/api/whatsapp/webhook", async (req, res) => {
   try {
     const { From, Body, MessageSid } = req.body;
     
     console.log(`📱 WhatsApp mensaje recibido de ${From}: ${Body}`);
     
+    // Responder a Twilio inmediatamente (200 OK)
     res.status(200).send('OK');
     
+    // Procesar mensaje en segundo plano
     processWhatsAppMessage(From, Body, MessageSid).catch(err => {
       console.error('❌ Error procesando mensaje WhatsApp:', err);
     });
@@ -5848,43 +5826,42 @@ async function processWhatsAppMessage(from, body, messageId) {
     // Normalizar número de teléfono (quitar whatsapp: y +)
     const phoneNumber = from.replace('whatsapp:', '').replace('+', '');
     
-    console.log(`🔍 Buscando checkin para teléfono: ${phoneNumber}`);
+    console.log(`🔍 Procesando mensaje de: ${phoneNumber}`);
     
-    // Buscar checkin activo para este número
-    const checkinResult = await pool.query(`
-      SELECT 
-        c.id, 
-        c.full_name, 
-        c.email, 
-        c.apartment_name, 
-        c.booking_id,
-        c.bot_state,
-        c.beds24_raw->>'guestLanguage' as guest_language,
-        c.arrival_date,
-        c.departure_date
-      FROM checkins c
-      WHERE REPLACE(REPLACE(c.phone, '+', ''), ' ', '') = $1
-        AND c.arrival_date >= CURRENT_DATE - INTERVAL '1 day'
-      ORDER BY c.created_at DESC
-      LIMIT 1
-    `, [phoneNumber]);
+    // Normalizar texto del mensaje
+    const bodyUpper = body.toUpperCase().trim();
+    const bodyLower = body.toLowerCase().trim();
     
-    if (checkinResult.rows.length === 0) {
-      console.log(`⚠️ No se encontró checkin para ${phoneNumber}`);
+    // ========== PRIORIDAD 1: COMANDO START (CREAR/ACTUALIZAR SESIÓN) ==========
+    
+    const startMatch = bodyUpper.match(/^START[\s_:-]*([0-9]+)[\s_:-]*([A-Z]{2})?\s*$/);
+    
+    if (startMatch) {
+      await handleStartCommand(from, phoneNumber, startMatch, body);
       return;
     }
     
-    const checkin = checkinResult.rows[0];
-    console.log(`✅ Checkin encontrado: ${checkin.full_name} (ID: ${checkin.id}, Estado: ${checkin.bot_state})`);
+    // ========== PRIORIDAD 2: BUSCAR SESIÓN ACTIVA ==========
+    
+    const checkin = await getSessionCheckin(phoneNumber);
+    
+    if (!checkin) {
+      console.log(`⚠️ No hay sesión activa para ${phoneNumber}`);
+      // Opcionalmente enviar mensaje pidiendo que haga START
+      await sendWhatsAppMessage(from, 
+        '⚠️ No encuentro tu reserva.\n\nPor favor, envía:\nSTART [número de reserva]\n\nEjemplo: START 80271139'
+      );
+      return;
+    }
+    
+    console.log(`✅ Sesión encontrada: ${checkin.full_name} (ID: ${checkin.id}, Estado: ${checkin.bot_state})`);
     
     // Detectar idioma del guest (desde Beds24 o default español)
     const language = detectLanguage(checkin.guest_language);
     console.log(`🌐 Idioma detectado: ${language}`);
     
-    // Normalizar texto del mensaje
-    const bodyLower = body.toLowerCase().trim();
+    // ========== PRIORIDAD 3: RESPUESTAS AUTOMÁTICAS (FAQ) ==========
     
-    // ========== PRIORIDAD 1: RESPUESTAS AUTOMÁTICAS (FAQ) ==========
     const autoReply = await findAutoReply(bodyLower, language);
     if (autoReply) {
       console.log(`🤖 Enviando respuesta automática (FAQ)`);
@@ -5892,7 +5869,7 @@ async function processWhatsAppMessage(from, body, messageId) {
       return;
     }
     
-    // ========== PRIORIDAD 2: COMANDOS ESPECIALES ==========
+    // ========== PRIORIDAD 4: COMANDOS ESPECIALES ==========
     
     // COMANDO: REGOK
     if (bodyLower === 'regok') {
@@ -5906,7 +5883,7 @@ async function processWhatsAppMessage(from, body, messageId) {
       return;
     }
     
-    // ========== PRIORIDAD 3: PROCESAR SEGÚN ESTADO DEL BOT ==========
+    // ========== PRIORIDAD 5: PROCESAR SEGÚN ESTADO DEL BOT ==========
     
     const currentState = checkin.bot_state || 'IDLE';
     
@@ -5935,6 +5912,225 @@ async function processWhatsAppMessage(from, body, messageId) {
   }
 }
 
+// ============ MANEJAR COMANDO START ============
+
+async function handleStartCommand(from, phoneNumber, startMatch, originalBody) {
+  try {
+    const bookingId = String(startMatch[1] || "").trim();
+    const langCode = (startMatch[2] || 'es').toLowerCase();
+    const supportedLangs = ['es', 'en', 'fr', 'ru'];
+    const language = supportedLangs.includes(langCode) ? langCode : 'es';
+    
+    console.log(`🎯 Comando START recibido: booking=${bookingId}, lang=${language}`);
+    
+    // Buscar el checkin por booking ID
+    const result = await pool.query(`
+      SELECT * FROM checkins
+      WHERE booking_token = $1 
+         OR beds24_booking_id::text = $1 
+         OR REPLACE(beds24_booking_id::text, ' ', '') = $1
+         OR booking_id_from_start = $1
+      ORDER BY id DESC 
+      LIMIT 1
+    `, [bookingId]);
+    
+    if (result.rows.length === 0) {
+      console.log(`⚠️ No se encontró booking: ${bookingId}`);
+      await sendWhatsAppMessage(from, 
+        `❌ No encuentro la reserva ${bookingId}.\n\nVerifica el número y vuelve a intentar.`
+      );
+      return;
+    }
+    
+    const checkin = result.rows[0];
+    console.log(`✅ Booking encontrado: ${checkin.full_name} (ID: ${checkin.id})`);
+    
+    // Actualizar idioma si se especificó
+    if (startMatch[2]) {
+      await pool.query(
+        `UPDATE checkins SET guest_language = $1 WHERE id = $2`,
+        [language, checkin.id]
+      );
+      console.log(`🌐 Idioma actualizado a: ${language}`);
+    }
+    
+    // CREAR/ACTUALIZAR SESIÓN: vincular este número con este checkin
+    await setSessionCheckin(phoneNumber, checkin.id);
+    console.log(`🔗 Sesión creada: ${phoneNumber} → checkin ${checkin.id}`);
+    
+    // Actualizar el teléfono en el checkin si está vacío
+    await pool.query(
+      `UPDATE checkins SET phone = COALESCE(NULLIF(phone, ''), $1) WHERE id = $2`,
+      [phoneNumber, checkin.id]
+    );
+    
+    // Enviar mensaje de bienvenida START
+    await sendStartMessage(from, checkin, language);
+    
+  } catch (error) {
+    console.error('❌ Error en handleStartCommand:', error);
+  }
+}
+
+// ============ ENVIAR MENSAJE START ============
+
+async function sendStartMessage(from, checkin, language) {
+  try {
+    // Obtener configuración del apartamento
+    const roomResult = await pool.query(
+      `SELECT registration_url, default_arrival_time, default_departure_time 
+       FROM beds24_rooms 
+       WHERE beds24_room_id = $1 OR id::text = $1 
+       LIMIT 1`,
+      [String(checkin.apartment_id || "")]
+    );
+    
+    const room = roomResult.rows[0] || {};
+    
+    // Preparar datos
+    const bookIdForLinks = String(
+      checkin.beds24_booking_id || 
+      checkin.booking_id_from_start || 
+      checkin.booking_token || ""
+    ).replace(/\s/g, '');
+    
+    const regLink = (room.registration_url || "").replace(/\[BOOKID\]/g, bookIdForLinks);
+    
+    const name = checkin.full_name || "";
+    const apt = checkin.apartment_name || checkin.apartment_id || "";
+    const arriveDate = checkin.arrival_date ? String(checkin.arrival_date).slice(0, 10) : "";
+    const departDate = checkin.departure_date ? String(checkin.departure_date).slice(0, 10) : "";
+    
+    // Solo horas (sin minutos)
+    const arriveTime = (checkin.arrival_time ? String(checkin.arrival_time).slice(0, 2) : "") || 
+                       String(room.default_arrival_time || "").slice(0, 2) || "17";
+    const departTime = (checkin.departure_time ? String(checkin.departure_time).slice(0, 2) : "") || 
+                       String(room.default_departure_time || "").slice(0, 2) || "11";
+    
+    const adults = Number(checkin.adults || 0);
+    const children = Number(checkin.children || 0);
+    
+    // Obtener mensaje START personalizado de la DB
+    const startMsg = await getFlowMessage('START', language);
+    
+    // Textos por defecto si no hay mensaje en DB
+    const translations = {
+      es: {
+        greeting: "¡Hola",
+        confirmed: "Tu reserva está confirmada ✅",
+        apartment: "🏠 Apartamento",
+        checkin: "📅 Entrada",
+        checkout: "📅 Salida",
+        guests: "👥 Huéspedes",
+        adults: "adultos",
+        children: "niños",
+        instructions: "PASO 1\n📝 El registro es obligatorio para todos los huéspedes.\n🔗 Puedes compartir este enlace para que cada huésped se registre:",
+        afterReg: "Cuando termines, escribe: REGOK"
+      },
+      en: {
+        greeting: "Hello",
+        confirmed: "Your booking is confirmed ✅",
+        apartment: "🏠 Apartment",
+        checkin: "📅 Check-in",
+        checkout: "📅 Check-out",
+        guests: "👥 Guests",
+        adults: "adults",
+        children: "children",
+        instructions: "STEP 1\n📝 Registration is mandatory for all guests.\n🔗 You can share this link for each guest to register:",
+        afterReg: "When done, write: REGOK"
+      },
+      fr: {
+        greeting: "Bonjour",
+        confirmed: "Votre réservation est confirmée ✅",
+        apartment: "🏠 Appartement",
+        checkin: "📅 Arrivée",
+        checkout: "📅 Départ",
+        guests: "👥 Invités",
+        adults: "adultes",
+        children: "enfants",
+        instructions: "ÉTAPE 1\n📝 L'enregistrement est obligatoire pour tous les invités.\n🔗 Vous pouvez partager ce lien pour que chaque invité s'enregistre:",
+        afterReg: "Quand c'est fait, écrivez: REGOK"
+      },
+      ru: {
+        greeting: "Здравствуйте",
+        confirmed: "Ваше бронирование подтверждено ✅",
+        apartment: "🏠 Апартамент",
+        checkin: "📅 Заезд",
+        checkout: "📅 Выезд",
+        guests: "👥 Гости",
+        adults: "взрослых",
+        children: "детей",
+        instructions: "ШАГ 1\n📝 Регистрация обязательна для всех гостей.\n🔗 Вы можете поделиться этой ссылкой для регистрации каждого гостя:",
+        afterReg: "Когда закончите, напишите: REGOK"
+      }
+    };
+    
+    const t = translations[language] || translations.es;
+    
+    const guestsText = adults || children ? 
+      `${adults} ${t.adults}${children ? `, ${children} ${t.children}` : ""}` : "—";
+    
+    const finalMessage = startMsg || `${t.greeting}, ${name} 👋
+
+${t.confirmed}
+
+${t.apartment}: ${apt}
+${t.checkin}: ${arriveDate}, ${arriveTime}h
+${t.checkout}: ${departDate}, ${departTime}h
+${t.guests}: ${guestsText}
+
+${t.instructions}
+${regLink || "—"}
+
+${t.afterReg}`;
+    
+    await sendWhatsAppMessage(from, finalMessage);
+    console.log(`✅ Mensaje START enviado`);
+    
+  } catch (error) {
+    console.error('❌ Error en sendStartMessage:', error);
+  }
+}
+
+// ============ OBTENER SESIÓN ACTIVA ============
+
+async function getSessionCheckin(phoneNumber) {
+  try {
+    const result = await pool.query(`
+      SELECT c.* 
+      FROM whatsapp_sessions ws
+      JOIN checkins c ON c.id = ws.checkin_id
+      WHERE ws.phone = $1 
+      ORDER BY ws.updated_at DESC 
+      LIMIT 1
+    `, [phoneNumber]);
+    
+    return result.rows[0] || null;
+  } catch (error) {
+    console.error('❌ Error obteniendo sesión:', error);
+    return null;
+  }
+}
+
+// ============ CREAR/ACTUALIZAR SESIÓN ============
+
+async function setSessionCheckin(phoneNumber, checkinId) {
+  try {
+    await pool.query(`
+      INSERT INTO whatsapp_sessions (phone, checkin_id, created_at, updated_at)
+      VALUES ($1, $2, NOW(), NOW())
+      ON CONFLICT (phone) 
+      DO UPDATE SET 
+        checkin_id = EXCLUDED.checkin_id, 
+        updated_at = NOW()
+    `, [phoneNumber, checkinId]);
+    
+    console.log(`✅ Sesión guardada: ${phoneNumber} → checkin ${checkinId}`);
+  } catch (error) {
+    console.error('❌ Error guardando sesión:', error);
+  }
+}
+
 // ============ DETECTAR IDIOMA DEL GUEST ============
 
 function detectLanguage(guestLanguage) {
@@ -5943,7 +6139,6 @@ function detectLanguage(guestLanguage) {
   const langLower = guestLanguage.toLowerCase();
   
   // Mapeo de códigos comunes de Beds24
-  // Solo soportamos: ES, EN, FR, RU (los idiomas que tienes en la BD)
   if (langLower.includes('en') || langLower.includes('english')) return 'en';
   if (langLower.includes('fr') || langLower.includes('french') || langLower.includes('français')) return 'fr';
   if (langLower.includes('ru') || langLower.includes('russian') || langLower.includes('русский')) return 'ru';
@@ -6090,15 +6285,6 @@ function parseTimeInput(input) {
   // Normalizar entrada
   const normalized = input.trim().toLowerCase();
   
-  // Regex para capturar diferentes formatos:
-  // - "17" → 17:00
-  // - "23" → 23:00
-  // - "17:30" → 17:30
-  // - "17.30" → 17:30
-  // - "17h30" → 17:30
-  // - "5pm" → 17:00
-  // - "5:30pm" → 17:30
-  
   // Formato 1: Solo número (17, 23)
   let match = normalized.match(/^(\d{1,2})$/);
   if (match) {
@@ -6223,7 +6409,7 @@ async function sendWhatsAppMessage(to, message) {
   try {
     const accountSid = process.env.TWILIO_ACCOUNT_SID;
     const authToken = process.env.TWILIO_AUTH_TOKEN;
-    const fromNumber = process.env.TWILIO_WHATSAPP_NUMBER;
+    const fromNumber = process.env.TWILIO_WHATSAPP_FROM || process.env.TWILIO_WHATSAPP_NUMBER;
     
     if (!accountSid || !authToken || !fromNumber) {
       console.error('❌ Faltan credenciales de Twilio en variables de entorno');
@@ -6248,6 +6434,10 @@ async function sendWhatsAppMessage(to, message) {
 }
 
 // ================================================================================
+// FIN DEL CÓDIGO CON SESIONES
+// ================================================================================
+
+// ================================================================================
 // FIN DEL CÓDIGO MEJORADO
 // ================================================================================
 
@@ -6261,6 +6451,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
