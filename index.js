@@ -5361,6 +5361,9 @@ async function processWhatsAppMessage(from, body, messageId) {
       case 'WAITING_DEPARTURE':
         await handleDepartureTime(from, checkin, body, language);
         break;
+        case 'WAITING_RULES':
+    await handleRulesAcceptance(from, checkin, body, language);
+    break;
         
       case 'DONE':
         console.log(`✅ Flujo ya completado para checkin ${checkin.id}`);
@@ -5895,7 +5898,7 @@ async function handleDepartureTime(from, checkin, body, language) {
       SET 
         departure_time = $1,
         late_checkout_requested = true,
-        bot_state = 'DONE'
+        bot_state = 'WAITING_RULES'
       WHERE id = $2
     `, [parsedTime, checkin.id]);
     
@@ -5925,7 +5928,7 @@ async function handleDepartureTime(from, checkin, body, language) {
       UPDATE checkins 
       SET 
         departure_time = $1,
-        bot_state = 'DONE'
+        bot_state = 'WAITING_RULES'
       WHERE id = $2
     `, [parsedTime, checkin.id]);
     
@@ -5944,6 +5947,67 @@ async function handleDepartureTime(from, checkin, body, language) {
   }
   
   console.log(`🎉 FLUJO COMPLETADO para checkin ${checkin.id}`);
+}
+
+// ============ MANEJAR ACEPTACIÓN DE NORMAS ============
+async function handleRulesAcceptance(from, checkin, body, language) {
+  console.log(`📋 Procesando aceptación de normas: "${body}"`);
+  
+  // Validar si el usuario aceptó (en cualquier idioma)
+  const accepted = /^(acepto|accept|j'accepte|принимаю|si|yes|oui|да)$/i.test(body.trim());
+  
+  if (accepted) {
+    console.log(`✅ Usuario aceptó las normas`);
+    
+    // Obtener configuración del apartamento
+    const roomResult = await pool.query(
+      `SELECT registration_url, payment_url, default_arrival_time, default_departure_time 
+       FROM beds24_rooms 
+       WHERE beds24_room_id = $1 OR id::text = $1 
+       LIMIT 1`,
+      [String(checkin.apartment_id || "")]
+    );
+    
+    const room = roomResult.rows[0] || {};
+    
+    // Guardar que aceptó y cambiar estado a DONE
+    await pool.query(`
+      UPDATE checkins 
+      SET 
+        bot_state = 'DONE'
+      WHERE id = $1
+    `, [checkin.id]);
+    
+    console.log(`💾 Estado cambiado a DONE`);
+    
+    // Esperar 1 segundo
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Enviar mensaje CONFIRMATION con las instrucciones
+    let confirmMsg = await getFlowMessage('CONFIRMATION', language);
+    if (confirmMsg) {
+      confirmMsg = replaceVariables(confirmMsg, checkin, room);
+      await sendWhatsAppMessage(from, confirmMsg);
+      console.log(`✅ Enviado mensaje CONFIRMATION`);
+    }
+    
+    console.log(`🎉 FLUJO COMPLETADO para checkin ${checkin.id}`);
+    
+  } else {
+    // Usuario NO aceptó o escribió algo incorrecto
+    console.log(`⚠️ Usuario no aceptó las normas`);
+    
+    const retryMessages = {
+      es: '⚠️ Para continuar, debes escribir: ACEPTO',
+      en: '⚠️ To continue, you must write: ACCEPT',
+      fr: '⚠️ Pour continuer, vous devez écrire: J\'ACCEPTE',
+      ru: '⚠️ Чтобы продолжить, напишите: ПРИНИМАЮ'
+    };
+    
+    const retryMsg = retryMessages[language] || retryMessages.es;
+    await sendWhatsAppMessage(from, retryMsg);
+    console.log(`✅ Enviado mensaje de reintento`);
+  }
 }
 // ============ PARSEAR ENTRADA DE HORA ============
 
@@ -6113,6 +6177,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
