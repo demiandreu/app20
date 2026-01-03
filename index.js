@@ -5984,9 +5984,6 @@ function replaceVariables(message, checkin, room) {
     checkin.booking_token || ""
   ).replace(/\s/g, '');
   
-  // Variable unificada para booking ID
-  const bookingId = bookIdForLinks;
-  
   const regLink = (room.registration_url || "").replace(/\[BOOKID\]/g, bookIdForLinks);
   const payLink = (room.payment_url || "").replace(/\[BOOKID\]/g, bookIdForLinks);
   
@@ -6023,8 +6020,6 @@ function replaceVariables(message, checkin, room) {
   
   // Reemplazar todas las variables
   return message
-    .replace(/\{booking_id\}/g, bookingId)      // NUEVO - Variable booking ID
-    .replace(/\[BOOKID\]/g, bookingId)          // NUEVO - Soporte legacy Beds24
     .replace(/\{guest_name\}/g, name)
     .replace(/\{apartment_name\}/g, apt)
     .replace(/\{apartment_id\}/g, checkin.apartment_id || "")
@@ -6223,10 +6218,26 @@ function detectLanguage(guestLanguage) {
 async function handleRegOk(from, checkin, language) {
   console.log(`✅ Procesando REGOK para checkin ${checkin.id}`);
   
-  const msg = await getFlowMessage('REGOK', language);
+  // Obtener configuración del apartamento
+  const roomResult = await pool.query(
+    `SELECT registration_url, payment_url, default_arrival_time, default_departure_time 
+     FROM beds24_rooms 
+     WHERE beds24_room_id = $1 OR id::text = $1 
+     LIMIT 1`,
+    [String(checkin.apartment_id || "")]
+  );
+  
+  const room = roomResult.rows[0] || {};
+  
+  // Obtener mensaje REGOK de la DB
+  let msg = await getFlowMessage('REGOK', language);
+  
   if (msg) {
+    // Reemplazar variables en el mensaje
+    msg = replaceVariables(msg, checkin, room);
+    
     await sendWhatsAppMessage(from, msg);
-    console.log(`✅ Enviado mensaje REGOK`);
+    console.log(`✅ Enviado mensaje REGOK con variables reemplazadas`);
     
     // Actualizar estado
     await pool.query(`
@@ -6242,9 +6253,21 @@ async function handleRegOk(from, checkin, language) {
 async function handlePayOk(from, checkin, language) {
   console.log(`✅ Procesando PAYOK para checkin ${checkin.id}`);
   
+  // Obtener configuración del apartamento
+  const roomResult = await pool.query(
+    `SELECT registration_url, payment_url, default_arrival_time, default_departure_time 
+     FROM beds24_rooms 
+     WHERE beds24_room_id = $1 OR id::text = $1 
+     LIMIT 1`,
+    [String(checkin.apartment_id || "")]
+  );
+  
+  const room = roomResult.rows[0] || {};
+  
   // 1. Enviar mensaje PAYOK
-  const payokMsg = await getFlowMessage('PAYOK', language);
+  let payokMsg = await getFlowMessage('PAYOK', language);
   if (payokMsg) {
+    payokMsg = replaceVariables(payokMsg, checkin, room);
     await sendWhatsAppMessage(from, payokMsg);
     console.log(`✅ Enviado mensaje PAYOK`);
     
@@ -6252,8 +6275,9 @@ async function handlePayOk(from, checkin, language) {
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // 3. Enviar ASK_ARRIVAL automáticamente
-    const askArrivalMsg = await getFlowMessage('ASK_ARRIVAL', language);
+    let askArrivalMsg = await getFlowMessage('ASK_ARRIVAL', language);
     if (askArrivalMsg) {
+      askArrivalMsg = replaceVariables(askArrivalMsg, checkin, room);
       await sendWhatsAppMessage(from, askArrivalMsg);
       console.log(`✅ Enviado mensaje ASK_ARRIVAL automáticamente`);
       
@@ -6301,9 +6325,21 @@ async function handleArrivalTime(from, checkin, body, language) {
   // Esperar 1 segundo
   await new Promise(resolve => setTimeout(resolve, 1000));
   
-  // Enviar ASK_DEPARTURE
-  const askDepartureMsg = await getFlowMessage('ASK_DEPARTURE', language);
+  // Obtener configuración del apartamento para variables
+  const roomResult = await pool.query(
+    `SELECT registration_url, payment_url, default_arrival_time, default_departure_time 
+     FROM beds24_rooms 
+     WHERE beds24_room_id = $1 OR id::text = $1 
+     LIMIT 1`,
+    [String(checkin.apartment_id || "")]
+  );
+  
+  const room = roomResult.rows[0] || {};
+  
+  // Enviar ASK_DEPARTURE con variables reemplazadas
+  let askDepartureMsg = await getFlowMessage('ASK_DEPARTURE', language);
   if (askDepartureMsg) {
+    askDepartureMsg = replaceVariables(askDepartureMsg, checkin, room);
     await sendWhatsAppMessage(from, askDepartureMsg);
     console.log(`✅ Enviado mensaje ASK_DEPARTURE`);
   }
@@ -6341,9 +6377,21 @@ async function handleDepartureTime(from, checkin, body, language) {
   // Esperar 1 segundo
   await new Promise(resolve => setTimeout(resolve, 1000));
   
-  // Enviar mensaje de confirmación final
-  const confirmMsg = await getFlowMessage('CONFIRMATION', language);
+  // Obtener configuración del apartamento para variables
+  const roomResult = await pool.query(
+    `SELECT registration_url, payment_url, default_arrival_time, default_departure_time 
+     FROM beds24_rooms 
+     WHERE beds24_room_id = $1 OR id::text = $1 
+     LIMIT 1`,
+    [String(checkin.apartment_id || "")]
+  );
+  
+  const room = roomResult.rows[0] || {};
+  
+  // Enviar mensaje de confirmación final con variables reemplazadas
+  let confirmMsg = await getFlowMessage('CONFIRMATION', language);
   if (confirmMsg) {
+    confirmMsg = replaceVariables(confirmMsg, checkin, room);
     await sendWhatsAppMessage(from, confirmMsg);
     console.log(`✅ Enviado mensaje de CONFIRMACIÓN FINAL`);
   }
@@ -6519,6 +6567,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
