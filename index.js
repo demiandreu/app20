@@ -2186,6 +2186,7 @@ FROM beds24_rooms
   }
 });
 // ===== EDIT APARTMENT SETTINGS PAGE =====
+
 app.get("/manager/apartment", async (req, res) => {
   try {
     const id = Number(req.query.id);
@@ -2202,7 +2203,8 @@ app.get("/manager/apartment", async (req, res) => {
         default_departure_time,
         registration_url,
         payment_url,
-        keys_instructions_url
+        keys_instructions_url,
+        show_in_staff
       FROM beds24_rooms
       WHERE id = $1
       LIMIT 1
@@ -2214,7 +2216,7 @@ app.get("/manager/apartment", async (req, res) => {
     const a = rows[0];
     
     const roomId = String(a.beds24_room_id || "").trim();
-   const beds24Name = a.apartment_name || "";  // ✅
+    const beds24Name = a.apartment_name || "";
     const displayName = a.apartment_name || beds24Name || `Apartment #${a.id}`;
     
     const html = `
@@ -2232,14 +2234,14 @@ app.get("/manager/apartment", async (req, res) => {
         <input type="hidden" name="id" value="${a.id}" />
         
         <label>Apartment name</label><br/>
-   <p class="muted" style="margin:4px 0 8px;">
-  Room ID: <strong>${escapeHtml(roomId || 'N/A')}</strong>
-  ${beds24Name ? ` · Beds24: <strong>${escapeHtml(beds24Name)}</strong>` : ''}
-</p>
-<input 
-  name="apartment_name" 
-  value="${escapeHtml(a.apartment_name || beds24Name || '')}"
-  placeholder="Nombre del apartamento"
+        <p class="muted" style="margin:4px 0 8px;">
+          Room ID: <strong>${escapeHtml(roomId || 'N/A')}</strong>
+          ${beds24Name ? ` · Beds24: <strong>${escapeHtml(beds24Name)}</strong>` : ''}
+        </p>
+        <input 
+          name="apartment_name" 
+          value="${escapeHtml(a.apartment_name || beds24Name || '')}"
+          placeholder="Nombre del apartamento"
           style="width:100%; max-width:700px;" 
         />
         <p class="muted" style="margin:4px 0 12px;">Leave empty to use the Beds24 name automatically</p>
@@ -2260,6 +2262,22 @@ app.get("/manager/apartment", async (req, res) => {
         <label>Default departure time</label><br/>
         <input type="time" name="default_departure_time" value="${escapeHtml(String(a.default_departure_time || "").slice(0,5))}" />
         <br/><br/>
+        
+        <!-- 🆕 CHECKBOX SHOW IN STAFF -->
+        <div style="margin:16px 0; padding:12px; border:1px solid #e5e7eb; border-radius:8px; background:#f9fafb;">
+          <label style="display:flex; gap:12px; align-items:center; cursor:pointer;">
+            <input 
+              type="checkbox" 
+              name="show_in_staff" 
+              ${a.show_in_staff !== false ? 'checked' : ''}
+              style="width:20px; height:20px;"
+            />
+            <div>
+              <strong>👥 Mostrar en Staff Panel</strong>
+              <p class="muted" style="margin:4px 0 0;">Si está activado, este apartamento aparecerá en el panel de llegadas/salidas del staff</p>
+            </div>
+          </label>
+        </div>
         
         <label>Registration link</label><br/>
         <input name="registration_url" value="${escapeHtml(a.registration_url || "")}" style="width:100%; max-width:700px;" />
@@ -2294,22 +2312,27 @@ app.post("/manager/apartment", async (req, res) => {
     default_departure_time,
     registration_url,
     payment_url,
-    keys_instructions_url
+    keys_instructions_url,
+    show_in_staff
   } = req.body;
 
- await pool.query(`
-  UPDATE beds24_rooms
-  SET
-      apartment_name = $1,
-      support_phone = $2,
-      default_arrival_time = $3,
-      default_departure_time = $4,
-      registration_url = $5,
-      payment_url = $6,
-      keys_instructions_url = $7,
-      updated_at = now()
-    WHERE id = $8
-  `,
+  // El checkbox envía "on" si está marcado, undefined si no
+  const showInStaff = show_in_staff === 'on';
+
+  await pool.query(`
+    UPDATE beds24_rooms
+    SET
+        apartment_name = $1,
+        support_phone = $2,
+        default_arrival_time = $3,
+        default_departure_time = $4,
+        registration_url = $5,
+        payment_url = $6,
+        keys_instructions_url = $7,
+        show_in_staff = $8,
+        updated_at = now()
+      WHERE id = $9
+    `,
     [
       apartment_name,
       support_phone,
@@ -2318,6 +2341,7 @@ app.post("/manager/apartment", async (req, res) => {
       registration_url,
       payment_url,
       keys_instructions_url,
+      showInStaff,
       id
     ]
   );
@@ -4648,8 +4672,10 @@ const arrivalsRes = await pool.query(
     c.clean_ok,
     c.room_id
   FROM checkins c
+  LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.apartment_id::text  -- ✅ AÑADIR ESTA LÍNEA
   WHERE c.cancelled = false
     AND c.arrival_date IS NOT NULL
+    AND (br.show_in_staff IS NULL OR br.show_in_staff = true)  -- ✅ AÑADIR ESTA LÍNEA
     ${wArr.andSql}
   ORDER BY c.arrival_date ASC, c.arrival_time ASC, c.id DESC
   LIMIT 300
@@ -4657,7 +4683,7 @@ const arrivalsRes = await pool.query(
   wArr.params
 );
 
-// Departures
+// QUERY DE DEPARTURES - Añadir JOIN y filtro:
 const departuresRes = await pool.query(
   `
   SELECT
@@ -4680,8 +4706,10 @@ const departuresRes = await pool.query(
     c.clean_ok,
     c.room_id
   FROM checkins c
+  LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.apartment_id::text  -- ✅ AÑADIR ESTA LÍNEA
   WHERE c.cancelled = false
     AND c.departure_date IS NOT NULL
+    AND (br.show_in_staff IS NULL OR br.show_in_staff = true)  -- ✅ AÑADIR ESTA LÍNEA
     ${wDep.andSql}
   ORDER BY c.departure_date ASC, c.departure_time ASC, c.id DESC
   LIMIT 300
@@ -6353,6 +6381,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
