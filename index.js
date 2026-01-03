@@ -5805,8 +5805,10 @@ app.post("/webhooks/twilio/whatsapp", async (req, res) => {
     
     console.log(`📱 WhatsApp mensaje recibido de ${From}: ${Body}`);
     
+    // Responder a Twilio inmediatamente (200 OK)
     res.status(200).send('OK');
     
+    // Procesar mensaje en segundo plano
     processWhatsAppMessage(From, Body, MessageSid).catch(err => {
       console.error('❌ Error procesando mensaje WhatsApp:', err);
     });
@@ -5970,13 +5972,75 @@ async function handleStartCommand(from, phoneNumber, startMatch, originalBody) {
   }
 }
 
+// ============ REEMPLAZAR VARIABLES EN MENSAJES ============
+
+function replaceVariables(message, checkin, room) {
+  if (!message) return message;
+  
+  // Preparar datos
+  const bookIdForLinks = String(
+    checkin.beds24_booking_id || 
+    checkin.booking_id_from_start || 
+    checkin.booking_token || ""
+  ).replace(/\s/g, '');
+  
+  const regLink = (room.registration_url || "").replace(/\[BOOKID\]/g, bookIdForLinks);
+  const payLink = (room.payment_url || "").replace(/\[BOOKID\]/g, bookIdForLinks);
+  
+  const name = checkin.full_name || "";
+  const apt = checkin.apartment_name || checkin.apartment_id || "";
+  const arriveDate = checkin.arrival_date ? String(checkin.arrival_date).slice(0, 10) : "";
+  const departDate = checkin.departure_date ? String(checkin.departure_date).slice(0, 10) : "";
+  
+  // Solo horas (sin minutos)
+  const arriveTime = (checkin.arrival_time ? String(checkin.arrival_time).slice(0, 2) : "") || 
+                     String(room.default_arrival_time || "").slice(0, 2) || "17";
+  const departTime = (checkin.departure_time ? String(checkin.departure_time).slice(0, 2) : "") || 
+                     String(room.default_departure_time || "").slice(0, 2) || "11";
+  
+  const adults = Number(checkin.adults || 0);
+  const children = Number(checkin.children || 0);
+  
+  // Construir texto de huéspedes
+  let guestsText = "";
+  if (adults > 0 || children > 0) {
+    const lang = checkin.guest_language?.toLowerCase() || 'es';
+    const adultsWord = lang === 'en' ? 'adults' : 
+                       lang === 'fr' ? 'adultes' : 
+                       lang === 'ru' ? 'взрослых' : 'adultos';
+    const childrenWord = lang === 'en' ? 'children' : 
+                         lang === 'fr' ? 'enfants' : 
+                         lang === 'ru' ? 'детей' : 'niños';
+    
+    guestsText = `${adults} ${adultsWord}`;
+    if (children > 0) {
+      guestsText += `, ${children} ${childrenWord}`;
+    }
+  }
+  
+  // Reemplazar todas las variables
+  return message
+    .replace(/\{guest_name\}/g, name)
+    .replace(/\{apartment_name\}/g, apt)
+    .replace(/\{apartment_id\}/g, checkin.apartment_id || "")
+    .replace(/\{arrival_date\}/g, arriveDate)
+    .replace(/\{departure_date\}/g, departDate)
+    .replace(/\{arrival_time\}/g, arriveTime)
+    .replace(/\{departure_time\}/g, departTime)
+    .replace(/\{adults\}/g, String(adults))
+    .replace(/\{children\}/g, String(children))
+    .replace(/\{guests_text\}/g, guestsText || "—")
+    .replace(/\{registration_url\}/g, regLink || "—")
+    .replace(/\{payment_url\}/g, payLink || "—");
+}
+
 // ============ ENVIAR MENSAJE START ============
 
 async function sendStartMessage(from, checkin, language) {
   try {
     // Obtener configuración del apartamento
     const roomResult = await pool.query(
-      `SELECT registration_url, default_arrival_time, default_departure_time 
+      `SELECT registration_url, payment_url, default_arrival_time, default_departure_time 
        FROM beds24_rooms 
        WHERE beds24_room_id = $1 OR id::text = $1 
        LIMIT 1`,
@@ -5984,29 +6048,6 @@ async function sendStartMessage(from, checkin, language) {
     );
     
     const room = roomResult.rows[0] || {};
-    
-    // Preparar datos
-    const bookIdForLinks = String(
-      checkin.beds24_booking_id || 
-      checkin.booking_id_from_start || 
-      checkin.booking_token || ""
-    ).replace(/\s/g, '');
-    
-    const regLink = (room.registration_url || "").replace(/\[BOOKID\]/g, bookIdForLinks);
-    
-    const name = checkin.full_name || "";
-    const apt = checkin.apartment_name || checkin.apartment_id || "";
-    const arriveDate = checkin.arrival_date ? String(checkin.arrival_date).slice(0, 10) : "";
-    const departDate = checkin.departure_date ? String(checkin.departure_date).slice(0, 10) : "";
-    
-    // Solo horas (sin minutos)
-    const arriveTime = (checkin.arrival_time ? String(checkin.arrival_time).slice(0, 2) : "") || 
-                       String(room.default_arrival_time || "").slice(0, 2) || "17";
-    const departTime = (checkin.departure_time ? String(checkin.departure_time).slice(0, 2) : "") || 
-                       String(room.default_departure_time || "").slice(0, 2) || "11";
-    
-    const adults = Number(checkin.adults || 0);
-    const children = Number(checkin.children || 0);
     
     // Obtener mensaje START personalizado de la DB
     const startMsg = await getFlowMessage('START', language);
@@ -6063,12 +6104,39 @@ async function sendStartMessage(from, checkin, language) {
       }
     };
     
-    const t = translations[language] || translations.es;
+    //  Si hay mensaje personalizado en DB, reemplazar variables
+    let finalMessage;
     
-    const guestsText = adults || children ? 
-      `${adults} ${t.adults}${children ? `, ${children} ${t.children}` : ""}` : "—";
-    
-    const finalMessage = startMsg || `${t.greeting}, ${name} 👋
+    if (startMsg) {
+      // Usar mensaje de la DB y reemplazar variables
+      finalMessage = replaceVariables(startMsg, checkin, room);
+    } else {
+      // Usar mensaje por defecto (fallback)
+      const t = translations[language] || translations.es;
+      
+      const bookIdForLinks = String(
+        checkin.beds24_booking_id || 
+        checkin.booking_id_from_start || 
+        checkin.booking_token || ""
+      ).replace(/\s/g, '');
+      
+      const regLink = (room.registration_url || "").replace(/\[BOOKID\]/g, bookIdForLinks);
+      const name = checkin.full_name || "";
+      const apt = checkin.apartment_name || checkin.apartment_id || "";
+      const arriveDate = checkin.arrival_date ? String(checkin.arrival_date).slice(0, 10) : "";
+      const departDate = checkin.departure_date ? String(checkin.departure_date).slice(0, 10) : "";
+      
+      const arriveTime = (checkin.arrival_time ? String(checkin.arrival_time).slice(0, 2) : "") || 
+                         String(room.default_arrival_time || "").slice(0, 2) || "17";
+      const departTime = (checkin.departure_time ? String(checkin.departure_time).slice(0, 2) : "") || 
+                         String(room.default_departure_time || "").slice(0, 2) || "11";
+      
+      const adults = Number(checkin.adults || 0);
+      const children = Number(checkin.children || 0);
+      const guestsText = adults || children ? 
+        `${adults} ${t.adults}${children ? `, ${children} ${t.children}` : ""}` : "—";
+      
+      finalMessage = `${t.greeting}, ${name} 👋
 
 ${t.confirmed}
 
@@ -6081,6 +6149,7 @@ ${t.instructions}
 ${regLink || "—"}
 
 ${t.afterReg}`;
+    }
     
     await sendWhatsAppMessage(from, finalMessage);
     console.log(`✅ Mensaje START enviado`);
@@ -6435,10 +6504,6 @@ async function sendWhatsAppMessage(to, message) {
 // FIN DEL CÓDIGO CON SESIONES
 // ================================================================================
 
-// ================================================================================
-// FIN DEL CÓDIGO MEJORADO
-// ================================================================================
-
 // ===================== START =====================
 (async () => {
   try {
@@ -6449,6 +6514,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
