@@ -1024,59 +1024,7 @@ const timeRequestTexts = {
   }
 };
 
-      const r = booking.rows[0];
-      
-      if (startMatch[2]) {
-        await pool.query(`UPDATE checkins SET guest_language = $1 WHERE id = $2`, [lang, r.id]);
-      }
-      
-      await setSessionCheckin(r.id);
-      await pool.query(`UPDATE checkins SET phone = COALESCE(NULLIF(phone, ''), $1) WHERE id = $2`, [phone, r.id]);
 
-      const room = await getRoomSettings(r.apartment_id);
-      const bookIdForLinks = String(r.beds24_booking_id || r.booking_id_from_start || r.booking_token || "").replace(/\s/g, '');
-      const regLink = applyTpl(room.registration_url || "", bookIdForLinks);
-
-      const name = r.full_name || "";
-      const apt = r.apartment_name || r.apartment_id || "";
-      const arriveDate = r.arrival_date ? String(r.arrival_date).slice(0, 10) : "";
-      const departDate = r.departure_date ? String(r.departure_date).slice(0, 10) : "";
-      
-      // ✅ Solo horas (sin minutos)
-      const arriveTime = (r.arrival_time ? String(r.arrival_time).slice(0, 2) : "") || String(room.default_arrival_time || "").slice(0, 2) || "17";
-      const departTime = (r.departure_time ? String(r.departure_time).slice(0, 2) : "") || String(room.default_departure_time || "").slice(0, 2) || "11";
-      
-      const adults = Number(r.adults || 0);
-      const children = Number(r.children || 0);
-      const sText = adults || children ? `${adults} ${t.adults}${children ? `, ${children} ${t.children}` : ""}` : "—";
-
-      const startMessageFromDB = await getFlowMessage('START', lang);
-      const defaultInstructions = t.registerInstructions || "Para recibir las instrucciones de las llaves, primero completa el registro:";
-
-      const finalMessage = `${t.greeting}, ${name} 👋
-
-${t.bookingConfirmed} ✅
-
-🏠 ${t.apartment}: ${apt}
-📅 ${t.checkin}: ${arriveDate}, ${arriveTime}h
-📅 ${t.checkout}: ${departDate}, ${departTime}h
-👥 ${t.guests}: ${sText}
-
-${startMessageFromDB || defaultInstructions}
-${regLink || "—"}
-
-${t.afterReg}`;
-
-      await sendWhatsApp(from, finalMessage);
-      return res.status(200).send("OK");
-    }
-
-    return res.status(200).send("OK");
-  } catch (err) {
-    console.error("❌ WhatsApp inbound error:", err);
-    return res.status(200).send("OK");
-  }
-});
 
 // ===================== TWILIO CLIENT =====================
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID || "";
@@ -6312,6 +6260,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
