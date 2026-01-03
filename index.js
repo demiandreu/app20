@@ -6171,6 +6171,24 @@ app.delete("/api/whatsapp/auto-replies/:id", async (req, res) => {
 
 // ============ WEBHOOK DE WHATSAPP - PROCESAR MENSAJES ENTRANTES ============
 
+// ================================================================================
+// 🤖 WEBHOOK DE WHATSAPP - VERSIÓN MEJORADA CON MÁQUINA DE ESTADOS
+// ================================================================================
+// 
+// FLUJO COMPLETO:
+// START → REGOK → PAYOK → WAITING_ARRIVAL → WAITING_DEPARTURE → DONE
+//
+// Estados posibles en bot_state:
+// - IDLE: Sin actividad
+// - WAITING_REGOK: Esperando que el guest complete registro
+// - WAITING_PAYOK: Esperando confirmación de pago
+// - WAITING_ARRIVAL: Esperando hora de llegada
+// - WAITING_DEPARTURE: Esperando hora de salida
+// - DONE: Flujo completado
+// ================================================================================
+
+// ============ WEBHOOK DE WHATSAPP - PROCESAR MENSAJES ENTRANTES ============
+
 app.post("/api/whatsapp/webhook", async (req, res) => {
   try {
     const { From, Body, MessageSid } = req.body;
@@ -6182,29 +6200,39 @@ app.post("/api/whatsapp/webhook", async (req, res) => {
     
     // Procesar mensaje en segundo plano
     processWhatsAppMessage(From, Body, MessageSid).catch(err => {
-      console.error('Error procesando mensaje WhatsApp:', err);
+      console.error('❌ Error procesando mensaje WhatsApp:', err);
     });
     
   } catch (error) {
-    console.error('Error en webhook WhatsApp:', error);
+    console.error('❌ Error en webhook WhatsApp:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// ============ FUNCIÓN PARA PROCESAR MENSAJES ============
+// ============ FUNCIÓN PRINCIPAL PARA PROCESAR MENSAJES ============
 
 async function processWhatsAppMessage(from, body, messageId) {
   try {
-    // Normalizar número de teléfono
+    // Normalizar número de teléfono (quitar whatsapp: y +)
     const phoneNumber = from.replace('whatsapp:', '').replace('+', '');
     
     console.log(`🔍 Buscando checkin para teléfono: ${phoneNumber}`);
     
     // Buscar checkin activo para este número
     const checkinResult = await pool.query(`
-      SELECT c.id, c.full_name, c.email, c.apartment_name, c.booking_id
+      SELECT 
+        c.id, 
+        c.full_name, 
+        c.email, 
+        c.apartment_name, 
+        c.booking_id,
+        c.bot_state,
+        c.beds24_raw->>'guestLanguage' as guest_language,
+        c.arrival_date,
+        c.departure_date
       FROM checkins c
       WHERE REPLACE(REPLACE(c.phone, '+', ''), ' ', '') = $1
+        AND c.arrival_date >= CURRENT_DATE - INTERVAL '1 day'
       ORDER BY c.created_at DESC
       LIMIT 1
     `, [phoneNumber]);
@@ -6215,71 +6243,291 @@ async function processWhatsAppMessage(from, body, messageId) {
     }
     
     const checkin = checkinResult.rows[0];
-    console.log(`✅ Checkin encontrado: ${checkin.full_name} (ID: ${checkin.id})`);
+    console.log(`✅ Checkin encontrado: ${checkin.full_name} (ID: ${checkin.id}, Estado: ${checkin.bot_state})`);
     
-    // Determinar idioma (por ahora usar español, luego mejoramos)
-    const language = 'es'; // TODO: Detectar desde Beds24
+    // Detectar idioma del guest (desde Beds24 o default español)
+    const language = detectLanguage(checkin.guest_language);
+    console.log(`🌐 Idioma detectado: ${language}`);
     
-    // 1. BUSCAR RESPUESTA AUTOMÁTICA
-    const autoReply = await findAutoReply(body.toLowerCase(), language);
+    // Normalizar texto del mensaje
+    const bodyLower = body.toLowerCase().trim();
     
+    // ========== PRIORIDAD 1: RESPUESTAS AUTOMÁTICAS (FAQ) ==========
+    const autoReply = await findAutoReply(bodyLower, language);
     if (autoReply) {
-      console.log(`🤖 Enviando respuesta automática`);
+      console.log(`🤖 Enviando respuesta automática (FAQ)`);
       await sendWhatsAppMessage(from, autoReply);
       return;
     }
     
-    // 2. RESPUESTAS ESPECIALES (REGOK, PAYOK, etc.)
-    const bodyLower = body.toLowerCase().trim();
+    // ========== PRIORIDAD 2: COMANDOS ESPECIALES ==========
     
+    // COMANDO: REGOK
     if (bodyLower === 'regok') {
-      const msg = await getFlowMessage('REGOK', language);
-      if (msg) {
-        await sendWhatsAppMessage(from, msg);
-        console.log(`✅ Enviado mensaje REGOK`);
-      }
+      await handleRegOk(from, checkin, language);
       return;
     }
     
-    // 2. COMANDO: PAYOK (con ASK_ARRIVAL automático)
-if (bodyLower === 'payok' || bodyLower.includes('he pagado') || bodyLower.includes('pagado')) {
-  // Enviar PAYOK
+    // COMANDO: PAYOK
+    if (bodyLower === 'payok' || bodyLower.includes('he pagado') || bodyLower.includes('pagado')) {
+      await handlePayOk(from, checkin, language);
+      return;
+    }
+    
+    // ========== PRIORIDAD 3: PROCESAR SEGÚN ESTADO DEL BOT ==========
+    
+    const currentState = checkin.bot_state || 'IDLE';
+    
+    switch (currentState) {
+      case 'WAITING_ARRIVAL':
+        await handleArrivalTime(from, checkin, body, language);
+        break;
+        
+      case 'WAITING_DEPARTURE':
+        await handleDepartureTime(from, checkin, body, language);
+        break;
+        
+      case 'DONE':
+        console.log(`✅ Flujo ya completado para checkin ${checkin.id}`);
+        // Mensaje opcional: "Ya has completado el check-in"
+        break;
+        
+      default:
+        console.log(`💬 Mensaje libre sin acción específica (estado: ${currentState})`);
+        // Aquí podrías enviar un mensaje genérico o simplemente no responder
+        break;
+    }
+    
+  } catch (error) {
+    console.error('❌ Error procesando mensaje WhatsApp:', error);
+  }
+}
+
+// ============ DETECTAR IDIOMA DEL GUEST ============
+
+function detectLanguage(guestLanguage) {
+  if (!guestLanguage) return 'es';
+  
+  const langLower = guestLanguage.toLowerCase();
+  
+  // Mapeo de códigos comunes de Beds24
+  if (langLower.includes('en') || langLower.includes('english')) return 'en';
+  if (langLower.includes('fr') || langLower.includes('french') || langLower.includes('français')) return 'fr';
+  if (langLower.includes('de') || langLower.includes('german') || langLower.includes('deutsch')) return 'de';
+  if (langLower.includes('ru') || langLower.includes('russian') || langLower.includes('русский')) return 'ru';
+  
+  return 'es'; // Default español
+}
+
+// ============ MANEJAR COMANDO: REGOK ============
+
+async function handleRegOk(from, checkin, language) {
+  console.log(`✅ Procesando REGOK para checkin ${checkin.id}`);
+  
+  const msg = await getFlowMessage('REGOK', language);
+  if (msg) {
+    await sendWhatsAppMessage(from, msg);
+    console.log(`✅ Enviado mensaje REGOK`);
+    
+    // Actualizar estado
+    await pool.query(`
+      UPDATE checkins 
+      SET bot_state = 'WAITING_PAYOK' 
+      WHERE id = $1
+    `, [checkin.id]);
+  }
+}
+
+// ============ MANEJAR COMANDO: PAYOK ============
+
+async function handlePayOk(from, checkin, language) {
+  console.log(`✅ Procesando PAYOK para checkin ${checkin.id}`);
+  
+  // 1. Enviar mensaje PAYOK
   const payokMsg = await getFlowMessage('PAYOK', language);
   if (payokMsg) {
     await sendWhatsAppMessage(from, payokMsg);
     console.log(`✅ Enviado mensaje PAYOK`);
     
-    // ✅ NUEVO: Esperar 2 segundos
+    // 2. Esperar 2 segundos
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // ✅ NUEVO: Enviar ASK_ARRIVAL automáticamente
+    // 3. Enviar ASK_ARRIVAL automáticamente
     const askArrivalMsg = await getFlowMessage('ASK_ARRIVAL', language);
     if (askArrivalMsg) {
       await sendWhatsAppMessage(from, askArrivalMsg);
       console.log(`✅ Enviado mensaje ASK_ARRIVAL automáticamente`);
       
-      // ✅ NUEVO: Marcar que estamos esperando hora de llegada
+      // 4. Actualizar estado a WAITING_ARRIVAL
       await pool.query(`
         UPDATE checkins 
         SET bot_state = 'WAITING_ARRIVAL' 
         WHERE id = $1
       `, [checkin.id]);
+      
+      console.log(`🔄 Estado actualizado a WAITING_ARRIVAL`);
     }
   }
-  return; // Ahora sí termina después de enviar ambos mensajes
 }
-    
-    console.log(`💬 Mensaje libre, sin respuesta automática configurada`);
-    
-  } catch (error) {
-    console.error('Error procesando mensaje WhatsApp:', error);
+
+// ============ MANEJAR HORA DE LLEGADA ============
+
+async function handleArrivalTime(from, checkin, body, language) {
+  console.log(`⏰ Procesando hora de llegada: "${body}"`);
+  
+  // Validar y parsear hora
+  const parsedTime = parseTimeInput(body);
+  
+  if (!parsedTime) {
+    // Hora inválida - pedir que lo intente de nuevo
+    const errorMsg = getErrorMessage('INVALID_TIME', language);
+    await sendWhatsAppMessage(from, errorMsg);
+    console.log(`⚠️ Hora inválida: "${body}"`);
+    return;
+  }
+  
+  console.log(`✅ Hora válida parseada: ${parsedTime}`);
+  
+  // Guardar hora de llegada en la BD
+  await pool.query(`
+    UPDATE checkins 
+    SET 
+      arrival_time = $1,
+      bot_state = 'WAITING_DEPARTURE'
+    WHERE id = $2
+  `, [parsedTime, checkin.id]);
+  
+  console.log(`💾 Hora de llegada guardada: ${parsedTime}`);
+  
+  // Esperar 1 segundo
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // Enviar ASK_DEPARTURE
+  const askDepartureMsg = await getFlowMessage('ASK_DEPARTURE', language);
+  if (askDepartureMsg) {
+    await sendWhatsAppMessage(from, askDepartureMsg);
+    console.log(`✅ Enviado mensaje ASK_DEPARTURE`);
   }
 }
 
-// ============ BUSCAR RESPUESTA AUTOMÁTICA ============
+// ============ MANEJAR HORA DE SALIDA ============
+
+async function handleDepartureTime(from, checkin, body, language) {
+  console.log(`⏰ Procesando hora de salida: "${body}"`);
+  
+  // Validar y parsear hora
+  const parsedTime = parseTimeInput(body);
+  
+  if (!parsedTime) {
+    // Hora inválida - pedir que lo intente de nuevo
+    const errorMsg = getErrorMessage('INVALID_TIME', language);
+    await sendWhatsAppMessage(from, errorMsg);
+    console.log(`⚠️ Hora inválida: "${body}"`);
+    return;
+  }
+  
+  console.log(`✅ Hora válida parseada: ${parsedTime}`);
+  
+  // Guardar hora de salida en la BD
+  await pool.query(`
+    UPDATE checkins 
+    SET 
+      departure_time = $1,
+      bot_state = 'DONE'
+    WHERE id = $2
+  `, [parsedTime, checkin.id]);
+  
+  console.log(`💾 Hora de salida guardada: ${parsedTime}`);
+  
+  // Esperar 1 segundo
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // Enviar mensaje de confirmación final
+  const confirmMsg = await getFlowMessage('CONFIRMATION', language);
+  if (confirmMsg) {
+    await sendWhatsAppMessage(from, confirmMsg);
+    console.log(`✅ Enviado mensaje de CONFIRMACIÓN FINAL`);
+  }
+  
+  console.log(`🎉 FLUJO COMPLETADO para checkin ${checkin.id}`);
+}
+
+// ============ PARSEAR ENTRADA DE HORA ============
+
+function parseTimeInput(input) {
+  // Normalizar entrada
+  const normalized = input.trim().toLowerCase();
+  
+  // Regex para capturar diferentes formatos:
+  // - "17" → 17:00
+  // - "23" → 23:00
+  // - "17:30" → 17:30
+  // - "17.30" → 17:30
+  // - "17h30" → 17:30
+  // - "5pm" → 17:00
+  // - "5:30pm" → 17:30
+  
+  // Formato 1: Solo número (17, 23)
+  let match = normalized.match(/^(\d{1,2})$/);
+  if (match) {
+    const hour = parseInt(match[1]);
+    if (hour >= 0 && hour <= 23) {
+      return `${hour.toString().padStart(2, '0')}:00`;
+    }
+    return null;
+  }
+  
+  // Formato 2: HH:MM o HH.MM o HHhMM
+  match = normalized.match(/^(\d{1,2})[:\.h](\d{2})$/);
+  if (match) {
+    const hour = parseInt(match[1]);
+    const minute = parseInt(match[2]);
+    if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+      return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+    }
+    return null;
+  }
+  
+  // Formato 3: 12h con AM/PM (5pm, 5:30pm)
+  match = normalized.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/);
+  if (match) {
+    let hour = parseInt(match[1]);
+    const minute = match[2] ? parseInt(match[2]) : 0;
+    const meridiem = match[3];
+    
+    if (hour < 1 || hour > 12 || minute > 59) return null;
+    
+    // Convertir a formato 24h
+    if (meridiem === 'pm' && hour !== 12) hour += 12;
+    if (meridiem === 'am' && hour === 12) hour = 0;
+    
+    return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+  }
+  
+  // No se reconoce el formato
+  return null;
+}
+
+// ============ OBTENER MENSAJES DE ERROR ============
+
+function getErrorMessage(errorType, language) {
+  const messages = {
+    INVALID_TIME: {
+      es: '⚠️ Por favor, indica la hora en formato válido. Ejemplos: 17, 18:30, 5pm',
+      en: '⚠️ Please provide the time in a valid format. Examples: 17, 18:30, 5pm',
+      fr: '⚠️ Veuillez indiquer l\'heure dans un format valide. Exemples: 17, 18:30, 17h',
+      de: '⚠️ Bitte geben Sie die Uhrzeit in einem gültigen Format an. Beispiele: 17, 18:30',
+      ru: '⚠️ Пожалуйста, укажите время в правильном формате. Примеры: 17, 18:30'
+    }
+  };
+  
+  return messages[errorType]?.[language] || messages[errorType]?.es || 'Error';
+}
+
+// ============ BUSCAR RESPUESTA AUTOMÁTICA (FAQ) ============
 
 async function findAutoReply(text, language = 'es') {
-  const validLangs = ['es', 'en', 'fr', 'ru'];
+  const validLangs = ['es', 'en', 'fr', 'de', 'ru'];
   const lang = validLangs.includes(language) ? language : 'es';
   
   try {
@@ -6303,7 +6551,7 @@ async function findAutoReply(text, language = 'es') {
         if (regex.test(textLower)) {
           // Retornar respuesta en el idioma correcto
           const response = reply[`response_${lang}`] || reply.response_es;
-          console.log(`🎯 Keyword encontrada: "${keyword}" → Respuesta: ${response.substring(0, 50)}...`);
+          console.log(`🎯 Keyword encontrada: "${keyword}" → Respuesta FAQ`);
           return response;
         }
       }
@@ -6311,7 +6559,7 @@ async function findAutoReply(text, language = 'es') {
     
     return null;
   } catch (error) {
-    console.error('Error buscando auto-reply:', error);
+    console.error('❌ Error buscando auto-reply:', error);
     return null;
   }
 }
@@ -6319,7 +6567,7 @@ async function findAutoReply(text, language = 'es') {
 // ============ OBTENER MENSAJE DEL FLUJO ============
 
 async function getFlowMessage(messageType, language = 'es') {
-  const validLangs = ['es', 'en', 'fr', 'ru'];
+  const validLangs = ['es', 'en', 'fr', 'de', 'ru'];
   const lang = validLangs.includes(language) ? language : 'es';
   
   try {
@@ -6333,7 +6581,7 @@ async function getFlowMessage(messageType, language = 'es') {
     }
     return null;
   } catch (error) {
-    console.error('Error obteniendo mensaje de flujo:', error);
+    console.error('❌ Error obteniendo mensaje de flujo:', error);
     return null;
   }
 }
@@ -6369,7 +6617,7 @@ async function sendWhatsAppMessage(to, message) {
 }
 
 // ================================================================================
-// FIN DEL CÓDIGO PARA AÑADIR
+// FIN DEL CÓDIGO MEJORADO
 // ================================================================================
 // ===================== START =====================
 (async () => {
@@ -6381,6 +6629,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
