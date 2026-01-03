@@ -3785,7 +3785,9 @@ const arrivalsRes = await pool.query(
     c.lock_code,
     c.lock_visible AS lock_code_visible,
     c.clean_ok,
-    c.room_id
+    c.room_id,
+    c.early_checkin_requested,
+    c.late_checkout_requested  
   FROM checkins c
   LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.apartment_id::text  -- ✅ AÑADIR ESTA LÍNEA
   WHERE c.cancelled = false
@@ -3819,7 +3821,9 @@ const departuresRes = await pool.query(
     c.lock_code,
     c.lock_visible AS lock_code_visible,
     c.clean_ok,
-    c.room_id
+    c.room_id,
+    c.early_checkin_requested,  
+    c.late_checkout_requested 
   FROM checkins c
   LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.apartment_id::text  -- ✅ AÑADIR ESTA LÍNEA
   WHERE c.cancelled = false
@@ -6266,6 +6270,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
