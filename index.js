@@ -3750,7 +3750,15 @@ const arrivalsRes = await pool.query(
   `,
   wArr.params
 );
+const arrivals = arrivalsRes.rows || [];
 
+// 🔍 DEBUG - Ver qué datos llegan
+console.log('📊 ARRIVALS DEBUG:');
+arrivals.slice(0, 3).forEach(r => {
+  console.log(`  ID: ${r.id}, Name: ${r.full_name}`);
+  console.log(`    arrival_time: ${r.arrival_time}`);
+  console.log(`    departure_time: ${r.departure_time}`);
+});
 // QUERY DE DEPARTURES - Añadir JOIN y filtro:
 const departuresRes = await pool.query(
   `
@@ -6175,6 +6183,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
