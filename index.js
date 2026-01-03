@@ -5984,6 +5984,9 @@ function replaceVariables(message, checkin, room) {
     checkin.booking_token || ""
   ).replace(/\s/g, '');
   
+  // Variable unificada para booking ID
+  const bookingId = bookIdForLinks;
+  
   const regLink = (room.registration_url || "").replace(/\[BOOKID\]/g, bookIdForLinks);
   const payLink = (room.payment_url || "").replace(/\[BOOKID\]/g, bookIdForLinks);
   
@@ -6020,6 +6023,8 @@ function replaceVariables(message, checkin, room) {
   
   // Reemplazar todas las variables
   return message
+    .replace(/\{booking_id\}/g, bookingId)      // NUEVO - Variable booking ID
+    .replace(/\[BOOKID\]/g, bookingId)          // NUEVO - Soporte legacy Beds24
     .replace(/\{guest_name\}/g, name)
     .replace(/\{apartment_name\}/g, apt)
     .replace(/\{apartment_id\}/g, checkin.apartment_id || "")
@@ -6514,6 +6519,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
