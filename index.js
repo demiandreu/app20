@@ -3748,15 +3748,6 @@ const arrivalsRes = await pool.query(
   ORDER BY c.arrival_date ASC, c.arrival_time ASC, c.id DESC
   LIMIT 300
   `,
-  const arrivals = arrivalsRes.rows || [];
-
-// 🔍 DEBUG - Ver qué datos llegan
-console.log('📊 ARRIVALS DEBUG:');
-arrivals.slice(0, 3).forEach(r => {
-  console.log(`  ID: ${r.id}, Name: ${r.full_name}`);
-  console.log(`    arrival_time: ${r.arrival_time}`);
-  console.log(`    departure_time: ${r.departure_time}`);
-});
   wArr.params
 );
 
@@ -3794,6 +3785,12 @@ const departuresRes = await pool.query(
   wDep.params
 );
     const arrivals = arrivalsRes.rows || [];
+    console.log('📊 ARRIVALS DEBUG:');
+arrivals.slice(0, 3).forEach(r => {
+  console.log(`  ID: ${r.id}, Name: ${r.full_name}`);
+  console.log(`    arrival_time: ${r.arrival_time}`);
+  console.log(`    departure_time: ${r.departure_time}`);
+});
     const departures = departuresRes.rows || [];
 
     // Color logic
@@ -6184,6 +6181,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
