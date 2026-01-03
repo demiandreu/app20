@@ -349,6 +349,8 @@ app.get("/manager/apartment/sections", async (req, res) => {
                     <option value="none" ${String(s.new_media_type || "none") === "none" ? "selected" : ""}>None</option>
                     <option value="image" ${String(s.new_media_type || "") === "image" ? "selected" : ""}>Image</option>
                     <option value="video" ${String(s.new_media_type || "") === "video" ? "selected" : ""}>Video</option>
+                    <option value="map" ${String(s.new_media_type || "") === "map" ? "selected" : ""}>🗺️ Map (Google Maps)</option>
+                    <option value="link" ${String(s.new_media_type || "") === "link" ? "selected" : ""}>🔗 Link (External)</option>
                   </select>
 
                   <label class="muted">Media URL</label>
@@ -622,6 +624,8 @@ app.get("/manager/apartment/sections", async (req, res) => {
       <option value="none" selected>None</option>
       <option value="image">Image</option>
       <option value="video">Video</option>
+      <option value="map">🗺️ Map (Google Maps)</option>
+      <option value="link">🔗 Link (External)</option>
     </select>
 
     <label class="muted">Media URL</label>
@@ -3847,7 +3851,7 @@ app.get("/guest/:bookingId", async (req, res) => {
                  return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
                });
              
-             // 🆕 Generar HTML para media (video/imagen)
+             // 🆕 Generar HTML para media (video/imagen/mapa/enlace)
              let mediaHtml = '';
              if (s.new_media_url && s.new_media_type) {
                const mediaUrl = String(s.new_media_url).trim();
@@ -3877,6 +3881,35 @@ app.get("/guest/:bookingId", async (req, res) => {
                        style="max-width:100%;height:auto;border-radius:8px;display:block;"
                        loading="lazy"
                      />
+                   </div>
+                 `;
+               } else if (s.new_media_type === 'map') {
+                 // Google Maps embebido
+                 mediaHtml = `
+                   <div style="margin-top:16px;">
+                     <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;max-width:100%;background:#f3f4f6;border-radius:8px;">
+                       <iframe 
+                         src="${escapeHtml(mediaUrl)}" 
+                         style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"
+                         allowfullscreen 
+                         loading="lazy">
+                       </iframe>
+                     </div>
+                   </div>
+                 `;
+               } else if (s.new_media_type === 'link') {
+                 // Enlace externo como botón
+                 mediaHtml = `
+                   <div style="margin-top:16px;">
+                     <a 
+                       href="${escapeHtml(mediaUrl)}" 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       style="display:inline-block;padding:12px 24px;background:#3b82f6;color:white;text-decoration:none;border-radius:8px;font-weight:600;transition:background 0.2s;"
+                       onmouseover="this.style.background='#2563eb'" 
+                       onmouseout="this.style.background='#3b82f6'">
+                       🔗 Abrir enlace
+                     </a>
                    </div>
                  `;
                }
@@ -6318,6 +6351,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
