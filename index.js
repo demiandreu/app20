@@ -4946,14 +4946,14 @@ app.get("/manager/whatsapp", (req, res) => {
   res.sendFile(require('path').join(__dirname, 'manager-whatsapp.html'));
 });
 
-// API: Guardar mensajes del flujo principal
-// API: Guardar mensajes del flujo principal
 app.post("/api/whatsapp/flow-messages", async (req, res) => {
   const { messages } = req.body;
 
   try {
+    console.log('📝 Guardando mensajes:', messages);
+    
     for (const msg of messages) {
-      await pool.query(`
+      const result = await pool.query(`
         INSERT INTO whatsapp_flow_messages 
           (message_key, content_es, content_en, content_fr, content_ru, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
@@ -4971,14 +4971,17 @@ app.post("/api/whatsapp/flow-messages", async (req, res) => {
         msg.content_fr || '',
         msg.content_ru || ''
       ]);
+      
+      console.log(`✅ Guardado ${msg.message_key}`);
     }
 
+    console.log('✅ Todos los mensajes guardados');
     res.json({
       success: true,
       message: 'Messages updated successfully'
     });
   } catch (error) {
-    console.error('Error saving flow messages:', error);
+    console.error('❌ Error saving flow messages:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -6025,6 +6028,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
