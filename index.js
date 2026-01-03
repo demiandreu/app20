@@ -5492,26 +5492,29 @@ app.get("/manager/whatsapp", (req, res) => {
 });
 
 // API: Guardar mensajes del flujo principal
+// API: Guardar mensajes del flujo principal
 app.post("/api/whatsapp/flow-messages", async (req, res) => {
   const { messages } = req.body;
 
   try {
     for (const msg of messages) {
       await pool.query(`
-        UPDATE whatsapp_flow_messages
-        SET 
-          content_es = $1,
-          content_en = $2,
-          content_fr = $3,
-          content_ru = $4,
+        INSERT INTO whatsapp_flow_messages 
+          (message_key, content_es, content_en, content_fr, content_ru, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT (message_key) 
+        DO UPDATE SET
+          content_es = EXCLUDED.content_es,
+          content_en = EXCLUDED.content_en,
+          content_fr = EXCLUDED.content_fr,
+          content_ru = EXCLUDED.content_ru,
           updated_at = CURRENT_TIMESTAMP
-        WHERE message_key = $5
       `, [
-        msg.content_es,
-        msg.content_en,
-        msg.content_fr,
-        msg.content_ru,
-        msg.message_key
+        msg.message_key,
+        msg.content_es || '',
+        msg.content_en || '',
+        msg.content_fr || '',
+        msg.content_ru || ''
       ]);
     }
 
@@ -6567,6 +6570,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
