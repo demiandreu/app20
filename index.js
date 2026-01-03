@@ -3601,7 +3601,7 @@ app.get("/guest/:bookingId", async (req, res) => {
     const r = result.rows[0];
     const apartmentName = r.apartment_name || r.apartment_from_rooms || 'N/A';
     
-    // ✅ ARREGLADO: Usar room_id si existe, si no usar el de beds24_rooms
+    // Usar room_id si existe, si no usar el de beds24_rooms
     const roomIdToUse = r.room_id || r.room_id_from_rooms;
     
     console.log("✅ Booking data:", {
@@ -3613,7 +3613,7 @@ app.get("/guest/:bookingId", async (req, res) => {
       apartment: apartmentName
     });
     
-    // ✅ ARREGLADO: Buscar secciones usando el room_id correcto
+    // Cargar secciones del apartamento
     const secRes = await pool.query(
       `SELECT id, title, body, icon, new_media_type, new_media_url, translations
        FROM apartment_sections
@@ -3726,6 +3726,27 @@ app.get("/guest/:bookingId", async (req, res) => {
       return section[field] || '';
     }
     
+    // 🆕 Helper para convertir URLs de YouTube
+    function getYouTubeEmbedUrl(url) {
+      if (!url) return null;
+      
+      // Patrones de YouTube
+      const patterns = [
+        /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/,
+        /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]+)/,
+        /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]+)/
+      ];
+      
+      for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+          return `https://www.youtube.com/embed/${match[1]}`;
+        }
+      }
+      
+      return null;
+    }
+    
     // Generar HTML de secciones
     const sectionsHtml = secRes.rows.length === 0
       ? `<div class="muted">${t.noInfo}</div>`
@@ -3744,6 +3765,41 @@ app.get("/guest/:bookingId", async (req, res) => {
                  return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
                });
              
+             // 🆕 Generar HTML para media (video/imagen)
+             let mediaHtml = '';
+             if (s.new_media_url && s.new_media_type) {
+               const mediaUrl = String(s.new_media_url).trim();
+               
+               if (s.new_media_type === 'video') {
+                 const embedUrl = getYouTubeEmbedUrl(mediaUrl);
+                 if (embedUrl) {
+                   mediaHtml = `
+                     <div style="margin-top:16px;">
+                       <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;max-width:100%;background:#000;border-radius:8px;">
+                         <iframe 
+                           src="${escapeHtml(embedUrl)}" 
+                           style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"
+                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                           allowfullscreen>
+                         </iframe>
+                       </div>
+                     </div>
+                   `;
+                 }
+               } else if (s.new_media_type === 'image') {
+                 mediaHtml = `
+                   <div style="margin-top:16px;">
+                     <img 
+                       src="${escapeHtml(mediaUrl)}" 
+                       alt="${escapeHtml(translatedTitle)}"
+                       style="max-width:100%;height:auto;border-radius:8px;display:block;"
+                       loading="lazy"
+                     />
+                   </div>
+                 `;
+               }
+             }
+             
              const panelId = `acc_${s.id}`;
              
              return `
@@ -3754,6 +3810,7 @@ app.get("/guest/:bookingId", async (req, res) => {
                  </button>
                  <div id="${panelId}" style="display:none;padding:12px 14px;">
                    <div>${bodyHtml}</div>
+                   ${mediaHtml}
                  </div>
                </div>
              `;
@@ -6180,6 +6237,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
