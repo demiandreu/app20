@@ -2174,7 +2174,7 @@ FROM beds24_rooms
      <ul>
   <li><a href="/manager/channels/sync">Sync Rooms</a></li>
   <li><a href="/manager/channels/bookingssync">Sync Bookings</a></li>
-  <li><a href="/staff/checkins">Staff · Check-ins</a></li>
+  <li><a href="/ckins">Staff · Check-ins</a></li>
   <li><a href="/manager/whatsapp">💬 WhatsApp Responses</a></li>
 </ul>
     `;
@@ -2500,7 +2500,7 @@ app.get("/staff/pending-requests", async (req, res) => {
       </style>
 
       <h1>📋 Solicitudes de Horario Pendientes</h1>
-      <p><a href="/staff/checkins">← Volver a Check-ins</a></p>
+      <p><a href="/ckins">← Volver a Check-ins</a></p>
 
       ${requests.length === 0 ? `
         <div class="empty-state">
@@ -3489,7 +3489,7 @@ app.get("/", (req, res) => {
     <h1>RCS Guest Portal</h1>
     <p class="muted">Example entry:</p>
     <p><a class="btn-primary" href="/booking/apt1/TESTTOKEN123">Open booking example</a></p>
-    <p class="muted">Admin: <a class="btn-link" href="/staff/checkins">/staff/checkins</a></p>
+    <p class="muted">Admin: <a class="btn-link" href="/ckins">/ckins</a></p>
   `;
   res.send(renderPage("Home", html));
 });
@@ -4808,6 +4808,8 @@ function renderTable(rows, mode) {
         <!-- 7. Código -->
         <td>
           <form method="POST" action="/staff/checkins/${r.id}/lock" class="lock-form">
+            <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+            
             <input
               type="text"
               class="lock-input"
@@ -6351,6 +6353,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
