@@ -2174,7 +2174,7 @@ FROM beds24_rooms
      <ul>
   <li><a href="/manager/channels/sync">Sync Rooms</a></li>
   <li><a href="/manager/channels/bookingssync">Sync Bookings</a></li>
-  <li><a href="/ckins">Staff · Check-ins</a></li>
+  <li><a href="staff/checkins">Staff · Check-ins</a></li>
   <li><a href="/manager/whatsapp">💬 WhatsApp Responses</a></li>
 </ul>
     `;
@@ -6381,6 +6381,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
