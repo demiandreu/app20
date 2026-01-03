@@ -1024,28 +1024,6 @@ const timeRequestTexts = {
   }
 };
 
-
-    // ================== START ==================
-    const startMatch = textUpper.match(/^START[\s_:-]*([0-9]+)[\s_:-]*([A-Z]{2})?\s*$/);
-    if (startMatch) {
-      const bookingId = String(startMatch[1] || "").trim();
-      const langCode = (startMatch[2] || 'es').toLowerCase();
-      const supportedLangs = ['es', 'en', 'fr', 'ru'];
-      const lang = supportedLangs.includes(langCode) ? langCode : 'en';
-      const t = translations[lang];
-
-      const booking = await pool.query(
-        `SELECT * FROM checkins
-         WHERE booking_token = $1 OR beds24_booking_id::text = $1 OR REPLACE(beds24_booking_id::text, ' ', '') = $1 OR booking_id_from_start = $1
-         ORDER BY id DESC LIMIT 1`,
-        [bookingId]
-      );
-
-      if (!booking.rows.length) {
-        await sendWhatsApp(from, `${t.notFound}\nSTART ${bookingId}`);
-        return res.status(200).send("OK");
-      }
-
       const r = booking.rows[0];
       
       if (startMatch[2]) {
@@ -6334,6 +6312,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
