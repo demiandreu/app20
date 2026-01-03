@@ -5245,14 +5245,12 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
 // ============================================================
 app.get("/manager/early-late", async (req, res) => {
   try {
-    // ✅ Verificar sesión manualmente
     if (!req.session || !req.session.user) {
       return res.redirect("/login");
     }
 
     const user = req.session.user;
 
-    // 🔍 Query para obtener solicitudes
     const { rows: requests } = await pool.query(`
       SELECT 
         elr.id,
@@ -5289,11 +5287,9 @@ app.get("/manager/early-late", async (req, res) => {
         elr.created_at DESC
     `);
 
-    // 📊 Separar pendientes y historial
     const pending = requests.filter(r => r.status === 'pending');
     const history = requests.filter(r => r.status !== 'pending');
 
-    // 🎨 Función para renderizar cada request
     function renderRequest(r, isPending = true) {
       const typeIcon = r.request_type === 'early_checkin' ? '🟠' : 
                        r.request_type === 'late_checkout' ? '🔴' : '🟣';
@@ -5303,9 +5299,9 @@ app.get("/manager/early-late", async (req, res) => {
                        'Early Check-in + Late Checkout';
 
       const timeInfo = r.request_type === 'early_checkin' 
-        ? `Llegada: ${r.requested_time} (normal: 17:00)`
+        ? `Llegada: ${r.requested_time || r.arrival_time} (normal: 17:00)`
         : r.request_type === 'late_checkout'
-        ? `Salida: ${r.requested_time} (normal: 11:00)`
+        ? `Salida: ${r.requested_time || r.departure_time} (normal: 11:00)`
         : `Llegada: ${r.arrival_time} | Salida: ${r.departure_time}`;
 
       const priceText = r.price ? `€${r.price}` : 'Gratis';
@@ -5356,12 +5352,8 @@ app.get("/manager/early-late", async (req, res) => {
         };">
           <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:8px;">
             <div>
-              <h3 style="margin:0 0 4px; font-size:16px;">
-                ${typeIcon} ${typeText}
-              </h3>
-              <p style="margin:0; font-size:14px; color:#374151;">
-                <strong>${escapeHtml(r.full_name || 'Sin nombre')}</strong>
-              </p>
+              <h3 style="margin:0 0 4px; font-size:16px;">${typeIcon} ${typeText}</h3>
+              <p style="margin:0; font-size:14px; color:#374151;"><strong>${escapeHtml(r.full_name || 'Sin nombre')}</strong></p>
               <p style="margin:4px 0 0; font-size:13px; color:#6b7280;">
                 ${escapeHtml(r.room_name || r.apartment_name || 'Sin apartamento')}
                 · ${r.arrival_date ? new Date(r.arrival_date).toLocaleDateString('es-ES') : ''}
@@ -5372,55 +5364,32 @@ app.get("/manager/early-late", async (req, res) => {
               ${paymentBadge ? `<br>${paymentBadge}` : ''}
             </div>
           </div>
-          
           <div style="background:#f9fafb; padding:10px; border-radius:8px; margin:8px 0;">
-            <p style="margin:0; font-size:13px; color:#374151;">
-              ⏰ ${timeInfo}
-            </p>
-            <p style="margin:4px 0 0; font-size:13px; color:#374151;">
-              💵 Precio: <strong>${priceText}</strong>
-            </p>
-            <p style="margin:4px 0 0; font-size:12px; color:#6b7280;">
-              📱 ${escapeHtml(r.phone || 'Sin teléfono')}
-            </p>
+            <p style="margin:0; font-size:13px; color:#374151;">⏰ ${timeInfo}</p>
+            <p style="margin:4px 0 0; font-size:13px; color:#374151;">💵 Precio: <strong>${priceText}</strong></p>
+            <p style="margin:4px 0 0; font-size:12px; color:#6b7280;">📱 ${escapeHtml(r.phone || 'Sin teléfono')}</p>
           </div>
-
           ${actions}
         </div>
       `;
     }
 
-    // 🎨 Renderizar página
     const pageContent = `
       <div style="margin-bottom:24px;">
         <h1>📋 Solicitudes Early/Late Check-in</h1>
         <p class="muted">Gestiona las solicitudes de llegadas tempranas y salidas tardías</p>
       </div>
-
-      <!-- Pendientes -->
       <div style="margin-bottom:32px;">
-        <h2 style="margin:0 0 16px;">
-          ⏳ Pendientes 
-          <span class="muted">(${pending.length})</span>
-        </h2>
-        
+        <h2 style="margin:0 0 16px;">⏳ Pendientes <span class="muted">(${pending.length})</span></h2>
         ${pending.length > 0 
           ? pending.map(r => renderRequest(r, true)).join('')
-          : '<div class="card"><p class="muted">No hay solicitudes pendientes</p></div>'
-        }
+          : '<div class="card"><p class="muted">No hay solicitudes pendientes</p></div>'}
       </div>
-
-      <!-- Historial -->
       <div>
-        <h2 style="margin:0 0 16px;">
-          📜 Historial 
-          <span class="muted">(${history.length})</span>
-        </h2>
-        
+        <h2 style="margin:0 0 16px;">📜 Historial <span class="muted">(${history.length})</span></h2>
         ${history.length > 0 
           ? history.map(r => renderRequest(r, false)).join('')
-          : '<div class="card"><p class="muted">No hay historial</p></div>'
-        }
+          : '<div class="card"><p class="muted">No hay historial</p></div>'}
       </div>
     `;
 
@@ -5428,187 +5397,92 @@ app.get("/manager/early-late", async (req, res) => {
 
   } catch (err) {
     console.error("Error en /manager/early-late:", err);
-    res.status(500).send(renderPage("Error", `
-      <div class="card">
-        <h1 style="color:#991b1b;">❌ Error</h1>
-        <p>${escapeHtml(err.message)}</p>
-      </div>
-    `));
+    res.status(500).send(renderPage("Error", `<div class="card"><h1 style="color:#991b1b;">❌ Error</h1><p>${escapeHtml(err.message)}</p></div>`));
   }
 });
 
-// ============================================================
-// 📋 MANAGER - APROBAR SOLICITUD EARLY/LATE
-// ============================================================
 app.post("/manager/early-late/:id/approve", async (req, res) => {
   try {
     if (!req.session || !req.session.user) {
       return res.redirect("/login");
     }
-
     const { id } = req.params;
     const user = req.session.user;
-
-    // Verificar que la solicitud existe y pertenece al manager
     const { rows } = await pool.query(`
       SELECT elr.*, c.apartment_id
       FROM early_late_requests elr
       JOIN checkins c ON c.id = elr.checkin_id
-      WHERE elr.id = $1
-        ${user.amdSql ? user.amdSql.replace('AND', 'AND c.') : ''}
+      WHERE elr.id = $1 ${user.amdSql ? user.amdSql.replace('AND', 'AND c.') : ''}
     `, [id]);
-
-    if (rows.length === 0) {
-      return res.status(404).send("Solicitud no encontrada");
-    }
-
-    // Actualizar estado a aprobado
-    await pool.query(`
-      UPDATE early_late_requests
-      SET status = 'approved',
-          approved_at = NOW()
-      WHERE id = $1
-    `, [id]);
-
-    console.log(`✅ Solicitud early/late ${id} aprobada por manager`);
-
+    if (rows.length === 0) return res.status(404).send("Solicitud no encontrada");
+    await pool.query(`UPDATE early_late_requests SET status = 'approved', approved_at = NOW() WHERE id = $1`, [id]);
+    console.log(`✅ Solicitud early/late ${id} aprobada`);
     res.redirect("/manager/early-late");
-
   } catch (err) {
-    console.error("Error al aprobar solicitud:", err);
+    console.error("Error al aprobar:", err);
     res.status(500).send("Error al aprobar solicitud");
   }
 });
 
-// ============================================================
-// 📋 MANAGER - RECHAZAR SOLICITUD EARLY/LATE
-// ============================================================
 app.post("/manager/early-late/:id/reject", async (req, res) => {
   try {
     if (!req.session || !req.session.user) {
       return res.redirect("/login");
     }
-
     const { id } = req.params;
     const user = req.session.user;
-
-    // Verificar que la solicitud existe y pertenece al manager
     const { rows } = await pool.query(`
       SELECT elr.*, c.apartment_id
       FROM early_late_requests elr
       JOIN checkins c ON c.id = elr.checkin_id
-      WHERE elr.id = $1
-        ${user.amdSql ? user.amdSql.replace('AND', 'AND c.') : ''}
+      WHERE elr.id = $1 ${user.amdSql ? user.amdSql.replace('AND', 'AND c.') : ''}
     `, [id]);
-
-    if (rows.length === 0) {
-      return res.status(404).send("Solicitud no encontrada");
-    }
-
-    // Actualizar estado a rechazado
-    await pool.query(`
-      UPDATE early_late_requests
-      SET status = 'rejected',
-          rejected_at = NOW()
-      WHERE id = $1
-    `, [id]);
-
-    console.log(`❌ Solicitud early/late ${id} rechazada por manager`);
-
+    if (rows.length === 0) return res.status(404).send("Solicitud no encontrada");
+    await pool.query(`UPDATE early_late_requests SET status = 'rejected', rejected_at = NOW() WHERE id = $1`, [id]);
+    console.log(`❌ Solicitud early/late ${id} rechazada`);
     res.redirect("/manager/early-late");
-
   } catch (err) {
-    console.error("Error al rechazar solicitud:", err);
+    console.error("Error al rechazar:", err);
     res.status(500).send("Error al rechazar solicitud");
   }
 });
 
-// ============================================================
-// 📋 MANAGER - ENVIAR LINK DE PAGO EARLY/LATE
-// ============================================================
 app.post("/manager/early-late/:id/send-payment", async (req, res) => {
   try {
     if (!req.session || !req.session.user) {
       return res.redirect("/login");
     }
-
     const { id } = req.params;
     const user = req.session.user;
-
-    // Obtener datos de la solicitud
     const { rows } = await pool.query(`
-      SELECT 
-        elr.*,
-        c.apartment_id,
-        c.phone,
-        c.full_name,
-        c.beds24_booking_id,
-        c.booking_token
+      SELECT elr.*, c.apartment_id, c.phone, c.full_name, c.beds24_booking_id, c.booking_token
       FROM early_late_requests elr
       JOIN checkins c ON c.id = elr.checkin_id
-      WHERE elr.id = $1
-        ${user.amdSql ? user.amdSql.replace('AND', 'AND c.') : ''}
+      WHERE elr.id = $1 ${user.amdSql ? user.amdSql.replace('AND', 'AND c.') : ''}
     `, [id]);
-
-    if (rows.length === 0) {
-      return res.status(404).send("Solicitud no encontrada");
-    }
-
+    if (rows.length === 0) return res.status(404).send("Solicitud no encontrada");
     const request = rows[0];
-
-    if (!request.price || request.price <= 0) {
-      return res.status(400).send("Esta solicitud no tiene precio configurado");
-    }
-
-    if (!request.phone) {
-      return res.status(400).send("El huésped no tiene teléfono registrado");
-    }
-
-    // 💰 Generar link de pago (usando la misma lógica que payment_url)
+    if (!request.price || request.price <= 0) return res.status(400).send("Sin precio configurado");
+    if (!request.phone) return res.status(400).send("Sin teléfono registrado");
     const bookingId = request.beds24_booking_id || request.booking_token || request.checkin_id;
     const paymentLink = `https://rcscheckin.com/guest/${encodeURIComponent(bookingId)}?payment=early_late&request_id=${id}`;
-
-    // Guardar link en BD
-    await pool.query(`
-      UPDATE early_late_requests
-      SET payment_link = $1
-      WHERE id = $2
-    `, [paymentLink, id]);
-
-    // 📱 Enviar mensaje por WhatsApp
-    const typeText = request.request_type === 'early_checkin' ? 'early check-in' : 
-                     request.request_type === 'late_checkout' ? 'late checkout' : 
-                     'early check-in y late checkout';
-
-    const message = `Hola ${request.full_name}! 👋
-
-Tu solicitud de ${typeText} ha sido aprobada.
-
-💵 Precio: €${request.price}
-
-Para confirmar tu reserva, por favor realiza el pago en el siguiente enlace:
-
-${paymentLink}
-
-¡Gracias!`;
-
-    // Enviar WhatsApp
+    await pool.query(`UPDATE early_late_requests SET payment_link = $1 WHERE id = $2`, [paymentLink, id]);
+    const typeText = request.request_type === 'early_checkin' ? 'early check-in' : request.request_type === 'late_checkout' ? 'late checkout' : 'early check-in y late checkout';
+    const message = `Hola ${request.full_name}! 👋\n\nTu solicitud de ${typeText} ha sido aprobada.\n\n💵 Precio: €${request.price}\n\nPara confirmar, realiza el pago:\n\n${paymentLink}\n\n¡Gracias!`;
     const phoneClean = request.phone.replace(/\D/g, '');
     const whatsappPhone = phoneClean.startsWith('34') ? phoneClean : `34${phoneClean}`;
-
     await twilioClient.messages.create({
       from: `whatsapp:${TWILIO_WHATSAPP_NUMBER}`,
       to: `whatsapp:+${whatsappPhone}`,
       body: message
     });
-
-    console.log(`💰 Link de pago enviado para solicitud ${id} a ${whatsappPhone}`);
-
+    console.log(`💰 Link enviado para solicitud ${id}`);
     res.redirect("/manager/early-late");
-
   } catch (err) {
-    console.error("Error al enviar link de pago:", err);
-
+    console.error("Error al enviar link:", err);
+    res.status(500).send("Error: " + err.message);
+  }
+});
 // =============== API: RESPUESTAS AUTOMÁTICAS WHATSAPP ===============
 
 // API: Obtener todas las respuestas automáticas
@@ -6641,6 +6515,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
