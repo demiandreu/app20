@@ -5758,6 +5758,7 @@ async function handlePayOk(from, checkin, language) {
 
 // ============ MANEJAR HORA DE LLEGADA ============
 
+
 async function handleArrivalTime(from, checkin, body, language) {
   console.log(`⏰ Procesando hora de llegada: "${body}"`);
   
@@ -5765,7 +5766,6 @@ async function handleArrivalTime(from, checkin, body, language) {
   const parsedTime = parseTimeInput(body);
   
   if (!parsedTime) {
-    // Hora inválida - pedir que lo intente de nuevo
     const errorMsg = getErrorMessage('INVALID_TIME', language);
     await sendWhatsAppMessage(from, errorMsg);
     console.log(`⚠️ Hora inválida: "${body}"`);
@@ -5774,21 +5774,11 @@ async function handleArrivalTime(from, checkin, body, language) {
   
   console.log(`✅ Hora válida parseada: ${parsedTime}`);
   
-  // Guardar hora de llegada en la BD
-  await pool.query(`
-    UPDATE checkins 
-    SET 
-      arrival_time = $1,
-      bot_state = 'WAITING_DEPARTURE'
-    WHERE id = $2
-  `, [parsedTime, checkin.id]);
+  // Extraer la hora (sin minutos)
+  const hour = parseInt(parsedTime.split(':')[0]);
+  const STANDARD_CHECKIN_HOUR = 17; // 5pm
   
-  console.log(`💾 Hora de llegada guardada: ${parsedTime}`);
-  
-  // Esperar 1 segundo
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Obtener configuración del apartamento para variables
+  // Obtener configuración del apartamento
   const roomResult = await pool.query(
     `SELECT registration_url, payment_url, default_arrival_time, default_departure_time 
      FROM beds24_rooms 
@@ -5799,7 +5789,57 @@ async function handleArrivalTime(from, checkin, body, language) {
   
   const room = roomResult.rows[0] || {};
   
-  // Enviar ASK_DEPARTURE con variables reemplazadas
+  // VERIFICAR SI ES EARLY CHECK-IN
+  if (hour < STANDARD_CHECKIN_HOUR) {
+    console.log(`🕐 Early check-in solicitado: ${parsedTime} (estándar: ${STANDARD_CHECKIN_HOUR}:00)`);
+    
+    // Guardar hora y marcar como early check-in solicitado
+    await pool.query(`
+      UPDATE checkins 
+      SET 
+        arrival_time = $1,
+        early_checkin_requested = true,
+        bot_state = 'WAITING_DEPARTURE'
+      WHERE id = $2
+    `, [parsedTime, checkin.id]);
+    
+    // Crear solicitud en early_late_requests
+    const hoursDiff = STANDARD_CHECKIN_HOUR - hour;
+    await pool.query(`
+      INSERT INTO early_late_requests 
+        (checkin_id, request_type, requested_time, hours_difference, status, guest_phone, created_at)
+      VALUES ($1, 'early_checkin', $2, $3, 'pending', $4, NOW())
+    `, [checkin.id, parsedTime, hoursDiff, from]);
+    
+    console.log(`📝 Solicitud de early check-in creada (${hoursDiff}h antes)`);
+    
+    // Enviar mensaje de early check-in
+    let earlyMsg = await getFlowMessage('EARLY_CHECKIN_NOTICE', language);
+    if (earlyMsg) {
+      earlyMsg = replaceVariables(earlyMsg, checkin, room);
+      await sendWhatsAppMessage(from, earlyMsg);
+      console.log(`✅ Enviado mensaje EARLY_CHECKIN_NOTICE`);
+    }
+    
+  } else {
+    // HORARIO NORMAL - Continuar flujo
+    console.log(`✅ Horario normal: ${parsedTime}`);
+    
+    await pool.query(`
+      UPDATE checkins 
+      SET 
+        arrival_time = $1,
+        bot_state = 'WAITING_DEPARTURE'
+      WHERE id = $2
+    `, [parsedTime, checkin.id]);
+    
+    console.log(`💾 Hora de llegada guardada: ${parsedTime}`);
+  }
+  
+  // Esperar 1 segundo
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // Enviar ASK_DEPARTURE (en ambos casos)
   let askDepartureMsg = await getFlowMessage('ASK_DEPARTURE', language);
   if (askDepartureMsg) {
     askDepartureMsg = replaceVariables(askDepartureMsg, checkin, room);
@@ -5817,7 +5857,6 @@ async function handleDepartureTime(from, checkin, body, language) {
   const parsedTime = parseTimeInput(body);
   
   if (!parsedTime) {
-    // Hora inválida - pedir que lo intente de nuevo
     const errorMsg = getErrorMessage('INVALID_TIME', language);
     await sendWhatsAppMessage(from, errorMsg);
     console.log(`⚠️ Hora inválida: "${body}"`);
@@ -5826,21 +5865,11 @@ async function handleDepartureTime(from, checkin, body, language) {
   
   console.log(`✅ Hora válida parseada: ${parsedTime}`);
   
-  // Guardar hora de salida en la BD
-  await pool.query(`
-    UPDATE checkins 
-    SET 
-      departure_time = $1,
-      bot_state = 'DONE'
-    WHERE id = $2
-  `, [parsedTime, checkin.id]);
+  // Extraer la hora (sin minutos)
+  const hour = parseInt(parsedTime.split(':')[0]);
+  const STANDARD_CHECKOUT_HOUR = 11; // 11am
   
-  console.log(`💾 Hora de salida guardada: ${parsedTime}`);
-  
-  // Esperar 1 segundo
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  // Obtener configuración del apartamento para variables
+  // Obtener configuración del apartamento
   const roomResult = await pool.query(
     `SELECT registration_url, payment_url, default_arrival_time, default_departure_time 
      FROM beds24_rooms 
@@ -5851,17 +5880,66 @@ async function handleDepartureTime(from, checkin, body, language) {
   
   const room = roomResult.rows[0] || {};
   
-  // Enviar mensaje de confirmación final con variables reemplazadas
+  // VERIFICAR SI ES LATE CHECKOUT
+  if (hour > STANDARD_CHECKOUT_HOUR) {
+    console.log(`🕐 Late checkout solicitado: ${parsedTime} (estándar: ${STANDARD_CHECKOUT_HOUR}:00)`);
+    
+    // Guardar hora y marcar como late checkout solicitado
+    await pool.query(`
+      UPDATE checkins 
+      SET 
+        departure_time = $1,
+        late_checkout_requested = true,
+        bot_state = 'DONE'
+      WHERE id = $2
+    `, [parsedTime, checkin.id]);
+    
+    // Crear solicitud en early_late_requests
+    const hoursDiff = hour - STANDARD_CHECKOUT_HOUR;
+    await pool.query(`
+      INSERT INTO early_late_requests 
+        (checkin_id, request_type, requested_time, hours_difference, status, guest_phone, created_at)
+      VALUES ($1, 'late_checkout', $2, $3, 'pending', $4, NOW())
+    `, [checkin.id, parsedTime, hoursDiff, from]);
+    
+    console.log(`📝 Solicitud de late checkout creada (${hoursDiff}h después)`);
+    
+    // Enviar mensaje de late checkout
+    let lateMsg = await getFlowMessage('LATE_CHECKOUT_NOTICE', language);
+    if (lateMsg) {
+      lateMsg = replaceVariables(lateMsg, checkin, room);
+      await sendWhatsAppMessage(from, lateMsg);
+      console.log(`✅ Enviado mensaje LATE_CHECKOUT_NOTICE`);
+    }
+    
+  } else {
+    // HORARIO NORMAL - Continuar flujo
+    console.log(`✅ Horario normal: ${parsedTime}`);
+    
+    await pool.query(`
+      UPDATE checkins 
+      SET 
+        departure_time = $1,
+        bot_state = 'DONE'
+      WHERE id = $2
+    `, [parsedTime, checkin.id]);
+    
+    console.log(`💾 Hora de salida guardada: ${parsedTime}`);
+  }
+  
+  // Esperar 1 segundo
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  // Enviar CONFIRMATION
   let confirmMsg = await getFlowMessage('CONFIRMATION', language);
   if (confirmMsg) {
     confirmMsg = replaceVariables(confirmMsg, checkin, room);
     await sendWhatsAppMessage(from, confirmMsg);
-    console.log(`✅ Enviado mensaje de CONFIRMACIÓN FINAL`);
+    console.log(`✅ Enviado mensaje CONFIRMATION`);
   }
   
   console.log(`🎉 FLUJO COMPLETADO para checkin ${checkin.id}`);
 }
-
 // ============ PARSEAR ENTRADA DE HORA ============
 
 function parseTimeInput(input) {
@@ -6030,6 +6108,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
