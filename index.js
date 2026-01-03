@@ -5812,12 +5812,13 @@ async function handleArrivalTime(from, checkin, body, language) {
     `, [parsedTime, checkin.id]);
     
     // Crear solicitud en early_late_requests
-    const hoursDiff = STANDARD_CHECKIN_HOUR - hour;
-    await pool.query(`
-      INSERT INTO early_late_requests 
-        (checkin_id, request_type, requested_time, hours_difference, status, guest_phone, created_at)
-      VVALUES ($1, 'early_checkin', $2, $3, 'pending', $4, NOW(), NULL)
-    `, [checkin.id, parsedTime, hoursDiff, from]);
+   // Crear solicitud en early_late_requests
+const hoursDiff = STANDARD_CHECKIN_HOUR - hour;
+await pool.query(`
+  INSERT INTO early_late_requests 
+    (checkin_id, request_type, requested_time, hours_difference, status, guest_phone, created_at)
+  VALUES ($1, 'early_checkin', $2, $3, 'pending', $4, NOW())
+`, [checkin.id, parsedTime, hoursDiff, from]);
     
     console.log(`📝 Solicitud de early check-in creada (${hoursDiff}h antes)`);
     
@@ -6174,6 +6175,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
