@@ -3709,6 +3709,7 @@ app.get("/guest/:bookingId", async (req, res) => {
     
     // Helper para traducciones
     function getTranslatedText(section, field, lang) {
+      // Si no hay traducciones, usar el campo base
       if (!section.translations) return section[field] || '';
       
       try {
@@ -3716,13 +3717,28 @@ app.get("/guest/:bookingId", async (req, res) => {
           ? JSON.parse(section.translations) 
           : section.translations;
         
+        // Buscar traducción en el idioma solicitado
         if (trans[field] && trans[field][lang]) {
-          return trans[field][lang];
+          const text = trans[field][lang].trim();
+          if (text) return text; // Si tiene contenido, usarlo
+        }
+        
+        // Fallback: intentar español primero
+        if (trans[field] && trans[field]['es']) {
+          const text = trans[field]['es'].trim();
+          if (text) return text;
+        }
+        
+        // Fallback: intentar inglés
+        if (trans[field] && trans[field]['en']) {
+          const text = trans[field]['en'].trim();
+          if (text) return text;
         }
       } catch (e) {
         console.error('Translation parse error:', e);
       }
       
+      // Último fallback: campo base
       return section[field] || '';
     }
     
@@ -3918,7 +3934,6 @@ app.get("/guest/:bookingId", async (req, res) => {
     `));
   }
 });
-
 
 // ============================================
 // RUTA: /manager/whatsapp
@@ -6237,6 +6252,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
