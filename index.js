@@ -5541,7 +5541,6 @@ async function processWhatsAppMessage(from, body, messageId) {
     
     if (!checkin) {
       console.log(`⚠️ No hay sesión activa para ${phoneNumber}`);
-      // Opcionalmente enviar mensaje pidiendo que haga START
       await sendWhatsAppMessage(from, 
         '⚠️ No encuentro tu reserva.\n\nPor favor, envía:\nSTART [número de reserva]\n\nEjemplo: START 80271139'
       );
@@ -5577,59 +5576,61 @@ async function processWhatsAppMessage(from, body, messageId) {
       return;
     }
     
-// ========== PRIORIDAD 5: PROCESAR SEGÚN ESTADO DEL BOT ==========
+    // ========== PRIORIDAD 5: PROCESAR SEGÚN ESTADO DEL BOT ==========
     
-const currentState = checkin.bot_state || 'IDLE';
+    const currentState = checkin.bot_state || 'IDLE';
 
-switch (currentState) {
-  case 'WAITING_ARRIVAL':
-    await handleArrivalTime(from, checkin, body, language);
-    break;
-    
-  case 'WAITING_DEPARTURE':
-    await handleDepartureTime(from, checkin, body, language);
-    break;
-    
-  case 'WAITING_RULES':
-    await handleRulesAcceptance(from, checkin, body, language);
-    break;
-    
-  case 'DONE':
-    console.log(`✅ Flujo ya completado para checkin ${checkin.id}`);
-    break;
-    
-  default:
-    console.log(`💬 Mensaje libre sin acción específica (estado: ${currentState})`);
-    break;
-}
+    switch (currentState) {
+      case 'WAITING_ARRIVAL':
+        await handleArrivalTime(from, checkin, body, language);
+        break;
+        
+      case 'WAITING_DEPARTURE':
+        await handleDepartureTime(from, checkin, body, language);
+        break;
+        
+      case 'WAITING_RULES':
+        await handleRulesAcceptance(from, checkin, body, language);
+        break;
+        
+      case 'DONE':
+        console.log(`✅ Flujo ya completado para checkin ${checkin.id}`);
+        break;
+        
+      default:
+        console.log(`💬 Mensaje libre sin acción específica (estado: ${currentState})`);
+        break;
+    }
 
-// ============================================
-// 🤖 AUTO-REPLIES: Detectar keywords
-// ============================================
+    // ============================================
+    // 🤖 AUTO-REPLIES: Detectar keywords
+    // ============================================
 
-const canCheckAutoReply = (
-  currentState === 'DONE' || 
-  currentState === 'WAITING_ARRIVAL' ||
-  currentState === 'WAITING_DEPARTURE' ||
-  currentState === 'WAITING_RULES'
-);
+    const canCheckAutoReply = (
+      currentState === 'DONE' || 
+      currentState === 'WAITING_ARRIVAL' ||
+      currentState === 'WAITING_DEPARTURE' ||
+      currentState === 'WAITING_RULES'
+    );
 
-if (canCheckAutoReply && body && body.trim().length > 0) {
-  const autoReplyResponse = await checkAutoReply(
-    body, 
-    checkin.apartment_id, 
-    language || 'es'
-  );
+    if (canCheckAutoReply && body && body.trim().length > 0) {
+      const autoReplyResponse = await checkAutoReply(
+        body, 
+        checkin.apartment_id, 
+        language || 'es'
+      );
 
-  if (autoReplyResponse) {
-    await sendWhatsAppMessage(from, autoReplyResponse);
-    console.log(`🤖 Auto-reply sent to ${from}: keyword matched`);
+      if (autoReplyResponse) {
+        await sendWhatsAppMessage(from, autoReplyResponse);
+        console.log(`🤖 Auto-reply sent to ${from}: keyword matched`);
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Error procesando mensaje WhatsApp:', error);
   }
-}
+}  // ✅ AÑADIDO: Cierre de la función processWhatsAppMessage
 
-} catch (error) {
-  console.error('❌ Error procesando mensaje WhatsApp:', error);
-}
 // ============ MANEJAR COMANDO START ============
 
 async function handleStartCommand(from, phoneNumber, startMatch, originalBody) {
@@ -5689,7 +5690,6 @@ async function handleStartCommand(from, phoneNumber, startMatch, originalBody) {
     console.error('❌ Error en handleStartCommand:', error);
   }
 }
-
 // ============ REEMPLAZAR VARIABLES EN MENSAJES ============
 
 function replaceVariables(message, checkin, room) {
@@ -6424,6 +6424,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
