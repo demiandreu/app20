@@ -32,6 +32,52 @@ async function beds24Get(endpoint, params = {}, propertyExternalId) {
   return resp.json();
 }
 
+}  // <-- línea 33 (cierre de función anterior)
+
+// ============================================
+// 🤖 AUTO-REPLY: Detectar keywords
+// ============================================
+async function checkAutoReply(message, apartmentId, lang = 'es') {
+  try {
+    const messageLower = message.toLowerCase().trim();
+    
+    const result = await pool.query(`
+      SELECT 
+        id,
+        keywords,
+        response_es,
+        response_en,
+        response_fr,
+        response_ru,
+        priority
+      FROM whatsapp_auto_replies
+      WHERE active = true
+        AND (apartment_id IS NULL OR apartment_id = $1)
+      ORDER BY priority DESC
+    `, [apartmentId]);
+
+    for (const reply of result.rows) {
+      for (const keyword of reply.keywords) {
+        if (messageLower.includes(keyword.toLowerCase())) {
+          const langKey = `response_${lang}`;
+          const response = reply[langKey] || reply.response_es;
+          
+          console.log(`🤖 Auto-reply triggered: keyword="${keyword}", reply_id=${reply.id}`);
+          
+          return response;
+        }
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error checking auto-reply:', error);
+    return null;
+  }
+}
+
+async function getBeds24AccessToken(propertyExternalId) {  // <-- línea 35
+
 async function getBeds24AccessToken(propertyExternalId) {
   const res = await pool.query(
     `SELECT credentials->>'refresh_token' AS refresh_token
@@ -5560,7 +5606,39 @@ async function processWhatsAppMessage(from, body, messageId) {
         console.log(`💬 Mensaje libre sin acción específica (estado: ${currentState})`);
         // Aquí podrías enviar un mensaje genérico o simplemente no responder
         break;
+    } // <-- Este es el cierre del switch (línea 5563)
+
+    // ============================================
+    // 🤖 AUTO-REPLIES: Detectar keywords
+    // ============================================
+
+    // Solo buscar auto-replies si el bot ya procesó el flujo principal
+    const canCheckAutoReply = (
+      currentState === 'DONE' || 
+      currentState === 'WAITING_ARRIVAL' ||
+      currentState === 'WAITING_DEPARTURE' ||
+      currentState === 'WAITING_RULES'
+    );
+
+    if (canCheckAutoReply && body && body.trim().length > 0) {
+      const autoReplyResponse = await checkAutoReply(
+        body, 
+        checkin.apartment_id, 
+        language || 'es'
+      );
+
+      if (autoReplyResponse) {
+        // Enviar respuesta automática
+        await sendWhatsAppMessage(from, autoReplyResponse);
+        console.log(`🤖 Auto-reply sent to ${from}: keyword matched`);
+        
+        // IMPORTANTE: No cambiar bot_state
+        // La auto-respuesta es adicional, no afecta el flujo
+      }
     }
+
+    // Responder a Twilio (línea ~5565)
+    res.status(200).send('<Response></Response>');
     
   } catch (error) {
     console.error('❌ Error procesando mensaje WhatsApp:', error);
@@ -6361,6 +6439,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
