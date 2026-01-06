@@ -39,6 +39,7 @@ async function checkAutoReply(message, apartmentId, lang = 'es') {
   try {
     const messageLower = message.toLowerCase().trim();
     
+    // Buscar autorespuestas activas
     const result = await pool.query(`
       SELECT 
         id,
@@ -54,9 +55,23 @@ async function checkAutoReply(message, apartmentId, lang = 'es') {
       ORDER BY priority DESC
     `, [apartmentId]);
 
+    // Buscar coincidencia con keywords
     for (const reply of result.rows) {
-      for (const keyword of reply.keywords) {
-        if (messageLower.includes(keyword.toLowerCase())) {
+      // Convertir keywords de texto a array
+      let keywordsArray = [];
+      
+      if (Array.isArray(reply.keywords)) {
+        // Si ya es array (PostgreSQL array)
+        keywordsArray = reply.keywords;
+      } else if (typeof reply.keywords === 'string') {
+        // Si es string, separar por comas
+        keywordsArray = reply.keywords.split(',').map(k => k.trim());
+      }
+      
+      // Buscar coincidencia
+      for (const keyword of keywordsArray) {
+        if (keyword && messageLower.includes(keyword.toLowerCase())) {
+          // Encontró match!
           const langKey = `response_${lang}`;
           const response = reply[langKey] || reply.response_es;
           
@@ -67,7 +82,7 @@ async function checkAutoReply(message, apartmentId, lang = 'es') {
       }
     }
 
-    return null;
+    return null; // No match
   } catch (error) {
     console.error('Error checking auto-reply:', error);
     return null;
@@ -6424,6 +6439,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
