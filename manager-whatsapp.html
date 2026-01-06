@@ -314,6 +314,26 @@
   color: white;
   border-color: #4f46e5;
 }
+ .btn-translate {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.btn-translate:hover {
+  background: #059669;
+}
+
+.btn-translate:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}       
 
 .lang-textarea {
   display: none;
@@ -1165,6 +1185,7 @@ async function loadAutoReplies() {
 }
 
 // Renderizar lista de autorespuestas
+// Renderizar lista de autorespuestas
 function renderAutoReplies() {
   const container = document.getElementById('auto-replies-list');
   
@@ -1201,10 +1222,10 @@ function renderAutoReplies() {
 
       <div class="reply-content">
         <div class="language-tabs">
-          <button class="lang-tab active" onclick="showLang(${index}, 'es')">🇪🇸 ES</button>
-          <button class="lang-tab" onclick="showLang(${index}, 'en')">🇬🇧 EN</button>
-          <button class="lang-tab" onclick="showLang(${index}, 'fr')">🇫🇷 FR</button>
-          <button class="lang-tab" onclick="showLang(${index}, 'ru')">🇷🇺 RU</button>
+          <button class="lang-tab active" onclick="showLangReply(${index}, 'es')">🇪🇸 ES</button>
+          <button class="lang-tab" onclick="showLangReply(${index}, 'en')">🇬🇧 EN</button>
+          <button class="lang-tab" onclick="showLangReply(${index}, 'fr')">🇫🇷 FR</button>
+          <button class="lang-tab" onclick="showLangReply(${index}, 'ru')">🇷🇺 RU</button>
         </div>
 
         <div class="lang-content">
@@ -1217,6 +1238,8 @@ function renderAutoReplies() {
           <textarea id="reply_${index}_ru" class="lang-textarea" 
                     placeholder="Ответ на русском...">${reply.response_ru || ''}</textarea>
         </div>
+
+        <button class="btn-translate" onclick="translateAutoReply(${index})">🌍 Traducir desde ES</button>
 
         <div class="reply-settings">
           <label>
@@ -1248,7 +1271,8 @@ function renderAutoReplies() {
 }
 
 // Mostrar idioma en textarea
-function showLang(index, lang) {
+// Mostrar idioma en textarea
+function showLangReply(index, lang) {
   const card = document.querySelectorAll('.auto-reply-card')[index];
   
   // Toggle tabs
@@ -1258,6 +1282,56 @@ function showLang(index, lang) {
   // Toggle textareas
   card.querySelectorAll('.lang-textarea').forEach(ta => ta.classList.remove('active'));
   card.querySelector(`#reply_${index}_${lang}`).classList.add('active');
+}
+        // Traducir autorespuesta con DeepL
+async function translateAutoReply(index) {
+  const sourceText = document.getElementById(`reply_${index}_es`).value.trim();
+  
+  if (!sourceText) {
+    showAlert('auto-replies', '⚠️ Escribe primero el texto en español', 'error');
+    return;
+  }
+
+  const button = event.target;
+  button.disabled = true;
+  button.textContent = '⏳ Traduciendo...';
+
+  try {
+    // Translate to EN
+    let response = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: sourceText, targetLang: 'EN' })
+    });
+    let data = await response.json();
+    document.getElementById(`reply_${index}_en`).value = data.translated;
+
+    // Translate to FR
+    response = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: sourceText, targetLang: 'FR' })
+    });
+    data = await response.json();
+    document.getElementById(`reply_${index}_fr`).value = data.translated;
+
+    // Translate to RU
+    response = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: sourceText, targetLang: 'RU' })
+    });
+    data = await response.json();
+    document.getElementById(`reply_${index}_ru`).value = data.translated;
+
+    showAlert('auto-replies', '✅ Traducción completada', 'success');
+  } catch (error) {
+    console.error('Translation error:', error);
+    showAlert('auto-replies', '❌ Error al traducir', 'error');
+  } finally {
+    button.disabled = false;
+    button.textContent = '🌍 Traducir desde ES';
+  }
 }
 
 // Toggle activo/inactivo
