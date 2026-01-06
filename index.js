@@ -32,8 +32,6 @@ async function beds24Get(endpoint, params = {}, propertyExternalId) {
   return resp.json();
 }
 
-}  // <-- línea 33 (cierre de función anterior)
-
 // ============================================
 // 🤖 AUTO-REPLY: Detectar keywords
 // ============================================
@@ -6439,6 +6437,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
