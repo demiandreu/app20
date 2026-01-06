@@ -5252,13 +5252,29 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
 
 // =============== API: RESPUESTAS AUTOMÁTICAS WHATSAPP ===============
 
-// API: Obtener todas las respuestas automáticas
+// ============================================================
+// 📋 API: AUTORESPUESTAS (KEYWORDS)
+// ============================================================
+
+// GET: Obtener todas las autorespuestas
 app.get("/api/whatsapp/auto-replies", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT id, category, keywords, response_es, response_en, response_fr, response_ru, active
+      SELECT 
+        id,
+        apartment_id,
+        category,
+        keywords,
+        response_es,
+        response_en,
+        response_fr,
+        response_ru,
+        active,
+        priority,
+        created_at,
+        updated_at
       FROM whatsapp_auto_replies
-      ORDER BY category, id
+      ORDER BY priority DESC, category ASC
     `);
 
     res.json({
@@ -5274,16 +5290,37 @@ app.get("/api/whatsapp/auto-replies", async (req, res) => {
   }
 });
 
-// API: Crear nueva respuesta automática
+// POST: Crear nueva autorespuesta
 app.post("/api/whatsapp/auto-replies", async (req, res) => {
-  const { category, keywords, response_es, response_en, response_fr, response_ru } = req.body;
-
   try {
+    const {
+      apartment_id,
+      category,
+      keywords,
+      response_es,
+      response_en,
+      response_fr,
+      response_ru,
+      active,
+      priority
+    } = req.body;
+
     const result = await pool.query(`
-      INSERT INTO whatsapp_auto_replies (category, keywords, response_es, response_en, response_fr, response_ru)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO whatsapp_auto_replies
+        (apartment_id, category, keywords, response_es, response_en, response_fr, response_ru, active, priority)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
-    `, [category, keywords, response_es, response_en, response_fr, response_ru]);
+    `, [
+      apartment_id || null,
+      category || 'custom',
+      keywords,
+      response_es,
+      response_en || response_es,
+      response_fr || response_es,
+      response_ru || response_es,
+      active !== false,
+      priority || 0
+    ]);
 
     res.json({
       success: true,
@@ -5298,29 +5335,60 @@ app.post("/api/whatsapp/auto-replies", async (req, res) => {
   }
 });
 
-// API: Actualizar respuesta automática
+// PUT: Actualizar autorespuesta
 app.put("/api/whatsapp/auto-replies/:id", async (req, res) => {
-  const { id } = req.params;
-  const { category, keywords, response_es, response_en, response_fr, response_ru, active } = req.body;
-
   try {
-    await pool.query(`
+    const { id } = req.params;
+    const {
+      apartment_id,
+      category,
+      keywords,
+      response_es,
+      response_en,
+      response_fr,
+      response_ru,
+      active,
+      priority
+    } = req.body;
+
+    const result = await pool.query(`
       UPDATE whatsapp_auto_replies
-      SET 
-        category = $1,
-        keywords = $2,
-        response_es = $3,
-        response_en = $4,
-        response_fr = $5,
-        response_ru = $6,
-        active = $7,
-        updated_at = CURRENT_TIMESTAMP
-      WHERE id = $8
-    `, [category, keywords, response_es, response_en, response_fr, response_ru, active, id]);
+      SET
+        apartment_id = $1,
+        category = $2,
+        keywords = $3,
+        response_es = $4,
+        response_en = $5,
+        response_fr = $6,
+        response_ru = $7,
+        active = $8,
+        priority = $9,
+        updated_at = NOW()
+      WHERE id = $10
+      RETURNING *
+    `, [
+      apartment_id || null,
+      category,
+      keywords,
+      response_es,
+      response_en,
+      response_fr,
+      response_ru,
+      active,
+      priority || 0,
+      id
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Auto-reply not found'
+      });
+    }
 
     res.json({
       success: true,
-      message: 'Auto-reply updated successfully'
+      reply: result.rows[0]
     });
   } catch (error) {
     console.error('Error updating auto-reply:', error);
@@ -5331,16 +5399,27 @@ app.put("/api/whatsapp/auto-replies/:id", async (req, res) => {
   }
 });
 
-// API: Eliminar respuesta automática
+// DELETE: Eliminar autorespuesta
 app.delete("/api/whatsapp/auto-replies/:id", async (req, res) => {
-  const { id } = req.params;
-
   try {
-    await pool.query(`DELETE FROM whatsapp_auto_replies WHERE id = $1`, [id]);
+    const { id } = req.params;
+
+    const result = await pool.query(`
+      DELETE FROM whatsapp_auto_replies
+      WHERE id = $1
+      RETURNING id
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Auto-reply not found'
+      });
+    }
 
     res.json({
       success: true,
-      message: 'Auto-reply deleted successfully'
+      message: 'Auto-reply deleted'
     });
   } catch (error) {
     console.error('Error deleting auto-reply:', error);
@@ -6282,6 +6361,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
