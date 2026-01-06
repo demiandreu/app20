@@ -704,9 +704,18 @@ function fmtTime(timeStr) {
 
 function toYouTubeEmbed(url) {
   const u = String(url || "");
+  
+  // Formato 1: youtu.be/VIDEO_ID
   const m1 = u.match(/youtu\.be\/([A-Za-z0-9_-]{6,})/);
+  
+  // Formato 2: youtube.com/watch?v=VIDEO_ID
   const m2 = u.match(/[?&]v=([A-Za-z0-9_-]{6,})/);
-  const id = (m1 && m1[1]) || (m2 && m2[1]);
+  
+  // Formato 3: youtube.com/shorts/VIDEO_ID ← ✅ AÑADIR ESTO
+  const m3 = u.match(/youtube\.com\/shorts\/([A-Za-z0-9_-]{6,})/);
+  
+  const id = (m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]);
+  
   return id ? `https://www.youtube.com/embed/${id}` : null;
 }
 
@@ -6273,6 +6282,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
