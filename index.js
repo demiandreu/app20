@@ -40,7 +40,7 @@ async function checkAutoReply(message, apartmentId, lang = 'es') {
     const messageLower = message.toLowerCase().trim();
     console.log(`🔍 checkAutoReply: Buscando match para "${messageLower}" (lang: ${lang})`);
     
-    // Buscar autorespuestas activas (SIN filtrar por apartment_id)
+    // Buscar autorespuestas activas
     const result = await pool.query(`
       SELECT 
         id,
@@ -59,13 +59,23 @@ async function checkAutoReply(message, apartmentId, lang = 'es') {
 
     // Buscar coincidencia con keywords
     for (const reply of result.rows) {
-      // Convertir keywords de texto a array
       let keywordsArray = [];
       
+      // Convertir keywords a array limpio
       if (Array.isArray(reply.keywords)) {
+        // Si ya es array de JavaScript
         keywordsArray = reply.keywords;
       } else if (typeof reply.keywords === 'string') {
-        keywordsArray = reply.keywords.split(',').map(k => k.trim());
+        // Si es string con formato PostgreSQL: {wifi,password,internet}
+        // O string con comas: wifi, password, internet
+        
+        let keywordsStr = reply.keywords;
+        
+        // Limpiar llaves de PostgreSQL array
+        keywordsStr = keywordsStr.replace(/^\{/, '').replace(/\}$/, '');
+        
+        // Separar por comas
+        keywordsArray = keywordsStr.split(',').map(k => k.trim());
       }
       
       console.log(`🔑 Reply ID ${reply.id}: keywords = [${keywordsArray.slice(0, 3).join(', ')}...]`);
@@ -77,7 +87,7 @@ async function checkAutoReply(message, apartmentId, lang = 'es') {
           const response = reply[langKey] || reply.response_es;
           
           console.log(`✅ MATCH! keyword="${keyword}", reply_id=${reply.id}`);
-          console.log(`📤 Respuesta: ${response.substring(0, 50)}...`);
+          console.log(`📤 Enviando respuesta...`);
           
           return response;
         }
@@ -6437,6 +6447,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
