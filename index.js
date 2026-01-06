@@ -38,8 +38,9 @@ async function beds24Get(endpoint, params = {}, propertyExternalId) {
 async function checkAutoReply(message, apartmentId, lang = 'es') {
   try {
     const messageLower = message.toLowerCase().trim();
+    console.log(`🔍 checkAutoReply: Buscando match para "${messageLower}" (lang: ${lang})`);
     
-    // Buscar autorespuestas activas
+    // Buscar autorespuestas activas (SIN filtrar por apartment_id)
     const result = await pool.query(`
       SELECT 
         id,
@@ -51,9 +52,10 @@ async function checkAutoReply(message, apartmentId, lang = 'es') {
         priority
       FROM whatsapp_auto_replies
       WHERE active = true
-        AND (apartment_id IS NULL OR apartment_id = $1)
       ORDER BY priority DESC
-    `, [apartmentId]);
+    `);
+
+    console.log(`📊 Encontradas ${result.rows.length} autorespuestas activas`);
 
     // Buscar coincidencia con keywords
     for (const reply of result.rows) {
@@ -61,30 +63,31 @@ async function checkAutoReply(message, apartmentId, lang = 'es') {
       let keywordsArray = [];
       
       if (Array.isArray(reply.keywords)) {
-        // Si ya es array (PostgreSQL array)
         keywordsArray = reply.keywords;
       } else if (typeof reply.keywords === 'string') {
-        // Si es string, separar por comas
         keywordsArray = reply.keywords.split(',').map(k => k.trim());
       }
+      
+      console.log(`🔑 Reply ID ${reply.id}: keywords = [${keywordsArray.slice(0, 3).join(', ')}...]`);
       
       // Buscar coincidencia
       for (const keyword of keywordsArray) {
         if (keyword && messageLower.includes(keyword.toLowerCase())) {
-          // Encontró match!
           const langKey = `response_${lang}`;
           const response = reply[langKey] || reply.response_es;
           
-          console.log(`🤖 Auto-reply triggered: keyword="${keyword}", reply_id=${reply.id}`);
+          console.log(`✅ MATCH! keyword="${keyword}", reply_id=${reply.id}`);
+          console.log(`📤 Respuesta: ${response.substring(0, 50)}...`);
           
           return response;
         }
       }
     }
 
-    return null; // No match
+    console.log(`❌ No se encontró match para "${messageLower}"`);
+    return null;
   } catch (error) {
-    console.error('Error checking auto-reply:', error);
+    console.error('❌ Error checking auto-reply:', error);
     return null;
   }
 }
@@ -6434,6 +6437,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
