@@ -93,6 +93,116 @@
             to { opacity: 1; }
         }
 
+        /* Auto-replies styles */
+.auto-reply-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.reply-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.reply-header h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.keywords-display {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.keyword-tag {
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.reply-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.language-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.lang-tab {
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.lang-tab.active {
+  background: #4f46e5;
+  color: white;
+  border-color: #4f46e5;
+}
+
+.lang-textarea {
+  display: none;
+  width: 100%;
+  min-height: 150px;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.lang-textarea.active {
+  display: block;
+}
+
+.reply-settings {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 12px;
+}
+
+.reply-settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.reply-settings input,
+.reply-settings select {
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.empty-state p {
+  margin: 8px 0;
+}
+
         /* Variables Panel */
         .variables-panel {
             background: #f0f9ff;
@@ -658,11 +768,37 @@
             <p style="text-align: center; color: #6b7280;">Configuración Early/Late Check-in</p>
         </div>
 
-        <!-- TAB 3: Auto Replies -->
-        <div id="auto-replies" class="tab-content">
-            <p style="text-align: center; color: #6b7280;">Respuestas Automáticas</p>
-        </div>
-    </div>
+     <!-- ============================================ -->
+<!-- 🤖 TAB: RESPUESTAS AUTOMÁTICAS -->
+<!-- ============================================ -->
+<div id="auto-replies-tab" class="tab-content">
+  <div class="section-header">
+    <h2>🤖 Respuestas Automáticas</h2>
+    <p class="description">
+      Configura respuestas automáticas a palabras clave. 
+      El bot responderá automáticamente cuando los huéspedes escriban estas keywords.
+    </p>
+  </div>
+
+  <!-- Botón para añadir nueva respuesta -->
+  <div style="margin-bottom: 20px;">
+    <button id="add-reply-btn" class="btn-primary">
+      ➕ Añadir Nueva Respuesta
+    </button>
+  </div>
+
+  <!-- Lista de respuestas -->
+  <div id="auto-replies-list">
+    <!-- Se llenará dinámicamente con JavaScript -->
+  </div>
+
+  <!-- Botón guardar -->
+  <div style="margin-top: 24px; text-align: right;">
+    <button id="save-auto-replies-btn" class="btn-primary">
+      💾 Guardar Cambios
+    </button>
+  </div>
+</div>
 
     <!-- Notificación de copiado -->
     <div id="copy-notification" class="copy-notification">
@@ -836,6 +972,211 @@
 
         // Load initial data
         loadFlowMessages();
+
+        // ============================================
+// 🤖 AUTO-REPLIES MANAGEMENT
+// ============================================
+
+let autoReplies = [];
+
+// Cargar autorespuestas al inicio
+async function loadAutoReplies() {
+  try {
+    const response = await fetch('/api/whatsapp/auto-replies');
+    const data = await response.json();
+    
+    if (data.success) {
+      autoReplies = data.replies;
+      renderAutoReplies();
+    }
+  } catch (error) {
+    console.error('Error loading auto-replies:', error);
+    showAlert('auto-replies', '❌ Error al cargar respuestas automáticas', 'error');
+  }
+}
+
+// Renderizar lista de autorespuestas
+function renderAutoReplies() {
+  const container = document.getElementById('auto-replies-list');
+  
+  if (autoReplies.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <p>No hay respuestas automáticas configuradas.</p>
+        <p>Haz clic en "➕ Añadir Nueva Respuesta" para crear una.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = autoReplies.map((reply, index) => `
+    <div class="auto-reply-card" data-id="${reply.id}">
+      <div class="reply-header">
+        <div>
+          <h3>${getCategoryIcon(reply.category)} ${reply.category}</h3>
+          <div class="keywords-display">
+            ${reply.keywords.map(kw => `<span class="keyword-tag">${kw}</span>`).join('')}
+          </div>
+        </div>
+        <div class="reply-actions">
+          <label class="toggle">
+            <input type="checkbox" ${reply.active ? 'checked' : ''} 
+                   onchange="toggleReply(${index})">
+            <span>Activa</span>
+          </label>
+          <button class="btn-small btn-danger" onclick="deleteReply(${index})">
+            🗑️ Eliminar
+          </button>
+        </div>
+      </div>
+
+      <div class="reply-content">
+        <div class="language-tabs">
+          <button class="lang-tab active" onclick="showLang(${index}, 'es')">🇪🇸 ES</button>
+          <button class="lang-tab" onclick="showLang(${index}, 'en')">🇬🇧 EN</button>
+          <button class="lang-tab" onclick="showLang(${index}, 'fr')">🇫🇷 FR</button>
+          <button class="lang-tab" onclick="showLang(${index}, 'ru')">🇷🇺 RU</button>
+        </div>
+
+        <div class="lang-content">
+          <textarea id="reply_${index}_es" class="lang-textarea active" 
+                    placeholder="Respuesta en español...">${reply.response_es || ''}</textarea>
+          <textarea id="reply_${index}_en" class="lang-textarea" 
+                    placeholder="Response in English...">${reply.response_en || ''}</textarea>
+          <textarea id="reply_${index}_fr" class="lang-textarea" 
+                    placeholder="Réponse en français...">${reply.response_fr || ''}</textarea>
+          <textarea id="reply_${index}_ru" class="lang-textarea" 
+                    placeholder="Ответ на русском...">${reply.response_ru || ''}</textarea>
+        </div>
+
+        <div class="reply-settings">
+          <label>
+            Keywords (separados por coma):
+            <input type="text" id="keywords_${index}" 
+                   value="${reply.keywords.join(', ')}"
+                   placeholder="wifi, contraseña, password">
+          </label>
+          
+          <label>
+            Categoría:
+            <select id="category_${index}">
+              <option value="wifi" ${reply.category === 'wifi' ? 'selected' : ''}>📶 WiFi</option>
+              <option value="checkout" ${reply.category === 'checkout' ? 'selected' : ''}>🚪 Checkout</option>
+              <option value="parking" ${reply.category === 'parking' ? 'selected' : ''}>🅿️ Parking</option>
+              <option value="custom" ${reply.category === 'custom' ? 'selected' : ''}>✏️ Custom</option>
+            </select>
+          </label>
+
+          <label>
+            Prioridad:
+            <input type="number" id="priority_${index}" 
+                   value="${reply.priority || 0}" min="0" max="100">
+          </label>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Mostrar idioma en textarea
+function showLang(index, lang) {
+  const card = document.querySelectorAll('.auto-reply-card')[index];
+  
+  // Toggle tabs
+  card.querySelectorAll('.lang-tab').forEach(tab => tab.classList.remove('active'));
+  card.querySelector(`.lang-tab[onclick*="${lang}"]`).classList.add('active');
+  
+  // Toggle textareas
+  card.querySelectorAll('.lang-textarea').forEach(ta => ta.classList.remove('active'));
+  card.querySelector(`#reply_${index}_${lang}`).classList.add('active');
+}
+
+// Toggle activo/inactivo
+function toggleReply(index) {
+  autoReplies[index].active = !autoReplies[index].active;
+}
+
+// Eliminar respuesta
+function deleteReply(index) {
+  if (confirm('¿Seguro que quieres eliminar esta respuesta automática?')) {
+    autoReplies.splice(index, 1);
+    renderAutoReplies();
+  }
+}
+
+// Añadir nueva respuesta
+document.getElementById('add-reply-btn')?.addEventListener('click', () => {
+  autoReplies.push({
+    id: null,
+    category: 'custom',
+    keywords: [],
+    response_es: '',
+    response_en: '',
+    response_fr: '',
+    response_ru: '',
+    active: true,
+    priority: 0
+  });
+  renderAutoReplies();
+});
+
+// Guardar cambios
+document.getElementById('save-auto-replies-btn')?.addEventListener('click', async () => {
+  try {
+    // Recoger datos de todos los campos
+    const updatedReplies = autoReplies.map((reply, index) => ({
+      ...reply,
+      category: document.getElementById(`category_${index}`)?.value || reply.category,
+      keywords: document.getElementById(`keywords_${index}`)?.value.split(',').map(k => k.trim()),
+      response_es: document.getElementById(`reply_${index}_es`)?.value || '',
+      response_en: document.getElementById(`reply_${index}_en`)?.value || '',
+      response_fr: document.getElementById(`reply_${index}_fr`)?.value || '',
+      response_ru: document.getElementById(`reply_${index}_ru`)?.value || '',
+      priority: parseInt(document.getElementById(`priority_${index}`)?.value) || 0
+    }));
+
+    // Guardar cada respuesta
+    for (const reply of updatedReplies) {
+      if (reply.id) {
+        // Actualizar existente
+        await fetch(`/api/whatsapp/auto-replies/${reply.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reply)
+        });
+      } else {
+        // Crear nueva
+        await fetch('/api/whatsapp/auto-replies', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reply)
+        });
+      }
+    }
+
+    showAlert('auto-replies', '✅ Respuestas guardadas correctamente', 'success');
+    loadAutoReplies(); // Recargar
+  } catch (error) {
+    console.error('Error saving auto-replies:', error);
+    showAlert('auto-replies', '❌ Error al guardar', 'error');
+  }
+});
+
+// Helper: icono por categoría
+function getCategoryIcon(category) {
+  const icons = {
+    wifi: '📶',
+    checkout: '🚪',
+    parking: '🅿️',
+    custom: '✏️'
+  };
+  return icons[category] || '📝';
+}
+
+// Cargar al cambiar a la pestaña
+document.querySelector('[data-tab="auto-replies"]')?.addEventListener('click', () => {
+  loadAutoReplies();
+});
     </script>
 </body>
 </html>
