@@ -5621,12 +5621,7 @@ async function processWhatsAppMessage(from, body, messageId) {
     // 🤖 AUTO-REPLIES: Detectar keywords
     // ============================================
 
-    const canCheckAutoReply = (
-      currentState === 'DONE' || 
-      currentState === 'WAITING_ARRIVAL' ||
-      currentState === 'WAITING_DEPARTURE' ||
-      currentState === 'WAITING_RULES'
-    );
+    const canCheckAutoReply = true; // ✅ SIEMPRE activo
 
     if (canCheckAutoReply && body && body.trim().length > 0) {
       const autoReplyResponse = await checkAutoReply(
@@ -6439,6 +6434,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
