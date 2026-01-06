@@ -10,7 +10,167 @@
             padding: 0;
             box-sizing: border-box;
         }
+        /* Auto-replies styles */
+.auto-reply-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
 
+.reply-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.reply-header h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.keywords-display {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.keyword-tag {
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.reply-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.reply-content {
+  margin-top: 16px;
+}
+
+.lang-content {
+  position: relative;
+  min-height: 150px;
+}
+
+.lang-textarea {
+  display: none;
+  width: 100%;
+  min-height: 150px;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.lang-textarea.active {
+  display: block;
+}
+
+.reply-settings {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 12px;
+}
+
+.reply-settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.reply-settings input,
+.reply-settings select {
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.empty-state p {
+  margin: 8px 0;
+}
+
+.btn-primary {
+  background: #4f46e5;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.btn-primary:hover {
+  background: #4338ca;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-danger {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.section-header {
+  margin-bottom: 24px;
+}
+
+.section-header h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: #111827;
+}
+
+.description {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             background: #f5f5f5;
@@ -771,7 +931,8 @@
      <!-- ============================================ -->
 <!-- 🤖 TAB: RESPUESTAS AUTOMÁTICAS -->
 <!-- ============================================ -->
-<div id="auto-replies-tab" class="tab-content">
+<div id="auto-replies" class="tab-content">
+  <div id="alert-auto-replies" class="alert"></div>
   <div class="section-header">
     <h2>🤖 Respuestas Automáticas</h2>
     <p class="description">
@@ -832,15 +993,20 @@
         }
 
         // Switch between tabs
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            
-            event.target.classList.add('active');
-            document.getElementById(tabName).classList.add('active');
+      // Switch between tabs
+function switchTab(tabName) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    
+    event.target.classList.add('active');
+    document.getElementById(tabName).classList.add('active');
 
-            if (tabName === 'flow') loadFlowMessages();
-        }
+    if (tabName === 'flow') {
+        loadFlowMessages();
+    } else if (tabName === 'auto-replies') {
+        loadAutoReplies();
+    }
+}
 
         // Switch language in message sections
         function switchLang(msgType, lang) {
@@ -853,15 +1019,18 @@
         }
 
         // Show alert
-        function showAlert(elementId, message, type) {
-            const alert = document.getElementById(elementId);
-            alert.className = `alert ${type} show`;
-            alert.textContent = message;
-            
-            setTimeout(() => {
-                alert.classList.remove('show');
-            }, 5000);
-        }
+        // Show alert
+function showAlert(tabName, message, type) {
+    const alert = document.getElementById(`alert-${tabName}`);
+    if (!alert) return;
+    
+    alert.className = `alert ${type} show`;
+    alert.textContent = message;
+    
+    setTimeout(() => {
+        alert.classList.remove('show');
+    }, 5000);
+}
 
         // Load flow messages
         async function loadFlowMessages() {
