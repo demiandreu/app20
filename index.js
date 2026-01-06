@@ -5595,11 +5595,11 @@ switch (currentState) {
     break;
     
   case 'DONE':
-    console.log(`✅ Flujo ya completado para checkin ${checkin.id}`);  // ✅ Añadido (
+    console.log(`✅ Flujo ya completado para checkin ${checkin.id}`);
     break;
     
   default:
-    console.log(`💬 Mensaje libre sin acción específica (estado: ${currentState})`);  // ✅ Añadido (
+    console.log(`💬 Mensaje libre sin acción específica (estado: ${currentState})`);
     break;
 }
 
@@ -5623,12 +5623,9 @@ if (canCheckAutoReply && body && body.trim().length > 0) {
 
   if (autoReplyResponse) {
     await sendWhatsAppMessage(from, autoReplyResponse);
-    console.log(`🤖 Auto-reply sent to ${from}: keyword matched`);  // ✅ Añadido (
+    console.log(`🤖 Auto-reply sent to ${from}: keyword matched`);
   }
 }
-
-// ❌ ELIMINAR ESTA LÍNEA (res no existe aquí)
-// res.status(200).send('<Response></Response>');
 
 } catch (error) {
   console.error('❌ Error procesando mensaje WhatsApp:', error);
@@ -6427,6 +6424,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
