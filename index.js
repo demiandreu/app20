@@ -5577,70 +5577,62 @@ async function processWhatsAppMessage(from, body, messageId) {
       return;
     }
     
-    // ========== PRIORIDAD 5: PROCESAR SEGÚN ESTADO DEL BOT ==========
+// ========== PRIORIDAD 5: PROCESAR SEGÚN ESTADO DEL BOT ==========
     
-    const currentState = checkin.bot_state || 'IDLE';
+const currentState = checkin.bot_state || 'IDLE';
+
+switch (currentState) {
+  case 'WAITING_ARRIVAL':
+    await handleArrivalTime(from, checkin, body, language);
+    break;
     
-    switch (currentState) {
-      case 'WAITING_ARRIVAL':
-        await handleArrivalTime(from, checkin, body, language);
-        break;
-        
-      case 'WAITING_DEPARTURE':
-        await handleDepartureTime(from, checkin, body, language);
-        break;
-        case 'WAITING_RULES':
+  case 'WAITING_DEPARTURE':
+    await handleDepartureTime(from, checkin, body, language);
+    break;
+    
+  case 'WAITING_RULES':
     await handleRulesAcceptance(from, checkin, body, language);
     break;
-        
-      case 'DONE':
-        console.log(`✅ Flujo ya completado para checkin ${checkin.id}`);
-        // Mensaje opcional: "Ya has completado el check-in"
-        break;
-        
-      default:
-        console.log(`💬 Mensaje libre sin acción específica (estado: ${currentState})`);
-        // Aquí podrías enviar un mensaje genérico o simplemente no responder
-        break;
-    } // <-- Este es el cierre del switch (línea 5563)
-
-    // ============================================
-    // 🤖 AUTO-REPLIES: Detectar keywords
-    // ============================================
-
-    // Solo buscar auto-replies si el bot ya procesó el flujo principal
-    const canCheckAutoReply = (
-      currentState === 'DONE' || 
-      currentState === 'WAITING_ARRIVAL' ||
-      currentState === 'WAITING_DEPARTURE' ||
-      currentState === 'WAITING_RULES'
-    );
-
-    if (canCheckAutoReply && body && body.trim().length > 0) {
-      const autoReplyResponse = await checkAutoReply(
-        body, 
-        checkin.apartment_id, 
-        language || 'es'
-      );
-
-      if (autoReplyResponse) {
-        // Enviar respuesta automática
-        await sendWhatsAppMessage(from, autoReplyResponse);
-        console.log(`🤖 Auto-reply sent to ${from}: keyword matched`);
-        
-        // IMPORTANTE: No cambiar bot_state
-        // La auto-respuesta es adicional, no afecta el flujo
-      }
-    }
-
-    // Responder a Twilio (línea ~5565)
-    res.status(200).send('<Response></Response>');
     
-  } catch (error) {
-    console.error('❌ Error procesando mensaje WhatsApp:', error);
+  case 'DONE':
+    console.log(`✅ Flujo ya completado para checkin ${checkin.id}`);  // ✅ Añadido (
+    break;
+    
+  default:
+    console.log(`💬 Mensaje libre sin acción específica (estado: ${currentState})`);  // ✅ Añadido (
+    break;
+}
+
+// ============================================
+// 🤖 AUTO-REPLIES: Detectar keywords
+// ============================================
+
+const canCheckAutoReply = (
+  currentState === 'DONE' || 
+  currentState === 'WAITING_ARRIVAL' ||
+  currentState === 'WAITING_DEPARTURE' ||
+  currentState === 'WAITING_RULES'
+);
+
+if (canCheckAutoReply && body && body.trim().length > 0) {
+  const autoReplyResponse = await checkAutoReply(
+    body, 
+    checkin.apartment_id, 
+    language || 'es'
+  );
+
+  if (autoReplyResponse) {
+    await sendWhatsAppMessage(from, autoReplyResponse);
+    console.log(`🤖 Auto-reply sent to ${from}: keyword matched`);  // ✅ Añadido (
   }
 }
 
+// ❌ ELIMINAR ESTA LÍNEA (res no existe aquí)
+// res.status(200).send('<Response></Response>');
+
+} catch (error) {
+  console.error('❌ Error procesando mensaje WhatsApp:', error);
+}
 // ============ MANEJAR COMANDO START ============
 
 async function handleStartCommand(from, phoneNumber, startMatch, originalBody) {
@@ -6435,6 +6427,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
