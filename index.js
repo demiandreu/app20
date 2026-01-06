@@ -74,8 +74,6 @@ async function checkAutoReply(message, apartmentId, lang = 'es') {
   }
 }
 
-async function getBeds24AccessToken(propertyExternalId) {  // <-- línea 35
-
 async function getBeds24AccessToken(propertyExternalId) {
   const res = await pool.query(
     `SELECT credentials->>'refresh_token' AS refresh_token
@@ -6437,6 +6435,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
