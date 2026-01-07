@@ -3646,6 +3646,41 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     }
     }
                } else if (s.new_media_type === 'image') {
+  // Soportar múltiples imágenes separadas por saltos de línea
+  const imageUrls = mediaUrl.split('\n').map(url => url.trim()).filter(url => url.length > 0);
+  
+  if (imageUrls.length === 1) {
+    // Una sola imagen
+    mediaHtml = `
+      <div style="margin-top:16px;">
+        <img 
+          src="${escapeHtml(imageUrls[0])}" 
+          alt="${escapeHtml(translatedTitle)}"
+          style="max-width:100%;height:auto;border-radius:8px;display:block;"
+          loading="lazy"
+        />
+      </div>
+    `;
+  } else if (imageUrls.length > 1) {
+    // Múltiples imágenes en galería (2 columnas)
+    const galleryImages = imageUrls.map(url => `
+      <div style="flex:0 0 48%;margin-bottom:12px;">
+        <img 
+          src="${escapeHtml(url)}" 
+          alt="${escapeHtml(translatedTitle)}"
+          style="width:100%;height:auto;border-radius:8px;display:block;object-fit:cover;"
+          loading="lazy"
+        />
+      </div>
+    `).join('');
+    
+    mediaHtml = `
+      <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:4%;">
+        ${galleryImages}
+      </div>
+    `;
+  }
+}
                  mediaHtml = `
                    <div style="margin-top:16px;">
                      <img 
@@ -6715,6 +6750,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
