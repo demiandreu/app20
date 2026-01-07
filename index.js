@@ -1839,6 +1839,7 @@ if (beds24RoomId) {
       booking_token    = COALESCE(NULLIF(EXCLUDED.booking_token, ''), checkins.booking_token),
       apartment_name   = COALESCE(NULLIF(EXCLUDED.apartment_name, ''), checkins.apartment_name),
       room_name        = EXCLUDED.room_name,
+    
       
       full_name        = COALESCE(NULLIF(checkins.full_name, ''), EXCLUDED.full_name),
       email            = COALESCE(NULLIF(checkins.email, ''), EXCLUDED.email),
@@ -1851,6 +1852,7 @@ if (beds24RoomId) {
 
       adults           = COALESCE(EXCLUDED.adults, checkins.adults),
       children         = COALESCE(EXCLUDED.children, checkins.children),
+    
 
       beds24_raw       = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw)
     `,
@@ -2960,6 +2962,20 @@ app.post("/webhooks/beds24", async (req, res) => {
       console.log("❌ Beds24 webhook: invalid secret");
       return res.status(401).send("Unauthorized");
     }
+    // Detectar si la reserva está cancelada
+const isCancelled = (
+  booking.status === 'cancelled' || 
+  booking.status === 'canceled' ||
+  booking.bookingStatus === 'cancelled' ||
+  booking.bookingStatus === 'canceled'
+);
+
+console.log("📊 Booking status:", {
+  id: booking.id,
+  status: booking.status,
+  bookingStatus: booking.bookingStatus,
+  isCancelled: isCancelled
+});
 
     const payload = req.body || {};
     const booking = payload.booking || payload; // fallback
@@ -3129,16 +3145,18 @@ console.log("🌐 Language detection:", {
         adults,
         children,
         beds24_raw,
-        guest_language
+        guest_language,
+        cancelled
       )
-      VALUES (
-        $1, $2, $3, $4, $5,
-        $6, $7, $8,
-        $9, $10, $11, $12,
-        $13, $14,
-        $15::jsonb,
-        $16
-      )
+     VALUES (
+  $1, $2, $3, $4, $5,
+  $6, $7, $8,
+  $9, $10, $11, $12,
+  $13, $14,
+  $15::jsonb,
+  $16,
+  $17
+)
       ON CONFLICT (beds24_booking_id)
       DO UPDATE SET
         apartment_id        = EXCLUDED.apartment_id,
@@ -3155,7 +3173,11 @@ console.log("🌐 Language detection:", {
         adults              = COALESCE(EXCLUDED.adults, checkins.adults),
         children            = COALESCE(EXCLUDED.children, checkins.children),
         beds24_raw          = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw),
-        guest_language      = EXCLUDED.guest_language`,
+        guest_language      = EXCLUDED.guest_language,
+         cancelled           = EXCLUDED.cancelled
+        `,
+      
+      
       [
         String(beds24RoomId || ""),           // $1  apartment_id
         `beds24_${String(booking.id || "")}`, // $2  booking_token  
@@ -3172,7 +3194,8 @@ console.log("🌐 Language detection:", {
         adults,                               // $13
         children,                             // $14
         JSON.stringify(beds24Raw),            // $15
-        guestLanguage                         // $16 🌐 NUEVO
+        guestLanguage,                         // $16 🌐 NUEVO
+        isCancelled 
       ]
     );
 
@@ -6594,6 +6617,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
