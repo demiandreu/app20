@@ -736,6 +736,77 @@ app.get("/manager/apartment/sections", async (req, res) => {
           </div>
         </div>
       </form>
+            <script>
+      // ============================================
+      // 📸 UPLOAD DE FOTOS A CLOUDINARY
+      // ============================================
+      
+      async function uploadPhoto(button) {
+        const container = button.closest('div').parentElement;
+        const textarea = container.querySelector('.sec-media-url');
+        const fileInput = container.querySelector('.photo-input');
+        
+        fileInput.click();
+        
+        fileInput.onchange = async () => {
+          const files = Array.from(fileInput.files);
+          if (files.length === 0) return;
+          
+          const invalidFiles = files.filter(f => f.size > 5 * 1024 * 1024);
+          if (invalidFiles.length > 0) {
+            alert(\`❌ \${invalidFiles.length} foto(s) superan 5MB.\`);
+            return;
+          }
+          
+          button.disabled = true;
+          const originalText = button.textContent;
+          button.textContent = \`⏳ Subiendo \${files.length} foto(s)...\`;
+          
+          try {
+            const uploadedUrls = [];
+            
+            for (let i = 0; i < files.length; i++) {
+              const file = files[i];
+              button.textContent = \`⏳ Subiendo \${i + 1}/\${files.length}...\`;
+              
+              const formData = new FormData();
+              formData.append('photo', file);
+              
+              const response = await fetch('/api/upload-photo', {
+                method: 'POST',
+                body: formData
+              });
+              
+              const data = await response.json();
+              
+              if (data.success) {
+                uploadedUrls.push(data.url);
+              }
+            }
+            
+            if (uploadedUrls.length > 0) {
+              const currentUrls = textarea.value.trim();
+              const newUrls = uploadedUrls.join('\\n');
+              
+              if (currentUrls) {
+                textarea.value = currentUrls + '\\n' + newUrls;
+              } else {
+                textarea.value = newUrls;
+              }
+              
+              alert(\`✅ \${uploadedUrls.length} foto(s) subidas\`);
+            }
+            
+          } catch (error) {
+            alert('❌ Error: ' + error.message);
+          } finally {
+            button.disabled = false;
+            button.textContent = originalText;
+            fileInput.value = '';
+          }
+        };
+      }
+      </script>
     `;
 
     return res.send(renderPage("Apartment Sections", html));
@@ -6749,6 +6820,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
