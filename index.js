@@ -3715,6 +3715,7 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
         </div>
       `;
     }
+    }
               } else if (s.new_media_type === 'image') {
   // Soportar múltiples imágenes separadas por saltos de línea
   const imageUrls = mediaUrl.split('\n').map(url => url.trim()).filter(url => url.length > 0);
@@ -6809,6 +6810,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
