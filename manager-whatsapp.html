@@ -1307,11 +1307,32 @@ function renderAutoReplies() {
             <label>
               Categoría:
               <select id="category_${index}">
-                <option value="wifi" ${reply.category === 'wifi' ? 'selected' : ''}>📶 WiFi</option>
-                <option value="checkout" ${reply.category === 'checkout' ? 'selected' : ''}>🚪 Checkout</option>
-                <option value="parking" ${reply.category === 'parking' ? 'selected' : ''}>🅿️ Parking</option>
-                <option value="custom" ${reply.category === 'custom' ? 'selected' : ''}>✏️ Custom</option>
-              </select>
+  <option value="custom" ${reply.category === 'custom' ? 'selected' : ''}>✏️ Custom</option>
+  <option value="direccion" ${reply.category === 'direccion' ? 'selected' : ''}>📍 Dirección</option>
+  <option value="llaves" ${reply.category === 'llaves' ? 'selected' : ''}>🔑 Llaves</option>
+  <option value="wifi" ${reply.category === 'wifi' ? 'selected' : ''}>📶 WiFi</option>
+  <option value="cafetera" ${reply.category === 'cafetera' ? 'selected' : ''}>☕ Cafetera</option>
+  <option value="maletas" ${reply.category === 'maletas' ? 'selected' : ''}>🧳 Maletas</option>
+  <option value="entradas" ${reply.category === 'entradas' ? 'selected' : ''}>🎫 Entradas</option>
+  <option value="parking" ${reply.category === 'parking' ? 'selected' : ''}>🚗 Parking</option>
+  <option value="accesibilidad" ${reply.category === 'accesibilidad' ? 'selected' : ''}>♿ Accesibilidad</option>
+  <option value="piscina" ${reply.category === 'piscina' ? 'selected' : ''}>🏊 Piscina</option>
+  <option value="restaurantes" ${reply.category === 'restaurantes' ? 'selected' : ''}>🍽️ Restaurantes</option>
+  <option value="playa" ${reply.category === 'playa' ? 'selected' : ''}>🏖️ Playa</option>
+  <option value="bano" ${reply.category === 'bano' ? 'selected' : ''}>🚿 Baño</option>
+  <option value="dormitorio" ${reply.category === 'dormitorio' ? 'selected' : ''}>🛏️ Dormitorio</option>
+  <option value="tv" ${reply.category === 'tv' ? 'selected' : ''}>📺 TV</option>
+  <option value="aire" ${reply.category === 'aire' ? 'selected' : ''}>❄️ Aire acondicionado</option>
+  <option value="calefaccion" ${reply.category === 'calefaccion' ? 'selected' : ''}>🔥 Calefacción</option>
+  <option value="lavanderia" ${reply.category === 'lavanderia' ? 'selected' : ''}>🧺 Lavandería</option>
+  <option value="cocina" ${reply.category === 'cocina' ? 'selected' : ''}>🍳 Cocina</option>
+  <option value="entretenimiento" ${reply.category === 'entretenimiento' ? 'selected' : ''}>🎮 Entretenimiento</option>
+  <option value="contacto" ${reply.category === 'contacto' ? 'selected' : ''}>📞 Contacto</option>
+  <option value="horarios" ${reply.category === 'horarios' ? 'selected' : ''}>⏰ Horarios</option>
+  <option value="checkout" ${reply.category === 'checkout' ? 'selected' : ''}>🚪 Checkout</option>
+  <option value="informacion" ${reply.category === 'informacion' ? 'selected' : ''}>ℹ️ Información</option>
+  <option value="importante" ${reply.category === 'importante' ? 'selected' : ''}>⚠️ Importante</option>
+</select>
             </label>
 
             <label>
@@ -1555,13 +1576,33 @@ document.getElementById('save-auto-replies-btn')?.addEventListener('click', asyn
   }
 });
 
-// Helper: icono por categoría
 function getCategoryIcon(category) {
   const icons = {
+    custom: '✏️',
+    direccion: '📍',
+    llaves: '🔑',
     wifi: '📶',
+    cafetera: '☕',
+    maletas: '🧳',
+    entradas: '🎫',
+    parking: '🚗',
+    accesibilidad: '♿',
+    piscina: '🏊',
+    restaurantes: '🍽️',
+    playa: '🏖️',
+    bano: '🚿',
+    dormitorio: '🛏️',
+    tv: '📺',
+    aire: '❄️',
+    calefaccion: '🔥',
+    lavanderia: '🧺',
+    cocina: '🍳',
+    entretenimiento: '🎮',
+    contacto: '📞',
+    horarios: '⏰',
     checkout: '🚪',
-    parking: '🅿️',
-    custom: '✏️'
+    informacion: 'ℹ️',
+    importante: '⚠️'
   };
   return icons[category] || '📝';
 }
