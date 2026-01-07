@@ -1924,169 +1924,14 @@ FROM beds24_rooms
     res.status(500).send("Manager error");
   }
 });
-// ===== EDIT APARTMENT SETTINGS PAGE =====
 
-app.get("/manager/apartment", async (req, res) => {
-  try {
-    const id = Number(req.query.id);
-    if (!id) return res.status(400).send("Missing id");
-    
-    const { rows } = await pool.query(
-      `
-      SELECT
-        id,
-        apartment_name,
-        beds24_room_id,
-        support_phone,
-        default_arrival_time,
-        default_departure_time,
-        registration_url,
-        payment_url,
-        keys_instructions_url,
-        show_in_staff
-      FROM beds24_rooms
-      WHERE id = $1
-      LIMIT 1
-      `,
-      [id]
-    );
-    
-    if (!rows.length) return res.status(404).send("Apartment not found");
-    const a = rows[0];
-    
-    const roomId = String(a.beds24_room_id || "").trim();
-    const beds24Name = a.apartment_name || "";
-    const displayName = a.apartment_name || beds24Name || `Apartment #${a.id}`;
-    
-    const html = `
-      <h1>Apartment Settings</h1>
-      <p><a href="/manager">← Back to Manager</a></p>
-      
-      ${roomId
-        ? `<a class="btn-link" href="/manager/apartment/sections?room_id=${encodeURIComponent(roomId)}">
-             🪗 Manage guest accordion sections
-           </a>`
-        : `<span class="muted">⚠ Missing room_id for this apartment</span>`
-      }
-      
-      <form method="POST" action="/manager/apartment">
-        <input type="hidden" name="id" value="${a.id}" />
-        
-        <label>Apartment name</label><br/>
-        <p class="muted" style="margin:4px 0 8px;">
-          Room ID: <strong>${escapeHtml(roomId || 'N/A')}</strong>
-          ${beds24Name ? ` · Beds24: <strong>${escapeHtml(beds24Name)}</strong>` : ''}
-        </p>
-        <input 
-          name="apartment_name" 
-          value="${escapeHtml(a.apartment_name || beds24Name || '')}"
-          placeholder="Nombre del apartamento"
-          style="width:100%; max-width:700px;" 
-        />
-        <p class="muted" style="margin:4px 0 12px;">Leave empty to use the Beds24 name automatically</p>
-        
-        <label>Support WhatsApp (human)</label><br/>
-        <input
-          name="support_phone"
-          value="${escapeHtml(a?.support_phone || "")}"
-          placeholder="+34 600 123 456"
-          style="width:320px"
-        />
-        <br/><br/>
-        
-        <label>Default arrival time</label><br/>
-        <input type="time" name="default_arrival_time" value="${escapeHtml(String(a.default_arrival_time || "").slice(0,5))}" />
-        <br/><br/>
-        
-        <label>Default departure time</label><br/>
-        <input type="time" name="default_departure_time" value="${escapeHtml(String(a.default_departure_time || "").slice(0,5))}" />
-        <br/><br/>
-        
-        <!-- 🆕 CHECKBOX SHOW IN STAFF -->
-        <div style="margin:16px 0; padding:12px; border:1px solid #e5e7eb; border-radius:8px; background:#f9fafb;">
-          <label style="display:flex; gap:12px; align-items:center; cursor:pointer;">
-            <input 
-              type="checkbox" 
-              name="show_in_staff" 
-              ${a.show_in_staff !== false ? 'checked' : ''}
-              style="width:20px; height:20px;"
-            />
-            <div>
-              <strong>👥 Mostrar en Staff Panel</strong>
-              <p class="muted" style="margin:4px 0 0;">Si está activado, este apartamento aparecerá en el panel de llegadas/salidas del staff</p>
-            </div>
-          </label>
-        </div>
-        
-        <label>Registration link</label><br/>
-        <input name="registration_url" value="${escapeHtml(a.registration_url || "")}" style="width:100%; max-width:700px;" />
-        <br/><br/>
-        
-        <label>Payment link</label><br/>
-        <input name="payment_url" value="${escapeHtml(a.payment_url || "")}" style="width:100%; max-width:700px;" />
-        <br/><br/>
-        
-        <label>Keys / Instructions link</label><br/>
-        <input name="keys_instructions_url" value="${escapeHtml(a.keys_instructions_url || "")}" style="width:100%; max-width:700px;" />
-        <br/><br/>
-        
-        <button type="submit">Save</button>
-      </form>
-    `;
-    
-    res.send(renderPage("Apartment Settings", html));
-  } catch (e) {
-    console.error("❌ /manager/apartment error:", e);
-    res.status(500).send("Error");
-  }
+
+// Servir página de gestión de apartamentos (nueva versión con acordeones)
+app.get("/manager/apartment", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/manager-apartment.html"));
 });
+ 
 
-app.post("/manager/apartment", async (req, res) => {
-  const {
-    id,
-    apartment_name,
-    beds_room_id,
-    support_phone,
-    default_arrival_time,
-    default_departure_time,
-    registration_url,
-    payment_url,
-    keys_instructions_url,
-    show_in_staff
-  } = req.body;
-
-  // El checkbox envía "on" si está marcado, undefined si no
-  const showInStaff = show_in_staff === 'on';
-
-  await pool.query(`
-    UPDATE beds24_rooms
-    SET
-        apartment_name = $1,
-        support_phone = $2,
-        default_arrival_time = $3,
-        default_departure_time = $4,
-        registration_url = $5,
-        payment_url = $6,
-        keys_instructions_url = $7,
-        show_in_staff = $8,
-        updated_at = now()
-      WHERE id = $9
-    `,
-    [
-      apartment_name,
-      support_phone,
-      default_arrival_time,
-      default_departure_time,
-      registration_url,
-      payment_url,
-      keys_instructions_url,
-      showInStaff,
-      id
-    ]
-  );
-
-  return res.redirect(`/manager/apartment?id=${id}`);
-});
 
 // ============================================
 // RUTAS DEL MANAGER - CHECK-IN/CHECK-OUT RULES
@@ -6584,6 +6429,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
