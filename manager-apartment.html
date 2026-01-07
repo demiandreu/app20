@@ -280,13 +280,14 @@
         }
 
         /* Alert */
-        .alert {
-            padding: 16px;
-            border-radius: 8px;
-            margin-bottom: 24px;
-            font-size: 14px;
-            display: none;
-        }
+       .alert {
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;  /* Menos espacio */
+    font-size: 14px;
+    display: none;
+    width: 100%;  /* Ancho completo */
+}
 
         .alert.show {
             display: block;
@@ -341,7 +342,6 @@
             <p>Configura toda la información de tus apartamentos para usar variables en autorespuestas</p>
         </div>
 
-        <div id="alert" class="alert"></div>
 
         <!-- Selector de apartamento -->
         <div class="apartment-selector">
@@ -646,7 +646,7 @@
                     </div>
                 </div>
             </div>
-
+          <div id="alert" class="alert"></div>
             <!-- Botones de acción -->
             <div class="form-actions">
                 <button class="btn btn-primary" onclick="saveApartment()">
