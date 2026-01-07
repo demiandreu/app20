@@ -3417,25 +3417,37 @@ app.get("/guest/:bookingId", async (req, res) => {
     }
     
     // 🆕 Helper para convertir URLs de YouTube
-    function getYouTubeEmbedUrl(url) {
-      if (!url) return null;
-      
-      // Patrones de YouTube
-      const patterns = [
-        /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/,
-        /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]+)/,
-        /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]+)/
-      ];
-      
-      for (const pattern of patterns) {
-        const match = url.match(pattern);
-        if (match && match[1]) {
-          return `https://www.youtube.com/embed/${match[1]}`;
-        }
-      }
-      
-      return null;
+   function getYouTubeEmbedUrl(url) {
+  if (!url) return null;
+  
+  // Detectar si es un video directo (.mp4, .webm, .ogg)
+  if (url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)) {
+    return { type: 'direct', url: url };
+  }
+  
+  // Detectar Vimeo
+  const vimeoMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:vimeo\.com)\/(?:video\/)?(\d+)/);
+  if (vimeoMatch && vimeoMatch[1]) {
+    return { type: 'vimeo', url: `https://player.vimeo.com/video/${vimeoMatch[1]}` };
+  }
+  
+  // Patrones de YouTube (incluyendo Shorts)
+  const youtubePatterns = [
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/,
+    /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]+)/,
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]+)/,
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/  // ✅ AÑADIDO: Shorts
+  ];
+  
+  for (const pattern of youtubePatterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) {
+      return { type: 'youtube', url: `https://www.youtube.com/embed/${match[1]}` };
     }
+  }
+  
+  return null;
+}
     
     // Generar HTML de secciones
     const sectionsHtml = secRes.rows.length === 0
@@ -3460,22 +3472,38 @@ app.get("/guest/:bookingId", async (req, res) => {
              if (s.new_media_url && s.new_media_type) {
                const mediaUrl = String(s.new_media_url).trim();
                
-               if (s.new_media_type === 'video') {
-                 const embedUrl = getYouTubeEmbedUrl(mediaUrl);
-                 if (embedUrl) {
-                   mediaHtml = `
-                     <div style="margin-top:16px;">
-                       <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;max-width:100%;background:#000;border-radius:8px;">
-                         <iframe 
-                           src="${escapeHtml(embedUrl)}" 
-                           style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"
-                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                           allowfullscreen>
-                         </iframe>
-                       </div>
-                     </div>
-                   `;
-                 }
+              if (s.new_media_type === 'video') {
+  const embedResult = getYouTubeEmbedUrl(mediaUrl);
+  
+  if (embedResult) {
+    if (embedResult.type === 'youtube' || embedResult.type === 'vimeo') {
+      // YouTube o Vimeo - usar iframe
+      mediaHtml = `
+        <div style="margin-top:16px;">
+          <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;max-width:100%;background:#000;border-radius:8px;">
+            <iframe 
+              src="${escapeHtml(embedResult.url)}" 
+              style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+              allowfullscreen>
+            </iframe>
+          </div>
+        </div>
+      `;
+    } else if (embedResult.type === 'direct') {
+      // Video directo (.mp4, .webm, etc.) - usar <video> tag
+      mediaHtml = `
+        <div style="margin-top:16px;">
+          <video 
+            controls 
+            style="width:100%;max-width:100%;border-radius:8px;display:block;background:#000;"
+            preload="metadata">
+            <source src="${escapeHtml(embedResult.url)}" type="video/mp4">
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      `;
+    }
                } else if (s.new_media_type === 'image') {
                  mediaHtml = `
                    <div style="margin-top:16px;">
@@ -6414,6 +6442,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
