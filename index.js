@@ -8,6 +8,8 @@ require("dotenv").config();
 const express = require("express");
 const { Pool } = require("pg");
 const twilio = require("twilio");
+const path = require("path");
+
 
 
 const app = express();
@@ -6429,6 +6431,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
