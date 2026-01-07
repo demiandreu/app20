@@ -3426,7 +3426,7 @@ app.get("/guest/:bookingId", async (req, res) => {
   }
   
   // Detectar Vimeo
-  const vimeoMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:vimeo\.com)\/(?:video\/)?(\d+)/);
+  const vimeoMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:player\.)?vimeo\.com\/(?:video\/|channels\/\w+\/)?(\d+)/);
   if (vimeoMatch && vimeoMatch[1]) {
     return { type: 'vimeo', url: `https://player.vimeo.com/video/${vimeoMatch[1]}` };
   }
@@ -6444,6 +6444,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
