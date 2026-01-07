@@ -1612,49 +1612,49 @@ td.apartment-cell.needs-clean {
   </style>
 </head>
 <body>
-  <nav style="background:#1f2937; padding:12px 20px; margin-bottom:0; border-radius:0; display:flex; gap:16px; flex-wrap:wrap; align-items:center;">
-    <a href="/manager" 
-       style="color:${currentPage === 'manager' ? '#60a5fa' : '#fff'}; 
-              text-decoration:none; 
-              padding:8px 16px; 
-              border-radius:6px; 
-              background:${currentPage === 'manager' ? '#374151' : 'transparent'};
-              font-weight:${currentPage === 'manager' ? '600' : '400'};">
-      🏠 Manager
-    </a>
-    
-    <a href="/staff/checkins" 
-       style="color:${currentPage === 'staff' ? '#60a5fa' : '#fff'}; 
-              text-decoration:none; 
-              padding:8px 16px; 
-              border-radius:6px; 
-              background:${currentPage === 'staff' ? '#374151' : 'transparent'};
-              font-weight:${currentPage === 'staff' ? '600' : '400'};">
-      📋 Staff
-    </a>
-    
-    <a href="/manager/whatsapp" 
-       style="color:${currentPage === 'whatsapp' ? '#60a5fa' : '#fff'}; 
-              text-decoration:none; 
-              padding:8px 16px; 
-              border-radius:6px; 
-              background:${currentPage === 'whatsapp' ? '#374151' : 'transparent'};
-              font-weight:${currentPage === 'whatsapp' ? '600' : '400'};">
-      💬 WhatsApp
-    </a>
-    
-    <a href="/manager/apartment" 
-       style="color:${currentPage === 'apartment' ? '#60a5fa' : '#fff'}; 
-              text-decoration:none; 
-              padding:8px 16px; 
-              border-radius:6px; 
-              background:${currentPage === 'apartment' ? '#374151' : 'transparent'};
-              font-weight:${currentPage === 'apartment' ? '600' : '400'};">
-      🏢 Apartamentos
-    </a>
-  </nav>
-
   <div class="page">
+    <nav style="background:#1f2937; padding:12px 20px; margin-bottom:16px; border-radius:8px; display:flex; gap:16px; flex-wrap:wrap; align-items:center;">
+      <a href="/manager" 
+         style="color:${currentPage === 'manager' ? '#60a5fa' : '#fff'}; 
+                text-decoration:none; 
+                padding:8px 16px; 
+                border-radius:6px; 
+                background:${currentPage === 'manager' ? '#374151' : 'transparent'};
+                font-weight:${currentPage === 'manager' ? '600' : '400'};">
+        🏠 Manager
+      </a>
+      
+      <a href="/staff/checkins" 
+         style="color:${currentPage === 'staff' ? '#60a5fa' : '#fff'}; 
+                text-decoration:none; 
+                padding:8px 16px; 
+                border-radius:6px; 
+                background:${currentPage === 'staff' ? '#374151' : 'transparent'};
+                font-weight:${currentPage === 'staff' ? '600' : '400'};">
+        📋 Staff
+      </a>
+      
+      <a href="/manager/whatsapp" 
+         style="color:${currentPage === 'whatsapp' ? '#60a5fa' : '#fff'}; 
+                text-decoration:none; 
+                padding:8px 16px; 
+                border-radius:6px; 
+                background:${currentPage === 'whatsapp' ? '#374151' : 'transparent'};
+                font-weight:${currentPage === 'whatsapp' ? '600' : '400'};">
+        💬 WhatsApp
+      </a>
+      
+      <a href="/manager/apartment" 
+         style="color:${currentPage === 'apartment' ? '#60a5fa' : '#fff'}; 
+                text-decoration:none; 
+                padding:8px 16px; 
+                border-radius:6px; 
+                background:${currentPage === 'apartment' ? '#374151' : 'transparent'};
+                font-weight:${currentPage === 'apartment' ? '600' : '400'};">
+        🏢 Apartamentos
+      </a>
+    </nav>
+    
     <div class="card">
       ${innerHtml}
     </div>
@@ -6507,6 +6507,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
