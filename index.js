@@ -1175,7 +1175,8 @@ function fmtTime(t) {
   if (!t) return "";
   return String(t).slice(0, 5); // "17:00"
 }
-function renderPage(title, innerHtml) {
+
+function renderPage(title, innerHtml, currentPage = '') {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -1611,6 +1612,48 @@ td.apartment-cell.needs-clean {
   </style>
 </head>
 <body>
+  <nav style="background:#1f2937; padding:12px 20px; margin-bottom:0; border-radius:0; display:flex; gap:16px; flex-wrap:wrap; align-items:center;">
+    <a href="/manager" 
+       style="color:${currentPage === 'manager' ? '#60a5fa' : '#fff'}; 
+              text-decoration:none; 
+              padding:8px 16px; 
+              border-radius:6px; 
+              background:${currentPage === 'manager' ? '#374151' : 'transparent'};
+              font-weight:${currentPage === 'manager' ? '600' : '400'};">
+      🏠 Manager
+    </a>
+    
+    <a href="/staff/checkins" 
+       style="color:${currentPage === 'staff' ? '#60a5fa' : '#fff'}; 
+              text-decoration:none; 
+              padding:8px 16px; 
+              border-radius:6px; 
+              background:${currentPage === 'staff' ? '#374151' : 'transparent'};
+              font-weight:${currentPage === 'staff' ? '600' : '400'};">
+      📋 Staff
+    </a>
+    
+    <a href="/manager/whatsapp" 
+       style="color:${currentPage === 'whatsapp' ? '#60a5fa' : '#fff'}; 
+              text-decoration:none; 
+              padding:8px 16px; 
+              border-radius:6px; 
+              background:${currentPage === 'whatsapp' ? '#374151' : 'transparent'};
+              font-weight:${currentPage === 'whatsapp' ? '600' : '400'};">
+      💬 WhatsApp
+    </a>
+    
+    <a href="/manager/apartment" 
+       style="color:${currentPage === 'apartment' ? '#60a5fa' : '#fff'}; 
+              text-decoration:none; 
+              padding:8px 16px; 
+              border-radius:6px; 
+              background:${currentPage === 'apartment' ? '#374151' : 'transparent'};
+              font-weight:${currentPage === 'apartment' ? '600' : '400'};">
+      🏢 Apartamentos
+    </a>
+  </nav>
+
   <div class="page">
     <div class="card">
       ${innerHtml}
@@ -4051,7 +4094,7 @@ return `
 
     const pageHtml = toolbar + renderTable(arrivals, "arrivals") + `<div style="height:24px;"></div>` + renderTable(departures, "departures");
 
-    res.send(renderPage("Staff · Llegadas y Salidas", pageHtml));
+    res.send(renderPage("Staff · Llegadas y Salidas", pageHtml, 'staff'));
   } catch (e) {
     console.error("Error en staff/checkins:", e);
     res.status(500).send(renderPage("Error", `
@@ -6464,6 +6507,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
