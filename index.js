@@ -5961,7 +5961,7 @@ async function handleRegOk(from, checkin, language) {
   
   if (msg) {
     // Reemplazar variables en el mensaje
-    msg = replaceVariables(msg, checkin, room);
+    msg = await replaceVariables(msg, checkin, room);
     
     await sendWhatsAppMessage(from, msg);
     console.log(`✅ Enviado mensaje REGOK con variables reemplazadas`);
@@ -6392,6 +6392,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
