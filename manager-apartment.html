@@ -17,6 +17,56 @@
             padding: 20px;
         }
 
+         .nav-menu {
+      background: #1f2937;
+      padding: 12px 20px;
+      margin: 0 0 16px 0;
+      border-radius: 0;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    
+    .nav-links {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    
+    .nav-link {
+      color: #fff;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 400;
+    }
+    
+    .nav-link.active {
+      color: #60a5fa;
+      background: #374151;
+      font-weight: 600;
+    }
+    
+    .nav-toggle {
+      display: none;
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    
+    @media (max-width: 768px) {
+      .nav-links {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+      }
+      .nav-links.active { display: flex; }
+      .nav-toggle { display: block; margin-left: auto; }
+    }
+    
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -334,6 +384,15 @@
     </style>
 </head>
 <body>
+    <nav class="nav-menu">
+    <button class="nav-toggle" onclick="document.getElementById('navLinks').classList.toggle('active')">☰</button>
+    <div class="nav-links" id="navLinks">
+      <a href="/manager" class="nav-link">🏠 Manager</a>
+      <a href="/staff/checkins" class="nav-link">📋 Staff</a>
+      <a href="/manager/whatsapp" class="nav-link">💬 WhatsApp</a>
+      <a href="/manager/apartment" class="nav-link active">🏢 Apartamentos</a>
+    </div>
+  </nav>
     <div class="container">
         <a href="/manager" class="back-link">← Volver a Manager</a>
         
