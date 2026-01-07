@@ -36,7 +36,55 @@
   gap: 6px;
   flex-wrap: wrap;
 }
-
+    .nav-menu {
+      background: #1f2937;
+      padding: 12px 20px;
+      margin: 0 0 16px 0;
+      border-radius: 0;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    
+    .nav-links {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    
+    .nav-link {
+      color: #fff;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 400;
+    }
+    
+    .nav-link.active {
+      color: #60a5fa;
+      background: #374151;
+      font-weight: 600;
+    }
+    
+    .nav-toggle {
+      display: none;
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    
+    @media (max-width: 768px) {
+      .nav-links {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+      }
+      .nav-links.active { display: flex; }
+      .nav-toggle { display: block; margin-left: auto; }
+    }
 .keyword-tag {
   background: #e0e7ff;
   color: #3730a3;
@@ -636,6 +684,15 @@
 </head>
 <body>
     <div class="container">
+        <nav class="nav-menu">
+    <button class="nav-toggle" onclick="document.getElementById('navLinks').classList.toggle('active')">☰</button>
+    <div class="nav-links" id="navLinks">
+      <a href="/manager" class="nav-link">🏠 Manager</a>
+      <a href="/staff/checkins" class="nav-link">📋 Staff</a>
+      <a href="/manager/whatsapp" class="nav-link active">💬 WhatsApp</a>
+      <a href="/manager/apartment" class="nav-link">🏢 Apartamentos</a>
+    </div>
+  </nav>
         <div class="header">
             <h1>🤖 Configuración WhatsApp Bot</h1>
             <p>Gestiona los mensajes automáticos y configuración de tu bot</p>
