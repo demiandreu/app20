@@ -96,106 +96,7 @@ async function checkAutoReply(message, language, checkinId) {
 }
 
 // 🆕 FUNCIÓN PARA REEMPLAZAR VARIABLES
-async function replaceVariables(text, checkinId) {
-  try {
-    // Si no hay variables, devolver texto original
-    if (!text.includes('{')) {
-      return text;
-    }
 
-    console.log(`🔄 Reemplazando variables para checkin ${checkinId}`);
-
-    // Obtener datos del checkin y apartamento
-    const result = await pool.query(`
-      SELECT 
-        c.id as checkin_id,
-        c.beds24_booking_id,
-        br.beds24_room_id,
-        br.apartment_id,
-        a.*
-      FROM checkins c
-      LEFT JOIN beds24_rooms br ON c.beds24_room_id = br.beds24_room_id
-      LEFT JOIN apartments a ON br.apartment_id = a.id
-      WHERE c.id = $1
-    `, [checkinId]);
-
-    if (result.rows.length === 0) {
-      console.log(`⚠️ No se encontró checkin ${checkinId}`);
-      return text;
-    }
-
-    const data = result.rows[0];
-    
-    if (!data.apartment_id) {
-      console.log(`⚠️ Checkin ${checkinId} no tiene apartment_id vinculado`);
-      return text;
-    }
-
-    console.log(`✅ Datos de apartamento encontrados para apartment_id ${data.apartment_id}`);
-
-    // Lista de variables disponibles
-    const variables = {
-      // Info básica
-      apartment_name: data.name,
-      address: data.address,
-      city: data.city,
-      floor: data.floor,
-      door_number: data.door_number,
-      
-      // Acceso
-      lockbox_code: data.lockbox_code,
-      lockbox_location: data.lockbox_location,
-      door_code: data.door_code,
-      gate_code: data.gate_code,
-      key_instructions: data.key_instructions,
-      
-      // WiFi
-      wifi_network: data.wifi_network,
-      wifi_password: data.wifi_password,
-      wifi_troubleshooting: data.wifi_troubleshooting,
-      
-      // Horarios
-      checkin_time: data.checkin_time,
-      checkout_time: data.checkout_time,
-      
-      // Precios
-      security_deposit_amount: data.security_deposit_amount,
-      tourist_tax_amount: data.tourist_tax_amount,
-      early_checkin_price: data.early_checkin_price,
-      late_checkout_price: data.late_checkout_price,
-      
-      // Parking
-      parking_location: data.parking_location,
-      parking_code: data.parking_code,
-      parking_instructions: data.parking_instructions,
-      
-      // Piscina
-      pool_hours: data.pool_hours,
-      pool_location: data.pool_location,
-      pool_rules: data.pool_rules,
-      
-      // Contacto
-      support_phone: data.support_phone,
-      support_whatsapp: data.support_whatsapp
-    };
-
-    // Reemplazar cada variable
-    let result_text = text;
-    for (const [key, value] of Object.entries(variables)) {
-      if (value !== null && value !== undefined) {
-        const regex = new RegExp(`\\{${key}\\}`, 'g');
-        result_text = result_text.replace(regex, value);
-      }
-    }
-
-    console.log(`✅ Variables reemplazadas. Texto resultante: ${result_text.substring(0, 100)}...`);
-    return result_text;
-
-  } catch (error) {
-    console.error('❌ Error reemplazando variables:', error);
-    return text; // Devolver texto original si hay error
-  }
-}
 
 async function getBeds24AccessToken(propertyExternalId) {
   const res = await pool.query(
@@ -5831,193 +5732,160 @@ async function handleStartCommand(from, phoneNumber, startMatch, originalBody) {
 }
 // ============ REEMPLAZAR VARIABLES EN MENSAJES ============
 
-function replaceVariables(message, checkin, room) {
-  if (!message) return message;
-  
-  // Preparar datos
-  const bookIdForLinks = String(
-    checkin.beds24_booking_id || 
-    checkin.booking_id_from_start || 
-    checkin.booking_token || ""
-  ).replace(/\s/g, '');
-  
-  const regLink = (room.registration_url || "").replace(/\[BOOKID\]/g, bookIdForLinks);
-  const payLink = (room.payment_url || "").replace(/\[BOOKID\]/g, bookIdForLinks);
-  
-  const name = checkin.full_name || "";
-  const apt = checkin.apartment_name || checkin.apartment_id || "";
-  const arriveDate = checkin.arrival_date ? String(checkin.arrival_date).slice(0, 10) : "";
-  const departDate = checkin.departure_date ? String(checkin.departure_date).slice(0, 10) : "";
-  
-  // Solo horas (sin minutos)
-  const arriveTime = (checkin.arrival_time ? String(checkin.arrival_time).slice(0, 2) : "") || 
-                     String(room.default_arrival_time || "").slice(0, 2) || "17";
-  const departTime = (checkin.departure_time ? String(checkin.departure_time).slice(0, 2) : "") || 
-                     String(room.default_departure_time || "").slice(0, 2) || "11";
-  
-  const adults = Number(checkin.adults || 0);
-  const children = Number(checkin.children || 0);
-  
-  // Construir texto de huéspedes
-  let guestsText = "";
-  if (adults > 0 || children > 0) {
-    const lang = checkin.guest_language?.toLowerCase() || 'es';
-    const adultsWord = lang === 'en' ? 'adults' : 
-                       lang === 'fr' ? 'adultes' : 
-                       lang === 'ru' ? 'взрослых' : 'adultos';
-    const childrenWord = lang === 'en' ? 'children' : 
-                         lang === 'fr' ? 'enfants' : 
-                         lang === 'ru' ? 'детей' : 'niños';
-    
-    guestsText = `${adults} ${adultsWord}`;
-    if (children > 0) {
-      guestsText += `, ${children} ${childrenWord}`;
-    }
-  }
-  
-  // Reemplazar todas las variables
-  return message
-    .replace(/\{booking_id\}/g, bookIdForLinks)           // ← AÑADIR ESTA LÍNEA
-    .replace(/\[BOOKID\]/g, bookIdForLinks)               // ← AÑADIR ESTA LÍNEA
-    .replace(/\{guest_name\}/g, name)
-    .replace(/\{apartment_name\}/g, apt)
-    .replace(/\{apartment_id\}/g, checkin.apartment_id || "")
-    .replace(/\{arrival_date\}/g, arriveDate)
-    .replace(/\{departure_date\}/g, departDate)
-    .replace(/\{arrival_time\}/g, arriveTime)
-    .replace(/\{departure_time\}/g, departTime)
-    .replace(/\{adults\}/g, String(adults))
-    .replace(/\{children\}/g, String(children))
-    .replace(/\{guests_text\}/g, guestsText || "—")
-    .replace(/\{registration_url\}/g, regLink || "—")
-    .replace(/\{payment_url\}/g, payLink || "—");
-}
-
-// ============ ENVIAR MENSAJE START ============
-
-async function sendStartMessage(from, checkin, language) {
+async function replaceVariables(message, checkinIdOrObject, roomObject) {
   try {
-    // Obtener configuración del apartamento
-    const roomResult = await pool.query(
-      `SELECT registration_url, payment_url, default_arrival_time, default_departure_time 
-       FROM beds24_rooms 
-       WHERE beds24_room_id = $1 OR id::text = $1 
-       LIMIT 1`,
-      [String(checkin.apartment_id || "")]
-    );
+    if (!message) return message;
     
-    const room = roomResult.rows[0] || {};
+    let checkin, room, apartmentData;
     
-    // Obtener mensaje START personalizado de la DB
-    const startMsg = await getFlowMessage('START', language);
-    
-    // Textos por defecto si no hay mensaje en DB
-    const translations = {
-      es: {
-        greeting: "¡Hola",
-        confirmed: "Tu reserva está confirmada ✅",
-        apartment: "🏠 Apartamento",
-        checkin: "📅 Entrada",
-        checkout: "📅 Salida",
-        guests: "👥 Huéspedes",
-        adults: "adultos",
-        children: "niños",
-        instructions: "PASO 1\n📝 El registro es obligatorio para todos los huéspedes.\n🔗 Puedes compartir este enlace para que cada huésped se registre:",
-        afterReg: "Cuando termines, escribe: REGOK"
-      },
-      en: {
-        greeting: "Hello",
-        confirmed: "Your booking is confirmed ✅",
-        apartment: "🏠 Apartment",
-        checkin: "📅 Check-in",
-        checkout: "📅 Check-out",
-        guests: "👥 Guests",
-        adults: "adults",
-        children: "children",
-        instructions: "STEP 1\n📝 Registration is mandatory for all guests.\n🔗 You can share this link for each guest to register:",
-        afterReg: "When done, write: REGOK"
-      },
-      fr: {
-        greeting: "Bonjour",
-        confirmed: "Votre réservation est confirmée ✅",
-        apartment: "🏠 Appartement",
-        checkin: "📅 Arrivée",
-        checkout: "📅 Départ",
-        guests: "👥 Invités",
-        adults: "adultes",
-        children: "enfants",
-        instructions: "ÉTAPE 1\n📝 L'enregistrement est obligatoire pour tous les invités.\n🔗 Vous pouvez partager ce lien pour que chaque invité s'enregistre:",
-        afterReg: "Quand c'est fait, écrivez: REGOK"
-      },
-      ru: {
-        greeting: "Здравствуйте",
-        confirmed: "Ваше бронирование подтверждено ✅",
-        apartment: "🏠 Апартамент",
-        checkin: "📅 Заезд",
-        checkout: "📅 Выезд",
-        guests: "👥 Гости",
-        adults: "взрослых",
-        children: "детей",
-        instructions: "ШАГ 1\n📝 Регистрация обязательна для всех гостей.\n🔗 Вы можете поделиться этой ссылкой для регистрации каждого гостя:",
-        afterReg: "Когда закончите, напишите: REGOK"
+    // Caso 1: Se llamó desde checkAutoReply (solo checkinId)
+    if (typeof checkinIdOrObject === 'number' && !roomObject) {
+      console.log(`🔄 Reemplazando variables para checkin ID ${checkinIdOrObject}`);
+      
+      // Obtener datos completos
+      const result = await pool.query(`
+        SELECT 
+          c.*,
+          br.beds24_room_id,
+          br.apartment_id,
+          br.registration_url,
+          br.payment_url,
+          br.default_arrival_time,
+          br.default_departure_time,
+          a.*
+        FROM checkins c
+        LEFT JOIN beds24_rooms br ON c.beds24_room_id = br.beds24_room_id
+        LEFT JOIN apartments a ON br.apartment_id = a.id
+        WHERE c.id = $1
+      `, [checkinIdOrObject]);
+      
+      if (result.rows.length === 0) {
+        console.log(`⚠️ No se encontró checkin ${checkinIdOrObject}`);
+        return message;
       }
-    };
-    
-    //  Si hay mensaje personalizado en DB, reemplazar variables
-    let finalMessage;
-    
-    if (startMsg) {
-      // Usar mensaje de la DB y reemplazar variables
-      finalMessage = replaceVariables(startMsg, checkin, room);
-    } else {
-      // Usar mensaje por defecto (fallback)
-      const t = translations[language] || translations.es;
       
-      const bookIdForLinks = String(
-        checkin.beds24_booking_id || 
-        checkin.booking_id_from_start || 
-        checkin.booking_token || ""
-      ).replace(/\s/g, '');
+      const data = result.rows[0];
+      checkin = data;
+      room = {
+        registration_url: data.registration_url,
+        payment_url: data.payment_url,
+        default_arrival_time: data.default_arrival_time,
+        default_departure_time: data.default_departure_time
+      };
+      apartmentData = data;
       
-      const regLink = (room.registration_url || "").replace(/\[BOOKID\]/g, bookIdForLinks);
-      const name = checkin.full_name || "";
-      const apt = checkin.apartment_name || checkin.apartment_id || "";
-      const arriveDate = checkin.arrival_date ? String(checkin.arrival_date).slice(0, 10) : "";
-      const departDate = checkin.departure_date ? String(checkin.departure_date).slice(0, 10) : "";
-      
-      const arriveTime = (checkin.arrival_time ? String(checkin.arrival_time).slice(0, 2) : "") || 
-                         String(room.default_arrival_time || "").slice(0, 2) || "17";
-      const departTime = (checkin.departure_time ? String(checkin.departure_time).slice(0, 2) : "") || 
-                         String(room.default_departure_time || "").slice(0, 2) || "11";
-      
-      const adults = Number(checkin.adults || 0);
-      const children = Number(checkin.children || 0);
-      const guestsText = adults || children ? 
-        `${adults} ${t.adults}${children ? `, ${children} ${t.children}` : ""}` : "—";
-      
-      finalMessage = `${t.greeting}, ${name} 👋
-
-${t.confirmed}
-
-${t.apartment}: ${apt}
-${t.checkin}: ${arriveDate}, ${arriveTime}h
-${t.checkout}: ${departDate}, ${departTime}h
-${t.guests}: ${guestsText}
-
-${t.instructions}
-${regLink || "—"}
-
-${t.afterReg}`;
+    } 
+    // Caso 2: Se llamó desde flujo del bot (checkin object + room object)
+    else {
+      checkin = checkinIdOrObject;
+      room = roomObject || {};
+      apartmentData = null;
     }
     
-    await sendWhatsAppMessage(from, finalMessage);
-    console.log(`✅ Mensaje START enviado`);
+    // Variables básicas
+    const bookIdForLinks = String(
+      checkin.beds24_booking_id || 
+      checkin.booking_id_from_start || 
+      checkin.booking_token || ""
+    ).replace(/\s/g, '');
+    
+    const regLink = (room.registration_url || "").replace(/\[BOOKID\]/g, bookIdForLinks);
+    const payLink = (room.payment_url || "").replace(/\[BOOKID\]/g, bookIdForLinks);
+    
+    const name = checkin.full_name || "";
+    const apt = checkin.apartment_name || checkin.apartment_id || "";
+    const arriveDate = checkin.arrival_date ? String(checkin.arrival_date).slice(0, 10) : "";
+    const departDate = checkin.departure_date ? String(checkin.departure_date).slice(0, 10) : "";
+    
+    const arriveTime = (checkin.arrival_time ? String(checkin.arrival_time).slice(0, 2) : "") || 
+                       String(room.default_arrival_time || "").slice(0, 2) || "17";
+    const departTime = (checkin.departure_time ? String(checkin.departure_time).slice(0, 2) : "") || 
+                       String(room.default_departure_time || "").slice(0, 2) || "11";
+    
+    const adults = Number(checkin.adults || 0);
+    const children = Number(checkin.children || 0);
+    
+    let guestsText = "";
+    if (adults > 0 || children > 0) {
+      const lang = checkin.guest_language?.toLowerCase() || 'es';
+      const adultsWord = lang === 'en' ? 'adults' : 
+                         lang === 'fr' ? 'adultes' : 
+                         lang === 'ru' ? 'взрослых' : 'adultos';
+      const childrenWord = lang === 'en' ? 'children' : 
+                           lang === 'fr' ? 'enfants' : 
+                           lang === 'ru' ? 'детей' : 'niños';
+      
+      guestsText = `${adults} ${adultsWord}`;
+      if (children > 0) {
+        guestsText += `, ${children} ${childrenWord}`;
+      }
+    }
+    
+    // Reemplazar variables básicas
+    let result_text = message
+      .replace(/\{booking_id\}/g, bookIdForLinks)
+      .replace(/\[BOOKID\]/g, bookIdForLinks)
+      .replace(/\{guest_name\}/g, name)
+      .replace(/\{apartment_name\}/g, apt)
+      .replace(/\{apartment_id\}/g, checkin.apartment_id || "")
+      .replace(/\{arrival_date\}/g, arriveDate)
+      .replace(/\{departure_date\}/g, departDate)
+      .replace(/\{arrival_time\}/g, arriveTime)
+      .replace(/\{departure_time\}/g, departTime)
+      .replace(/\{adults\}/g, String(adults))
+      .replace(/\{children\}/g, String(children))
+      .replace(/\{guests_text\}/g, guestsText || "—")
+      .replace(/\{registration_url\}/g, regLink || "—")
+      .replace(/\{payment_url\}/g, payLink || "—");
+    
+    // Variables de apartments (solo si tenemos datos)
+    if (apartmentData && apartmentData.apartment_id) {
+      console.log(`✅ Reemplazando variables de apartment ID ${apartmentData.apartment_id}`);
+      
+      const apartmentVars = {
+        address: apartmentData.address || '',
+        city: apartmentData.city || '',
+        floor: apartmentData.floor || '',
+        door_number: apartmentData.door_number || '',
+        lockbox_code: apartmentData.lockbox_code || '',
+        lockbox_location: apartmentData.lockbox_location || '',
+        door_code: apartmentData.door_code || '',
+        gate_code: apartmentData.gate_code || '',
+        key_instructions: apartmentData.key_instructions || '',
+        wifi_network: apartmentData.wifi_network || '',
+        wifi_password: apartmentData.wifi_password || '',
+        wifi_troubleshooting: apartmentData.wifi_troubleshooting || '',
+        checkin_time: apartmentData.checkin_time || apartmentData.default_checkin_time || '',
+        checkout_time: apartmentData.checkout_time || apartmentData.default_checkout_time || '',
+        security_deposit_amount: apartmentData.security_deposit_amount || '',
+        tourist_tax_amount: apartmentData.tourist_tax_amount || '',
+        early_checkin_price: apartmentData.early_checkin_price || '',
+        late_checkout_price: apartmentData.late_checkout_price || '',
+        parking_location: apartmentData.parking_location || '',
+        parking_code: apartmentData.parking_code || '',
+        parking_instructions: apartmentData.parking_instructions || '',
+        pool_hours: apartmentData.pool_hours || '',
+        pool_location: apartmentData.pool_location || '',
+        pool_rules: apartmentData.pool_rules || '',
+        support_phone: apartmentData.support_phone || '',
+        support_whatsapp: apartmentData.support_whatsapp || ''
+      };
+      
+      for (const [key, value] of Object.entries(apartmentVars)) {
+        if (value) {
+          const regex = new RegExp(`\\{${key}\\}`, 'g');
+          result_text = result_text.replace(regex, value);
+        }
+      }
+    }
+    
+    return result_text;
     
   } catch (error) {
-    console.error('❌ Error en sendStartMessage:', error);
+    console.error('❌ Error en replaceVariables:', error);
+    return message;
   }
 }
-
 // ============ OBTENER SESIÓN ACTIVA ============
 
 async function getSessionCheckin(phoneNumber) {
@@ -6524,6 +6392,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
