@@ -6010,45 +6010,75 @@ async function replaceVariables(message, checkinIdOrObject, roomObject) {
       .replace(/\{payment_url\}/g, payLink || "—");
     
     // Variables de apartments (solo si tenemos datos)
-    if (apartmentData && apartmentData.apartment_id) {
-      console.log(`✅ Reemplazando variables de apartment ID ${apartmentData.apartment_id}`);
-      
-      const apartmentVars = {
-        address: apartmentData.address || '',
-        city: apartmentData.city || '',
-        floor: apartmentData.floor || '',
-        door_number: apartmentData.door_number || '',
-        lockbox_code: apartmentData.lockbox_code || '',
-        lockbox_location: apartmentData.lockbox_location || '',
-        door_code: apartmentData.door_code || '',
-        gate_code: apartmentData.gate_code || '',
-        key_instructions: apartmentData.key_instructions || '',
-        wifi_network: apartmentData.wifi_network || '',
-        wifi_password: apartmentData.wifi_password || '',
-        wifi_troubleshooting: apartmentData.wifi_troubleshooting || '',
-        checkin_time: apartmentData.checkin_time || apartmentData.default_checkin_time || '',
-        checkout_time: apartmentData.checkout_time || apartmentData.default_checkout_time || '',
-        security_deposit_amount: apartmentData.security_deposit_amount || '',
-        tourist_tax_amount: apartmentData.tourist_tax_amount || '',
-        early_checkin_price: apartmentData.early_checkin_price || '',
-        late_checkout_price: apartmentData.late_checkout_price || '',
-        parking_location: apartmentData.parking_location || '',
-        parking_code: apartmentData.parking_code || '',
-        parking_instructions: apartmentData.parking_instructions || '',
-        pool_hours: apartmentData.pool_hours || '',
-        pool_location: apartmentData.pool_location || '',
-        pool_rules: apartmentData.pool_rules || '',
-        support_phone: apartmentData.support_phone || '',
-        support_whatsapp: apartmentData.support_whatsapp || ''
-      };
-      
-      for (const [key, value] of Object.entries(apartmentVars)) {
-        if (value) {
-          const regex = new RegExp(`\\{${key}\\}`, 'g');
-          result_text = result_text.replace(regex, value);
+ // Variables de apartments (solo si tenemos datos)
+if (apartmentData && apartmentData.apartment_id) {
+  console.log(`✅ Reemplazando variables de apartment ID ${apartmentData.apartment_id}`);
+  
+  // Detectar idioma del huésped
+  const guestLanguage = checkin.guest_language || 'es';
+  
+  // Campos que NO necesitan traducción (datos puros)
+  const pureDataFields = {
+    address: apartmentData.address || '',
+    city: apartmentData.city || '',
+    floor: apartmentData.floor || '',
+    door_number: apartmentData.door_number || '',
+    lockbox_code: apartmentData.lockbox_code || '',
+    door_code: apartmentData.door_code || '',
+    gate_code: apartmentData.gate_code || '',
+    wifi_network: apartmentData.wifi_network || '',
+    wifi_password: apartmentData.wifi_password || '',
+    checkin_time: apartmentData.checkin_time || apartmentData.default_checkin_time || '',
+    checkout_time: apartmentData.checkout_time || apartmentData.default_checkout_time || '',
+    security_deposit_amount: apartmentData.security_deposit_amount || '',
+    tourist_tax_amount: apartmentData.tourist_tax_amount || '',
+    early_checkin_price: apartmentData.early_checkin_price || '',
+    late_checkout_price: apartmentData.late_checkout_price || '',
+    parking_code: apartmentData.parking_code || '',
+    support_phone: apartmentData.support_phone || '',
+    support_whatsapp: apartmentData.support_whatsapp || ''
+  };
+  
+  // Campos que SÍ necesitan traducción (textos)
+  const textFields = {
+    lockbox_location: apartmentData.lockbox_location || '',
+    key_instructions: apartmentData.key_instructions || '',
+    wifi_troubleshooting: apartmentData.wifi_troubleshooting || '',
+    parking_location: apartmentData.parking_location || '',
+    parking_instructions: apartmentData.parking_instructions || '',
+    pool_hours: apartmentData.pool_hours || '',
+    pool_location: apartmentData.pool_location || '',
+    pool_rules: apartmentData.pool_rules || ''
+  };
+  
+  // Si el idioma NO es español, traducir campos de texto
+  if (guestLanguage !== 'es') {
+    console.log(`🌐 Traduciendo campos de texto a: ${guestLanguage}`);
+    
+    for (const [key, value] of Object.entries(textFields)) {
+      if (value && value.trim()) {
+        try {
+          const translated = await translateWithDeepL(value, guestLanguage.toUpperCase());
+          textFields[key] = translated || value; // Fallback al original si falla
+        } catch (error) {
+          console.error(`❌ Error traduciendo ${key}:`, error);
+          // Mantener texto original si falla traducción
         }
       }
     }
+  }
+  
+  // Combinar campos puros + campos traducidos
+  const apartmentVars = { ...pureDataFields, ...textFields };
+  
+  // Reemplazar variables
+  for (const [key, value] of Object.entries(apartmentVars)) {
+    if (value) {
+      const regex = new RegExp(`\\{${key}\\}`, 'g');
+      result_text = result_text.replace(regex, value);
+    }
+  }
+}
     
     return result_text;
     
@@ -6563,6 +6593,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
