@@ -5326,6 +5326,9 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
 app.get("/manager/whatsapp", (req, res) => {
   res.sendFile(require('path').join(__dirname, 'manager-whatsapp.html'));
 });
+app.get("/manager/apartments", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public/manager-apartments.html"));
+});
 
 // API: Obtener mensajes del flujo principal (START, REGOK, PAYOK)
 app.get("/api/whatsapp/flow-messages", async (req, res) => {
@@ -6631,6 +6634,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
