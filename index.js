@@ -1930,7 +1930,7 @@ FROM beds24_rooms
 
 // Servir página de gestión de apartamentos (nueva versión con acordeones)
 app.get("/manager/apartment", (req, res) => {
-  res.sendFile(path.join(__dirname, "../public/manager-apartment.html"));
+  res.sendFile(path.join(__dirname, "manager-apartment.html"));
 });
  
 
@@ -6431,6 +6431,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
