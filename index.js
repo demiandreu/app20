@@ -2963,7 +2963,19 @@ app.post("/webhooks/beds24", async (req, res) => {
       return res.status(401).send("Unauthorized");
     }
     // Detectar si la reserva está cancelada
-const isCancelled = (
+
+
+    const payload = req.body || {};
+    const booking = payload.booking || payload; // fallback
+
+    if (!booking || !booking.id) {
+      console.log("ℹ️ Beds24 webhook: no booking.id, ignored");
+      return res.status(200).send("Ignored");
+    }
+
+    console.log("✅ Booking received:", booking.id);
+
+    const isCancelled = (
   booking.status === 'cancelled' || 
   booking.status === 'canceled' ||
   booking.bookingStatus === 'cancelled' ||
@@ -2976,16 +2988,6 @@ console.log("📊 Booking status:", {
   bookingStatus: booking.bookingStatus,
   isCancelled: isCancelled
 });
-
-    const payload = req.body || {};
-    const booking = payload.booking || payload; // fallback
-
-    if (!booking || !booking.id) {
-      console.log("ℹ️ Beds24 webhook: no booking.id, ignored");
-      return res.status(200).send("Ignored");
-    }
-
-    console.log("✅ Booking received:", booking.id);
     
     // ---- room / apartment name ----
     const beds24RoomId = String(
@@ -6617,6 +6619,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
