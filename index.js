@@ -3741,7 +3741,7 @@ const arrivalsRes = await pool.query(
     c.late_checkout_requested  
   FROM checkins c
   LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.apartment_id::text  -- ✅ AÑADIR ESTA LÍNEA
-  WHERE c.cancelled = false
+  WHERE (c.cancelled = false OR c.cancelled IS NULL)
     AND c.arrival_date IS NOT NULL
     AND (br.show_in_staff IS NULL OR br.show_in_staff = true)  -- ✅ AÑADIR ESTA LÍNEA
     ${wArr.andSql}
@@ -6445,6 +6445,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
