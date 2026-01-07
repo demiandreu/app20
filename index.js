@@ -3490,7 +3490,8 @@ app.get("/guest/:bookingId", async (req, res) => {
           </div>
         </div>
       `;
-    } else if (embedResult.type === 'direct') {
+    } 
+    else if (embedResult.type === 'direct') {
       // Video directo (.mp4, .webm, etc.) - usar <video> tag
       mediaHtml = `
         <div style="margin-top:16px;">
@@ -3503,6 +3504,7 @@ app.get("/guest/:bookingId", async (req, res) => {
           </video>
         </div>
       `;
+    }
     }
                } else if (s.new_media_type === 'image') {
                  mediaHtml = `
@@ -6442,6 +6444,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
