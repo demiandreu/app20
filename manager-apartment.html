@@ -993,7 +993,7 @@ async function uploadPhoto(button) {
     // Verificar tamaños
     const invalidFiles = files.filter(f => f.size > 5 * 1024 * 1024);
     if (invalidFiles.length > 0) {
-      alert(`❌ ${invalidFiles.length} foto(s) superan 5MB. Por favor, elige fotos más pequeñas.`);
+     alert(`❌ ${invalidFiles.length} foto(s) superan 5MB. Por favor, elige fotos más pequeñas.`);
       return;
     }
     
@@ -1037,7 +1037,7 @@ async function uploadPhoto(button) {
           textarea.value = newUrls;
         }
         
-        alert(`✅ ${uploadedUrls.length} foto(s) subida(s) correctamente`);
+       alert(`✅ ${uploadedUrls.length} foto(s) subida(s) correctamente`);
       } else {
         alert('❌ No se pudo subir ninguna foto');
       }
