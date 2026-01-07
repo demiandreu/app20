@@ -5359,7 +5359,6 @@ app.get("/api/whatsapp/auto-replies", async (req, res) => {
   }
 });
 
-// POST: Crear nueva autorespuesta
 app.post("/api/whatsapp/auto-replies", async (req, res) => {
   try {
     const {
@@ -5373,6 +5372,21 @@ app.post("/api/whatsapp/auto-replies", async (req, res) => {
       priority
     } = req.body;
 
+    console.log('📥 Recibiendo nueva autorespuesta:', { keywords });
+
+    // ✅ Convertir keywords correctamente
+    let keywordsText = '';
+    
+    if (Array.isArray(keywords)) {
+      // Si es array, unir con comas SIN espacios extra
+      keywordsText = keywords.filter(k => k && k.trim()).join(',');
+    } else if (typeof keywords === 'string') {
+      // Si es string, limpiar espacios
+      keywordsText = keywords.trim();
+    }
+
+    console.log('💾 Keywords a guardar:', keywordsText);
+
     const result = await pool.query(`
       INSERT INTO whatsapp_auto_replies
         (category, keywords, response_es, response_en, response_fr, response_ru, active, priority)
@@ -5380,7 +5394,7 @@ app.post("/api/whatsapp/auto-replies", async (req, res) => {
       RETURNING *
     `, [
       category || 'custom',
-      keywords,
+      keywordsText,
       response_es,
       response_en || response_es,
       response_fr || response_es,
@@ -5389,12 +5403,14 @@ app.post("/api/whatsapp/auto-replies", async (req, res) => {
       priority || 0
     ]);
 
+    console.log('✅ Guardado con keywords:', result.rows[0].keywords);
+
     res.json({
       success: true,
       reply: result.rows[0]
     });
   } catch (error) {
-    console.error('Error creating auto-reply:', error);
+    console.error('❌ Error creating auto-reply:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -6440,6 +6456,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
