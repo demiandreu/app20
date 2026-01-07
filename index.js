@@ -696,7 +696,7 @@ app.get("/manager/apartment/sections", async (req, res) => {
 
    <label>Media URL <span style="font-size:11px; color:#6b7280;">(una URL por línea para múltiples fotos)</span></label>
 <div style="display:flex; gap:8px; align-items:start;">
-  <textarea class="sec-media-url" placeholder="https://..." 
+  <textarea name="new_media_url" class="sec-media-url" placeholder="https://..."
             style="flex:1; min-height:100px; resize:vertical; padding:10px; border:1px solid #d1d5db; border-radius:6px; font-family:monospace; font-size:12px;"></textarea>
   
   <button type="button" onclick="uploadPhoto(this)" 
@@ -6820,6 +6820,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
