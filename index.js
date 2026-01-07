@@ -1176,7 +1176,7 @@ function fmtTime(t) {
   return String(t).slice(0, 5); // "17:00"
 }
 
-function renderPage(title, innerHtml, currentPage = '') {
+function renderPage(title, innerHtml, currentPage = '', showNav = true) {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -1682,6 +1682,7 @@ td.apartment-cell.needs-clean {
 </head>
 <body>
   <div class="page">
+  ${showNav ? `
     <nav class="nav-menu">
   <button class="nav-toggle" onclick="toggleNav()">☰</button>
   
@@ -1703,7 +1704,7 @@ td.apartment-cell.needs-clean {
     </a>
   </div>
 </nav>
-
+` : ''}
 <script>
   function toggleNav() {
     const navLinks = document.getElementById('navLinks');
@@ -3754,7 +3755,7 @@ app.get("/guest/:bookingId", async (req, res) => {
       </div>
     `;
     
-    return res.send(renderPage("Panel del huésped", html));
+    return res.send(renderPage("Panel del huésped", html, '', false));
     
   } catch (e) {
     console.error("❌ Guest dashboard error:", e);
@@ -6593,6 +6594,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
