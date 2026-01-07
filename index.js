@@ -694,8 +694,21 @@ app.get("/manager/apartment/sections", async (req, res) => {
       <option value="link">🔗 Link (External)</option>
     </select>
 
-    <label class="muted">Media URL</label>
-    <input name="new_media_url" placeholder="https://..." style="width:100%;" />
+   <label>Media URL <span style="font-size:11px; color:#6b7280;">(una URL por línea para múltiples fotos)</span></label>
+<div style="display:flex; gap:8px; align-items:start;">
+  <textarea class="sec-media-url" placeholder="https://..." 
+            style="flex:1; min-height:100px; resize:vertical; padding:10px; border:1px solid #d1d5db; border-radius:6px; font-family:monospace; font-size:12px;"></textarea>
+  
+  <button type="button" onclick="uploadPhoto(this)" 
+          class="upload-photo-btn"
+          style="padding:10px 16px; background:#3b82f6; color:white; border:none; border-radius:6px; cursor:pointer; white-space:nowrap; font-weight:600;">
+    📸 Subir foto
+  </button>
+</div>
+<input type="file" accept="image/*" style="display:none;" class="photo-input" multiple />
+<div style="font-size:11px; color:#6b7280; margin-top:4px;">
+  💡 Máximo 5MB por foto. Soporta JPG, PNG, WEBP.
+</div>
 
     <div style="display:flex; gap:10px; align-items:center;">
       <label class="muted">Order:</label>
@@ -5186,6 +5199,89 @@ app.post("/api/whatsapp/flow-messages", async (req, res) => {
   }
 });
 
+// ============================================
+// 📸 CLOUDINARY PHOTO UPLOAD
+// ============================================
+
+const cloudinary = require('cloudinary').v2;
+const multer = require('multer');
+
+// Configurar Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Configurar Multer (almacenamiento en memoria)
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB por foto
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten imágenes'));
+    }
+  }
+});
+
+// Endpoint de upload
+app.post('/api/upload-photo', upload.single('photo'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se recibió ninguna foto' });
+    }
+
+    console.log('📸 Subiendo foto:', {
+      name: req.file.originalname,
+      size: `${(req.file.size / 1024).toFixed(2)} KB`,
+      type: req.file.mimetype
+    });
+
+    // Subir a Cloudinary
+    const result = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'rcs-apartments',
+          resource_type: 'image',
+          transformation: [
+            { width: 1200, crop: 'limit' }, // Máximo 1200px de ancho
+            { quality: 'auto' } // Optimización automática
+          ]
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      
+      uploadStream.end(req.file.buffer);
+    });
+
+    console.log('✅ Foto subida a Cloudinary:', {
+      url: result.secure_url,
+      size: `${(result.bytes / 1024).toFixed(2)} KB`
+    });
+
+    res.json({
+      success: true,
+      url: result.secure_url,
+      size: result.bytes
+    });
+
+  } catch (error) {
+    console.error('❌ Error subiendo foto:', error);
+    res.status(500).json({ 
+      success: false,
+      error: error.message 
+    });
+  }
+});
+
 // API: Obtener configuración de Early/Late
 app.get("/api/whatsapp/early-late-config", async (req, res) => {
   try {
@@ -6619,6 +6715,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
