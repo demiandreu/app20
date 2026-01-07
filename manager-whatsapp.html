@@ -79,7 +79,7 @@
 .reply-settings {
   margin-top: 16px;
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: 1fr; /* ✅ Una sola columna */
   gap: 12px;
 }
 
@@ -99,6 +99,21 @@
   font-size: 14px;
 }
 
+.reply-settings textarea {
+  min-height: 80px; /* ✅ Textarea para keywords */
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.reply-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* ✅ Categoría y prioridad en fila */
+  gap: 12px;
+  margin-top: 12px;
+}
 .empty-state {
   text-align: center;
   padding: 40px 20px;
@@ -351,27 +366,6 @@
   display: block;
 }
 
-.reply-settings {
-  margin-top: 16px;
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
-  gap: 12px;
-}
-
-.reply-settings label {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 13px;
-  color: #374151;
-}
-
-.reply-settings input,
-.reply-settings select {
-  padding: 8px;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-}
 
 .empty-state {
   text-align: center;
@@ -1241,31 +1235,31 @@ function renderAutoReplies() {
 
         <button class="btn-translate" onclick="translateAutoReply(${index})">🌍 Traducir desde ES</button>
 
-        <div class="reply-settings">
-          <label>
-            Keywords (separados por coma):
-            <input type="text" id="keywords_${index}" 
-                   value="${reply.keywords.join(', ')}"
-                   placeholder="wifi, contraseña, password">
-          </label>
-          
-          <label>
-            Categoría:
-            <select id="category_${index}">
-              <option value="wifi" ${reply.category === 'wifi' ? 'selected' : ''}>📶 WiFi</option>
-              <option value="checkout" ${reply.category === 'checkout' ? 'selected' : ''}>🚪 Checkout</option>
-              <option value="parking" ${reply.category === 'parking' ? 'selected' : ''}>🅿️ Parking</option>
-              <option value="custom" ${reply.category === 'custom' ? 'selected' : ''}>✏️ Custom</option>
-            </select>
-          </label>
+      <div class="reply-settings">
+  <label>
+    Keywords (separados por coma):
+    <textarea id="keywords_${index}" 
+              placeholder="wifi, contraseña, password, internet, red">${reply.keywords.join ? reply.keywords.join(', ') : reply.keywords}</textarea>
+  </label>
+  
+  <div class="reply-meta">
+    <label>
+      Categoría:
+      <select id="category_${index}">
+        <option value="wifi" ${reply.category === 'wifi' ? 'selected' : ''}>📶 WiFi</option>
+        <option value="checkout" ${reply.category === 'checkout' ? 'selected' : ''}>🚪 Checkout</option>
+        <option value="parking" ${reply.category === 'parking' ? 'selected' : ''}>🅿️ Parking</option>
+        <option value="custom" ${reply.category === 'custom' ? 'selected' : ''}>✏️ Custom</option>
+      </select>
+    </label>
 
-          <label>
-            Prioridad:
-            <input type="number" id="priority_${index}" 
-                   value="${reply.priority || 0}" min="0" max="100">
-          </label>
-        </div>
-      </div>
+    <label>
+      Prioridad:
+      <input type="number" id="priority_${index}" 
+             value="${reply.priority || 0}" min="0" max="100">
+    </label>
+  </div>
+</div>
     </div>
   `).join('');
 }
@@ -1284,6 +1278,7 @@ function showLangReply(index, lang) {
   card.querySelector(`#reply_${index}_${lang}`).classList.add('active');
 }
         // Traducir autorespuesta con DeepL
+// Traducir autorespuesta con DeepL
 async function translateAutoReply(index) {
   const sourceText = document.getElementById(`reply_${index}_es`).value.trim();
   
@@ -1364,44 +1359,67 @@ document.getElementById('add-reply-btn')?.addEventListener('click', () => {
 });
 
 // Guardar cambios
+// Guardar cambios
 document.getElementById('save-auto-replies-btn')?.addEventListener('click', async () => {
   try {
+    console.log('💾 Guardando autorespuestas...');
+    
     // Recoger datos de todos los campos
-    const updatedReplies = autoReplies.map((reply, index) => ({
-      ...reply,
-      category: document.getElementById(`category_${index}`)?.value || reply.category,
-      keywords: document.getElementById(`keywords_${index}`)?.value.split(',').map(k => k.trim()),
-      response_es: document.getElementById(`reply_${index}_es`)?.value || '',
-      response_en: document.getElementById(`reply_${index}_en`)?.value || '',
-      response_fr: document.getElementById(`reply_${index}_fr`)?.value || '',
-      response_ru: document.getElementById(`reply_${index}_ru`)?.value || '',
-      priority: parseInt(document.getElementById(`priority_${index}`)?.value) || 0
-    }));
+    const updatedReplies = autoReplies.map((reply, index) => {
+      const keywordsValue = document.getElementById(`keywords_${index}`)?.value || '';
+      
+      return {
+        ...reply,
+        category: document.getElementById(`category_${index}`)?.value || reply.category,
+        keywords: keywordsValue.split(',').map(k => k.trim()).filter(k => k.length > 0),
+        response_es: document.getElementById(`reply_${index}_es`)?.value || '',
+        response_en: document.getElementById(`reply_${index}_en`)?.value || '',
+        response_fr: document.getElementById(`reply_${index}_fr`)?.value || '',
+        response_ru: document.getElementById(`reply_${index}_ru`)?.value || '',
+        priority: parseInt(document.getElementById(`priority_${index}`)?.value) || 0
+      };
+    });
+
+    console.log('📊 Autorespuestas a guardar:', updatedReplies.length);
 
     // Guardar cada respuesta
     for (const reply of updatedReplies) {
+      console.log(`💾 Guardando reply ID: ${reply.id || 'NEW'}`);
+      
       if (reply.id) {
         // Actualizar existente
-        await fetch(`/api/whatsapp/auto-replies/${reply.id}`, {
+        const response = await fetch(`/api/whatsapp/auto-replies/${reply.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(reply)
         });
+        
+        const data = await response.json();
+        console.log(`✅ Actualizado reply ${reply.id}:`, data);
+        
       } else {
         // Crear nueva
-        await fetch('/api/whatsapp/auto-replies', {
+        const response = await fetch('/api/whatsapp/auto-replies', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(reply)
         });
+        
+        const data = await response.json();
+        console.log(`✅ Creado nuevo reply:`, data);
       }
     }
 
     showAlert('auto-replies', '✅ Respuestas guardadas correctamente', 'success');
-    loadAutoReplies(); // Recargar
+    
+    // Recargar para mostrar IDs actualizados
+    setTimeout(() => {
+      loadAutoReplies();
+    }, 1000);
+    
   } catch (error) {
-    console.error('Error saving auto-replies:', error);
-    showAlert('auto-replies', '❌ Error al guardar', 'error');
+    console.error('❌ Error saving auto-replies:', error);
+    showAlert('auto-replies', '❌ Error al guardar: ' + error.message, 'error');
   }
 });
 
