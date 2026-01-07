@@ -269,12 +269,34 @@
         }
 
         /* Auto-replies styles */
+/* Acordeón */
 .auto-reply-card {
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 16px;
+  transition: all 0.3s ease;
+}
+
+.auto-reply-card .reply-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.auto-reply-card .reply-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.auto-reply-card.open .reply-content {
+  max-height: 2000px;
+}
+
+.accordion-arrow {
+  transition: transform 0.3s ease;
+  display: inline-block;
+  margin-left: 8px;
+}
+
+.auto-reply-card.open .accordion-arrow {
+  transform: rotate(180deg);
 }
 
 .reply-header {
@@ -1155,7 +1177,7 @@ function showAlert(tabName, message, type) {
         // Load initial data
         loadFlowMessages();
 
-        // ============================================
+// ============================================
 // 🤖 AUTO-REPLIES MANAGEMENT
 // ============================================
 
@@ -1164,22 +1186,37 @@ let autoReplies = [];
 // Cargar autorespuestas al inicio
 async function loadAutoReplies() {
   try {
+    console.log('📥 Cargando autorespuestas...');
+    
     const response = await fetch('/api/whatsapp/auto-replies');
     const data = await response.json();
     
+    console.log('📊 Respuesta API:', data);
+    
     if (data.success) {
-      autoReplies = data.replies;
+      autoReplies = data.replies || [];
+      console.log(`✅ ${autoReplies.length} autorespuestas cargadas`);
       renderAutoReplies();
+    } else {
+      console.error('❌ Error en respuesta:', data);
+      showAlert('auto-replies', '❌ Error al cargar respuestas', 'error');
     }
   } catch (error) {
-    console.error('Error loading auto-replies:', error);
+    console.error('❌ Error loading auto-replies:', error);
     showAlert('auto-replies', '❌ Error al cargar respuestas automáticas', 'error');
   }
 }
 
 // Renderizar lista de autorespuestas
 function renderAutoReplies() {
+  console.log('🎨 Renderizando autorespuestas...', autoReplies.length);
+  
   const container = document.getElementById('auto-replies-list');
+  
+  if (!container) {
+    console.error('❌ No se encontró el contenedor auto-replies-list');
+    return;
+  }
   
   if (autoReplies.length === 0) {
     container.innerHTML = `
@@ -1190,9 +1227,9 @@ function renderAutoReplies() {
     `;
     return;
   }
-  
+
   container.innerHTML = autoReplies.map((reply, index) => {
-    // ✅ Convertir keywords a array ANTES de usar
+    // Convertir keywords a array limpio
     let keywordsArray = [];
     
     if (!reply.keywords) {
@@ -1200,16 +1237,23 @@ function renderAutoReplies() {
     } else if (Array.isArray(reply.keywords)) {
       keywordsArray = reply.keywords;
     } else if (typeof reply.keywords === 'string') {
-      // Limpiar formato PostgreSQL {wifi,password}
-      let cleaned = reply.keywords.replace(/^\{/, '').replace(/\}$/, '').trim();
+      // Limpiar formato PostgreSQL {wifi,password} o JSON ["wifi","password"]
+      let cleaned = reply.keywords
+        .replace(/^\{/, '')
+        .replace(/\}$/, '')
+        .replace(/^\[/, '')
+        .replace(/\]$/, '')
+        .replace(/"/g, '')
+        .trim();
       keywordsArray = cleaned.split(',').map(k => k.trim()).filter(k => k.length > 0);
     }
     
     const keywordsText = keywordsArray.join(', ');
+    const isOpen = index === 0; // Solo el primero abierto por defecto
     
     return `
-    <div class="auto-reply-card" data-id="${reply.id}">
-      <div class="reply-header">
+    <div class="auto-reply-card ${isOpen ? 'open' : ''}" data-id="${reply.id || ''}" data-index="${index}">
+      <div class="reply-header" onclick="toggleCard(${index})">
         <div>
           <h3>${getCategoryIcon(reply.category)} ${reply.category}</h3>
           <div class="keywords-display">
@@ -1218,14 +1262,15 @@ function renderAutoReplies() {
           </div>
         </div>
         <div class="reply-actions">
-          <label class="toggle">
+          <label class="toggle" onclick="event.stopPropagation()">
             <input type="checkbox" ${reply.active ? 'checked' : ''} 
                    onchange="toggleReply(${index})">
             <span>Activa</span>
           </label>
-          <button class="btn-small btn-danger" onclick="deleteReply(${index})">
+          <button class="btn-small btn-danger" onclick="event.stopPropagation(); deleteReply(${index})">
             🗑️ Eliminar
           </button>
+          <span class="accordion-arrow">▼</span>
         </div>
       </div>
 
@@ -1280,25 +1325,105 @@ function renderAutoReplies() {
     </div>
     `;
   }).join('');
+  
+  console.log('✅ Renderizado completado');
 }
 
-// Mostrar idioma en textarea
+// Toggle acordeón
+function toggleCard(index) {
+  const card = document.querySelector(`[data-index="${index}"]`);
+  if (card) {
+    card.classList.toggle('open');
+  }
+}
+
 // Mostrar idioma en textarea
 function showLangReply(index, lang) {
   const card = document.querySelectorAll('.auto-reply-card')[index];
   
+  if (!card) return;
+  
   // Toggle tabs
   card.querySelectorAll('.lang-tab').forEach(tab => tab.classList.remove('active'));
-  card.querySelector(`.lang-tab[onclick*="${lang}"]`).classList.add('active');
+  const targetTab = Array.from(card.querySelectorAll('.lang-tab')).find(tab => 
+    tab.textContent.includes(lang.toUpperCase())
+  );
+  if (targetTab) targetTab.classList.add('active');
   
   // Toggle textareas
   card.querySelectorAll('.lang-textarea').forEach(ta => ta.classList.remove('active'));
-  card.querySelector(`#reply_${index}_${lang}`).classList.add('active');
+  const targetTextarea = card.querySelector(`#reply_${index}_${lang}`);
+  if (targetTextarea) targetTextarea.classList.add('active');
 }
-        // Traducir autorespuesta con DeepL
+
+// Toggle activo/inactivo
+function toggleReply(index) {
+  autoReplies[index].active = !autoReplies[index].active;
+  console.log(`Toggle reply ${index}: active = ${autoReplies[index].active}`);
+}
+
+// Eliminar respuesta
+async function deleteReply(index) {
+  if (!confirm('¿Seguro que quieres eliminar esta respuesta automática?')) {
+    return;
+  }
+  
+  const reply = autoReplies[index];
+  
+  if (reply.id) {
+    // Si tiene ID, eliminar de BD
+    try {
+      const response = await fetch(`/api/whatsapp/auto-replies/${reply.id}`, {
+        method: 'DELETE'
+      });
+      
+      if (response.ok) {
+        console.log(`🗑️ Reply ${reply.id} eliminado de BD`);
+      }
+    } catch (error) {
+      console.error('Error eliminando:', error);
+      showAlert('auto-replies', '❌ Error al eliminar', 'error');
+      return;
+    }
+  }
+  
+  // Eliminar del array local
+  autoReplies.splice(index, 1);
+  renderAutoReplies();
+  
+  showAlert('auto-replies', '✅ Respuesta eliminada', 'success');
+}
+
+// Añadir nueva respuesta
+document.getElementById('add-reply-btn')?.addEventListener('click', () => {
+  console.log('➕ Añadiendo nueva respuesta');
+  
+  autoReplies.unshift({
+    id: null,
+    category: 'custom',
+    keywords: [],
+    response_es: '',
+    response_en: '',
+    response_fr: '',
+    response_ru: '',
+    active: true,
+    priority: 0
+  });
+  
+  renderAutoReplies();
+  
+  // Scroll al inicio
+  setTimeout(() => {
+    const container = document.getElementById('auto-replies-list');
+    if (container) {
+      container.firstElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, 100);
+});
+
 // Traducir autorespuesta con DeepL
 async function translateAutoReply(index) {
-  const sourceText = document.getElementById(`reply_${index}_es`).value.trim();
+  const sourceText = document.getElementById(`reply_${index}_es`)?.value.trim();
   
   if (!sourceText) {
     showAlert('auto-replies', '⚠️ Escribe primero el texto en español', 'error');
@@ -1347,49 +1472,29 @@ async function translateAutoReply(index) {
   }
 }
 
-// Toggle activo/inactivo
-function toggleReply(index) {
-  autoReplies[index].active = !autoReplies[index].active;
-}
-
-// Eliminar respuesta
-function deleteReply(index) {
-  if (confirm('¿Seguro que quieres eliminar esta respuesta automática?')) {
-    autoReplies.splice(index, 1);
-    renderAutoReplies();
-  }
-}
-
-// Añadir nueva respuesta
-document.getElementById('add-reply-btn')?.addEventListener('click', () => {
-  autoReplies.push({
-    id: null,
-    category: 'custom',
-    keywords: [],
-    response_es: '',
-    response_en: '',
-    response_fr: '',
-    response_ru: '',
-    active: true,
-    priority: 0
-  });
-  renderAutoReplies();
-});
-
-// Guardar cambios
 // Guardar cambios
 document.getElementById('save-auto-replies-btn')?.addEventListener('click', async () => {
   try {
     console.log('💾 Guardando autorespuestas...');
     
+    const button = event.target;
+    button.disabled = true;
+    button.textContent = '⏳ Guardando...';
+    
     // Recoger datos de todos los campos
     const updatedReplies = autoReplies.map((reply, index) => {
       const keywordsValue = document.getElementById(`keywords_${index}`)?.value || '';
       
+      // ✅ Limpiar keywords: quitar espacios extras, filtrar vacíos
+      const keywordsArray = keywordsValue
+        .split(',')
+        .map(k => k.trim())
+        .filter(k => k.length > 0);
+      
       return {
         ...reply,
         category: document.getElementById(`category_${index}`)?.value || reply.category,
-        keywords: keywordsValue.split(',').map(k => k.trim()).filter(k => k.length > 0),
+        keywords: keywordsArray,
         response_es: document.getElementById(`reply_${index}_es`)?.value || '',
         response_en: document.getElementById(`reply_${index}_en`)?.value || '',
         response_fr: document.getElementById(`reply_${index}_fr`)?.value || '',
@@ -1398,11 +1503,12 @@ document.getElementById('save-auto-replies-btn')?.addEventListener('click', asyn
       };
     });
 
-    console.log('📊 Autorespuestas a guardar:', updatedReplies.length);
+    console.log(`📊 Total a guardar: ${updatedReplies.length}`);
 
     // Guardar cada respuesta
+    let savedCount = 0;
     for (const reply of updatedReplies) {
-      console.log(`💾 Guardando reply ID: ${reply.id || 'NEW'}`);
+      console.log(`💾 Guardando reply ID: ${reply.id || 'NEW'}`, reply.keywords);
       
       if (reply.id) {
         // Actualizar existente
@@ -1413,7 +1519,8 @@ document.getElementById('save-auto-replies-btn')?.addEventListener('click', asyn
         });
         
         const data = await response.json();
-        console.log(`✅ Actualizado reply ${reply.id}:`, data);
+        console.log(`✅ Actualizado:`, data);
+        savedCount++;
         
       } else {
         // Crear nueva
@@ -1424,20 +1531,27 @@ document.getElementById('save-auto-replies-btn')?.addEventListener('click', asyn
         });
         
         const data = await response.json();
-        console.log(`✅ Creado nuevo reply:`, data);
+        console.log(`✅ Creado:`, data);
+        savedCount++;
       }
     }
 
-    showAlert('auto-replies', '✅ Respuestas guardadas correctamente', 'success');
+    showAlert('auto-replies', `✅ ${savedCount} respuestas guardadas correctamente`, 'success');
     
     // Recargar para mostrar IDs actualizados
     setTimeout(() => {
       loadAutoReplies();
-    }, 1000);
+    }, 1500);
+    
+    button.disabled = false;
+    button.textContent = '💾 Guardar Cambios';
     
   } catch (error) {
-    console.error('❌ Error saving auto-replies:', error);
+    console.error('❌ Error saving:', error);
     showAlert('auto-replies', '❌ Error al guardar: ' + error.message, 'error');
+    
+    event.target.disabled = false;
+    event.target.textContent = '💾 Guardar Cambios';
   }
 });
 
@@ -1453,9 +1567,18 @@ function getCategoryIcon(category) {
 }
 
 // Cargar al cambiar a la pestaña
-document.querySelector('[data-tab="auto-replies"]')?.addEventListener('click', () => {
+const autoRepliesTab = document.querySelector('[onclick*="auto-replies"]');
+if (autoRepliesTab) {
+  autoRepliesTab.addEventListener('click', () => {
+    console.log('📱 Pestaña auto-replies activada');
+    loadAutoReplies();
+  });
+}
+
+// Cargar al inicio si ya está en la pestaña
+if (document.getElementById('auto-replies')?.classList.contains('active')) {
   loadAutoReplies();
-});
+}
     </script>
 </body>
 </html>
