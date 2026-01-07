@@ -973,5 +973,85 @@
         // Cargar al iniciar
         loadApartments();
     </script>
+    <script>
+// ============================================
+// 📸 UPLOAD DE FOTOS A CLOUDINARY
+// ============================================
+
+async function uploadPhoto(button) {
+  const container = button.closest('div').parentElement;
+  const textarea = container.querySelector('.sec-media-url');
+  const fileInput = container.querySelector('.photo-input');
+  
+  // Trigger file selector
+  fileInput.click();
+  
+  fileInput.onchange = async () => {
+    const files = Array.from(fileInput.files);
+    if (files.length === 0) return;
+    
+    // Verificar tamaños
+    const invalidFiles = files.filter(f => f.size > 5 * 1024 * 1024);
+    if (invalidFiles.length > 0) {
+      alert(`❌ ${invalidFiles.length} foto(s) superan 5MB. Por favor, elige fotos más pequeñas.`);
+      return;
+    }
+    
+    // Mostrar loading
+    button.disabled = true;
+    const originalText = button.textContent;
+    button.textContent = `⏳ Subiendo ${files.length} foto(s)...`;
+    
+    try {
+      const uploadedUrls = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        button.textContent = `⏳ Subiendo ${i + 1}/${files.length}...`;
+        
+        const formData = new FormData();
+        formData.append('photo', file);
+        
+        const response = await fetch('/api/upload-photo', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          uploadedUrls.push(data.url);
+        } else {
+          console.error('Error subiendo:', file.name, data.error);
+        }
+      }
+      
+      if (uploadedUrls.length > 0) {
+        // Añadir URLs al textarea
+        const currentUrls = textarea.value.trim();
+        const newUrls = uploadedUrls.join('\n');
+        
+        if (currentUrls) {
+          textarea.value = currentUrls + '\n' + newUrls;
+        } else {
+          textarea.value = newUrls;
+        }
+        
+        alert(`✅ ${uploadedUrls.length} foto(s) subida(s) correctamente`);
+      } else {
+        alert('❌ No se pudo subir ninguna foto');
+      }
+      
+    } catch (error) {
+      alert('❌ Error subiendo fotos: ' + error.message);
+      console.error(error);
+    } finally {
+      button.disabled = false;
+      button.textContent = originalText;
+      fileInput.value = ''; // Reset input
+    }
+  };
+}
+</script>
 </body>
 </html>
