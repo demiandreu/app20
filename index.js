@@ -4200,7 +4200,7 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     
     const fromDate = String(req.query.from || "2000-01-01");
     const toDate = String(req.query.to || "2027-12-31");
-    const includeCancelled = String(req.query.includeCancelled || "true");
+    const includeCancelled = String(req.query.includeCancelled || "false");
     
     const propsResp = await fetch("https://beds24.com/api/v2/properties?includeAllRooms=true", {
       headers: { accept: "application/json", token },
@@ -6445,6 +6445,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
