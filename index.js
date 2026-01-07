@@ -34,24 +34,14 @@ async function beds24Get(endpoint, params = {}, propertyExternalId) {
   return resp.json();
 }
 
-// ============================================
-// 🤖 AUTO-REPLY: Detectar keywords
-// ============================================
-async function checkAutoReply(message, apartmentId, lang = 'es') {
+async function checkAutoReply(message, language, checkinId) {
   try {
-    const messageLower = message.toLowerCase().trim();
-    console.log(`🔍 checkAutoReply: Buscando match para "${messageLower}" (lang: ${lang})`);
-    
-    // Buscar autorespuestas activas
+    const bodyLower = message.toLowerCase().trim();
+    console.log(`🔍 checkAutoReply: Buscando match para "${bodyLower}" (lang: ${language})`);
+
+    // Obtener autorespuestas activas
     const result = await pool.query(`
-      SELECT 
-        id,
-        keywords,
-        response_es,
-        response_en,
-        response_fr,
-        response_ru,
-        priority
+      SELECT id, category, keywords, response_es, response_en, response_fr, response_ru, priority
       FROM whatsapp_auto_replies
       WHERE active = true
       ORDER BY priority DESC
@@ -59,48 +49,151 @@ async function checkAutoReply(message, apartmentId, lang = 'es') {
 
     console.log(`📊 Encontradas ${result.rows.length} autorespuestas activas`);
 
-    // Buscar coincidencia con keywords
+    // Buscar match
     for (const reply of result.rows) {
       let keywordsArray = [];
       
-      // Convertir keywords a array limpio
-      if (Array.isArray(reply.keywords)) {
-        // Si ya es array de JavaScript
+      if (typeof reply.keywords === 'string') {
+        let cleaned = reply.keywords
+          .replace(/^\{/, '').replace(/\}$/, '')
+          .replace(/^\[/, '').replace(/\]$/, '')
+          .replace(/"/g, '')
+          .trim();
+        keywordsArray = cleaned.split(',').map(k => k.trim()).filter(k => k.length > 0);
+      } else if (Array.isArray(reply.keywords)) {
         keywordsArray = reply.keywords;
-      } else if (typeof reply.keywords === 'string') {
-        // Si es string con formato PostgreSQL: {wifi,password,internet}
-        // O string con comas: wifi, password, internet
-        
-        let keywordsStr = reply.keywords;
-        
-        // Limpiar llaves de PostgreSQL array
-        keywordsStr = keywordsStr.replace(/^\{/, '').replace(/\}$/, '');
-        
-        // Separar por comas
-        keywordsArray = keywordsStr.split(',').map(k => k.trim());
       }
-      
-      console.log(`🔑 Reply ID ${reply.id}: keywords = [${keywordsArray.slice(0, 3).join(', ')}...]`);
-      
-      // Buscar coincidencia
-      for (const keyword of keywordsArray) {
-        if (keyword && messageLower.includes(keyword.toLowerCase())) {
-          const langKey = `response_${lang}`;
-          const response = reply[langKey] || reply.response_es;
-          
-          console.log(`✅ MATCH! keyword="${keyword}", reply_id=${reply.id}`);
-          console.log(`📤 Enviando respuesta...`);
-          
-          return response;
-        }
+
+      console.log(`🔑 Reply ID ${reply.id}: keywords =`, keywordsArray);
+
+      // Buscar match
+      const hasMatch = keywordsArray.some(keyword => {
+        const keywordLower = keyword.toLowerCase().trim();
+        return bodyLower.includes(keywordLower);
+      });
+
+      if (hasMatch) {
+        console.log(`✅ Match encontrado en reply ID ${reply.id}`);
+        
+        // Obtener respuesta según idioma
+        let response = reply[`response_${language}`] || reply.response_es;
+        
+        // 🆕 REEMPLAZAR VARIABLES
+        response = await replaceVariables(response, checkinId);
+        
+        console.log(`📤 Enviando autorespuesta (${language}):`, response.substring(0, 100));
+        return response;
       }
     }
 
-    console.log(`❌ No se encontró match para "${messageLower}"`);
+    console.log(`❌ No se encontró match para "${bodyLower}"`);
     return null;
+
   } catch (error) {
-    console.error('❌ Error checking auto-reply:', error);
+    console.error('❌ Error en checkAutoReply:', error);
     return null;
+  }
+}
+
+// 🆕 FUNCIÓN PARA REEMPLAZAR VARIABLES
+async function replaceVariables(text, checkinId) {
+  try {
+    // Si no hay variables, devolver texto original
+    if (!text.includes('{')) {
+      return text;
+    }
+
+    console.log(`🔄 Reemplazando variables para checkin ${checkinId}`);
+
+    // Obtener datos del checkin y apartamento
+    const result = await pool.query(`
+      SELECT 
+        c.id as checkin_id,
+        c.beds24_booking_id,
+        br.beds24_room_id,
+        br.apartment_id,
+        a.*
+      FROM checkins c
+      LEFT JOIN beds24_rooms br ON c.beds24_room_id = br.beds24_room_id
+      LEFT JOIN apartments a ON br.apartment_id = a.id
+      WHERE c.id = $1
+    `, [checkinId]);
+
+    if (result.rows.length === 0) {
+      console.log(`⚠️ No se encontró checkin ${checkinId}`);
+      return text;
+    }
+
+    const data = result.rows[0];
+    
+    if (!data.apartment_id) {
+      console.log(`⚠️ Checkin ${checkinId} no tiene apartment_id vinculado`);
+      return text;
+    }
+
+    console.log(`✅ Datos de apartamento encontrados para apartment_id ${data.apartment_id}`);
+
+    // Lista de variables disponibles
+    const variables = {
+      // Info básica
+      apartment_name: data.name,
+      address: data.address,
+      city: data.city,
+      floor: data.floor,
+      door_number: data.door_number,
+      
+      // Acceso
+      lockbox_code: data.lockbox_code,
+      lockbox_location: data.lockbox_location,
+      door_code: data.door_code,
+      gate_code: data.gate_code,
+      key_instructions: data.key_instructions,
+      
+      // WiFi
+      wifi_network: data.wifi_network,
+      wifi_password: data.wifi_password,
+      wifi_troubleshooting: data.wifi_troubleshooting,
+      
+      // Horarios
+      checkin_time: data.checkin_time,
+      checkout_time: data.checkout_time,
+      
+      // Precios
+      security_deposit_amount: data.security_deposit_amount,
+      tourist_tax_amount: data.tourist_tax_amount,
+      early_checkin_price: data.early_checkin_price,
+      late_checkout_price: data.late_checkout_price,
+      
+      // Parking
+      parking_location: data.parking_location,
+      parking_code: data.parking_code,
+      parking_instructions: data.parking_instructions,
+      
+      // Piscina
+      pool_hours: data.pool_hours,
+      pool_location: data.pool_location,
+      pool_rules: data.pool_rules,
+      
+      // Contacto
+      support_phone: data.support_phone,
+      support_whatsapp: data.support_whatsapp
+    };
+
+    // Reemplazar cada variable
+    let result_text = text;
+    for (const [key, value] of Object.entries(variables)) {
+      if (value !== null && value !== undefined) {
+        const regex = new RegExp(`\\{${key}\\}`, 'g');
+        result_text = result_text.replace(regex, value);
+      }
+    }
+
+    console.log(`✅ Variables reemplazadas. Texto resultante: ${result_text.substring(0, 100)}...`);
+    return result_text;
+
+  } catch (error) {
+    console.error('❌ Error reemplazando variables:', error);
+    return text; // Devolver texto original si hay error
   }
 }
 
@@ -6431,6 +6524,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
