@@ -3376,8 +3376,8 @@ app.get("/guest/:bookingId", async (req, res) => {
     const r = result.rows[0];
     const apartmentName = r.apartment_name || r.apartment_from_rooms || 'N/A';
     
-    // Usar room_id si existe, si no usar el de beds24_rooms
-    const roomIdToUse = r.room_id || r.room_id_from_rooms;
+    // Usar beds24_room_id en lugar de room_id interno
+const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     
     console.log("✅ Booking data:", {
       id: r.beds24_booking_id,
@@ -6594,6 +6594,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
