@@ -5361,40 +5361,31 @@ app.get("/api/whatsapp/auto-replies", async (req, res) => {
 
 app.post("/api/whatsapp/auto-replies", async (req, res) => {
   try {
-    const {
-      category,
-      keywords,
-      response_es,
-      response_en,
-      response_fr,
-      response_ru,
-      active,
-      priority
-    } = req.body;
+    let { category, keywords, response_es, response_en, response_fr, response_ru, active, priority } = req.body;
 
-    console.log('📥 Recibiendo nueva autorespuesta:', { keywords });
+    console.log('📥 Keywords recibidos:', keywords, typeof keywords);
 
-    // ✅ Convertir keywords correctamente
+    // ✅ Convertir keywords a string limpio
     let keywordsText = '';
     
     if (Array.isArray(keywords)) {
-      // Si es array, unir con comas SIN espacios extra
+      // Si es array: ['wifi', 'password'] → 'wifi,password'
       keywordsText = keywords.filter(k => k && k.trim()).join(',');
     } else if (typeof keywords === 'string') {
-      // Si es string, limpiar espacios
+      // Si es string, limpiar
       keywordsText = keywords.trim();
     }
 
-    console.log('💾 Keywords a guardar:', keywordsText);
+    console.log('💾 Keywords a guardar (string):', keywordsText);
 
     const result = await pool.query(`
       INSERT INTO whatsapp_auto_replies
         (category, keywords, response_es, response_en, response_fr, response_ru, active, priority)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      VALUES ($1, $2::text, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `, [
       category || 'custom',
-      keywordsText,
+      keywordsText,  // ✅ String limpio
       response_es,
       response_en || response_es,
       response_fr || response_es,
@@ -5403,40 +5394,38 @@ app.post("/api/whatsapp/auto-replies", async (req, res) => {
       priority || 0
     ]);
 
-    console.log('✅ Guardado con keywords:', result.rows[0].keywords);
+    console.log('✅ Guardado:', result.rows[0].keywords);
 
-    res.json({
-      success: true,
-      reply: result.rows[0]
-    });
+    res.json({ success: true, reply: result.rows[0] });
   } catch (error) {
     console.error('❌ Error creating auto-reply:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
 app.put("/api/whatsapp/auto-replies/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const {
-      category,
-      keywords,
-      response_es,
-      response_en,
-      response_fr,
-      response_ru,
-      active,
-      priority
-    } = req.body;
+    let { category, keywords, response_es, response_en, response_fr, response_ru, active, priority } = req.body;
+
+    console.log('📝 Keywords recibidos:', keywords, typeof keywords);
+
+    // ✅ Convertir keywords a string limpio
+    let keywordsText = '';
+    
+    if (Array.isArray(keywords)) {
+      keywordsText = keywords.filter(k => k && k.trim()).join(',');
+    } else if (typeof keywords === 'string') {
+      keywordsText = keywords.trim();
+    }
+
+    console.log('💾 Keywords a actualizar (string):', keywordsText);
 
     const result = await pool.query(`
       UPDATE whatsapp_auto_replies
       SET
         category = $1,
-        keywords = $2,
+        keywords = $2::text,
         response_es = $3,
         response_en = $4,
         response_fr = $5,
@@ -5448,7 +5437,7 @@ app.put("/api/whatsapp/auto-replies/:id", async (req, res) => {
       RETURNING *
     `, [
       category,
-      keywords,
+      keywordsText,  // ✅ String limpio
       response_es,
       response_en,
       response_fr,
@@ -5459,25 +5448,17 @@ app.put("/api/whatsapp/auto-replies/:id", async (req, res) => {
     ]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Auto-reply not found'
-      });
+      return res.status(404).json({ success: false, error: 'Auto-reply not found' });
     }
 
-    res.json({
-      success: true,
-      reply: result.rows[0]
-    });
+    console.log('✅ Actualizado:', result.rows[0].keywords);
+
+    res.json({ success: true, reply: result.rows[0] });
   } catch (error) {
-    console.error('Error updating auto-reply:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    console.error('❌ Error updating:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
-
 // DELETE: Eliminar autorespuesta
 app.delete("/api/whatsapp/auto-replies/:id", async (req, res) => {
   try {
@@ -6409,6 +6390,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
