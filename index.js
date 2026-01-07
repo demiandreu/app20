@@ -5590,15 +5590,7 @@ async function processWhatsAppMessage(from, body, messageId) {
     const language = detectLanguage(checkin.guest_language);
     console.log(`🌐 Idioma detectado: ${language}`);
     
-    // ========== PRIORIDAD 3: RESPUESTAS AUTOMÁTICAS (FAQ) ==========
-    
-    const autoReply = await findAutoReply(bodyLower, language);
-    if (autoReply) {
-      console.log(`🤖 Enviando respuesta automática (FAQ)`);
-      await sendWhatsAppMessage(from, autoReply);
-      return;
-    }
-    
+   
     // ========== PRIORIDAD 4: COMANDOS ESPECIALES ==========
     
     // COMANDO: REGOK
@@ -6350,45 +6342,6 @@ function getErrorMessage(errorType, language) {
   return messages[errorType]?.[language] || messages[errorType]?.es || 'Error';
 }
 
-// ============ BUSCAR RESPUESTA AUTOMÁTICA (FAQ) ============
-
-async function findAutoReply(text, language = 'es') {
-  const validLangs = ['es', 'en', 'fr', 'ru'];
-  const lang = validLangs.includes(language) ? language : 'es';
-  
-  try {
-    // Obtener todas las respuestas activas
-    const result = await pool.query(`
-      SELECT * FROM whatsapp_auto_replies 
-      WHERE active = true
-    `);
-    
-    const textLower = text.toLowerCase().trim();
-    
-    // Buscar coincidencia con keywords
-    for (const reply of result.rows) {
-      if (!reply.keywords) continue;
-      
-      const keywords = reply.keywords.split(',').map(k => k.trim().toLowerCase());
-      
-      for (const keyword of keywords) {
-        // Coincidencia exacta de palabra completa
-        const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-        if (regex.test(textLower)) {
-          // Retornar respuesta en el idioma correcto
-          const response = reply[`response_${lang}`] || reply.response_es;
-          console.log(`🎯 Keyword encontrada: "${keyword}" → Respuesta FAQ`);
-          return response;
-        }
-      }
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('❌ Error buscando auto-reply:', error);
-    return null;
-  }
-}
 
 // ============ OBTENER MENSAJE DEL FLUJO ============
 
@@ -6456,6 +6409,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
