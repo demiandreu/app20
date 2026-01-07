@@ -5654,11 +5654,11 @@ async function processWhatsAppMessage(from, body, messageId) {
     const canCheckAutoReply = true; // ✅ SIEMPRE activo
 
     if (canCheckAutoReply && body && body.trim().length > 0) {
-      const autoReplyResponse = await checkAutoReply(
-        body, 
-        checkin.apartment_id, 
-        language || 'es'
-      );
+    const autoReplyResponse = await checkAutoReply(
+  body, 
+  language || 'es',
+  checkin.id  // ✅ Pasar checkin ID
+);
 
       if (autoReplyResponse) {
         await sendWhatsAppMessage(from, autoReplyResponse);
@@ -5723,8 +5723,30 @@ async function handleStartCommand(from, phoneNumber, startMatch, originalBody) {
       [phoneNumber, checkin.id]
     );
     
-    // Enviar mensaje de bienvenida START
-    await sendStartMessage(from, checkin, language);
+ // Obtener mensaje START de la DB
+const roomResult = await pool.query(`
+  SELECT registration_url, payment_url, default_arrival_time, default_departure_time 
+  FROM beds24_rooms 
+  WHERE beds24_room_id = $1 
+  LIMIT 1
+`, [checkin.beds24_room_id]);
+
+const room = roomResult.rows[0] || {};
+
+let msg = await getFlowMessage('START', language);
+
+if (msg) {
+  msg = await replaceVariables(msg, checkin, room);
+  await sendWhatsAppMessage(from, msg);
+  console.log('✅ Enviado mensaje START');
+  
+  // Actualizar estado
+  await pool.query(`
+    UPDATE checkins 
+    SET bot_state = 'WAITING_REGOK' 
+    WHERE id = $1
+  `, [checkin.id]);
+}
     
   } catch (error) {
     console.error('❌ Error en handleStartCommand:', error);
@@ -6392,6 +6414,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
