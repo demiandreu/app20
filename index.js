@@ -1608,52 +1608,108 @@ td.apartment-cell.needs-clean {
   tr.early-late-both td.apartment-cell.needs-clean {
     background-color: inherit !important;
   }
+  .nav-menu {
+    background: #1f2937;
+    padding: 12px 20px;
+    margin-bottom: 16px;
+    border-radius: 8px;
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+    position: relative;
+  }
+  
+  .nav-links {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  
+  .nav-link {
+    color: #fff;
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    background: transparent;
+    font-weight: 400;
+    transition: all 0.2s;
+  }
+  
+  .nav-link.active {
+    color: #60a5fa;
+    background: #374151;
+    font-weight: 600;
+  }
+  
+  .nav-link:hover {
+    background: #374151;
+  }
+  
+  .nav-toggle {
+    display: none;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 8px;
+  }
+  
+  @media (max-width: 768px) {
+    .nav-links {
+      display: none;
+      flex-direction: column;
+      width: 100%;
+      gap: 8px;
+    }
+    
+    .nav-links.active {
+      display: flex;
+    }
+    
+    .nav-toggle {
+      display: block;
+      margin-left: auto;
+    }
+    
+    .nav-link {
+      width: 100%;
+      text-align: left;
+    }
 
   </style>
 </head>
 <body>
   <div class="page">
-    <nav style="background:#1f2937; padding:12px 20px; margin-bottom:16px; border-radius:8px; display:flex; gap:16px; flex-wrap:wrap; align-items:center;">
-      <a href="/manager" 
-         style="color:${currentPage === 'manager' ? '#60a5fa' : '#fff'}; 
-                text-decoration:none; 
-                padding:8px 16px; 
-                border-radius:6px; 
-                background:${currentPage === 'manager' ? '#374151' : 'transparent'};
-                font-weight:${currentPage === 'manager' ? '600' : '400'};">
-        🏠 Manager
-      </a>
-      
-      <a href="/staff/checkins" 
-         style="color:${currentPage === 'staff' ? '#60a5fa' : '#fff'}; 
-                text-decoration:none; 
-                padding:8px 16px; 
-                border-radius:6px; 
-                background:${currentPage === 'staff' ? '#374151' : 'transparent'};
-                font-weight:${currentPage === 'staff' ? '600' : '400'};">
-        📋 Staff
-      </a>
-      
-      <a href="/manager/whatsapp" 
-         style="color:${currentPage === 'whatsapp' ? '#60a5fa' : '#fff'}; 
-                text-decoration:none; 
-                padding:8px 16px; 
-                border-radius:6px; 
-                background:${currentPage === 'whatsapp' ? '#374151' : 'transparent'};
-                font-weight:${currentPage === 'whatsapp' ? '600' : '400'};">
-        💬 WhatsApp
-      </a>
-      
-      <a href="/manager/apartment" 
-         style="color:${currentPage === 'apartment' ? '#60a5fa' : '#fff'}; 
-                text-decoration:none; 
-                padding:8px 16px; 
-                border-radius:6px; 
-                background:${currentPage === 'apartment' ? '#374151' : 'transparent'};
-                font-weight:${currentPage === 'apartment' ? '600' : '400'};">
-        🏢 Apartamentos
-      </a>
-    </nav>
+    <nav class="nav-menu">
+  <button class="nav-toggle" onclick="toggleNav()">☰</button>
+  
+  <div class="nav-links" id="navLinks">
+    <a href="/manager" class="nav-link ${currentPage === 'manager' ? 'active' : ''}">
+      🏠 Manager
+    </a>
+    
+    <a href="/staff/checkins" class="nav-link ${currentPage === 'staff' ? 'active' : ''}">
+      📋 Staff
+    </a>
+    
+    <a href="/manager/whatsapp" class="nav-link ${currentPage === 'whatsapp' ? 'active' : ''}">
+      💬 WhatsApp
+    </a>
+    
+    <a href="/manager/apartment" class="nav-link ${currentPage === 'apartment' ? 'active' : ''}">
+      🏢 Apartamentos
+    </a>
+  </div>
+</nav>
+
+<script>
+  function toggleNav() {
+    const navLinks = document.getElementById('navLinks');
+    navLinks.classList.toggle('active');
+  }
+</script>
     
     <div class="card">
       ${innerHtml}
@@ -6507,6 +6563,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
