@@ -3257,6 +3257,7 @@ app.get("/guest/:bookingId", async (req, res) => {
          OR c.booking_token = $3
        )
        AND (c.cancelled IS NULL OR c.cancelled = false)
+       AND c.departure_date + INTERVAL '1 day 18 hours' >= NOW()
        LIMIT 1`,
       [bookingId, bookingId, `beds24_${bookingId}`]
     );
@@ -6444,6 +6445,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
