@@ -2089,247 +2089,6 @@ app.post("/manager/apartment", async (req, res) => {
 });
 
 // ============================================
-// 🏠 APARTMENTS API
-// ============================================
-
-// GET: Obtener todos los apartamentos
-app.get("/api/apartments", async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT * FROM apartments 
-      ORDER BY name ASC
-    `);
-
-    res.json({
-      success: true,
-      apartments: result.rows
-    });
-  } catch (error) {
-    console.error('Error fetching apartments:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// GET: Obtener un apartamento por ID
-app.get("/api/apartments/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const result = await pool.query(`
-      SELECT * FROM apartments WHERE id = $1
-    `, [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Apartamento no encontrado'
-      });
-    }
-
-    res.json({
-      success: true,
-      apartment: result.rows[0]
-    });
-  } catch (error) {
-    console.error('Error fetching apartment:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// POST: Crear nuevo apartamento
-app.post("/api/apartments", async (req, res) => {
-  try {
-    const data = req.body;
-    
-    console.log('📥 Creando apartamento:', data.name);
-
-    const result = await pool.query(`
-      INSERT INTO apartments (
-        name, address, floor, door_number, building_name, postal_code, city, neighborhood,
-        lockbox_code, lockbox_location, door_code, gate_code, elevator_code, key_instructions, access_video_url,
-        wifi_network, wifi_password, wifi_network_5g, wifi_router_location, wifi_troubleshooting,
-        checkin_time, checkout_time, early_checkin_price, late_checkout_price, quiet_hours_start, quiet_hours_end,
-        security_deposit_amount, tourist_tax_amount, cleaning_fee, payment_methods, refund_policy,
-        parking_available, parking_location, parking_code, parking_number, parking_price, parking_instructions, street_parking_info,
-        pool_available, pool_hours, pool_seasonal, pool_season_start, pool_season_end, pool_location, pool_rules, pool_key_needed,
-        washing_machine, washing_instructions, dryer, dishwasher, iron_available, hairdryer_location, coffee_machine_type, coffee_pods,
-        tv_available, tv_channels, netflix_available, streaming_instructions, wifi_smart_tv,
-        ac_available, ac_instructions, ac_remote_location, heating_available, heating_type, heating_instructions,
-        trash_location, trash_schedule, recycling_instructions, organic_bin,
-        beach_distance, beach_name, supermarket_nearest, supermarket_distance, pharmacy_nearest, hospital_nearest, public_transport,
-        restaurant_recommendations, nightlife_nearby, attractions_nearby,
-        support_phone, support_whatsapp, emergency_phone, police_phone, fire_phone, ambulance_phone,
-        smoking_allowed, pets_allowed, parties_allowed, max_guests, children_allowed, noise_restrictions,
-        checkin_instructions, checkout_instructions, what_to_do_on_checkout, where_leave_keys, where_leave_trash,
-        elevator_available, wheelchair_accessible, step_free_access, accessibility_notes
-      )
-      VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8,
-        $9, $10, $11, $12, $13, $14, $15,
-        $16, $17, $18, $19, $20,
-        $21, $22, $23, $24, $25, $26,
-        $27, $28, $29, $30, $31,
-        $32, $33, $34, $35, $36, $37, $38,
-        $39, $40, $41, $42, $43, $44, $45, $46,
-        $47, $48, $49, $50, $51, $52, $53, $54,
-        $55, $56, $57, $58, $59,
-        $60, $61, $62, $63, $64, $65,
-        $66, $67, $68, $69,
-        $70, $71, $72, $73, $74, $75, $76,
-        $77, $78, $79,
-        $80, $81, $82, $83, $84, $85,
-        $86, $87, $88, $89, $90, $91,
-        $92, $93, $94, $95, $96, $97
-      )
-      RETURNING *
-    `, [
-      data.name, data.address, data.floor, data.door_number, data.building_name, data.postal_code, data.city, data.neighborhood,
-      data.lockbox_code, data.lockbox_location, data.door_code, data.gate_code, data.elevator_code, data.key_instructions, data.access_video_url,
-      data.wifi_network, data.wifi_password, data.wifi_network_5g, data.wifi_router_location, data.wifi_troubleshooting,
-      data.checkin_time, data.checkout_time, data.early_checkin_price, data.late_checkout_price, data.quiet_hours_start, data.quiet_hours_end,
-      data.security_deposit_amount, data.tourist_tax_amount, data.cleaning_fee, data.payment_methods, data.refund_policy,
-      data.parking_available, data.parking_location, data.parking_code, data.parking_number, data.parking_price, data.parking_instructions, data.street_parking_info,
-      data.pool_available, data.pool_hours, data.pool_seasonal, data.pool_season_start, data.pool_season_end, data.pool_location, data.pool_rules, data.pool_key_needed,
-      data.washing_machine, data.washing_instructions, data.dryer, data.dishwasher, data.iron_available, data.hairdryer_location, data.coffee_machine_type, data.coffee_pods,
-      data.tv_available, data.tv_channels, data.netflix_available, data.streaming_instructions, data.wifi_smart_tv,
-      data.ac_available, data.ac_instructions, data.ac_remote_location, data.heating_available, data.heating_type, data.heating_instructions,
-      data.trash_location, data.trash_schedule, data.recycling_instructions, data.organic_bin,
-      data.beach_distance, data.beach_name, data.supermarket_nearest, data.supermarket_distance, data.pharmacy_nearest, data.hospital_nearest, data.public_transport,
-      data.restaurant_recommendations, data.nightlife_nearby, data.attractions_nearby,
-      data.support_phone, data.support_whatsapp, data.emergency_phone, data.police_phone, data.fire_phone, data.ambulance_phone,
-      data.smoking_allowed, data.pets_allowed, data.parties_allowed, data.max_guests, data.children_allowed, data.noise_restrictions,
-      data.checkin_instructions, data.checkout_instructions, data.what_to_do_on_checkout, data.where_leave_keys, data.where_leave_trash,
-      data.elevator_available, data.wheelchair_accessible, data.step_free_access, data.accessibility_notes
-    ]);
-
-    console.log('✅ Apartamento creado:', result.rows[0].id);
-
-    res.json({
-      success: true,
-      apartment: result.rows[0]
-    });
-  } catch (error) {
-    console.error('❌ Error creating apartment:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// PUT: Actualizar apartamento
-app.put("/api/apartments/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const data = req.body;
-    
-    console.log('📝 Actualizando apartamento:', id);
-
-    const result = await pool.query(`
-      UPDATE apartments SET
-        name = $1, address = $2, floor = $3, door_number = $4, building_name = $5, postal_code = $6, city = $7, neighborhood = $8,
-        lockbox_code = $9, lockbox_location = $10, door_code = $11, gate_code = $12, elevator_code = $13, key_instructions = $14, access_video_url = $15,
-        wifi_network = $16, wifi_password = $17, wifi_network_5g = $18, wifi_router_location = $19, wifi_troubleshooting = $20,
-        checkin_time = $21, checkout_time = $22, early_checkin_price = $23, late_checkout_price = $24, quiet_hours_start = $25, quiet_hours_end = $26,
-        security_deposit_amount = $27, tourist_tax_amount = $28, cleaning_fee = $29, payment_methods = $30, refund_policy = $31,
-        parking_available = $32, parking_location = $33, parking_code = $34, parking_number = $35, parking_price = $36, parking_instructions = $37, street_parking_info = $38,
-        pool_available = $39, pool_hours = $40, pool_seasonal = $41, pool_season_start = $42, pool_season_end = $43, pool_location = $44, pool_rules = $45, pool_key_needed = $46,
-        washing_machine = $47, washing_instructions = $48, dryer = $49, dishwasher = $50, iron_available = $51, hairdryer_location = $52, coffee_machine_type = $53, coffee_pods = $54,
-        tv_available = $55, tv_channels = $56, netflix_available = $57, streaming_instructions = $58, wifi_smart_tv = $59,
-        ac_available = $60, ac_instructions = $61, ac_remote_location = $62, heating_available = $63, heating_type = $64, heating_instructions = $65,
-        trash_location = $66, trash_schedule = $67, recycling_instructions = $68, organic_bin = $69,
-        beach_distance = $70, beach_name = $71, supermarket_nearest = $72, supermarket_distance = $73, pharmacy_nearest = $74, hospital_nearest = $75, public_transport = $76,
-        restaurant_recommendations = $77, nightlife_nearby = $78, attractions_nearby = $79,
-        support_phone = $80, support_whatsapp = $81, emergency_phone = $82, police_phone = $83, fire_phone = $84, ambulance_phone = $85,
-        smoking_allowed = $86, pets_allowed = $87, parties_allowed = $88, max_guests = $89, children_allowed = $90, noise_restrictions = $91,
-        checkin_instructions = $92, checkout_instructions = $93, what_to_do_on_checkout = $94, where_leave_keys = $95, where_leave_trash = $96,
-        elevator_available = $97, wheelchair_accessible = $98, step_free_access = $99, accessibility_notes = $100,
-        updated_at = NOW()
-      WHERE id = $101
-      RETURNING *
-    `, [
-      data.name, data.address, data.floor, data.door_number, data.building_name, data.postal_code, data.city, data.neighborhood,
-      data.lockbox_code, data.lockbox_location, data.door_code, data.gate_code, data.elevator_code, data.key_instructions, data.access_video_url,
-      data.wifi_network, data.wifi_password, data.wifi_network_5g, data.wifi_router_location, data.wifi_troubleshooting,
-      data.checkin_time, data.checkout_time, data.early_checkin_price, data.late_checkout_price, data.quiet_hours_start, data.quiet_hours_end,
-      data.security_deposit_amount, data.tourist_tax_amount, data.cleaning_fee, data.payment_methods, data.refund_policy,
-      data.parking_available, data.parking_location, data.parking_code, data.parking_number, data.parking_price, data.parking_instructions, data.street_parking_info,
-      data.pool_available, data.pool_hours, data.pool_seasonal, data.pool_season_start, data.pool_season_end, data.pool_location, data.pool_rules, data.pool_key_needed,
-      data.washing_machine, data.washing_instructions, data.dryer, data.dishwasher, data.iron_available, data.hairdryer_location, data.coffee_machine_type, data.coffee_pods,
-      data.tv_available, data.tv_channels, data.netflix_available, data.streaming_instructions, data.wifi_smart_tv,
-      data.ac_available, data.ac_instructions, data.ac_remote_location, data.heating_available, data.heating_type, data.heating_instructions,
-      data.trash_location, data.trash_schedule, data.recycling_instructions, data.organic_bin,
-      data.beach_distance, data.beach_name, data.supermarket_nearest, data.supermarket_distance, data.pharmacy_nearest, data.hospital_nearest, data.public_transport,
-      data.restaurant_recommendations, data.nightlife_nearby, data.attractions_nearby,
-      data.support_phone, data.support_whatsapp, data.emergency_phone, data.police_phone, data.fire_phone, data.ambulance_phone,
-      data.smoking_allowed, data.pets_allowed, data.parties_allowed, data.max_guests, data.children_allowed, data.noise_restrictions,
-      data.checkin_instructions, data.checkout_instructions, data.what_to_do_on_checkout, data.where_leave_keys, data.where_leave_trash,
-      data.elevator_available, data.wheelchair_accessible, data.step_free_access, data.accessibility_notes,
-      id
-    ]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Apartamento no encontrado'
-      });
-    }
-
-    console.log('✅ Apartamento actualizado:', id);
-
-    res.json({
-      success: true,
-      apartment: result.rows[0]
-    });
-  } catch (error) {
-    console.error('❌ Error updating apartment:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// DELETE: Eliminar apartamento
-app.delete("/api/apartments/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    console.log('🗑️ Eliminando apartamento:', id);
-
-    const result = await pool.query(`
-      DELETE FROM apartments WHERE id = $1 RETURNING id
-    `, [id]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Apartamento no encontrado'
-      });
-    }
-
-    console.log('✅ Apartamento eliminado:', id);
-
-    res.json({
-      success: true,
-      deleted: true
-    });
-  } catch (error) {
-    console.error('❌ Error deleting apartment:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
-
-// ============================================
 // RUTAS DEL MANAGER - CHECK-IN/CHECK-OUT RULES
 // ============================================
 
@@ -5326,9 +5085,6 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
 app.get("/manager/whatsapp", (req, res) => {
   res.sendFile(require('path').join(__dirname, 'manager-whatsapp.html'));
 });
-app.get("/manager/apartments", (req, res) => {
-  res.sendFile(path.join(__dirname, "../public/manager-apartments.html"));
-});
 
 // API: Obtener mensajes del flujo principal (START, REGOK, PAYOK)
 app.get("/api/whatsapp/flow-messages", async (req, res) => {
@@ -5563,6 +5319,200 @@ app.post("/api/whatsapp/approve-request/:requestId", async (req, res) => {
   }
 });
 
+// ============================================
+// 🏠 APARTMENT DATA API (SIMPLIFIED)
+// ============================================
+
+// GET: Obtener rooms de beds24
+app.get("/api/beds24-rooms", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, apartment_name, beds24_room_id, apartment_id
+      FROM beds24_rooms
+      ORDER BY apartment_name ASC
+    `);
+
+    res.json({
+      success: true,
+      rooms: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching beds24 rooms:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET: Obtener un room de beds24
+app.get("/api/beds24-room/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(`
+      SELECT * FROM beds24_rooms WHERE id = $1
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Room not found' });
+    }
+
+    res.json({
+      success: true,
+      room: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error fetching room:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// GET: Obtener apartment por ID
+app.get("/api/apartment/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(`
+      SELECT * FROM apartments WHERE id = $1
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Apartment not found' });
+    }
+
+    res.json({
+      success: true,
+      apartment: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error fetching apartment:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST: Guardar apartment (upsert)
+app.post("/api/apartment/save", async (req, res) => {
+  try {
+    const data = req.body;
+    
+    console.log('💾 Guardando apartment para beds24_room:', data.beds24_room_id);
+    
+    // Verificar si existe apartment para este beds24_room
+    const roomCheck = await pool.query(`
+      SELECT apartment_id FROM beds24_rooms WHERE id = $1
+    `, [data.beds24_room_id]);
+    
+    if (roomCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Beds24 room not found' });
+    }
+    
+    const apartmentId = roomCheck.rows[0].apartment_id;
+    
+    let result;
+    
+    if (apartmentId) {
+      // UPDATE apartment existente
+      result = await pool.query(`
+        UPDATE apartments SET
+          name = $1, address = $2, city = $3, floor = $4, door_number = $5,
+          lockbox_code = $6, lockbox_location = $7, door_code = $8, gate_code = $9,
+          key_instructions = $10, wifi_network = $11, wifi_password = $12,
+          wifi_troubleshooting = $13, checkin_time = $14, checkout_time = $15,
+          early_checkin_price = $16, late_checkout_price = $17,
+          security_deposit_amount = $18, tourist_tax_amount = $19,
+          parking_available = $20, parking_location = $21, parking_code = $22,
+          parking_instructions = $23, pool_available = $24, pool_hours = $25,
+          pool_location = $26, pool_rules = $27, support_phone = $28,
+          support_whatsapp = $29, updated_at = NOW()
+        WHERE id = $30
+        RETURNING id
+      `, [
+        data.name, data.address, data.city, data.floor, data.door_number,
+        data.lockbox_code, data.lockbox_location, data.door_code, data.gate_code,
+        data.key_instructions, data.wifi_network, data.wifi_password,
+        data.wifi_troubleshooting, data.checkin_time, data.checkout_time,
+        data.early_checkin_price, data.late_checkout_price,
+        data.security_deposit_amount, data.tourist_tax_amount,
+        data.parking_available, data.parking_location, data.parking_code,
+        data.parking_instructions, data.pool_available, data.pool_hours,
+        data.pool_location, data.pool_rules, data.support_phone,
+        data.support_whatsapp, apartmentId
+      ]);
+      
+      console.log('✅ Apartment actualizado:', apartmentId);
+      
+    } else {
+      // INSERT nuevo apartment
+      result = await pool.query(`
+        INSERT INTO apartments (
+          name, address, city, floor, door_number,
+          lockbox_code, lockbox_location, door_code, gate_code,
+          key_instructions, wifi_network, wifi_password,
+          wifi_troubleshooting, checkin_time, checkout_time,
+          early_checkin_price, late_checkout_price,
+          security_deposit_amount, tourist_tax_amount,
+          parking_available, parking_location, parking_code,
+          parking_instructions, pool_available, pool_hours,
+          pool_location, pool_rules, support_phone, support_whatsapp
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+          $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+          $21, $22, $23, $24, $25, $26, $27, $28, $29
+        )
+        RETURNING id
+      `, [
+        data.name, data.address, data.city, data.floor, data.door_number,
+        data.lockbox_code, data.lockbox_location, data.door_code, data.gate_code,
+        data.key_instructions, data.wifi_network, data.wifi_password,
+        data.wifi_troubleshooting, data.checkin_time, data.checkout_time,
+        data.early_checkin_price, data.late_checkout_price,
+        data.security_deposit_amount, data.tourist_tax_amount,
+        data.parking_available, data.parking_location, data.parking_code,
+        data.parking_instructions, data.pool_available, data.pool_hours,
+        data.pool_location, data.pool_rules, data.support_phone, data.support_whatsapp
+      ]);
+      
+      const newApartmentId = result.rows[0].id;
+      console.log('✅ Apartment creado:', newApartmentId);
+      
+      // Actualizar apartment_id en beds24_rooms
+      await pool.query(`
+        UPDATE beds24_rooms SET apartment_id = $1 WHERE id = $2
+      `, [newApartmentId, data.beds24_room_id]);
+      
+      console.log('✅ Relación creada: beds24_room → apartment');
+    }
+    
+    // Actualizar también beds24_rooms
+    await pool.query(`
+      UPDATE beds24_rooms SET
+        apartment_name = $1,
+        support_phone = $2,
+        default_arrival_time = $3,
+        default_departure_time = $4,
+        registration_url = $5,
+        payment_url = $6,
+        keys_instructions_url = $7,
+        show_in_staff = $8,
+        updated_at = NOW()
+      WHERE id = $9
+    `, [
+      data.name,
+      data.support_phone,
+      data.checkin_time,
+      data.checkout_time,
+      data.registration_url,
+      data.payment_url,
+      data.keys_instructions_url,
+      data.show_in_staff,
+      data.beds24_room_id
+    ]);
+    
+    res.json({ success: true });
+    
+  } catch (error) {
+    console.error('❌ Error saving apartment:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // =============== API: RESPUESTAS AUTOMÁTICAS WHATSAPP ===============
 
@@ -6634,6 +6584,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
