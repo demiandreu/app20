@@ -5332,7 +5332,6 @@ app.get("/api/whatsapp/auto-replies", async (req, res) => {
     const result = await pool.query(`
       SELECT 
         id,
-        apartment_id,
         category,
         keywords,
         response_es,
@@ -5364,7 +5363,6 @@ app.get("/api/whatsapp/auto-replies", async (req, res) => {
 app.post("/api/whatsapp/auto-replies", async (req, res) => {
   try {
     const {
-      apartment_id,
       category,
       keywords,
       response_es,
@@ -5377,11 +5375,10 @@ app.post("/api/whatsapp/auto-replies", async (req, res) => {
 
     const result = await pool.query(`
       INSERT INTO whatsapp_auto_replies
-        (apartment_id, category, keywords, response_es, response_en, response_fr, response_ru, active, priority)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        (category, keywords, response_es, response_en, response_fr, response_ru, active, priority)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
     `, [
-      apartment_id || null,
       category || 'custom',
       keywords,
       response_es,
@@ -5405,12 +5402,10 @@ app.post("/api/whatsapp/auto-replies", async (req, res) => {
   }
 });
 
-// PUT: Actualizar autorespuesta
 app.put("/api/whatsapp/auto-replies/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const {
-      apartment_id,
       category,
       keywords,
       response_es,
@@ -5424,20 +5419,18 @@ app.put("/api/whatsapp/auto-replies/:id", async (req, res) => {
     const result = await pool.query(`
       UPDATE whatsapp_auto_replies
       SET
-        apartment_id = $1,
-        category = $2,
-        keywords = $3,
-        response_es = $4,
-        response_en = $5,
-        response_fr = $6,
-        response_ru = $7,
-        active = $8,
-        priority = $9,
+        category = $1,
+        keywords = $2,
+        response_es = $3,
+        response_en = $4,
+        response_fr = $5,
+        response_ru = $6,
+        active = $7,
+        priority = $8,
         updated_at = NOW()
-      WHERE id = $10
+      WHERE id = $9
       RETURNING *
     `, [
-      apartment_id || null,
       category,
       keywords,
       response_es,
@@ -6447,6 +6440,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
