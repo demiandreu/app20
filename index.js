@@ -5994,7 +5994,7 @@ async function handlePayOk(from, checkin, language) {
   // 1. Enviar mensaje PAYOK
   let payokMsg = await getFlowMessage('PAYOK', language);
   if (payokMsg) {
-    payokMsg = replaceVariables(payokMsg, checkin, room);
+    payokMsg = await replaceVariables(payokMsg, checkin, room);
     await sendWhatsAppMessage(from, payokMsg);
     console.log(`✅ Enviado mensaje PAYOK`);
     
@@ -6004,7 +6004,7 @@ async function handlePayOk(from, checkin, language) {
     // 3. Enviar ASK_ARRIVAL automáticamente
     let askArrivalMsg = await getFlowMessage('ASK_ARRIVAL', language);
     if (askArrivalMsg) {
-      askArrivalMsg = replaceVariables(askArrivalMsg, checkin, room);
+      askArrivalMsg = await replaceVariables(askArrivalMsg, checkin, room);
       await sendWhatsAppMessage(from, askArrivalMsg);
       console.log(`✅ Enviado mensaje ASK_ARRIVAL automáticamente`);
       
@@ -6081,7 +6081,7 @@ await pool.query(`
     // Enviar mensaje de early check-in
     let earlyMsg = await getFlowMessage('EARLY_CHECKIN_NOTICE', language);
     if (earlyMsg) {
-      earlyMsg = replaceVariables(earlyMsg, checkin, room);
+      earlyMsg = await replaceVariables(earlyMsg, checkin, room);
       await sendWhatsAppMessage(from, earlyMsg);
       console.log(`✅ Enviado mensaje EARLY_CHECKIN_NOTICE`);
     }
@@ -6107,7 +6107,7 @@ await pool.query(`
   // Enviar ASK_DEPARTURE (en ambos casos)
   let askDepartureMsg = await getFlowMessage('ASK_DEPARTURE', language);
   if (askDepartureMsg) {
-    askDepartureMsg = replaceVariables(askDepartureMsg, checkin, room);
+    askDepartureMsg = await replaceVariables(askDepartureMsg, checkin, room);
     await sendWhatsAppMessage(from, askDepartureMsg);
     console.log(`✅ Enviado mensaje ASK_DEPARTURE`);
   }
@@ -6172,7 +6172,7 @@ async function handleDepartureTime(from, checkin, body, language) {
     // Enviar mensaje de late checkout
     let lateMsg = await getFlowMessage('LATE_CHECKOUT_NOTICE', language);
     if (lateMsg) {
-      lateMsg = replaceVariables(lateMsg, checkin, room);
+      lateMsg = await replaceVariables(lateMsg, checkin, room);
       await sendWhatsAppMessage(from, lateMsg);
       console.log(`✅ Enviado mensaje LATE_CHECKOUT_NOTICE`);
     }
@@ -6198,7 +6198,7 @@ async function handleDepartureTime(from, checkin, body, language) {
   // Enviar ASK_RULES (en ambos casos)
   let askRulesMsg = await getFlowMessage('ASK_RULES', language);
   if (askRulesMsg) {
-    askRulesMsg = replaceVariables(askRulesMsg, checkin, room);
+    askRulesMsg = await replaceVariables(askRulesMsg, checkin, room);
     await sendWhatsAppMessage(from, askRulesMsg);
     console.log(`✅ Enviado mensaje ASK_RULES`);
   }
@@ -6240,7 +6240,7 @@ async function handleRulesAcceptance(from, checkin, body, language) {
     // Enviar mensaje CONFIRMATION con las instrucciones
     let confirmMsg = await getFlowMessage('CONFIRMATION', language);
     if (confirmMsg) {
-      confirmMsg = replaceVariables(confirmMsg, checkin, room);
+      confirmMsg = await replaceVariables(confirmMsg, checkin, room);
       await sendWhatsAppMessage(from, confirmMsg);
       console.log(`✅ Enviado mensaje CONFIRMATION`);
     }
@@ -6392,6 +6392,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
