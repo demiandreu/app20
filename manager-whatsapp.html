@@ -1178,7 +1178,6 @@ async function loadAutoReplies() {
 }
 
 // Renderizar lista de autorespuestas
-// Renderizar lista de autorespuestas
 function renderAutoReplies() {
   const container = document.getElementById('auto-replies-list');
   
@@ -1191,14 +1190,31 @@ function renderAutoReplies() {
     `;
     return;
   }
-
-  container.innerHTML = autoReplies.map((reply, index) => `
+  
+  container.innerHTML = autoReplies.map((reply, index) => {
+    // ✅ Convertir keywords a array ANTES de usar
+    let keywordsArray = [];
+    
+    if (!reply.keywords) {
+      keywordsArray = [];
+    } else if (Array.isArray(reply.keywords)) {
+      keywordsArray = reply.keywords;
+    } else if (typeof reply.keywords === 'string') {
+      // Limpiar formato PostgreSQL {wifi,password}
+      let cleaned = reply.keywords.replace(/^\{/, '').replace(/\}$/, '').trim();
+      keywordsArray = cleaned.split(',').map(k => k.trim()).filter(k => k.length > 0);
+    }
+    
+    const keywordsText = keywordsArray.join(', ');
+    
+    return `
     <div class="auto-reply-card" data-id="${reply.id}">
       <div class="reply-header">
         <div>
           <h3>${getCategoryIcon(reply.category)} ${reply.category}</h3>
           <div class="keywords-display">
-            ${reply.keywords.map(kw => `<span class="keyword-tag">${kw}</span>`).join('')}
+            ${keywordsArray.slice(0, 5).map(kw => `<span class="keyword-tag">${kw}</span>`).join('')}
+            ${keywordsArray.length > 5 ? `<span class="keyword-tag">+${keywordsArray.length - 5} más</span>` : ''}
           </div>
         </div>
         <div class="reply-actions">
@@ -1234,33 +1250,36 @@ function renderAutoReplies() {
 
         <button class="btn-translate" onclick="translateAutoReply(${index})">🌍 Traducir desde ES</button>
 
-      <div class="reply-settings">
-  <label>
-    Keywords (separados por coma):
-    <textarea id="keywords_${index}" 
-              placeholder="wifi, contraseña, password, internet, red">${reply.keywords.join ? reply.keywords.join(', ') : reply.keywords}</textarea>
-  </label>
-  
-  <div class="reply-meta">
-    <label>
-      Categoría:
-      <select id="category_${index}">
-        <option value="wifi" ${reply.category === 'wifi' ? 'selected' : ''}>📶 WiFi</option>
-        <option value="checkout" ${reply.category === 'checkout' ? 'selected' : ''}>🚪 Checkout</option>
-        <option value="parking" ${reply.category === 'parking' ? 'selected' : ''}>🅿️ Parking</option>
-        <option value="custom" ${reply.category === 'custom' ? 'selected' : ''}>✏️ Custom</option>
-      </select>
-    </label>
+        <div class="reply-settings">
+          <label>
+            Keywords (separados por coma):
+            <textarea id="keywords_${index}" 
+                      placeholder="wifi, contraseña, password, internet, red"
+                      style="min-height: 80px;">${keywordsText}</textarea>
+          </label>
+          
+          <div class="reply-meta">
+            <label>
+              Categoría:
+              <select id="category_${index}">
+                <option value="wifi" ${reply.category === 'wifi' ? 'selected' : ''}>📶 WiFi</option>
+                <option value="checkout" ${reply.category === 'checkout' ? 'selected' : ''}>🚪 Checkout</option>
+                <option value="parking" ${reply.category === 'parking' ? 'selected' : ''}>🅿️ Parking</option>
+                <option value="custom" ${reply.category === 'custom' ? 'selected' : ''}>✏️ Custom</option>
+              </select>
+            </label>
 
-    <label>
-      Prioridad:
-      <input type="number" id="priority_${index}" 
-             value="${reply.priority || 0}" min="0" max="100">
-    </label>
-  </div>
-</div>
+            <label>
+              Prioridad:
+              <input type="number" id="priority_${index}" 
+                     value="${reply.priority || 0}" min="0" max="100">
+            </label>
+          </div>
+        </div>
+      </div>
     </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 // Mostrar idioma en textarea
