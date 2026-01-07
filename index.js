@@ -3671,7 +3671,23 @@ app.get("/guest/:bookingId", async (req, res) => {
 
 
 
-
+// ============ FORMATEAR NOMBRE CON INICIALES ============
+function formatGuestName(fullName) {
+  if (!fullName) return '—';
+  
+  const parts = String(fullName).trim().split(/\s+/);
+  
+  if (parts.length === 1) {
+    // Solo un nombre
+    return escapeHtml(parts[0]);
+  }
+  
+  // Primera parte completa + iniciales del resto
+  const firstName = parts[0];
+  const initials = parts.slice(1).map(p => p.charAt(0).toUpperCase() + '.').join(' ');
+  
+  return escapeHtml(`${firstName} ${initials}`);
+}
 // ===================== STAFF: CHECKINS LIST (FIXED) =====================
 app.get("/staff/checkins", async (req, res) => {
   try {
@@ -3932,6 +3948,8 @@ return `
         
         <!-- 2. Huésped -->
         <td>${guestBtn}</td>
+        <!-- Nombre del huésped -->
+<td>${formatGuestName(r.full_name)}</td>
         
         <!-- 3. Llegada -->
         <td>${mainDate}</td>
@@ -4004,7 +4022,7 @@ return `
         </td>
       </tr>
     `;
-  }).join("") : `<tr><td colspan="9" class="muted">No hay registros</td></tr>`;
+  }).join("") : `<tr><td colspan="10" class="muted">No hay registros</td></tr>`;
 
   return `
     <h2 style="margin:24px 0 12px;">${title}</h2>
@@ -4015,6 +4033,7 @@ return `
             <th class="sticky-col">Limpieza</th>
             <th>ID</th>
             <th>Portal</th>
+            <th>Huésped</th>
             <th>${dateColTitle}</th>
             <th>Noches</th>
             <th>A|C</th>
@@ -6445,6 +6464,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
