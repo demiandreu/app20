@@ -2484,7 +2484,7 @@ const rentalConnect = price * 0.30;
   totalRentalConnect: bookings.reduce((sum, b) => sum + parseFloat(b.rentalConnect), 0).toFixed(2),
   totalIncome: bookings.reduce((sum, b) => sum + parseFloat(b.income), 0).toFixed(2)
 };
-    };
+  
 
     // Generar selector de filtros
     const filterForm = `
@@ -8710,6 +8710,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
