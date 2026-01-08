@@ -4028,6 +4028,134 @@ function formatGuestName(fullName) {
   return escapeHtml(`${firstName} ${initials}`);
 }
 // ===================== STAFF: CHECKINS LIST (FIXED) =====================
+
+app.get('/login', (req, res) => {
+  const redirect = req.query.redirect || '/staff';
+  const error = req.query.error;
+
+  const html = `
+    <div class="card" style="max-width:400px; margin:100px auto;">
+      <div style="text-align:center; margin-bottom:30px;">
+        <h1 style="font-size:28px; margin-bottom:8px;">🔐 RCS Check-in</h1>
+        <p style="color:#6b7280; font-size:14px;">Inicia sesión para continuar</p>
+      </div>
+
+      ${error ? `
+        <div style="background:#fee2e2; border:1px solid #fca5a5; padding:12px; border-radius:8px; margin-bottom:20px; color:#991b1b;">
+          ❌ ${error === 'invalid' ? 'Email o contraseña incorrectos' : 'Error al iniciar sesión'}
+        </div>
+      ` : ''}
+
+      <form method="POST" action="/login" style="display:flex; flex-direction:column; gap:16px;">
+        <input type="hidden" name="redirect" value="${escapeHtml(redirect)}" />
+
+        <div>
+          <label style="display:block; font-size:14px; font-weight:600; margin-bottom:6px; color:#374151;">
+            Email
+          </label>
+          <input 
+            type="email" 
+            name="email" 
+            required 
+            autofocus
+            placeholder="tu@email.com"
+            style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:15px;"
+          />
+        </div>
+
+        <div>
+          <label style="display:block; font-size:14px; font-weight:600; margin-bottom:6px; color:#374151;">
+            Contraseña
+          </label>
+          <input 
+            type="password" 
+            name="password" 
+            required
+            placeholder="••••••••"
+            style="width:100%; padding:10px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:15px;"
+          />
+        </div>
+
+        <button 
+          type="submit" 
+          style="width:100%; padding:12px; background:#3b82f6; color:white; border:0; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer; margin-top:8px;">
+          Iniciar Sesión
+        </button>
+      </form>
+
+      <p style="text-align:center; margin-top:24px; font-size:13px; color:#9ca3af;">
+        ¿Problemas? Contacta al administrador
+      </p>
+    </div>
+  `;
+
+  res.send(renderPage('Iniciar Sesión', html, '', false));
+});
+
+// ============================================
+// RUTA: Procesar Login (POST)
+// ============================================
+
+app.post('/login', async (req, res) => {
+  const { email, password, redirect = '/staff' } = req.body;
+
+  if (!email || !password) {
+    return res.redirect('/login?error=invalid&redirect=' + encodeURIComponent(redirect));
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT id, email, password_hash, full_name, role, is_active FROM users WHERE email = $1',
+      [email.toLowerCase().trim()]
+    );
+
+    if (result.rows.length === 0) {
+      console.log('❌ Login failed: User not found -', email);
+      return res.redirect('/login?error=invalid&redirect=' + encodeURIComponent(redirect));
+    }
+
+    const user = result.rows[0];
+
+    if (!user.is_active) {
+      console.log('❌ Login failed: User inactive -', email);
+      return res.redirect('/login?error=invalid&redirect=' + encodeURIComponent(redirect));
+    }
+
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+
+    if (!passwordMatch) {
+      console.log('❌ Login failed: Wrong password -', email);
+      return res.redirect('/login?error=invalid&redirect=' + encodeURIComponent(redirect));
+    }
+
+    // ✅ Login exitoso
+    req.session.userId = user.id;
+    req.session.userEmail = user.email;
+    req.session.userRole = user.role;
+    req.session.userName = user.full_name;
+
+    console.log('✅ Login successful:', user.email, '-', user.role);
+
+    res.redirect(redirect);
+
+  } catch (e) {
+    console.error('❌ Login error:', e);
+    return res.redirect('/login?error=system&redirect=' + encodeURIComponent(redirect));
+  }
+});
+
+// ============================================
+// RUTA: Logout
+// ============================================
+
+app.get('/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('Error destroying session:', err);
+    }
+    res.redirect('/login');
+  });
+});
 app.use('/staff', requireAuth);
 app.get("/staff/checkins", async (req, res) => {
   try {
@@ -6922,6 +7050,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
