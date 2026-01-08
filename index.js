@@ -5303,6 +5303,7 @@ function renderTable(rows, mode) {
 return `
   <tr class="${earlyLateClass}">
         <!-- 1. Limpieza -->
+        <tr id="checkin-${r.id}">
         <td class="sticky-col">
           <form method="POST" action="/staff/checkins/${r.id}/clean">
             <button type="submit" class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}">
@@ -5336,7 +5337,7 @@ return `
         <!-- 7. Código -->
         <td>
           <form method="POST" action="/staff/checkins/${r.id}/lock" class="lock-form">
-            <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+             <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}#checkin-${r.id}" />
             
             <input
               type="text"
@@ -5368,7 +5369,7 @@ return `
         <!-- 8. Visible -->
         <td>
           <form method="POST" action="/staff/checkins/${r.id}/visibility" class="vis-form">
-            <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+            <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}#checkin-${r.id}" />
 
             <span class="pill ${r.lock_code_visible ? "pill-yes" : "pill-no"}">
               ${r.lock_code_visible ? "Sí" : "No"}
@@ -5384,7 +5385,7 @@ return `
         <td>
           <form method="POST" action="/staff/checkins/${r.id}/delete"
                 onsubmit="return confirm('¿Seguro que quieres borrar esta reserva?');">
-            <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
+           <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}#checkin-${r.id}" />
             <button type="submit" class="btn-small danger">Borrar</button>
           </form>
         </td>
@@ -8287,6 +8288,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
