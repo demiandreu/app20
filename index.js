@@ -326,7 +326,7 @@ async function initDb() {
   console.log("✅ DB ready: checkins table ok (+ lock_code, lock_visible, clean_ok, bot_state)");
 }
 // ====== MANAGER: Apartment Sections (Accordion content) ======
-
+app.use('/manager', requireAuth);
 app.get("/manager/apartment/sections", async (req, res) => {
   try {
     const roomId = String(req.query.room_id || "").trim();
@@ -3445,12 +3445,39 @@ console.log("🌐 Language detection:", {
 // --- Home ---
 app.get("/", (req, res) => {
   const html = `
-    <h1>RCS Guest Portal</h1>
-    <p class="muted">Example entry:</p>
-    <p><a class="btn-primary" href="/booking/apt1/TESTTOKEN123">Open booking example</a></p>
-    <p class="muted">Admin: <a class="btn-link" href="/ckins">/ckins</a></p>
+    <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+      <div style="text-align:center; color:white; max-width:600px; padding:40px;">
+        <h1 style="font-size:48px; margin:0 0 16px; font-weight:700;">
+          🏠 RCS Check-in
+        </h1>
+        <p style="font-size:20px; margin:0 0 40px; opacity:0.9;">
+          Sistema de gestión para alquileres vacacionales
+        </p>
+        <a href="/login" style="display:inline-block; padding:16px 48px; background:white; color:#667eea; text-decoration:none; border-radius:12px; font-size:18px; font-weight:600; box-shadow:0 4px 20px rgba(0,0,0,0.2);">
+          Iniciar Sesión →
+        </a>
+        <p style="margin-top:40px; font-size:14px; opacity:0.7;">
+          Gestiona tus propiedades, automatiza WhatsApp, y más
+        </p>
+      </div>
+    </div>
   `;
-  res.send(renderPage("Home", html));
+  
+  res.send(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RCS Check-in</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  </style>
+</head>
+<body>
+  ${html}
+</body>
+</html>`);
 });
 
 // --- Booking page ---
@@ -7160,6 +7187,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
