@@ -9,24 +9,46 @@ const express = require("express");
 const { Pool } = require("pg");
 const twilio = require("twilio");
 const path = require("path");
+const session = require('express-session');
+const bcrypt = require('bcrypt');
+const pgSession = require('connect-pg-simple')(session);
 
 
 
+const express = require('express');
 const app = express();
+
+// ✅ CONFIGURACIÓN DE SESIONES (NUEVO)
+app.use(session({
+  store: new pgSession({
+    pool: pool,
+    tableName: 'sessions',
+    createTableIfMissing: true
+  }),
+  secret: process.env.SESSION_SECRET || 'fallback-dev-only-not-for-production',  // ✅ CAMBIADO
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  }
+}));
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
 async function beds24Get(endpoint, params = {}, propertyExternalId) {
   const accessToken = await getBeds24AccessToken(propertyExternalId);
   const url = new URL(`https://beds24.com/api/v2${endpoint}`);
   Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v));
-
   const resp = await fetch(url, {
     headers: {
       accept: "application/json",
-      token: accessToken,  // header clave
+      token: accessToken,
     },
   });
-
   if (!resp.ok) {
     const text = await resp.text();
     throw new Error(`Beds24 ${endpoint} error ${resp.status}: ${text.slice(0,500)}`);
@@ -6826,6 +6848,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
