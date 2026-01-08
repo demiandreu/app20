@@ -2409,11 +2409,13 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
     const result = await pool.query(query, params);
 
     const bookings = result.rows.map(row => {
-      const raw = row.beds24_raw || {};
-      
-      // Detectar plataforma
-      const channel = (raw.channel || '').toLowerCase();
-      const referer = raw.referer || '';
+  // ✅ Leer datos de la estructura correcta (puede estar en raíz o en "booking")
+  const rawData = row.beds24_raw || {};
+  const raw = rawData.booking || rawData; // Si tiene "booking", usar ese; si no, usar raíz
+  
+  // Detectar plataforma
+  const channel = (raw.channel || '').toLowerCase();
+  const referer = raw.referer || '';
       let platform = 'unknown';
       
       if (channel === 'booking' || referer.includes('Booking')) {
@@ -8696,6 +8698,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
