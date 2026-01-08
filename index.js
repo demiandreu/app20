@@ -5433,13 +5433,6 @@ return `
   }
 });
 
-function safeRedirect(res, returnTo, fallback = "/staff/checkins") {
-  const target = String(returnTo || "").trim();
-  // allow only internal relative paths
-  if (target.startsWith("/")) return res.redirect(target);
-  return res.redirect(fallback);
-}
-
 const pageHtml = renderNavMenu('staff', req) + toolbar + 
                  renderTable(arrivals, "arrivals") + 
                  `<div style="height:24px;"></div>` + 
@@ -5567,6 +5560,15 @@ const pageHtml = renderNavMenu('staff', req) + toolbar +
                  document.head.appendChild(style);
                  </script>
                  `;
+
+function safeRedirect(res, returnTo, fallback = "/staff/checkins") {
+  const target = String(returnTo || "").trim();
+  // allow only internal relative paths
+  if (target.startsWith("/")) return res.redirect(target);
+  return res.redirect(fallback);
+}
+
+
 // ============================================
 // 🧹 STAFF: MIS LIMPIEZAS (solo asignadas al usuario)
 // ============================================
@@ -8415,6 +8417,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
