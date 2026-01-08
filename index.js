@@ -4157,46 +4157,54 @@ app.get('/login', (req, res) => {
 
 app.post('/login', async (req, res) => {
   const { email, password, redirect = '/staff' } = req.body;
-
+  
   if (!email || !password) {
     return res.redirect('/login?error=invalid&redirect=' + encodeURIComponent(redirect));
   }
-
+  
   try {
     const result = await pool.query(
       'SELECT id, email, password_hash, full_name, role, is_active FROM users WHERE email = $1',
       [email.toLowerCase().trim()]
     );
-
+    
     if (result.rows.length === 0) {
       console.log('❌ Login failed: User not found -', email);
       return res.redirect('/login?error=invalid&redirect=' + encodeURIComponent(redirect));
     }
-
+    
     const user = result.rows[0];
-
+    
     if (!user.is_active) {
       console.log('❌ Login failed: User inactive -', email);
       return res.redirect('/login?error=invalid&redirect=' + encodeURIComponent(redirect));
     }
-
+    
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
-
+    
     if (!passwordMatch) {
       console.log('❌ Login failed: Wrong password -', email);
       return res.redirect('/login?error=invalid&redirect=' + encodeURIComponent(redirect));
     }
-
+    
     // ✅ Login exitoso
     req.session.userId = user.id;
     req.session.userEmail = user.email;
     req.session.userRole = user.role;
     req.session.userName = user.full_name;
-
+    
     console.log('✅ Login successful:', user.email, '-', user.role);
-
-    res.redirect(redirect);
-
+    
+    // ⚠️ IMPORTANTE: Guardar sesión antes de redirigir
+    req.session.save((err) => {
+      if (err) {
+        console.error('❌ Error saving session:', err);
+        return res.redirect('/login?error=system');
+      }
+      console.log('✅ Session saved, redirecting to:', redirect);
+      return res.redirect(redirect);
+    });
+    
   } catch (e) {
     console.error('❌ Login error:', e);
     return res.redirect('/login?error=system&redirect=' + encodeURIComponent(redirect));
@@ -7109,6 +7117,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
