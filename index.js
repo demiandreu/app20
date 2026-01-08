@@ -2277,10 +2277,6 @@ app.get("/manager/checkin-rules", async (req, res) => {
 // RUTAS DEL STAFF - APROBACIÓN DE SOLICITUDES
 // ============================================
 app.use('/staff', requireAuth);
-// ============================================
-// RUTA: Panel principal de Staff
-// ============================================
-
 app.get('/staff', async (req, res) => {
   const user = await getCurrentUser(req);
 
@@ -7166,6 +7162,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
