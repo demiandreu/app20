@@ -5433,12 +5433,14 @@ return `
   }
 });
 
-const pageHtml = renderNavMenu('staff', req) + toolbar + 
-                 renderTable(arrivals, "arrivals") + 
-                 `<div style="height:24px;"></div>` + 
-                 renderTable(departures, "departures") +
-                 `
-                 <script>
+function safeRedirect(res, returnTo, fallback = "/staff/checkins") {
+  const target = String(returnTo || "").trim();
+  // allow only internal relative paths
+  if (target.startsWith("/")) return res.redirect(target);
+  return res.redirect(fallback);
+}
+
+   <script>
                  // ============================================
                  // 🚀 AJAX: Guardar sin recargar página
                  // ============================================
@@ -5560,13 +5562,6 @@ const pageHtml = renderNavMenu('staff', req) + toolbar +
                  document.head.appendChild(style);
                  </script>
                  `;
-
-function safeRedirect(res, returnTo, fallback = "/staff/checkins") {
-  const target = String(returnTo || "").trim();
-  // allow only internal relative paths
-  if (target.startsWith("/")) return res.redirect(target);
-  return res.redirect(fallback);
-}
 
 
 // ============================================
@@ -8417,6 +8412,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
