@@ -2207,8 +2207,7 @@ app.get("/manager/checkin-rules", async (req, res) => {
 // ============================================
 // RUTAS DEL STAFF - APROBACIÓN DE SOLICITUDES
 // ============================================
-
-// RUTA 1: Ver solicitudes pendientes
+app.use('/staff', requireAuth);
 app.get("/staff/pending-requests", async (req, res) => {
   try {
     const { rows: requests } = await pool.query(`
@@ -2407,7 +2406,7 @@ app.get("/staff/pending-requests", async (req, res) => {
 
 // ============================================
 
-// RUTA 2: Procesar aprobación/rechazo
+app.use('/staff', requireAuth);
 app.post("/staff/pending-requests/:id/process", async (req, res) => {
   try {
     const { id } = req.params;
@@ -3960,6 +3959,7 @@ function formatGuestName(fullName) {
   return escapeHtml(`${firstName} ${initials}`);
 }
 // ===================== STAFF: CHECKINS LIST (FIXED) =====================
+app.use('/staff', requireAuth);
 app.get("/staff/checkins", async (req, res) => {
   try {
     const { from, to, quick: quickRaw } = req.query;
@@ -4342,6 +4342,7 @@ function safeRedirect(res, returnTo, fallback = "/staff/checkins") {
   return res.redirect(fallback);
 }
 // ===================== ADMIN: SET VISIBILITY =====================
+app.use('/staff', requireAuth);
 app.post("/staff/checkins/:id/lock", async (req, res) => {
   try {
     const checkinId = req.params.id;
@@ -4376,6 +4377,7 @@ app.post("/staff/checkins/:id/lock", async (req, res) => {
   }
 });
 // ===================== ADMIN: VISIBILITY TOGGLE =====================
+app.use('/staff', requireAuth);
 app.post("/staff/checkins/:id/visibility", async (req, res) => {
   try {
     const checkinId = req.params.id;
@@ -4442,7 +4444,7 @@ app.post("/api/translate", async (req, res) => {
   }
 });
 // ===================== MANAGER SETTINGS =====================
-
+app.use('/staff', requireAuth);
 app.post("/staff/checkins/:id/clean", async (req, res) => {
   try {
     const checkinId = req.params.id;
@@ -4464,6 +4466,7 @@ app.post("/staff/checkins/:id/clean", async (req, res) => {
 });
 
 // ===================== ADMIN: DELETE CHECKIN =====================
+app.use('/staff', requireAuth);
 app.post("/staff/checkins/:id/delete", async (req, res) => {
   try {
     const checkinId = req.params.id;
@@ -5075,6 +5078,7 @@ app.post("/manager/checkin-rules/:apartmentId/save", async (req, res) => {
 // ============================================
 
 // RUTA 1: Ver solicitudes pendientes
+app.use('/staff', requireAuth);
 app.get("/staff/pending-requests", async (req, res) => {
   try {
     const { rows: requests } = await pool.query(`
@@ -5201,6 +5205,7 @@ app.get("/staff/pending-requests", async (req, res) => {
 });
 
 // RUTA 2: Procesar aprobación/rechazo
+app.use('/staff', requireAuth);
 app.post("/staff/pending-requests/:id/process", async (req, res) => {
   try {
     const { id } = req.params;
@@ -6848,6 +6853,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
