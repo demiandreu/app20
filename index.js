@@ -2355,12 +2355,13 @@ FROM beds24_rooms
 
 app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, res) => {
   try {
-    const { month, year } = req.query;
+    const { month, year, apartment } = req.query;
     
     // Detectar mes/año actual si no se especifica
     const now = new Date();
     const selectedYear = year ? parseInt(year) : now.getFullYear();
     const selectedMonth = month ? parseInt(month) : now.getMonth() + 1;
+    const selectedApartment = apartment || 'all';
     
     // Calcular rango de fechas
     const startDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
@@ -2368,8 +2369,18 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
       ? `${selectedYear + 1}-01-01`
       : `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
 
-    // Obtener todas las reservas del mes
-    const result = await pool.query(`
+    // Obtener lista de apartamentos únicos
+    const apartmentsResult = await pool.query(`
+      SELECT DISTINCT apartment_name 
+      FROM checkins 
+      WHERE apartment_name IS NOT NULL 
+        AND apartment_name != ''
+      ORDER BY apartment_name
+    `);
+    const apartments = apartmentsResult.rows.map(r => r.apartment_name);
+
+    // Construir query con filtro opcional de apartamento
+    let query = `
       SELECT 
         id,
         beds24_booking_id,
@@ -2384,8 +2395,18 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
         AND arrival_date < $2
         AND cancelled = false
         AND beds24_raw IS NOT NULL
-      ORDER BY arrival_date ASC
-    `, [startDate, endDate]);
+    `;
+    
+    const params = [startDate, endDate];
+    
+    if (selectedApartment !== 'all') {
+      query += ` AND apartment_name = $3`;
+      params.push(selectedApartment);
+    }
+    
+    query += ` ORDER BY arrival_date ASC`;
+
+    const result = await pool.query(query, params);
 
     const bookings = result.rows.map(row => {
       const raw = row.beds24_raw || {};
@@ -2408,7 +2429,6 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
       let firstInvoiceItem = 0;
       
       if (platform === 'booking') {
-        // Para Booking.com: usar el primer invoiceItem con subType 8
         const invoiceItems = raw.invoiceItems || [];
         const roomItem = invoiceItems.find(item => item.subType === 8);
         if (roomItem) {
@@ -2418,20 +2438,13 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
           price = raw.price || 0;
         }
       } else {
-        // Para Airbnb: usar price directo
         price = raw.price || 0;
       }
 
-      // Comisión de la plataforma (real de Beds24)
       const commission = raw.commission || 0;
-
-      // Calcular Booking IVA (4.72% del price)
       const bookingIva = price * 0.0472;
-
-      // Calcular Rental Connect (30% de comisión menos Booking IVA)
       const rentalConnect = (commission * 0.30) - bookingIva;
 
-      // Calcular noches
       const nights = row.departure_date && row.arrival_date
         ? Math.ceil((new Date(row.departure_date) - new Date(row.arrival_date)) / (1000 * 60 * 60 * 24))
         : 0;
@@ -2463,8 +2476,8 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
       totalRentalConnect: bookings.reduce((sum, b) => sum + parseFloat(b.rentalConnect), 0).toFixed(2)
     };
 
-    // Generar selector de mes/año
-    const monthSelector = `
+    // Generar selector de filtros
+    const filterForm = `
       <form method="GET" action="/manager/invoices" style="margin:20px 0;">
         <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
           <div>
@@ -2485,8 +2498,19 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
               `).join('')}
             </select>
           </div>
+          <div>
+            <label>Apartamento</label>
+            <select name="apartment" class="form-input">
+              <option value="all" ${selectedApartment === 'all' ? 'selected' : ''}>Todos</option>
+              ${apartments.map(apt => `
+                <option value="${escapeHtml(apt)}" ${selectedApartment === apt ? 'selected' : ''}>
+                  ${escapeHtml(apt)}
+                </option>
+              `).join('')}
+            </select>
+          </div>
           <button type="submit" class="btn-primary">Filtrar</button>
-          <a href="/manager/invoices/export?month=${selectedMonth}&year=${selectedYear}" class="btn-success">📊 Exportar Excel</a>
+          <a href="/manager/invoices/export?month=${selectedMonth}&year=${selectedYear}${selectedApartment !== 'all' ? '&apartment=' + encodeURIComponent(selectedApartment) : ''}" class="btn-success">📊 Exportar Excel</a>
         </div>
       </form>
     `;
@@ -2497,6 +2521,7 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
         <table>
           <thead>
             <tr>
+              <th style="width:40px;">Acción</th>
               <th>ID Booking</th>
               <th>Huésped</th>
               <th>Plataforma</th>
@@ -2513,6 +2538,11 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
           <tbody>
             ${bookings.length ? bookings.map(b => `
               <tr>
+                <td>
+                  <form method="POST" action="/manager/invoices/${b.id}/delete" onsubmit="return confirm('¿Seguro que quieres eliminar esta reserva de la facturación?');" style="margin:0;">
+                    <button type="submit" class="btn-link" style="color:#dc2626; padding:4px;">🗑️</button>
+                  </form>
+                </td>
                 <td style="font-family:monospace;">${escapeHtml(String(b.beds24_booking_id || b.id))}</td>
                 <td>${escapeHtml(b.full_name)}</td>
                 <td>
@@ -2530,12 +2560,12 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
                 <td style="text-align:right; color:#059669; font-weight:600;">€${b.rentalConnect}</td>
               </tr>
             `).join('') : `
-              <tr><td colspan="11" class="muted">No hay reservas en este período</td></tr>
+              <tr><td colspan="12" class="muted">No hay reservas en este período</td></tr>
             `}
           </tbody>
           <tfoot>
             <tr style="background:#f9fafb; font-weight:600;">
-              <td colspan="7">TOTALES (${totals.count} reservas)</td>
+              <td colspan="8">TOTALES (${totals.count} reservas)</td>
               <td style="text-align:right;">€${totals.totalPrice}</td>
               <td style="text-align:right;">€${totals.totalCommission}</td>
               <td style="text-align:right; color:#dc2626;">€${totals.totalBookingIva}</td>
@@ -2548,7 +2578,7 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
 
     const pageHtml = renderNavMenu('manager', req) + 
                      `<h1>💰 Facturas y Comisiones</h1>` +
-                     monthSelector + 
+                     filterForm + 
                      tableHtml;
 
     res.send(renderPage("Facturas", pageHtml, 'manager'));
@@ -2561,6 +2591,27 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
         <p><a href="/manager/invoices" class="btn-link">Recargar</a></p>
       </div>
     `));
+  }
+});
+
+// ============================================
+// 🗑️ ELIMINAR RESERVA DE FACTURACIÓN
+// ============================================
+
+app.post("/manager/invoices/:id/delete", requireAuth, requireRole('MANAGER'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const returnTo = req.body.returnTo || req.get('Referer') || '/manager/invoices';
+
+    await pool.query(
+      'UPDATE checkins SET cancelled = true, cancelled_at = NOW() WHERE id = $1',
+      [id]
+    );
+
+    res.redirect(returnTo);
+  } catch (e) {
+    console.error("Error eliminando reserva:", e);
+    res.status(500).send("Error al eliminar");
   }
 });
 
@@ -8645,6 +8696,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
