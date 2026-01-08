@@ -3645,13 +3645,11 @@ app.get("/guest/:bookingId", async (req, res) => {
   const { bookingId } = req.params;
   console.log("🔍 Request for bookingId:", bookingId);
   
-  // Detectar idioma
   const lang = String(req.query.lang || 'es').toLowerCase().substring(0, 2);
   const validLangs = ['es', 'en', 'fr', 'de', 'ru'];
   const currentLang = validLangs.includes(lang) ? lang : 'es';
   
   try {
-    // Buscar la reserva
     const result = await pool.query(
       `SELECT c.*, 
               br.apartment_name as apartment_from_rooms,
@@ -3687,29 +3685,22 @@ app.get("/guest/:bookingId", async (req, res) => {
     console.log("✅ Booking data:", {
       id: r.beds24_booking_id,
       name: r.full_name,
-      room_id: r.room_id,
-      room_id_from_rooms: r.room_id_from_rooms,
-      room_id_to_use: roomIdToUse,
       apartment: apartmentName
     });
     
-    // Cargar secciones del apartamento
     const secRes = await pool.query(
       `SELECT id, title, body, icon, new_media_type, new_media_url, translations
        FROM apartment_sections
-       WHERE room_id::text = $1
-         AND is_active = true
+       WHERE room_id::text = $1 AND is_active = true
        ORDER BY sort_order ASC, id ASC`,
       [String(roomIdToUse)]
     );
     
-    console.log("📋 Sections found:", secRes.rows.length, "for room_id:", roomIdToUse);
+    console.log("📋 Sections found:", secRes.rows.length);
     
-    // Textos traducidos
     const uiText = {
       es: {
         welcome: 'Bienvenido',
-        apartment: 'Apartamento',
         guest: 'Huésped',
         reservation: 'Reserva',
         arrival: 'Llegada',
@@ -3727,7 +3718,6 @@ app.get("/guest/:bookingId", async (req, res) => {
       },
       en: {
         welcome: 'Welcome',
-        apartment: 'Apartment',
         guest: 'Guest',
         reservation: 'Reservation',
         arrival: 'Arrival',
@@ -3745,7 +3735,6 @@ app.get("/guest/:bookingId", async (req, res) => {
       },
       ru: {
         welcome: 'Добро пожаловать',
-        apartment: 'Квартира',
         guest: 'Гость',
         reservation: 'Бронирование',
         arrival: 'Прибытие',
@@ -3763,7 +3752,6 @@ app.get("/guest/:bookingId", async (req, res) => {
       },
       fr: {
         welcome: 'Bienvenue',
-        apartment: 'Appartement',
         guest: 'Invité',
         reservation: 'Réservation',
         arrival: 'Arrivée',
@@ -3781,7 +3769,6 @@ app.get("/guest/:bookingId", async (req, res) => {
       },
       de: {
         welcome: 'Willkommen',
-        apartment: 'Wohnung',
         guest: 'Gast',
         reservation: 'Reservierung',
         arrival: 'Ankunft',
@@ -3802,25 +3789,18 @@ app.get("/guest/:bookingId", async (req, res) => {
     const t = uiText[currentLang] || uiText.es;
     const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
     
-    // Helper para traducciones
     function getTranslatedText(section, field, lang) {
       if (!section.translations) return section[field] || '';
-      
       try {
-        const trans = typeof section.translations === 'string' 
-          ? JSON.parse(section.translations) 
-          : section.translations;
-        
+        const trans = typeof section.translations === 'string' ? JSON.parse(section.translations) : section.translations;
         if (trans[field] && trans[field][lang]) {
           const text = trans[field][lang].trim();
           if (text) return text;
         }
-        
         if (trans[field] && trans[field]['es']) {
           const text = trans[field]['es'].trim();
           if (text) return text;
         }
-        
         if (trans[field] && trans[field]['en']) {
           const text = trans[field]['en'].trim();
           if (text) return text;
@@ -3828,41 +3808,33 @@ app.get("/guest/:bookingId", async (req, res) => {
       } catch (e) {
         console.error('Translation parse error:', e);
       }
-      
       return section[field] || '';
     }
     
-    // Helper para convertir URLs de YouTube
     function getYouTubeEmbedUrl(url) {
       if (!url) return null;
-      
       if (url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)) {
         return { type: 'direct', url: url };
       }
-      
       const vimeoMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:player\.)?vimeo\.com\/(?:video\/|channels\/\w+\/)?(\d+)/);
       if (vimeoMatch && vimeoMatch[1]) {
         return { type: 'vimeo', url: `https://player.vimeo.com/video/${vimeoMatch[1]}` };
       }
-      
       const youtubePatterns = [
         /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/,
         /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]+)/,
         /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]+)/,
         /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/
       ];
-      
       for (const pattern of youtubePatterns) {
         const match = url.match(pattern);
         if (match && match[1]) {
           return { type: 'youtube', url: `https://www.youtube.com/embed/${match[1]}` };
         }
       }
-      
       return null;
     }
     
-    // Generar HTML de secciones
     const sectionsHtml = secRes.rows.length === 0
       ? `<div class="muted">${t.noInfo}</div>`
       : `<h2 style="margin-top:18px;">${t.apartmentInfo}</h2>
@@ -3872,125 +3844,39 @@ app.get("/guest/:bookingId", async (req, res) => {
              const translatedTitle = getTranslatedText(s, 'title', currentLang);
              const title = icon + escapeHtml(translatedTitle);
              const rawBody = getTranslatedText(s, 'body', currentLang);
-             
-             const bodyHtml = escapeHtml(rawBody)
-               .replace(/\n/g, "<br/>")
-               .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
-                 const safeUrl = escapeHtml(url);
-                 return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
-               });
+             const bodyHtml = escapeHtml(rawBody).replace(/\n/g, "<br/>").replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+               const safeUrl = escapeHtml(url);
+               return \`<a href="\${safeUrl}" target="_blank" rel="noopener" class="btn-link">\${safeUrl}</a>\`;
+             });
              
              let mediaHtml = '';
              if (s.new_media_url && s.new_media_type) {
                const mediaUrl = String(s.new_media_url).trim();
-               
                if (s.new_media_type === 'video') {
                  const embedResult = getYouTubeEmbedUrl(mediaUrl);
-                 
                  if (embedResult) {
                    if (embedResult.type === 'youtube' || embedResult.type === 'vimeo') {
-                     mediaHtml = `
-                       <div style="margin-top:16px;">
-                         <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;max-width:100%;background:#000;border-radius:8px;">
-                           <iframe 
-                             src="${escapeHtml(embedResult.url)}" 
-                             style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"
-                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                             allowfullscreen>
-                           </iframe>
-                         </div>
-                       </div>
-                     `;
+                     mediaHtml = \`<div style="margin-top:16px;"><div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;max-width:100%;background:#000;border-radius:8px;"><iframe src="\${escapeHtml(embedResult.url)}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>\`;
                    } else if (embedResult.type === 'direct') {
-                     mediaHtml = `
-                       <div style="margin-top:16px;">
-                         <video 
-                           controls 
-                           style="width:100%;max-width:100%;border-radius:8px;display:block;background:#000;"
-                           preload="metadata">
-                           <source src="${escapeHtml(embedResult.url)}" type="video/mp4">
-                           Your browser does not support the video tag.
-                         </video>
-                       </div>
-                     `;
+                     mediaHtml = \`<div style="margin-top:16px;"><video controls style="width:100%;max-width:100%;border-radius:8px;display:block;background:#000;" preload="metadata"><source src="\${escapeHtml(embedResult.url)}" type="video/mp4">Your browser does not support the video tag.</video></div>\`;
                    }
                  }
                } else if (s.new_media_type === 'image') {
                  const imageUrls = mediaUrl.split('\n').map(url => url.trim()).filter(url => url.length > 0);
-                 
                  if (imageUrls.length === 1) {
-                   mediaHtml = `
-                     <div style="margin-top:16px;">
-                       <img 
-                         src="${escapeHtml(imageUrls[0])}" 
-                         alt="${escapeHtml(translatedTitle)}"
-                         style="max-width:100%;height:auto;border-radius:8px;display:block;"
-                         loading="lazy"
-                       />
-                     </div>
-                   `;
+                   mediaHtml = \`<div style="margin-top:16px;"><img src="\${escapeHtml(imageUrls[0])}" alt="\${escapeHtml(translatedTitle)}" style="max-width:100%;height:auto;border-radius:8px;display:block;" loading="lazy"/></div>\`;
                  } else if (imageUrls.length > 1) {
-                   const galleryImages = imageUrls.map(url => `
-                     <div style="flex:0 0 48%;margin-bottom:12px;">
-                       <img 
-                         src="${escapeHtml(url)}" 
-                         alt="${escapeHtml(translatedTitle)}"
-                         style="width:100%;height:auto;border-radius:8px;display:block;object-fit:cover;"
-                         loading="lazy"
-                       />
-                     </div>
-                   `).join('');
-                   
-                   mediaHtml = `
-                     <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:4%;">
-                       ${galleryImages}
-                     </div>
-                   `;
+                   const galleryImages = imageUrls.map(url => \`<div style="flex:0 0 48%;margin-bottom:12px;"><img src="\${escapeHtml(url)}" alt="\${escapeHtml(translatedTitle)}" style="width:100%;height:auto;border-radius:8px;display:block;object-fit:cover;" loading="lazy"/></div>\`).join('');
+                   mediaHtml = \`<div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:4%;">\${galleryImages}</div>\`;
                  }
                } else if (s.new_media_type === 'map') {
-                 mediaHtml = `
-                   <div style="margin-top:16px;">
-                     <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;max-width:100%;background:#f3f4f6;border-radius:8px;">
-                       <iframe 
-                         src="${escapeHtml(mediaUrl)}" 
-                         style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"
-                         allowfullscreen 
-                         loading="lazy">
-                       </iframe>
-                     </div>
-                   </div>
-                 `;
+                 mediaHtml = \`<div style="margin-top:16px;"><div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;max-width:100%;background:#f3f4f6;border-radius:8px;"><iframe src="\${escapeHtml(mediaUrl)}" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" allowfullscreen loading="lazy"></iframe></div></div>\`;
                } else if (s.new_media_type === 'link') {
-                 mediaHtml = `
-                   <div style="margin-top:16px;">
-                     <a 
-                       href="${escapeHtml(mediaUrl)}" 
-                       target="_blank" 
-                       rel="noopener noreferrer"
-                       style="display:inline-block;padding:12px 24px;background:#3b82f6;color:white;text-decoration:none;border-radius:8px;font-weight:600;transition:background 0.2s;"
-                       onmouseover="this.style.background='#2563eb'" 
-                       onmouseout="this.style.background='#3b82f6'">
-                       🔗 Open link
-                     </a>
-                   </div>
-                 `;
+                 mediaHtml = \`<div style="margin-top:16px;"><a href="\${escapeHtml(mediaUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:12px 24px;background:#3b82f6;color:white;text-decoration:none;border-radius:8px;font-weight:600;transition:background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">🔗 Open link</a></div>\`;
                }
              }
-             
-             const panelId = `acc_${s.id}`;
-             
-             return `
-               <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
-                 <button type="button" data-acc-btn="${panelId}"
-                   style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;">
-                   ${title}
-                 </button>
-                 <div id="${panelId}" style="display:none;padding:12px 14px;">
-                   <div>${bodyHtml}</div>
-                   ${mediaHtml}
-                 </div>
-               </div>
-             `;
+             const panelId = \`acc_\${s.id}\`;
+             return \`<div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;"><button type="button" data-acc-btn="\${panelId}" style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;">\${title}</button><div id="\${panelId}" style="display:none;padding:12px 14px;"><div>\${bodyHtml}</div>\${mediaHtml}</div></div>\`;
            }).join('')}
          </div>
          <script>
@@ -4007,7 +3893,6 @@ app.get("/guest/:bookingId", async (req, res) => {
            })();
          </script>`;
     
-    // Renderizar página
     const html = `
       <div style="text-align:right; margin-bottom:12px;">
         <select onchange="window.location.href = window.location.pathname + '?lang=' + this.value" 
@@ -4100,6 +3985,7 @@ app.get("/guest/:bookingId", async (req, res) => {
     `));
   }
 });
+
   
 function safeRedirect(res, returnTo, fallback = "/staff/checkins") {
   const target = String(returnTo || "").trim();
@@ -6614,6 +6500,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
