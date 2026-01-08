@@ -2408,72 +2408,75 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
 
     const result = await pool.query(query, params);
 
-    const bookings = result.rows.map(row => {
-  // ✅ Leer datos de la estructura correcta (puede estar en raíz o en "booking")
+const bookings = result.rows.map(row => {
   const rawData = row.beds24_raw || {};
-  const raw = rawData.booking || rawData; // Si tiene "booking", usar ese; si no, usar raíz
+  const raw = rawData.booking || rawData;
   
   // Detectar plataforma
   const channel = (raw.channel || '').toLowerCase();
   const referer = raw.referer || '';
-      let platform = 'unknown';
-      
-      if (channel === 'booking' || referer.includes('Booking')) {
-        platform = 'booking';
-      } else if (channel === 'airbnb' || referer.includes('Airbnb')) {
-        platform = 'airbnb';
-      } else if (referer.includes('iframe') || channel === 'iframe') {
-        platform = 'direct';
-      }
+  let platform = 'unknown';
+  
+  if (channel === 'booking' || referer.includes('Booking')) {
+    platform = 'booking';
+  } else if (channel === 'airbnb' || referer.includes('Airbnb')) {
+    platform = 'airbnb';
+  } else if (referer.includes('iframe') || channel === 'iframe') {
+    platform = 'direct';
+  }
 
-      // Extraer precio según plataforma
-      let price = 0;
-      let firstInvoiceItem = 0;
-      
-      if (platform === 'booking') {
-        const invoiceItems = raw.invoiceItems || [];
-        const roomItem = invoiceItems.find(item => item.subType === 8);
-        if (roomItem) {
-          firstInvoiceItem = roomItem.amount || 0;
-          price = firstInvoiceItem;
-        } else {
-          price = raw.price || 0;
-        }
-      } else {
-        price = raw.price || 0;
-      }
+  // Extraer precio según plataforma
+  let price = 0;
+  let firstInvoiceItem = 0;
+  
+  if (platform === 'booking') {
+    const invoiceItems = raw.invoiceItems || [];
+    const roomItem = invoiceItems.find(item => item.subType === 8);
+    if (roomItem) {
+      firstInvoiceItem = roomItem.amount || 0;
+      price = firstInvoiceItem;
+    } else {
+      price = raw.price || 0;
+    }
+  } else {
+    price = raw.price || 0;
+  }
 
-      // Comisión de la plataforma (real de Beds24)
-const commission = raw.commission || 0;
+  // Comisión de la plataforma
+  const commission = raw.commission || 0;
 
+  // Calcular Booking IVA (solo para Booking.com)
+  const bookingIva = platform === 'booking' ? (price * 0.0472) : 0;
 
-// Calcular Booking IVA (solo para Booking.com: 4.72% del precio)
-const bookingIva = platform === 'booking' ? (price * 0.0472) : 0;
+  // Calcular Rental Connect (30% del precio)
+  const rentalConnect = price * 0.30;
 
-// Calcular Rental Connect (30% del precio - SIN restar nada)
-const rentalConnect = price * 0.30;
+  // Calcular Income (beneficio neto)
+  const income = price - commission - bookingIva - rentalConnect;
 
-// Calcular Income (beneficio neto)
-const income = price - commission - bookingIva - rentalConnect;
+  // Calcular noches
+  const nights = row.departure_date && row.arrival_date
+    ? Math.ceil((new Date(row.departure_date) - new Date(row.arrival_date)) / (1000 * 60 * 60 * 24))
+    : 0;
 
-return {
-  id: row.id,
-  beds24_booking_id: row.beds24_booking_id,
-  full_name: row.full_name,
-  arrival_date: row.arrival_date,
-  departure_date: row.departure_date,
-  apartment_name: row.apartment_name,
-  platform,
-  referer: referer,
-  nights,
-  price: price.toFixed(2),
-  firstInvoiceItem: firstInvoiceItem.toFixed(2),
-  commission: commission.toFixed(2),
-  bookingIva: bookingIva.toFixed(2),
-  rentalConnect: rentalConnect.toFixed(2),
-  income: income.toFixed(2)
-};
-    });
+  return {
+    id: row.id,
+    beds24_booking_id: row.beds24_booking_id,
+    full_name: row.full_name,
+    arrival_date: row.arrival_date,
+    departure_date: row.departure_date,
+    apartment_name: row.apartment_name,
+    platform,
+    referer: referer,
+    nights,
+    price: price.toFixed(2),
+    firstInvoiceItem: firstInvoiceItem.toFixed(2),
+    commission: commission.toFixed(2),
+    bookingIva: bookingIva.toFixed(2),
+    rentalConnect: rentalConnect.toFixed(2),
+    income: income.toFixed(2)
+  };
+});
 
     // Calcular totales
     const totals = {
@@ -8710,6 +8713,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
