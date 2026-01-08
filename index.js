@@ -5419,28 +5419,7 @@ return `
 }
 
     const pageHtml = renderNavMenu('staff', req) + toolbar + renderTable(arrivals, "arrivals") + `<div style="height:24px;"></div>` + renderTable(departures, "departures");
-    
-    res.send(renderPage("Staff · Llegadas y Salidas", pageHtml, 'staff'));
-  } catch (e) {
-    console.error("Error en staff/checkins:", e);
-    res.status(500).send(renderPage("Error", `
-      <div class="card">
-        <h1 style="color:#991b1b;">❌ Error al cargar la lista</h1>
-        <p>${escapeHtml(e.message || String(e))}</p>
-        <p><a href="/staff/checkins" class="btn-link">Recargar</a></p>
-      </div>
-    `));
-  }
-});
-
-function safeRedirect(res, returnTo, fallback = "/staff/checkins") {
-  const target = String(returnTo || "").trim();
-  // allow only internal relative paths
-  if (target.startsWith("/")) return res.redirect(target);
-  return res.redirect(fallback);
-}
-
-   <script>
+     <script>
                  // ============================================
                  // 🚀 AJAX: Guardar sin recargar página
                  // ============================================
@@ -5562,7 +5541,26 @@ function safeRedirect(res, returnTo, fallback = "/staff/checkins") {
                  document.head.appendChild(style);
                  </script>
                  `;
+    
+    res.send(renderPage("Staff · Llegadas y Salidas", pageHtml, 'staff'));
+  } catch (e) {
+    console.error("Error en staff/checkins:", e);
+    res.status(500).send(renderPage("Error", `
+      <div class="card">
+        <h1 style="color:#991b1b;">❌ Error al cargar la lista</h1>
+        <p>${escapeHtml(e.message || String(e))}</p>
+        <p><a href="/staff/checkins" class="btn-link">Recargar</a></p>
+      </div>
+    `));
+  }
+});
 
+function safeRedirect(res, returnTo, fallback = "/staff/checkins") {
+  const target = String(returnTo || "").trim();
+  // allow only internal relative paths
+  if (target.startsWith("/")) return res.redirect(target);
+  return res.redirect(fallback);
+}
 
 // ============================================
 // 🧹 STAFF: MIS LIMPIEZAS (solo asignadas al usuario)
@@ -8412,6 +8410,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
