@@ -1437,6 +1437,9 @@ function renderNavMenu(activePage = '', req = null) {
   if (canSeeApartments) {
     links += `<a href="/manager/apartment" class="nav-link ${activePage === 'apartamentos' ? 'active' : ''}">🏢 Apartamentos</a>`;
   }
+  if (canSeeManager) {
+  links += `<a href="/manager/invoices" class="nav-link ${activePage === 'invoices' ? 'active' : ''}">💰 Contabilidad</a>`;
+}
   
   return `
     <style>
@@ -2593,7 +2596,7 @@ const bookings = result.rows.map(row => {
       </div>
     `;
 
-    const pageHtml = renderNavMenu('manager', req) + 
+    const pageHtml = renderNavMenu('invoices', req) +
                      `<h1>💰 Facturas y Comisiones</h1>` +
                      filterForm + 
                      tableHtml;
@@ -8805,6 +8808,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
