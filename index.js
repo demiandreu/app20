@@ -1353,6 +1353,53 @@ function fmtTime(t) {
   return String(t).slice(0, 5); // "17:00"
 }
 
+// ============================================
+// HELPER: Menú de navegación unificado
+// ============================================
+
+function renderNavMenu(currentPage = '') {
+  return `
+    <nav style="background:#2d3748; padding:16px 0; margin-bottom:24px; border-radius:12px;">
+      <div style="max-width:1200px; margin:0 auto; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; padding:0 16px;">
+        <a href="/manager" 
+           style="padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:15px; transition:all 0.2s;
+                  ${currentPage === 'manager' ? 'background:#4a5568; color:white;' : 'color:#cbd5e0;'}"
+           ${currentPage !== 'manager' ? 'onmouseover="this.style.background=\'#4a5568\'" onmouseout="this.style.background=\'transparent\'"' : ''}>
+          🏠 Manager
+        </a>
+        
+        <a href="/staff/checkins" 
+           style="padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:15px; transition:all 0.2s;
+                  ${currentPage === 'staff' ? 'background:#4a5568; color:white;' : 'color:#cbd5e0;'}"
+           ${currentPage !== 'staff' ? 'onmouseover="this.style.background=\'#4a5568\'" onmouseout="this.style.background=\'transparent\'"' : ''}>
+          📅 Staff
+        </a>
+        
+        <a href="/manager/whatsapp" 
+           style="padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:15px; transition:all 0.2s;
+                  ${currentPage === 'whatsapp' ? 'background:#4a5568; color:white;' : 'color:#cbd5e0;'}"
+           ${currentPage !== 'whatsapp' ? 'onmouseover="this.style.background=\'#4a5568\'" onmouseout="this.style.background=\'transparent\'"' : ''}>
+          💬 WhatsApp
+        </a>
+        
+        <a href="/manager/apartment" 
+           style="padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:15px; transition:all 0.2s;
+                  ${currentPage === 'apartamentos' ? 'background:#4a5568; color:white;' : 'color:#cbd5e0;'}"
+           ${currentPage !== 'apartamentos' ? 'onmouseover="this.style.background=\'#4a5568\'" onmouseout="this.style.background=\'transparent\'"' : ''}>
+          🏢 Apartamentos
+        </a>
+        
+        <a href="/logout" 
+           style="padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:15px; color:#f56565; margin-left:auto;"
+           onmouseover="this.style.background='#742a2a'; this.style.color='white'" 
+           onmouseout="this.style.background='transparent'; this.style.color='#f56565'">
+          🚪 Salir
+        </a>
+      </div>
+    </nav>
+  `;
+}
+
 function renderPage(title, innerHtml, currentPage = '', showNav = true) {
   return `<!doctype html>
 <html lang="en">
@@ -4538,8 +4585,8 @@ return `
   `;
 }
 
-    const pageHtml = toolbar + renderTable(arrivals, "arrivals") + `<div style="height:24px;"></div>` + renderTable(departures, "departures");
-
+    const pageHtml = renderNavMenu('staff') + toolbar + renderTable(arrivals, "arrivals") + `<div style="height:24px;"></div>` + renderTable(departures, "departures");
+    
     res.send(renderPage("Staff · Llegadas y Salidas", pageHtml, 'staff'));
   } catch (e) {
     console.error("Error en staff/checkins:", e);
@@ -7069,6 +7116,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
