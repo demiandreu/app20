@@ -2304,7 +2304,7 @@ app.get("/debug/beds24", async (req, res) => {
 
 // ===================== MANAGER: Menu =====================
 // ===== MANAGER HOME: select apartment =====
-app.get("/manager", async (req, res) => {
+app.get("/manager", requireAuth, requireRole('MANAGER'), async (req, res) => {
   try {
     const { rows: apartments } = await pool.query(`
  SELECT 
@@ -2350,7 +2350,7 @@ FROM beds24_rooms
 });
 
 
-app.get("/manager/apartment", async (req, res) => {
+app.get("/manager/apartment", requireAuth, requireRole('MANAGER'), async (req, res) => {
   const html = renderNavMenu('apartamentos', req) + `
     <style>
       .container-apt { max-width: 1200px; margin: 0 auto; }
@@ -4965,7 +4965,7 @@ app.get('/staff', async (req, res) => {
 
   res.send(renderPage('Panel de Control', html, 'staff'));
 });
-app.get("/staff/checkins", async (req, res) => {
+app.get("/staff/checkins", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
   try {
     const { from, to, quick: quickRaw } = req.query;
 
@@ -6252,7 +6252,7 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     res.status(500).send("Error");
   }
 });
-app.get("/manager/whatsapp", (req, res) => {
+app.get("/manager/whatsapp", requireAuth, requireRole('MANAGER'), (req, res) => {
   try {
     const htmlFilePath = path.join(__dirname, 'manager-whatsapp.html');
     const fileContent = fs.readFileSync(htmlFilePath, 'utf8');
@@ -7890,6 +7890,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
