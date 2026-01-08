@@ -6203,11 +6203,25 @@ app.get("/manager/whatsapp", (req, res) => {
     const htmlFilePath = path.join(__dirname, 'manager-whatsapp.html');
     const fileContent = fs.readFileSync(htmlFilePath, 'utf8');
     
-    // Extraer solo el contenido del <body>
-    const bodyMatch = fileContent.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-    const bodyContent = bodyMatch ? bodyMatch[1] : fileContent;
+    // Extraer CSS
+    const styleMatch = fileContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+    const styles = styleMatch ? `<style>${styleMatch[1]}</style>` : '';
     
-    const html = renderNavMenu('whatsapp') + bodyContent;
+    // Extraer scripts
+    const scriptMatches = fileContent.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi);
+    let scripts = '';
+    for (const match of scriptMatches) {
+      scripts += `<script>${match[1]}</script>`;
+    }
+    
+    // Extraer body
+    const bodyMatch = fileContent.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    let bodyContent = bodyMatch ? bodyMatch[1] : fileContent;
+    
+    // Eliminar el nav viejo del body si todavía está
+    bodyContent = bodyContent.replace(/<nav class="nav-menu">[\s\S]*?<\/nav>/i, '');
+    
+    const html = styles + renderNavMenu('whatsapp') + bodyContent + scripts;
     
     res.send(renderPage("WhatsApp Manager", html));
   } catch (e) {
@@ -7822,6 +7836,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
