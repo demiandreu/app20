@@ -6279,9 +6279,65 @@ app.post("/staff/checkins/:id/delete", async (req, res) => {
     return res.status(500).send("Error deleting checkin");
   }
 });
-// ===================== MANAGER: Sync Bookings manual =====================
+
+// ============================================
+// 🔄 SYNC: Página con formulario
+// ============================================
+
 app.get("/manager/channels/bookingssync", async (req, res) => {
   try {
+    // Si no hay parámetros, mostrar formulario
+    if (!req.query.action) {
+      const syncForm = `
+        <div class="card" style="max-width:600px; margin:40px auto;">
+          <h1 style="margin:0 0 20px;">🔄 Sincronizar Reservas desde Beds24</h1>
+          <p class="muted">Importa reservas de un rango de fechas específico desde Beds24 a tu base de datos.</p>
+          
+          <form method="GET" action="/manager/channels/bookingssync" style="margin-top:24px;">
+            <input type="hidden" name="action" value="sync" />
+            
+            <div style="margin-bottom:16px;">
+              <label style="display:block; margin-bottom:6px; font-weight:600;">Desde (Check-in)</label>
+              <input type="date" name="from" value="2025-11-01" required class="form-input" style="width:100%;" />
+            </div>
+            
+            <div style="margin-bottom:16px;">
+              <label style="display:block; margin-bottom:6px; font-weight:600;">Hasta (Check-in)</label>
+              <input type="date" name="to" value="2025-12-31" required class="form-input" style="width:100%;" />
+            </div>
+            
+            <div style="margin-bottom:24px;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" name="includeCancelled" value="true" />
+                <span>Incluir reservas canceladas</span>
+              </label>
+            </div>
+            
+            <button type="submit" class="btn-primary" style="width:100%; padding:12px;">
+              🔄 Iniciar Sincronización
+            </button>
+          </form>
+          
+          <hr style="margin:24px 0;" />
+          
+          <div style="background:#f0f9ff; padding:16px; border-radius:8px; border-left:4px solid #0284c7;">
+            <p style="margin:0 0 8px; font-weight:600;">💡 Consejo</p>
+            <p style="margin:0; font-size:14px;">
+              Usa esta herramienta para importar reservas antiguas o recuperar datos que no llegaron por webhook.
+              La sincronización puede tardar varios minutos dependiendo del número de reservas.
+            </p>
+          </div>
+          
+          <p style="margin-top:24px; text-align:center;">
+            <a href="/manager" class="btn-link">← Volver al Manager</a>
+          </p>
+        </div>
+      `;
+      
+      return res.send(renderPage("Sincronizar Reservas", syncForm));
+    }
+    
+    // Si hay parámetros, ejecutar sincronización
     const propertyIdForToken = "203178";
     const token = await getBeds24AccessToken(propertyIdForToken);
     
@@ -6310,7 +6366,7 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
         <div class="card">
           <h1 style="margin:0 0 10px;">ℹ️ No properties found</h1>
           <p>Could not load properties from API.</p>
-          <p><a class="btn-link" href="/manager">← Volver</a></p>
+          <p><a class="btn-link" href="/manager/channels/bookingssync">← Volver</a></p>
         </div>
       `));
     }
@@ -6392,28 +6448,64 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     }
     
     return res.send(renderPage("Sync Bookings", `
-      <div class="card">
-        <h1 style="margin:0 0 10px;">✅ Sincronización completada</h1>
-        <p>Properties: <strong>${propIds.length}</strong> · Rooms: <strong>${roomsMap.size}</strong> · Errors: <strong>${errors}</strong></p>
-        <p>Reservas procesadas: <strong>${processed}</strong></p>
-        <p>Nuevas: <strong>${inserted}</strong> · Actualizadas: <strong>${updated}</strong> · Omitidas: <strong>${skipped}</strong></p>
-        <p class="muted">Rango: ${escapeHtml(fromDate)} — ${escapeHtml(toDate)} · Canceladas: ${escapeHtml(includeCancelled)}</p>
-        <hr/>
-        <p><a class="btn-primary" href="/staff/checkins">Ver staff check-ins</a></p>
-        <p><a class="btn-link" href="/manager">← Volver al manager</a></p>
+      <div class="card" style="max-width:600px; margin:40px auto;">
+        <h1 style="margin:0 0 20px;">✅ Sincronización Completada</h1>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
+          <div style="background:#f0fdf4; padding:16px; border-radius:8px; border-left:4px solid #22c55e;">
+            <div style="font-size:32px; font-weight:700; color:#16a34a;">${inserted}</div>
+            <div style="color:#15803d; font-size:14px;">Nuevas</div>
+          </div>
+          <div style="background:#fef3c7; padding:16px; border-radius:8px; border-left:4px solid #eab308;">
+            <div style="font-size:32px; font-weight:700; color:#ca8a04;">${updated}</div>
+            <div style="color:#a16207; font-size:14px;">Actualizadas</div>
+          </div>
+          <div style="background:#f3f4f6; padding:16px; border-radius:8px; border-left:4px solid #9ca3af;">
+            <div style="font-size:32px; font-weight:700; color:#6b7280;">${skipped}</div>
+            <div style="color:#4b5563; font-size:14px;">Omitidas</div>
+          </div>
+          <div style="background:#fee2e2; padding:16px; border-radius:8px; border-left:4px solid #ef4444;">
+            <div style="font-size:32px; font-weight:700; color:#dc2626;">${errors}</div>
+            <div style="color:#991b1b; font-size:14px;">Errores</div>
+          </div>
+        </div>
+        
+        <div style="background:#f9fafb; padding:16px; border-radius:8px; margin-bottom:24px;">
+          <p style="margin:0 0 8px;"><strong>Total procesadas:</strong> ${processed}</p>
+          <p style="margin:0 0 8px;"><strong>Properties:</strong> ${propIds.length} · <strong>Rooms:</strong> ${roomsMap.size}</p>
+          <p style="margin:0; color:#6b7280; font-size:14px;">
+            Rango: ${escapeHtml(fromDate)} → ${escapeHtml(toDate)}
+            ${includeCancelled === 'true' ? ' · Incluye canceladas' : ''}
+          </p>
+        </div>
+        
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+          <a href="/manager/invoices" class="btn-primary">💰 Ver Facturas</a>
+          <a href="/staff/checkins" class="btn-primary">📋 Ver Check-ins</a>
+          <a href="/manager/channels/bookingssync" class="btn-link">🔄 Nueva Sync</a>
+        </div>
+        
+        <p style="margin-top:24px; text-align:center;">
+          <a href="/manager" class="btn-link">← Volver al Manager</a>
+        </p>
       </div>
     `));
   } catch (e) {
     console.error("Sync error:", e);
     return res.status(500).send(renderPage("Error Sync", `
-      <div class="card">
-        <h1 style="color:#991b1b;">❌ Error en sincronización</h1>
-        <p>${escapeHtml(e.message || String(e))}</p>
-        <p><a class="btn-link" href="/manager">← Volver</a></p>
+      <div class="card" style="max-width:600px; margin:40px auto;">
+        <h1 style="color:#991b1b; margin:0 0 16px;">❌ Error en Sincronización</h1>
+        <div style="background:#fee2e2; padding:16px; border-radius:8px; border-left:4px solid #dc2626;">
+          <p style="margin:0; color:#991b1b;">${escapeHtml(e.message || String(e))}</p>
+        </div>
+        <p style="margin-top:24px; text-align:center;">
+          <a href="/manager/channels/bookingssync" class="btn-link">← Volver a intentar</a>
+        </p>
       </div>
     `));
   }
 });
+
 // ===================== MANAGER: one page for apartments + defaults =====================
 
 // helper: safe value
@@ -8713,6 +8805,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
