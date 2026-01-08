@@ -1359,47 +1359,130 @@ function fmtTime(t) {
 
 function renderNavMenu(currentPage = '') {
   return `
-    <nav style="background:#2d3748; padding:16px 0; margin-bottom:24px; border-radius:12px;">
-      <div style="max-width:1200px; margin:0 auto; display:flex; gap:8px; justify-content:center; flex-wrap:wrap; padding:0 16px;">
-        <a href="/manager" 
-           style="padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:15px; transition:all 0.2s;
-                  ${currentPage === 'manager' ? 'background:#4a5568; color:white;' : 'color:#cbd5e0;'}"
-           ${currentPage !== 'manager' ? 'onmouseover="this.style.background=\'#4a5568\'" onmouseout="this.style.background=\'transparent\'"' : ''}>
-          🏠 Manager
-        </a>
+    <style>
+      .nav-menu-container {
+        background: #2d3748;
+        padding: 16px 0;
+        margin-bottom: 24px;
+        border-radius: 12px;
+      }
+      
+      .nav-menu-wrapper {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 16px;
+        position: relative;
+      }
+      
+      .nav-hamburger {
+        display: none;
+        background: transparent;
+        border: none;
+        color: white;
+        font-size: 28px;
+        cursor: pointer;
+        padding: 8px;
+      }
+      
+      .nav-menu-links {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      
+      .nav-link {
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 15px;
+        transition: all 0.2s;
+        color: #cbd5e0;
+      }
+      
+      .nav-link:hover {
+        background: #4a5568;
+      }
+      
+      .nav-link.active {
+        background: #4a5568;
+        color: white;
+      }
+      
+      .nav-link.logout {
+        color: #f56565;
+        margin-left: auto;
+      }
+      
+      .nav-link.logout:hover {
+        background: #742a2a;
+        color: white;
+      }
+      
+      @media (max-width: 768px) {
+        .nav-hamburger {
+          display: block;
+        }
         
-        <a href="/staff/checkins" 
-           style="padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:15px; transition:all 0.2s;
-                  ${currentPage === 'staff' ? 'background:#4a5568; color:white;' : 'color:#cbd5e0;'}"
-           ${currentPage !== 'staff' ? 'onmouseover="this.style.background=\'#4a5568\'" onmouseout="this.style.background=\'transparent\'"' : ''}>
-          📅 Staff
-        </a>
+        .nav-menu-links {
+          display: none;
+          flex-direction: column;
+          gap: 4px;
+          margin-top: 12px;
+        }
         
-        <a href="/manager/whatsapp" 
-           style="padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:15px; transition:all 0.2s;
-                  ${currentPage === 'whatsapp' ? 'background:#4a5568; color:white;' : 'color:#cbd5e0;'}"
-           ${currentPage !== 'whatsapp' ? 'onmouseover="this.style.background=\'#4a5568\'" onmouseout="this.style.background=\'transparent\'"' : ''}>
-          💬 WhatsApp
-        </a>
+        .nav-menu-links.open {
+          display: flex;
+        }
         
-        <a href="/manager/apartment" 
-           style="padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:15px; transition:all 0.2s;
-                  ${currentPage === 'apartamentos' ? 'background:#4a5568; color:white;' : 'color:#cbd5e0;'}"
-           ${currentPage !== 'apartamentos' ? 'onmouseover="this.style.background=\'#4a5568\'" onmouseout="this.style.background=\'transparent\'"' : ''}>
-          🏢 Apartamentos
-        </a>
+        .nav-link {
+          width: 100%;
+          text-align: center;
+        }
         
-        <a href="/logout" 
-           style="padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:15px; color:#f56565; margin-left:auto;"
-           onmouseover="this.style.background='#742a2a'; this.style.color='white'" 
-           onmouseout="this.style.background='transparent'; this.style.color='#f56565'">
-          🚪 Salir
-        </a>
+        .nav-link.logout {
+          margin-left: 0;
+        }
+      }
+    </style>
+    
+    <nav class="nav-menu-container">
+      <div class="nav-menu-wrapper">
+        <button class="nav-hamburger" onclick="toggleMobileNav()">☰</button>
+        
+        <div class="nav-menu-links" id="navMenuLinks">
+          <a href="/manager" class="nav-link ${currentPage === 'manager' ? 'active' : ''}">
+            🏠 Manager
+          </a>
+          
+          <a href="/staff/checkins" class="nav-link ${currentPage === 'staff' ? 'active' : ''}">
+            📅 Staff
+          </a>
+          
+          <a href="/manager/whatsapp" class="nav-link ${currentPage === 'whatsapp' ? 'active' : ''}">
+            💬 WhatsApp
+          </a>
+          
+          <a href="/manager/apartment" class="nav-link ${currentPage === 'apartamentos' ? 'active' : ''}">
+            🏢 Apartamentos
+          </a>
+          
+          <a href="/logout" class="nav-link logout">
+            🚪 Salir
+          </a>
+        </div>
       </div>
     </nav>
+    
+    <script>
+      function toggleMobileNav() {
+        const menu = document.getElementById('navMenuLinks');
+        menu.classList.toggle('open');
+      }
+    </script>
   `;
 }
-
 function renderPage(title, innerHtml, currentPage = '', showNav = true) {
   return `<!doctype html>
 <html lang="en">
@@ -7111,6 +7194,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
