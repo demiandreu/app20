@@ -3478,14 +3478,7 @@ app.get("/guest/:bookingId", async (req, res) => {
        ORDER BY sort_order ASC, id ASC`,
       [String(roomIdToUse)]
     );
-    
-    // ✅ Textos traducidos ACTUALIZADOS
-    // ============================================
-// SECCIÓN DEL CÓDIGO - VERSIÓN SIMPLE
-// Solo añade mensaje informativo, sin cambiar funcionalidad
-// ============================================
-
-// En tu objeto uiText, añade estos textos:
+  }
 
 const uiText = {
   es: {
@@ -3650,11 +3643,15 @@ ${r.lock_visible && r.lock_code ? `
 
 app.get("/guest/:bookingId", async (req, res) => {
   const { bookingId } = req.params;
+  console.log("🔍 Request for bookingId:", bookingId);
+  
+  // Detectar idioma
   const lang = String(req.query.lang || 'es').toLowerCase().substring(0, 2);
   const validLangs = ['es', 'en', 'fr', 'de', 'ru'];
   const currentLang = validLangs.includes(lang) ? lang : 'es';
   
   try {
+    // Buscar la reserva
     const result = await pool.query(
       `SELECT c.*, 
               br.apartment_name as apartment_from_rooms,
@@ -3672,9 +3669,14 @@ app.get("/guest/:bookingId", async (req, res) => {
       [bookingId, bookingId, `beds24_${bookingId}`]
     );
     
+    console.log("📊 Query result:", result.rows.length);
+    
     if (result.rows.length === 0) {
+      console.log("❌ Booking not found for:", bookingId);
       return res.status(404).send(renderPage("Not Found", `
         <h1>❌ Reserva no encontrada</h1>
+        <p>La reserva ${bookingId} no existe.</p>
+        <p><a href="/" class="btn-link">← Volver</a></p>
       `));
     }
     
@@ -3682,17 +3684,32 @@ app.get("/guest/:bookingId", async (req, res) => {
     const apartmentName = r.apartment_name || r.apartment_from_rooms || 'N/A';
     const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     
+    console.log("✅ Booking data:", {
+      id: r.beds24_booking_id,
+      name: r.full_name,
+      room_id: r.room_id,
+      room_id_from_rooms: r.room_id_from_rooms,
+      room_id_to_use: roomIdToUse,
+      apartment: apartmentName
+    });
+    
+    // Cargar secciones del apartamento
     const secRes = await pool.query(
       `SELECT id, title, body, icon, new_media_type, new_media_url, translations
        FROM apartment_sections
-       WHERE room_id::text = $1 AND is_active = true
+       WHERE room_id::text = $1
+         AND is_active = true
        ORDER BY sort_order ASC, id ASC`,
       [String(roomIdToUse)]
     );
     
+    console.log("📋 Sections found:", secRes.rows.length, "for room_id:", roomIdToUse);
+    
+    // Textos traducidos
     const uiText = {
       es: {
         welcome: 'Bienvenido',
+        apartment: 'Apartamento',
         guest: 'Huésped',
         reservation: 'Reserva',
         arrival: 'Llegada',
@@ -3704,18 +3721,293 @@ app.get("/guest/:bookingId", async (req, res) => {
         accessCode: 'Código de acceso',
         showCode: 'Mostrar código',
         noShare: 'No compartas este código con terceros.',
-        codeWillAppear: 'Tu código de acceso aparecerá aquí el día de tu llegada.', // ✅ AÑADIDO
+        codeWillAppear: 'Tu código de acceso aparecerá aquí el día de tu llegada.',
         apartmentInfo: 'Información del apartamento',
         noInfo: 'Todavía no hay información para este apartamento.',
       },
-      // ... resto de idiomas igual pero con codeWillAppear añadido
+      en: {
+        welcome: 'Welcome',
+        apartment: 'Apartment',
+        guest: 'Guest',
+        reservation: 'Reservation',
+        arrival: 'Arrival',
+        departure: 'Departure',
+        guests: 'Guests',
+        adults: 'adults',
+        children: 'children',
+        people: 'people',
+        accessCode: 'Access code',
+        showCode: 'Show code',
+        noShare: 'Do not share this code with third parties.',
+        codeWillAppear: 'Your access code will appear here on your arrival day.',
+        apartmentInfo: 'Apartment information',
+        noInfo: 'No information available yet for this apartment.',
+      },
+      ru: {
+        welcome: 'Добро пожаловать',
+        apartment: 'Квартира',
+        guest: 'Гость',
+        reservation: 'Бронирование',
+        arrival: 'Прибытие',
+        departure: 'Отъезд',
+        guests: 'Гости',
+        adults: 'взрослых',
+        children: 'детей',
+        people: 'человек',
+        accessCode: 'Код доступа',
+        showCode: 'Показать код',
+        noShare: 'Не делитесь этим кодом с третьими лицами.',
+        codeWillAppear: 'Ваш код доступа появится здесь в день вашего заезда.',
+        apartmentInfo: 'Информация о квартире',
+        noInfo: 'Информация для этой квартиры пока недоступна.',
+      },
+      fr: {
+        welcome: 'Bienvenue',
+        apartment: 'Appartement',
+        guest: 'Invité',
+        reservation: 'Réservation',
+        arrival: 'Arrivée',
+        departure: 'Départ',
+        guests: 'Invités',
+        adults: 'adultes',
+        children: 'enfants',
+        people: 'personnes',
+        accessCode: "Code d'accès",
+        showCode: 'Afficher le code',
+        noShare: 'Ne partagez pas ce code avec des tiers.',
+        codeWillAppear: "Votre code d'accès apparaîtra ici le jour de votre arrivée.",
+        apartmentInfo: "Informations sur l'appartement",
+        noInfo: "Aucune information disponible pour cet appartement pour le moment.",
+      },
+      de: {
+        welcome: 'Willkommen',
+        apartment: 'Wohnung',
+        guest: 'Gast',
+        reservation: 'Reservierung',
+        arrival: 'Ankunft',
+        departure: 'Abreise',
+        guests: 'Gäste',
+        adults: 'Erwachsene',
+        children: 'Kinder',
+        people: 'Personen',
+        accessCode: 'Zugangscode',
+        showCode: 'Code anzeigen',
+        noShare: 'Teilen Sie diesen Code nicht mit Dritten.',
+        codeWillAppear: 'Ihr Zugangscode wird hier am Tag Ihrer Ankunft erscheinen.',
+        apartmentInfo: 'Wohnungsinformationen',
+        noInfo: 'Für diese Wohnung sind noch keine Informationen verfügbar.',
+      },
     };
     
     const t = uiText[currentLang] || uiText.es;
     const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
     
-    // ... [tu código de helpers y sections] ...
+    // Helper para traducciones
+    function getTranslatedText(section, field, lang) {
+      if (!section.translations) return section[field] || '';
+      
+      try {
+        const trans = typeof section.translations === 'string' 
+          ? JSON.parse(section.translations) 
+          : section.translations;
+        
+        if (trans[field] && trans[field][lang]) {
+          const text = trans[field][lang].trim();
+          if (text) return text;
+        }
+        
+        if (trans[field] && trans[field]['es']) {
+          const text = trans[field]['es'].trim();
+          if (text) return text;
+        }
+        
+        if (trans[field] && trans[field]['en']) {
+          const text = trans[field]['en'].trim();
+          if (text) return text;
+        }
+      } catch (e) {
+        console.error('Translation parse error:', e);
+      }
+      
+      return section[field] || '';
+    }
     
+    // Helper para convertir URLs de YouTube
+    function getYouTubeEmbedUrl(url) {
+      if (!url) return null;
+      
+      if (url.match(/\.(mp4|webm|ogg|mov)(\?|$)/i)) {
+        return { type: 'direct', url: url };
+      }
+      
+      const vimeoMatch = url.match(/(?:https?:\/\/)?(?:www\.)?(?:player\.)?vimeo\.com\/(?:video\/|channels\/\w+\/)?(\d+)/);
+      if (vimeoMatch && vimeoMatch[1]) {
+        return { type: 'vimeo', url: `https://player.vimeo.com/video/${vimeoMatch[1]}` };
+      }
+      
+      const youtubePatterns = [
+        /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/,
+        /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]+)/,
+        /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]+)/,
+        /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/
+      ];
+      
+      for (const pattern of youtubePatterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+          return { type: 'youtube', url: `https://www.youtube.com/embed/${match[1]}` };
+        }
+      }
+      
+      return null;
+    }
+    
+    // Generar HTML de secciones
+    const sectionsHtml = secRes.rows.length === 0
+      ? `<div class="muted">${t.noInfo}</div>`
+      : `<h2 style="margin-top:18px;">${t.apartmentInfo}</h2>
+         <div id="guest-accordion">
+           ${secRes.rows.map((s) => {
+             const icon = s.icon ? `${s.icon} ` : '';
+             const translatedTitle = getTranslatedText(s, 'title', currentLang);
+             const title = icon + escapeHtml(translatedTitle);
+             const rawBody = getTranslatedText(s, 'body', currentLang);
+             
+             const bodyHtml = escapeHtml(rawBody)
+               .replace(/\n/g, "<br/>")
+               .replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+                 const safeUrl = escapeHtml(url);
+                 return `<a href="${safeUrl}" target="_blank" rel="noopener" class="btn-link">${safeUrl}</a>`;
+               });
+             
+             let mediaHtml = '';
+             if (s.new_media_url && s.new_media_type) {
+               const mediaUrl = String(s.new_media_url).trim();
+               
+               if (s.new_media_type === 'video') {
+                 const embedResult = getYouTubeEmbedUrl(mediaUrl);
+                 
+                 if (embedResult) {
+                   if (embedResult.type === 'youtube' || embedResult.type === 'vimeo') {
+                     mediaHtml = `
+                       <div style="margin-top:16px;">
+                         <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;max-width:100%;background:#000;border-radius:8px;">
+                           <iframe 
+                             src="${escapeHtml(embedResult.url)}" 
+                             style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"
+                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                             allowfullscreen>
+                           </iframe>
+                         </div>
+                       </div>
+                     `;
+                   } else if (embedResult.type === 'direct') {
+                     mediaHtml = `
+                       <div style="margin-top:16px;">
+                         <video 
+                           controls 
+                           style="width:100%;max-width:100%;border-radius:8px;display:block;background:#000;"
+                           preload="metadata">
+                           <source src="${escapeHtml(embedResult.url)}" type="video/mp4">
+                           Your browser does not support the video tag.
+                         </video>
+                       </div>
+                     `;
+                   }
+                 }
+               } else if (s.new_media_type === 'image') {
+                 const imageUrls = mediaUrl.split('\n').map(url => url.trim()).filter(url => url.length > 0);
+                 
+                 if (imageUrls.length === 1) {
+                   mediaHtml = `
+                     <div style="margin-top:16px;">
+                       <img 
+                         src="${escapeHtml(imageUrls[0])}" 
+                         alt="${escapeHtml(translatedTitle)}"
+                         style="max-width:100%;height:auto;border-radius:8px;display:block;"
+                         loading="lazy"
+                       />
+                     </div>
+                   `;
+                 } else if (imageUrls.length > 1) {
+                   const galleryImages = imageUrls.map(url => `
+                     <div style="flex:0 0 48%;margin-bottom:12px;">
+                       <img 
+                         src="${escapeHtml(url)}" 
+                         alt="${escapeHtml(translatedTitle)}"
+                         style="width:100%;height:auto;border-radius:8px;display:block;object-fit:cover;"
+                         loading="lazy"
+                       />
+                     </div>
+                   `).join('');
+                   
+                   mediaHtml = `
+                     <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:4%;">
+                       ${galleryImages}
+                     </div>
+                   `;
+                 }
+               } else if (s.new_media_type === 'map') {
+                 mediaHtml = `
+                   <div style="margin-top:16px;">
+                     <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;max-width:100%;background:#f3f4f6;border-radius:8px;">
+                       <iframe 
+                         src="${escapeHtml(mediaUrl)}" 
+                         style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"
+                         allowfullscreen 
+                         loading="lazy">
+                       </iframe>
+                     </div>
+                   </div>
+                 `;
+               } else if (s.new_media_type === 'link') {
+                 mediaHtml = `
+                   <div style="margin-top:16px;">
+                     <a 
+                       href="${escapeHtml(mediaUrl)}" 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       style="display:inline-block;padding:12px 24px;background:#3b82f6;color:white;text-decoration:none;border-radius:8px;font-weight:600;transition:background 0.2s;"
+                       onmouseover="this.style.background='#2563eb'" 
+                       onmouseout="this.style.background='#3b82f6'">
+                       🔗 Open link
+                     </a>
+                   </div>
+                 `;
+               }
+             }
+             
+             const panelId = `acc_${s.id}`;
+             
+             return `
+               <div style="border:1px solid #e5e7eb;border-radius:14px;margin:10px 0;overflow:hidden;background:#fff;">
+                 <button type="button" data-acc-btn="${panelId}"
+                   style="width:100%;text-align:left;padding:12px 14px;border:0;background:#f9fafb;cursor:pointer;font-weight:600;">
+                   ${title}
+                 </button>
+                 <div id="${panelId}" style="display:none;padding:12px 14px;">
+                   <div>${bodyHtml}</div>
+                   ${mediaHtml}
+                 </div>
+               </div>
+             `;
+           }).join('')}
+         </div>
+         <script>
+           (function () {
+             var buttons = document.querySelectorAll("[data-acc-btn]");
+             buttons.forEach(function (btn) {
+               btn.addEventListener("click", function () {
+                 var id = btn.getAttribute("data-acc-btn");
+                 var panel = document.getElementById(id);
+                 if (!panel) return;
+                 panel.style.display = (panel.style.display === "block") ? "none" : "block";
+               });
+             });
+           })();
+         </script>`;
+    
+    // Renderizar página
     const html = `
       <div style="text-align:right; margin-bottom:12px;">
         <select onchange="window.location.href = window.location.pathname + '?lang=' + this.value" 
@@ -3799,403 +4091,16 @@ app.get("/guest/:bookingId", async (req, res) => {
     
   } catch (e) {
     console.error("❌ Guest dashboard error:", e);
-    return res.status(500).send(renderPage("Error", `<h1>Error</h1>`));
-  }
-});
-
-// ============ FORMATEAR NOMBRE CON INICIALES ============
-function formatGuestName(fullName) {
-  if (!fullName) return '—';
-  
-  const parts = String(fullName).trim().split(/\s+/);
-  
-  if (parts.length === 1) {
-    // Solo un nombre
-    return escapeHtml(parts[0]);
-  }
-  
-  // Primera parte completa + iniciales del resto
-  const firstName = parts[0];
-  const initials = parts.slice(1).map(p => p.charAt(0).toUpperCase() + '.').join(' ');
-  
-  return escapeHtml(`${firstName} ${initials}`);
-}
-// ===================== STAFF: CHECKINS LIST (FIXED) =====================
-app.get("/staff/checkins", async (req, res) => {
-  try {
-    const { from, to, quick: quickRaw } = req.query;
-
-    const tz = "Europe/Madrid";
-    const today = ymdInTz(new Date(), tz);
-    const tomorrow = ymdInTz(new Date(Date.now() + 86400000), tz);
-    const yesterday = ymdInTz(new Date(Date.now() - 86400000), tz);
-
-    const hasAnyFilter = Boolean(from || to || quickRaw);
-    const quickCandidate = hasAnyFilter ? quickRaw : "today";
-    const quick = ["yesterday", "today", "tomorrow"].includes(quickCandidate) ? quickCandidate : "";
-
-    let fromDate = from;
-    let toDate = to;
-    if (quick) {
-      if (quick === "yesterday") { fromDate = yesterday; toDate = yesterday; }
-      else if (quick === "today") { fromDate = today; toDate = today; }
-      else if (quick === "tomorrow") { fromDate = tomorrow; toDate = tomorrow; }
-    }
-
-   function buildWhereFor(fieldName) {
-  const where = [];
-  const params = [];
-
-  if (fromDate) {
-    params.push(fromDate);
-    where.push(`${fieldName} >= $${params.length}`);
-  }
-  if (toDate) {
-    params.push(toDate);
-    where.push(`${fieldName} <= $${params.length}`);
-  }
-
-  // IMPORTANT: return only "AND ..." fragment (no WHERE)
-  const andSql = where.length ? ` AND ${where.join(" AND ")}` : "";
-  return { andSql, params };
-}
-
-const wArr = buildWhereFor("c.arrival_date");
-const wDep = buildWhereFor("c.departure_date");
-
-// Arrivals
-const arrivalsRes = await pool.query(
-  `
-  SELECT
-    c.id,
-    c.booking_token,
-    c.beds24_booking_id,
-    c.apartment_id,
-    c.apartment_name,
-    c.room_name,
-    c.full_name,
-    c.phone,
-    c.arrival_date,
-    c.arrival_time,
-    c.departure_date,
-    c.departure_time,
-    c.adults,
-    c.children,
-    c.lock_code,
-    c.lock_visible AS lock_code_visible,
-    c.clean_ok,
-    c.room_id,
-    c.early_checkin_requested,
-    c.late_checkout_requested  
-  FROM checkins c
-  LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.apartment_id::text  -- ✅ AÑADIR ESTA LÍNEA
-  WHERE (c.cancelled = false OR c.cancelled IS NULL)
-    AND c.arrival_date IS NOT NULL
-    AND (br.show_in_staff IS NULL OR br.show_in_staff = true)  -- ✅ AÑADIR ESTA LÍNEA
-    ${wArr.andSql}
-  ORDER BY c.arrival_date ASC, c.arrival_time ASC, c.id DESC
-  LIMIT 300
-  `,
-  wArr.params
-);
-
-// QUERY DE DEPARTURES - Añadir JOIN y filtro:
-const departuresRes = await pool.query(
-  `
-  SELECT
-    c.id,
-    c.booking_token,
-    c.beds24_booking_id,
-    c.apartment_id,
-    c.apartment_name,
-    c.room_name,
-    c.full_name,
-    c.phone,
-    c.arrival_date,
-    c.arrival_time,
-    c.departure_date,
-    c.departure_time,
-    c.adults,
-    c.children,
-    c.lock_code,
-    c.lock_visible AS lock_code_visible,
-    c.clean_ok,
-    c.room_id,
-    c.early_checkin_requested,  
-    c.late_checkout_requested 
-  FROM checkins c
-  LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.apartment_id::text  -- ✅ AÑADIR ESTA LÍNEA
-  WHERE c.cancelled = false
-    AND c.departure_date IS NOT NULL
-    AND (br.show_in_staff IS NULL OR br.show_in_staff = true)  -- ✅ AÑADIR ESTA LÍNEA
-    ${wDep.andSql}
-  ORDER BY c.departure_date ASC, c.departure_time ASC, c.id DESC
-  LIMIT 300
-  `,
-  wDep.params
-);
-    const arrivals = arrivalsRes.rows || [];
-  // 🔍 DEBUG - Ver qué datos llegan
-console.log('📊 ARRIVALS DEBUG:');
-arrivals.slice(0, 3).forEach(r => {
-  console.log(`  ID: ${r.id}, Name: ${r.full_name}`);
-  console.log(`    arrival_time: ${r.arrival_time}`);
-  console.log(`    departure_time: ${r.departure_time}`);
-  console.log(`    early_checkin_requested: ${r.early_checkin_requested}`);  // ✅ AÑADIR
-  console.log(`    late_checkout_requested: ${r.late_checkout_requested}`);  // ✅ AÑADIR
-});
-    const departures = departuresRes.rows || [];
-
-    // Color logic
-    const yesterdayStr = yesterday;
-// Build needsCleanSet
-// Color logic (CHECKINS-only)
-const { rows: needsCleanRows } = await pool.query(
-  `
-  SELECT DISTINCT c_today.apartment_id
-  FROM checkins c_today
-  JOIN checkins c_yesterday
-    ON c_today.apartment_id = c_yesterday.apartment_id
-  WHERE c_today.cancelled = false
-    AND c_yesterday.cancelled = false
-
-    -- check-in today
-    AND c_today.arrival_date = $1::date
-
-    -- occupied yesterday (stayed overnight into today)
-    AND c_yesterday.arrival_date <= $2::date
-    AND c_yesterday.departure_date > $2::date
-  `,
-  [today, yesterday]
-);
-
-const needsCleanSet = new Set(needsCleanRows.map(r => String(r.apartment_id)));
-
-function getColumnClass(id) {
-  if (!id) return "";
-  if (needsCleanSet.has(String(id))) return "needs-clean"; // 🩶
-  return ""; // ⚪
-}
-
-// 🎨 NUEVA FUNCIÓN - Color coding para early/late check-in
-function getEarlyLateClass(checkin) {
-  const hasEarly = checkin.early_checkin_requested === true;
-  const hasLate = checkin.late_checkout_requested === true;
-  
-  if (hasEarly && hasLate) return "early-late-both"; // 🟣 Morado
-  if (hasEarly) return "early-request";               // 🟠 Naranja
-  if (hasLate) return "late-request";                 // 🔴 Rojo
-  return "";                                           // ⚪ Normal
-}
-
-// Toolbar
-const toolbar = `
-  <h1>Staff · Llegadas y Salidas</h1>
-  <p class="muted">Zona horaria: España (Europe/Madrid)</p>
-  
-  <!-- 🎨 LEYENDA DE COLORES -->
-  <div style="display:flex; gap:16px; margin:12px 0; padding:12px; background:#f9f9f9; border-radius:8px; flex-wrap:wrap;">
-    <div style="display:flex; align-items:center; gap:8px;">
-      <div style="width:20px; height:20px; background:#fff3e0; border-left:4px solid #ff9800; border-radius:4px;"></div>
-      <span style="font-size:14px;">🟠 Early check-in (&lt;17:00)</span>
-    </div>
-    <div style="display:flex; align-items:center; gap:8px;">
-      <div style="width:20px; height:20px; background:#ffebee; border-left:4px solid #f44336; border-radius:4px;"></div>
-      <span style="font-size:14px;">🔴 Late checkout (&gt;11:00)</span>
-    </div>
-    <div style="display:flex; align-items:center; gap:8px;">
-      <div style="width:20px; height:20px; background:#f3e5f5; border-left:4px solid #9c27b0; border-radius:4px;"></div>
-      <span style="font-size:14px;">🟣 Ambos</span>
-    </div>
-    <div style="display:flex; align-items:center; gap:8px;">
-      <div style="width:20px; height:20px; background:#f5f5f5; border-left:4px solid #9e9e9e; border-radius:4px;"></div>
-      <span style="font-size:14px;">🩶 Requiere limpieza</span>
-    </div>
-  </div>
-  
-  <form method="GET" action="/staff/checkins" style="margin:20px 0;">
-    <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
-      <div>
-        <label>Desde</label>
-        <input type="date" name="from" value="${fromDate || ""}" />
-      </div>
-      <div>
-        <label>Hasta</label>
-        <input type="date" name="to" value="${toDate || ""}" />
-      </div>
-      <button type="submit" class="btn-primary">Filtrar</button>
-      <a href="/staff/checkins" class="btn-link">Resetear</a>
-    </div>
-    <div style="margin-top:12px;">
-      <p class="muted" style="margin:0 0 8px;">Filtros rápidos</p>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <a href="?quick=yesterday" class="btn-base ${quick === "yesterday" ? "btn-success" : ""}">Ayer</a>
-        <a href="?quick=today" class="btn-base ${quick === "today" ? "btn-success" : ""}">Hoy</a>
-        <a href="?quick=tomorrow" class="btn-base ${quick === "tomorrow" ? "btn-success" : ""}">Mañana</a>
-      </div>
-    </div>
-  </form>
-`;
-  // REORDERED TABLE - Replace in your renderTable() function
-
-function renderTable(rows, mode) {
-  const title = mode === "departures" 
-    ? `Salidas <span class="muted">(${rows.length})</span>` 
-    : `Llegadas <span class="muted">(${rows.length})</span>`;
-  const dateColTitle = mode === "departures" ? "Salida" : "Llegada";
-  
-  const tbody = rows.length ? rows.map(r => {
-    const mainDate = mode === "departures" 
-      ? `${fmtDate(r.departure_date)} ${fmtTime(r.departure_time)}`
-      : `${fmtDate(r.arrival_date)} ${fmtTime(r.arrival_time)}`;
-    
-    // ✅ NUEVO - Determinar bookingId y URL del guest panel
-    const bookingId = r.beds24_booking_id 
-      ? String(r.beds24_booking_id).replace(/\s/g, '')
-      : r.booking_token || r.id;
-
-    const guestPortalUrl = bookingId
-      ? `/guest/${encodeURIComponent(bookingId)}`
-      : null;
-
-    const guestBtn = guestPortalUrl
-      ? `<a class="btn-small btn-ghost" href="${guestPortalUrl}" target="_blank">Abrir</a>`
-      : `<span class="muted">Sin link</span>`;
-    
-   const earlyLateClass = getEarlyLateClass(r);
-
-return `
-  <tr class="${earlyLateClass}">
-        <!-- 1. Limpieza -->
-        <td class="sticky-col">
-          <form method="POST" action="/staff/checkins/${r.id}/clean">
-            <button type="submit" class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}">
-              ${r.clean_ok ? "✓" : ""}
-            </button>
-          </form>
-        </td>
-       <td style="font-family:monospace; font-size:13px;">
-          ${escapeHtml(String(r.beds24_booking_id || r.booking_token || r.id))}
-        </td>
-        
-        <!-- 2. Huésped -->
-        <td>${guestBtn}</td>
-        <!-- Nombre del huésped -->
-<td>${formatGuestName(r.full_name)}</td>
-        
-        <!-- 3. Llegada -->
-        <td>${mainDate}</td>
-        
-        <!-- 4. Noches -->
-        <td>${calcNights(r.arrival_date, r.departure_date)}</td>
-        
-        <!-- 5. A|C -->
-        <td style="white-space:nowrap;">${(r.adults || 0)}&nbsp;|&nbsp;${(r.children || 0)}</td>
-        
-        <!-- 6. Apartamento -->
-        <td class="apartment-cell ${getColumnClass(r.apartment_id)}">
-          ${escapeHtml(r.room_name || r.apartment_name || "Sin nombre")}
-        </td>
-        
-        <!-- 7. Código -->
-        <td>
-          <form method="POST" action="/staff/checkins/${r.id}/lock" class="lock-form">
-            <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
-            
-            <input
-              type="text"
-              class="lock-input"
-              name="lock_code"
-              value="${escapeHtml(r.lock_code || "")}"
-              placeholder="0000"
-              inputmode="numeric"
-              pattern="[0-9]*"
-            />
-
-            <div class="lock-actions">
-              <button type="submit" class="btn-small btn-primary">
-                Guardar
-              </button>
-
-              <button
-                type="submit"
-                name="clear"
-                value="1"
-                class="btn-small btn-danger"
-              >
-                Clear
-              </button>
-            </div>
-          </form>
-        </td>
-        
-        <!-- 8. Visible -->
-        <td>
-          <form method="POST" action="/staff/checkins/${r.id}/visibility" class="vis-form">
-            <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
-
-            <span class="pill ${r.lock_code_visible ? "pill-yes" : "pill-no"}">
-              ${r.lock_code_visible ? "Sí" : "No"}
-            </span>
-
-            <button type="submit" class="btn-small ${r.lock_code_visible ? "btn-ghost" : ""}">
-              ${r.lock_code_visible ? "Ocultar" : "Mostrar"}
-            </button>
-          </form>
-        </td>
-        
-        <!-- 9. Acciones -->
-        <td>
-          <form method="POST" action="/staff/checkins/${r.id}/delete"
-                onsubmit="return confirm('¿Seguro que quieres borrar esta reserva?');">
-            <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}" />
-            <button type="submit" class="btn-small danger">Borrar</button>
-          </form>
-        </td>
-      </tr>
-    `;
-  }).join("") : `<tr><td colspan="10" class="muted">No hay registros</td></tr>`;
-
-  return `
-    <h2 style="margin:24px 0 12px;">${title}</h2>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th class="sticky-col">Limpieza</th>
-            <th>ID</th>
-            <th>Portal</th>
-            <th>Huésped</th>
-            <th>${dateColTitle}</th>
-            <th>Noches</th>
-            <th>A|C</th>
-            <th>Apartamento</th>
-            <th>Código</th>
-            <th>Visible</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>${tbody}</tbody>
-      </table>
-    </div>
-  `;
-}
-
-    const pageHtml = toolbar + renderTable(arrivals, "arrivals") + `<div style="height:24px;"></div>` + renderTable(departures, "departures");
-
-    res.send(renderPage("Staff · Llegadas y Salidas", pageHtml, 'staff'));
-  } catch (e) {
-    console.error("Error en staff/checkins:", e);
-    res.status(500).send(renderPage("Error", `
+    console.error("Stack:", e.stack);
+    return res.status(500).send(renderPage("Error", `
       <div class="card">
-        <h1 style="color:#991b1b;">❌ Error al cargar la lista</h1>
+        <h1>Error</h1>
         <p>${escapeHtml(e.message || String(e))}</p>
-        <p><a href="/staff/checkins" class="btn-link">Recargar</a></p>
       </div>
     `));
   }
 });
-
+  
 function safeRedirect(res, returnTo, fallback = "/staff/checkins") {
   const target = String(returnTo || "").trim();
   // allow only internal relative paths
@@ -6709,6 +6614,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
