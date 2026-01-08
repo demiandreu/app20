@@ -4221,42 +4221,134 @@ console.log("🌐 Language detection:", {
 
 // ===================== GUEST ROUTES =====================
 
-// --- Home ---
 app.get("/", (req, res) => {
+  // Si ya está autenticado, redirigir según rol
+  if (req.session.user) {
+    const role = req.session.user.role;
+    
+    if (role === 'STAFF_CLEANING') {
+      return res.redirect('/staff/my-cleanings');
+    } else if (role === 'CLEANING_MANAGER') {
+      return res.redirect('/staff/checkins');
+    } else {
+      return res.redirect('/manager');
+    }
+  }
+
+  // Landing page para usuarios no autenticados
   const html = `
-    <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-      <div style="text-align:center; color:white; max-width:600px; padding:40px;">
-        <h1 style="font-size:48px; margin:0 0 16px; font-weight:700;">
-          🏠 RCS Check-in
-        </h1>
-        <p style="font-size:20px; margin:0 0 40px; opacity:0.9;">
-          Sistema de gestión para alquileres vacacionales
-        </p>
-        <a href="/login" style="display:inline-block; padding:16px 48px; background:white; color:#667eea; text-decoration:none; border-radius:12px; font-size:18px; font-weight:600; box-shadow:0 4px 20px rgba(0,0,0,0.2);">
-          Iniciar Sesión →
-        </a>
-        <p style="margin-top:40px; font-size:14px; opacity:0.7;">
-          Gestiona tus propiedades, automatiza WhatsApp, y más
-        </p>
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>RCS Check-in - Rental Connect Solutions</title>
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+        }
+        
+        .landing-container {
+          text-align: center;
+          color: white;
+          max-width: 500px;
+        }
+        
+        .logo {
+          font-size: 80px;
+          margin-bottom: 20px;
+          animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
+        }
+        
+        h1 {
+          font-size: 48px;
+          font-weight: 700;
+          margin-bottom: 10px;
+          text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .subtitle {
+          font-size: 18px;
+          opacity: 0.9;
+          margin-bottom: 30px;
+          font-weight: 300;
+        }
+        
+        .company {
+          font-size: 14px;
+          opacity: 0.8;
+          margin-bottom: 40px;
+          font-weight: 400;
+          letter-spacing: 1px;
+        }
+        
+        .btn-login {
+          display: inline-block;
+          padding: 16px 40px;
+          background: white;
+          color: #667eea;
+          text-decoration: none;
+          border-radius: 50px;
+          font-weight: 600;
+          font-size: 16px;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+          transition: all 0.3s ease;
+        }
+        
+        .btn-login:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .features {
+          margin-top: 50px;
+          font-size: 14px;
+          opacity: 0.85;
+          line-height: 1.8;
+        }
+        
+        @media (max-width: 600px) {
+          h1 { font-size: 36px; }
+          .logo { font-size: 60px; }
+          .subtitle { font-size: 16px; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="landing-container">
+        <div class="logo">🔐</div>
+        <h1>RCS Check-in</h1>
+        <p class="company">by Rental Connect Solutions</p>
+        <p class="subtitle">Sistema de gestión para alquileres vacacionales</p>
+        
+        <a href="/login" class="btn-login">Iniciar Sesión →</a>
+        
+        <div class="features">
+          <p>Gestiona tus propiedades, automatiza WhatsApp, y más</p>
+        </div>
       </div>
-    </div>
+    </body>
+    </html>
   `;
   
-  res.send(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RCS Check-in</title>
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  </style>
-</head>
-<body>
-  ${html}
-</body>
-</html>`);
+  res.send(html);
 });
 
 
@@ -7890,6 +7982,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
