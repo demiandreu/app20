@@ -2349,6 +2349,221 @@ FROM beds24_rooms
   }
 });
 
+// ============================================
+// 💰 MANAGER: FACTURAS / INVOICES
+// ============================================
+
+app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, res) => {
+  try {
+    const { month, year } = req.query;
+    
+    // Detectar mes/año actual si no se especifica
+    const now = new Date();
+    const selectedYear = year ? parseInt(year) : now.getFullYear();
+    const selectedMonth = month ? parseInt(month) : now.getMonth() + 1;
+    
+    // Calcular rango de fechas
+    const startDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
+    const endDate = selectedMonth === 12 
+      ? `${selectedYear + 1}-01-01`
+      : `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+
+    // Obtener todas las reservas del mes
+    const result = await pool.query(`
+      SELECT 
+        id,
+        beds24_booking_id,
+        full_name,
+        arrival_date,
+        departure_date,
+        apartment_name,
+        beds24_raw,
+        created_at
+      FROM checkins
+      WHERE arrival_date >= $1
+        AND arrival_date < $2
+        AND cancelled = false
+        AND beds24_raw IS NOT NULL
+      ORDER BY arrival_date ASC
+    `, [startDate, endDate]);
+
+    const bookings = result.rows.map(row => {
+      const raw = row.beds24_raw || {};
+      
+      // Detectar plataforma
+      const channel = (raw.channel || '').toLowerCase();
+      const referer = raw.referer || '';
+      let platform = 'unknown';
+      
+      if (channel === 'booking' || referer.includes('Booking')) {
+        platform = 'booking';
+      } else if (channel === 'airbnb' || referer.includes('Airbnb')) {
+        platform = 'airbnb';
+      } else if (referer.includes('iframe') || channel === 'iframe') {
+        platform = 'direct';
+      }
+
+      // Extraer precio según plataforma
+      let price = 0;
+      let firstInvoiceItem = 0;
+      
+      if (platform === 'booking') {
+        // Para Booking.com: usar el primer invoiceItem con subType 8
+        const invoiceItems = raw.invoiceItems || [];
+        const roomItem = invoiceItems.find(item => item.subType === 8);
+        if (roomItem) {
+          firstInvoiceItem = roomItem.amount || 0;
+          price = firstInvoiceItem;
+        } else {
+          price = raw.price || 0;
+        }
+      } else {
+        // Para Airbnb: usar price directo
+        price = raw.price || 0;
+      }
+
+      // Comisión de la plataforma (real de Beds24)
+      const commission = raw.commission || 0;
+
+      // Calcular Booking IVA (4.72% del price)
+      const bookingIva = price * 0.0472;
+
+      // Calcular Rental Connect (30% de comisión menos Booking IVA)
+      const rentalConnect = (commission * 0.30) - bookingIva;
+
+      // Calcular noches
+      const nights = row.departure_date && row.arrival_date
+        ? Math.ceil((new Date(row.departure_date) - new Date(row.arrival_date)) / (1000 * 60 * 60 * 24))
+        : 0;
+
+      return {
+        id: row.id,
+        beds24_booking_id: row.beds24_booking_id,
+        full_name: row.full_name,
+        arrival_date: row.arrival_date,
+        departure_date: row.departure_date,
+        apartment_name: row.apartment_name,
+        platform,
+        referer: referer,
+        nights,
+        price: price.toFixed(2),
+        firstInvoiceItem: firstInvoiceItem.toFixed(2),
+        commission: commission.toFixed(2),
+        bookingIva: bookingIva.toFixed(2),
+        rentalConnect: rentalConnect.toFixed(2)
+      };
+    });
+
+    // Calcular totales
+    const totals = {
+      count: bookings.length,
+      totalPrice: bookings.reduce((sum, b) => sum + parseFloat(b.price), 0).toFixed(2),
+      totalCommission: bookings.reduce((sum, b) => sum + parseFloat(b.commission), 0).toFixed(2),
+      totalBookingIva: bookings.reduce((sum, b) => sum + parseFloat(b.bookingIva), 0).toFixed(2),
+      totalRentalConnect: bookings.reduce((sum, b) => sum + parseFloat(b.rentalConnect), 0).toFixed(2)
+    };
+
+    // Generar selector de mes/año
+    const monthSelector = `
+      <form method="GET" action="/manager/invoices" style="margin:20px 0;">
+        <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
+          <div>
+            <label>Mes</label>
+            <select name="month" class="form-input">
+              ${[1,2,3,4,5,6,7,8,9,10,11,12].map(m => `
+                <option value="${m}" ${m === selectedMonth ? 'selected' : ''}>
+                  ${['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][m-1]}
+                </option>
+              `).join('')}
+            </select>
+          </div>
+          <div>
+            <label>Año</label>
+            <select name="year" class="form-input">
+              ${[2024, 2025, 2026, 2027].map(y => `
+                <option value="${y}" ${y === selectedYear ? 'selected' : ''}>${y}</option>
+              `).join('')}
+            </select>
+          </div>
+          <button type="submit" class="btn-primary">Filtrar</button>
+          <a href="/manager/invoices/export?month=${selectedMonth}&year=${selectedYear}" class="btn-success">📊 Exportar Excel</a>
+        </div>
+      </form>
+    `;
+
+    // Generar tabla
+    const tableHtml = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID Booking</th>
+              <th>Huésped</th>
+              <th>Plataforma</th>
+              <th>Check-in</th>
+              <th>Check-out</th>
+              <th>Noches</th>
+              <th>Apartamento</th>
+              <th>Precio</th>
+              <th>Comisión</th>
+              <th>Booking IVA</th>
+              <th>Rental Connect</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${bookings.length ? bookings.map(b => `
+              <tr>
+                <td style="font-family:monospace;">${escapeHtml(String(b.beds24_booking_id || b.id))}</td>
+                <td>${escapeHtml(b.full_name)}</td>
+                <td>
+                  <span class="pill ${b.platform === 'booking' ? 'pill-primary' : b.platform === 'airbnb' ? 'pill-success' : 'pill-gray'}">
+                    ${b.platform === 'booking' ? '🏨 Booking' : b.platform === 'airbnb' ? '🏠 Airbnb' : '📧 Directo'}
+                  </span>
+                </td>
+                <td>${fmtDate(b.arrival_date)}</td>
+                <td>${fmtDate(b.departure_date)}</td>
+                <td>${b.nights}</td>
+                <td>${escapeHtml(b.apartment_name)}</td>
+                <td style="text-align:right; font-weight:600;">€${b.price}</td>
+                <td style="text-align:right;">€${b.commission}</td>
+                <td style="text-align:right; color:#dc2626;">€${b.bookingIva}</td>
+                <td style="text-align:right; color:#059669; font-weight:600;">€${b.rentalConnect}</td>
+              </tr>
+            `).join('') : `
+              <tr><td colspan="11" class="muted">No hay reservas en este período</td></tr>
+            `}
+          </tbody>
+          <tfoot>
+            <tr style="background:#f9fafb; font-weight:600;">
+              <td colspan="7">TOTALES (${totals.count} reservas)</td>
+              <td style="text-align:right;">€${totals.totalPrice}</td>
+              <td style="text-align:right;">€${totals.totalCommission}</td>
+              <td style="text-align:right; color:#dc2626;">€${totals.totalBookingIva}</td>
+              <td style="text-align:right; color:#059669;">€${totals.totalRentalConnect}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    `;
+
+    const pageHtml = renderNavMenu('manager', req) + 
+                     `<h1>💰 Facturas y Comisiones</h1>` +
+                     monthSelector + 
+                     tableHtml;
+
+    res.send(renderPage("Facturas", pageHtml, 'manager'));
+  } catch (e) {
+    console.error("Error en /manager/invoices:", e);
+    res.status(500).send(renderPage("Error", `
+      <div class="card">
+        <h1 style="color:#991b1b;">❌ Error al cargar facturas</h1>
+        <p>${escapeHtml(e.message || String(e))}</p>
+        <p><a href="/manager/invoices" class="btn-link">Recargar</a></p>
+      </div>
+    `));
+  }
+});
+
 
 app.get("/manager/apartment", requireAuth, requireRole('MANAGER'), async (req, res) => {
   const html = renderNavMenu('apartamentos', req) + `
@@ -8430,6 +8645,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
