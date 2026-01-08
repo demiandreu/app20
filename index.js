@@ -114,6 +114,54 @@ async function getCurrentUser(req) {
 // MIDDLEWARE: Verificar autenticación
 // ============================================
 
+// ============================================
+// 🛡️ MIDDLEWARE: AUTORIZACIÓN POR ROL
+// ============================================
+
+// Roles hierarchy (mayor número = más permisos)
+const ROLES = {
+  STAFF_CLEANING: 1,
+  CLEANING_MANAGER: 2,
+  MANAGER: 3,
+  ADMIN: 4
+};
+
+// Middleware: Requiere rol mínimo
+function requireRole(minRole) {
+  return (req, res, next) => {
+    if (!req.session.user) {
+      return res.redirect('/login');
+    }
+    
+    const userRole = req.session.user.role || 'STAFF_CLEANING';
+    const userLevel = ROLES[userRole] || 0;
+    const minLevel = ROLES[minRole] || 999;
+    
+    if (userLevel >= minLevel) {
+      next();
+    } else {
+      res.status(403).send(renderPage("Acceso Denegado", `
+        <div class="card" style="max-width: 500px; margin: 100px auto; text-align: center;">
+          <h1>🚫 Acceso Denegado</h1>
+          <p>No tienes permisos para acceder a esta página.</p>
+          <p>Tu rol: <strong>${userRole}</strong></p>
+          <a href="/" style="color: #6366f1; text-decoration: none;">← Volver al inicio</a>
+        </div>
+      `));
+    }
+  };
+}
+
+// Helper: Verificar si el usuario tiene un rol específico o superior
+function hasRole(req, minRole) {
+  if (!req.session.user) return false;
+  
+  const userRole = req.session.user.role || 'STAFF_CLEANING';
+  const userLevel = ROLES[userRole] || 0;
+  const minLevel = ROLES[minRole] || 999;
+  
+  return userLevel >= minLevel;
+}
 
 async function beds24Get(endpoint, params = {}, propertyExternalId) {
   const accessToken = await getBeds24AccessToken(propertyExternalId);
@@ -1358,7 +1406,38 @@ function fmtTime(t) {
 // HELPER: Menú de navegación unificado
 // ============================================
 
-function renderNavMenu(currentPage = '') {
+function renderNavMenu(activePage = '', req = null) {
+  // Si no hay req, asumir ADMIN por defecto (para compatibilidad)
+  const user = req?.session?.user || { role: 'ADMIN' };
+  const userRole = user.role || 'STAFF_CLEANING';
+  
+  // Definir qué puede ver cada rol
+  const canSeeManager = ['ADMIN', 'MANAGER'].includes(userRole);
+  const canSeeStaff = ['ADMIN', 'MANAGER', 'CLEANING_MANAGER'].includes(userRole);
+  const canSeeWhatsApp = ['ADMIN', 'MANAGER'].includes(userRole);
+  const canSeeApartments = ['ADMIN', 'MANAGER'].includes(userRole);
+  
+  // Construir links según permisos
+  let links = '';
+  
+  if (canSeeManager) {
+    links += `<a href="/manager" class="nav-link ${activePage === 'manager' ? 'active' : ''}">🏠 Manager</a>`;
+  }
+  
+  if (canSeeStaff) {
+    links += `<a href="/staff/checkins" class="nav-link ${activePage === 'staff' ? 'active' : ''}">📋 Staff</a>`;
+  } else if (userRole === 'STAFF_CLEANING') {
+    links += `<a href="/staff/my-cleanings" class="nav-link ${activePage === 'my-cleanings' ? 'active' : ''}">🧹 Mis Limpiezas</a>`;
+  }
+  
+  if (canSeeWhatsApp) {
+    links += `<a href="/manager/whatsapp" class="nav-link ${activePage === 'whatsapp' ? 'active' : ''}">💬 WhatsApp</a>`;
+  }
+  
+  if (canSeeApartments) {
+    links += `<a href="/manager/apartment" class="nav-link ${activePage === 'apartamentos' ? 'active' : ''}">🏢 Apartamentos</a>`;
+  }
+  
   return `
     <style>
       .nav-menu-container {
@@ -1387,38 +1466,30 @@ function renderNavMenu(currentPage = '') {
       
       .nav-menu-links {
         display: flex;
-        gap: 8px;
         justify-content: center;
+        gap: 8px;
         flex-wrap: wrap;
       }
       
       .nav-link {
+        color: #e2e8f0;
+        text-decoration: none;
         padding: 10px 20px;
         border-radius: 8px;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 15px;
+        font-weight: 400;
         transition: all 0.2s;
-        color: #cbd5e0;
+        display: inline-block;
       }
       
       .nav-link:hover {
         background: #4a5568;
+        color: white;
       }
       
       .nav-link.active {
-        background: #4a5568;
+        background: #4299e1;
         color: white;
-      }
-      
-      .nav-link.logout {
-        color: #f56565;
-        margin-left: auto;
-      }
-      
-      .nav-link.logout:hover {
-        background: #742a2a;
-        color: white;
+        font-weight: 600;
       }
       
       @media (max-width: 768px) {
@@ -1429,11 +1500,11 @@ function renderNavMenu(currentPage = '') {
         .nav-menu-links {
           display: none;
           flex-direction: column;
-          gap: 4px;
-          margin-top: 12px;
+          width: 100%;
+          margin-top: 16px;
         }
         
-        .nav-menu-links.open {
+        .nav-menu-links.active {
           display: flex;
         }
         
@@ -1441,49 +1512,24 @@ function renderNavMenu(currentPage = '') {
           width: 100%;
           text-align: center;
         }
-        
-        .nav-link.logout {
-          margin-left: 0;
-        }
       }
     </style>
     
-    <nav class="nav-menu-container">
+    <div class="nav-menu-container">
       <div class="nav-menu-wrapper">
-        <button class="nav-hamburger" onclick="toggleMobileNav()">☰</button>
-        
-        <div class="nav-menu-links" id="navMenuLinks">
-          <a href="/manager" class="nav-link ${currentPage === 'manager' ? 'active' : ''}">
-            🏠 Manager
-          </a>
-          
-          <a href="/staff/checkins" class="nav-link ${currentPage === 'staff' ? 'active' : ''}">
-            📅 Staff
-          </a>
-          
-          <a href="/manager/whatsapp" class="nav-link ${currentPage === 'whatsapp' ? 'active' : ''}">
-            💬 WhatsApp
-          </a>
-          
-          <a href="/manager/apartment" class="nav-link ${currentPage === 'apartamentos' ? 'active' : ''}">
-            🏢 Apartamentos
-          </a>
-          
-          <a href="/logout" class="nav-link logout">
-            🚪 Salir
-          </a>
+        <button class="nav-hamburger" onclick="document.getElementById('navLinks').classList.toggle('active')">
+          ☰
+        </button>
+        <div class="nav-menu-links" id="navLinks">
+          ${links}
+          <a href="/logout" class="nav-link" style="margin-left: auto;">🚪 Salir</a>
         </div>
       </div>
-    </nav>
-    
-    <script>
-      function toggleMobileNav() {
-        const menu = document.getElementById('navMenuLinks');
-        menu.classList.toggle('open');
-      }
-    </script>
+    </div>
   `;
 }
+
+
 function renderPage(title, innerHtml, currentPage = '', showNav = true) {
   return `<!doctype html>
 <html lang="en">
@@ -4826,11 +4872,19 @@ app.post('/login', async (req, res) => {
       return res.redirect('/login?error=invalid&redirect=' + encodeURIComponent(redirect));
     }
     
-    // ✅ Login exitoso
-    req.session.userId = user.id;
-    req.session.userEmail = user.email;
-    req.session.userRole = user.role;
-    req.session.userName = user.full_name;
+   // ✅ Login exitoso
+req.session.userId = user.id;
+req.session.userEmail = user.email;
+req.session.userRole = user.role || 'STAFF_CLEANING'; // ✅ AÑADIR
+req.session.userName = user.full_name;
+
+// ✅ AÑADIR: Objeto user completo para facilitar acceso
+req.session.user = {
+  id: user.id,
+  email: user.email,
+  name: user.full_name,
+  role: user.role || 'STAFF_CLEANING'
+};
     
     console.log('✅ Login successful:', user.email, '-', user.role);
     
@@ -7836,6 +7890,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
