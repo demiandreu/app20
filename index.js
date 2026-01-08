@@ -3427,22 +3427,6 @@ app.post("/checkin/:token", async (req, res) => {
   }
 });
 
-/* app.get("/guest/:token", async (req, res) => {
-  const { token } = req.params;
-  
-  const result = await pool.query(
-    'SELECT * FROM checkins WHERE booking_token = $1',
-    [token]
-  );
-  
-  if (result.rows.length === 0) {
-    return res.status(404).send("Booking not found");
-  }
-  
-  const booking = result.rows[0];
-
-}); */
-
 app.get("/guest/:bookingId", async (req, res) => {
   const { bookingId } = req.params;
   console.log("🔍 Request for bookingId:", bookingId);
@@ -3510,84 +3494,93 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     console.log("📋 Sections found:", secRes.rows.length, "for room_id:", roomIdToUse);
     
     // Textos traducidos
-    const uiText = {
-      es: {
-        welcome: 'Bienvenido',
-        reservation: 'Reserva',
-        arrival: 'Llegada',
-        departure: 'Salida',
-        guests: 'Huéspedes',
-        adults: 'adultos',
-        children: 'niños',
-        people: 'personas',
-        accessCode: 'Código de acceso',
-        showCode: 'Mostrar código',
-        noShareCode: 'No compartas este código con terceros.',
-        apartmentInfo: 'Información del apartamento',
-        noInfo: 'Todavía no hay información para este apartamento.',
-      },
-      en: {
-        welcome: 'Welcome',
-        reservation: 'Reservation',
-        arrival: 'Arrival',
-        departure: 'Departure',
-        guests: 'Guests',
-        adults: 'adults',
-        children: 'children',
-        people: 'people',
-        accessCode: 'Access code',
-        showCode: 'Show code',
-        noShareCode: 'Do not share this code with third parties.',
-        apartmentInfo: 'Apartment information',
-        noInfo: 'No information available yet for this apartment.',
-      },
-      ru: {
-        welcome: 'Добро пожаловать',
-        reservation: 'Бронирование',
-        arrival: 'Прибытие',
-        departure: 'Отъезд',
-        guests: 'Гости',
-        adults: 'взрослых',
-        children: 'детей',
-        people: 'человек',
-        accessCode: 'Код доступа',
-        showCode: 'Показать код',
-        noShareCode: 'Не делитесь этим кодом с третьими лицами.',
-        apartmentInfo: 'Информация о квартире',
-        noInfo: 'Информация для этой квартиры пока недоступна.',
-      },
-      fr: {
-        welcome: 'Bienvenue',
-        reservation: 'Réservation',
-        arrival: 'Arrivée',
-        departure: 'Départ',
-        guests: 'Invités',
-        adults: 'adultes',
-        children: 'enfants',
-        people: 'personnes',
-        accessCode: "Code d'accès",
-        showCode: 'Afficher le code',
-        noShareCode: 'Ne partagez pas ce code avec des tiers.',
-        apartmentInfo: "Informations sur l'appartement",
-        noInfo: "Aucune information disponible pour cet appartement pour le moment.",
-      },
-      de: {
-        welcome: 'Willkommen',
-        reservation: 'Reservierung',
-        arrival: 'Ankunft',
-        departure: 'Abreise',
-        guests: 'Gäste',
-        adults: 'Erwachsene',
-        children: 'Kinder',
-        people: 'Personen',
-        accessCode: 'Zugangscode',
-        showCode: 'Code anzeigen',
-        noShareCode: 'Teilen Sie diesen Code nicht mit Dritten.',
-        apartmentInfo: 'Wohnungsinformationen',
-        noInfo: 'Für diese Wohnung sind noch keine Informationen verfügbar.',
-      },
-    };
-    
+   const uiText = {
+  es: {
+    welcome: 'Bienvenido',
+    apartment: 'Apartamento',
+    guest: 'Huésped',  // ✅ AÑADIDO
+    reservation: 'Reserva',
+    arrival: 'Llegada',
+    departure: 'Salida',
+    guests: 'Huéspedes',
+    adults: 'adultos',
+    children: 'niños',
+    people: 'personas',
+    accessCode: 'Código de acceso',
+    showCode: 'Mostrar código',
+    noShareCode: 'No compartas este código con terceros.',
+    apartmentInfo: 'Información del apartamento',
+    noInfo: 'Todavía no hay información para este apartamento.',
+  },
+  en: {
+    welcome: 'Welcome',
+    apartment: 'Apartment',
+    guest: 'Guest',  // ✅ AÑADIDO
+    reservation: 'Reservation',
+    arrival: 'Arrival',
+    departure: 'Departure',
+    guests: 'Guests',
+    adults: 'adults',
+    children: 'children',
+    people: 'people',
+    accessCode: 'Access code',
+    showCode: 'Show code',
+    noShareCode: 'Do not share this code with third parties.',
+    apartmentInfo: 'Apartment information',
+    noInfo: 'No information available yet for this apartment.',
+  },
+  ru: {
+    welcome: 'Добро пожаловать',
+    apartment: 'Квартира',
+    guest: 'Гость',  // ✅ AÑADIDO
+    reservation: 'Бронирование',
+    arrival: 'Прибытие',
+    departure: 'Отъезд',
+    guests: 'Гости',
+    adults: 'взрослых',
+    children: 'детей',
+    people: 'человек',
+    accessCode: 'Код доступа',
+    showCode: 'Показать код',
+    noShareCode: 'Не делитесь этим кодом с третьими лицами.',
+    apartmentInfo: 'Информация о квартире',
+    noInfo: 'Информация для этой квартиры пока недоступна.',
+  },
+  fr: {
+    welcome: 'Bienvenue',
+    apartment: 'Appartement',
+    guest: 'Invité',  // ✅ AÑADIDO
+    reservation: 'Réservation',
+    arrival: 'Arrivée',
+    departure: 'Départ',
+    guests: 'Invités',
+    adults: 'adultes',
+    children: 'enfants',
+    people: 'personnes',
+    accessCode: "Code d'accès",
+    showCode: 'Afficher le code',
+    noShareCode: 'Ne partagez pas ce code avec des tiers.',
+    apartmentInfo: "Informations sur l'appartement",
+    noInfo: "Aucune information disponible pour cet appartement pour le moment.",
+  },
+  de: {
+    welcome: 'Willkommen',
+    apartment: 'Wohnung',
+    guest: 'Gast',  // ✅ AÑADIDO
+    reservation: 'Reservierung',
+    arrival: 'Ankunft',
+    departure: 'Abreise',
+    guests: 'Gäste',
+    adults: 'Erwachsene',
+    children: 'Kinder',
+    people: 'Personen',
+    accessCode: 'Zugangscode',
+    showCode: 'Code anzeigen',
+    noShareCode: 'Teilen Sie diesen Code nicht mit Dritten.',
+    apartmentInfo: 'Wohnungsinformationen',
+    noInfo: 'Für diese Wohnung sind noch keine Informationen verfügbar.',
+  },
+};
     const t = uiText[currentLang] || uiText.es;
     const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
     
@@ -3834,6 +3827,12 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
         </div>
         
         <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px;">
+          <!-- ✅ NUEVO: Nombre del huésped con iniciales -->
+          <div style="margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid #e5e7eb;">
+            <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:8px;">${t.guest}</div>
+            ${formatGuestName(r.full_name)}
+          </div>
+          
           <div style="display:flex; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:16px;">
             <div style="flex:1; min-width:140px;">
               <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.arrival}</div>
@@ -3901,7 +3900,6 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     `));
   }
 });
-
 
 
 // ============ FORMATEAR NOMBRE CON INICIALES ============
@@ -6810,6 +6808,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
