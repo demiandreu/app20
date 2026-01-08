@@ -3507,6 +3507,7 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     children: 'niños',
     people: 'personas',
     accessCode: 'Código de acceso',
+    codeWillAppear: 'Tu código aparecerá aquí el día de tu llegada aproximadamente a las 12:00.', 
     showCode: 'Mostrar código',
     noShareCode: 'No compartas este código con terceros.',
     apartmentInfo: 'Información del apartamento',
@@ -3524,6 +3525,7 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     children: 'children',
     people: 'people',
     accessCode: 'Access code',
+    codeWillAppear: 'Your code will appear here on your arrival day at approximately 12:00.',
     showCode: 'Show code',
     noShareCode: 'Do not share this code with third parties.',
     apartmentInfo: 'Apartment information',
@@ -3541,6 +3543,7 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     children: 'детей',
     people: 'человек',
     accessCode: 'Код доступа',
+    codeWillAppear: 'Ваш код появится здесь в день заезда примерно в 12:00.',
     showCode: 'Показать код',
     noShareCode: 'Не делитесь этим кодом с третьими лицами.',
     apartmentInfo: 'Информация о квартире',
@@ -3558,6 +3561,7 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     children: 'enfants',
     people: 'personnes',
     accessCode: "Code d'accès",
+    codeWillAppear: "Votre code apparaîtra ici le jour de votre arrivée vers 12h00.",
     showCode: 'Afficher le code',
     noShareCode: 'Ne partagez pas ce code avec des tiers.',
     apartmentInfo: "Informations sur l'appartement",
@@ -3575,6 +3579,7 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     children: 'Kinder',
     people: 'Personen',
     accessCode: 'Zugangscode',
+    codeWillAppear: 'Ihr Code wird hier am Tag Ihrer Ankunft gegen 12:00 Uhr erscheinen.',
     showCode: 'Code anzeigen',
     noShareCode: 'Teilen Sie diesen Code nicht mit Dritten.',
     apartmentInfo: 'Wohnungsinformationen',
@@ -3857,23 +3862,32 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
           </div>
         </div>
         
-        ${r.lock_visible && r.lock_code ? `
-          <div style="border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin-bottom:16px; background:#f9fafb;">
-            <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:6px;">
-              🔑 ${t.accessCode}
-            </div>
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-              <span id="lockCodeMasked" style="font-size:20px; letter-spacing:2px; color:#374151; font-family:monospace;">••••</span>
-              <span id="lockCodeValue" style="display:none; font-size:24px; font-weight:700; letter-spacing:2px; color:#374151; font-family:monospace;">
-                ${escapeHtml(String(r.lock_code))}
-              </span>
-              <button type="button" onclick="toggleLockCode()"
-                style="display:inline-block; padding:8px 14px; background:#3b82f6; color:white; border:0; border-radius:8px; font-weight:600; cursor:pointer; font-size:14px;">
-                ${t.showCode}
-              </button>
-            </div>
-            <p style="margin:8px 0 0; color:#6b7280; font-size:12px;">${t.noShareCode}</p>
-          </div>
+    ${r.lock_visible && r.lock_code ? `
+  <div style="border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin-bottom:16px; background:#f9fafb;">
+    <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:6px;">
+      🔑 ${t.accessCode}
+    </div>
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <span id="lockCodeMasked" style="font-size:20px; letter-spacing:2px; color:#374151; font-family:monospace;">••••</span>
+      <span id="lockCodeValue" style="display:none; font-size:24px; font-weight:700; letter-spacing:2px; color:#374151; font-family:monospace;">
+        ${escapeHtml(String(r.lock_code))}
+      </span>
+      <button type="button" onclick="toggleLockCode()"
+        style="display:inline-block; padding:8px 14px; background:#3b82f6; color:white; border:0; border-radius:8px; font-weight:600; cursor:pointer; font-size:14px;">
+        ${t.showCode}
+      </button>
+    </div>
+    <p style="margin:8px 0 0; color:#6b7280; font-size:12px;">${t.noShareCode}</p>
+  </div>
+` : !r.lock_visible ? `
+  <div style="border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin-bottom:16px; background:#f9fafb;">
+    <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:6px;">
+      🔑 ${t.accessCode}
+    </div>
+    <p style="margin:8px 0 0; color:#6b7280; font-size:13px; font-style:italic;">
+      ℹ️ ${t.codeWillAppear}
+    </p>
+  </div>
         ` : ''}
         
         ${sectionsHtml}
@@ -6812,6 +6826,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
