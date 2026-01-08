@@ -12,6 +12,7 @@ const path = require("path");
 const session = require('express-session');
 const bcrypt = require('bcrypt');
 const pgSession = require('connect-pg-simple')(session);
+const fs = require('fs'); 
 
 // ✅ PRIMERO: Crear el pool
 const pool = new Pool({
@@ -7821,6 +7822,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
