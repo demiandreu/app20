@@ -3498,7 +3498,7 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
   es: {
     welcome: 'Bienvenido',
     apartment: 'Apartamento',
-    guest: 'Huésped',  // ✅ AÑADIDO
+    guest: 'Huésped',
     reservation: 'Reserva',
     arrival: 'Llegada',
     departure: 'Salida',
@@ -3515,7 +3515,7 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
   en: {
     welcome: 'Welcome',
     apartment: 'Apartment',
-    guest: 'Guest',  // ✅ AÑADIDO
+    guest: 'Guest',
     reservation: 'Reservation',
     arrival: 'Arrival',
     departure: 'Departure',
@@ -3532,7 +3532,7 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
   ru: {
     welcome: 'Добро пожаловать',
     apartment: 'Квартира',
-    guest: 'Гость',  // ✅ AÑADIDO
+    guest: 'Гость',
     reservation: 'Бронирование',
     arrival: 'Прибытие',
     departure: 'Отъезд',
@@ -3549,7 +3549,7 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
   fr: {
     welcome: 'Bienvenue',
     apartment: 'Appartement',
-    guest: 'Invité',  // ✅ AÑADIDO
+    guest: 'Invité',
     reservation: 'Réservation',
     arrival: 'Arrivée',
     departure: 'Départ',
@@ -3566,7 +3566,7 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
   de: {
     welcome: 'Willkommen',
     apartment: 'Wohnung',
-    guest: 'Gast',  // ✅ AÑADIDO
+    guest: 'Gast',
     reservation: 'Reservierung',
     arrival: 'Ankunft',
     departure: 'Abreise',
@@ -3639,7 +3639,7 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]+)/,
     /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([a-zA-Z0-9_-]+)/,
     /(?:https?:\/\/)?(?:www\.)?youtube\.com\/embed\/([a-zA-Z0-9_-]+)/,
-    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/  // ✅ AÑADIDO: Shorts
+    /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/
   ];
   
   for (const pattern of youtubePatterns) {
@@ -3808,9 +3808,9 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     
     // Renderizar página
     const html = `
-      <div style="text-align:right; margin-bottom:16px;">
+      <div style="text-align:right; margin-bottom:12px;">
         <select onchange="window.location.href = window.location.pathname + '?lang=' + this.value" 
-                style="padding:8px 12px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:20px; cursor:pointer; width:100px;">
+                style="padding:6px 10px; border-radius:8px; border:1px solid #d1d5db; background:#fff; font-size:18px; cursor:pointer; width:80px;">
           <option value="es" ${currentLang === 'es' ? 'selected' : ''}>🇪🇸</option>
           <option value="en" ${currentLang === 'en' ? 'selected' : ''}>🇬🇧</option>
           <option value="fr" ${currentLang === 'fr' ? 'selected' : ''}>🇫🇷</option>
@@ -3820,55 +3820,59 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
       </div>
       
       <div class="card">
-        <div style="text-align:center; margin-bottom:30px;">
-          <h1 style="margin-bottom:8px; font-size:28px;">${t.welcome}</h1>
-          <div style="font-size:18px; color:#6b7280;">${escapeHtml(apartmentName)}</div>
-          <div style="font-size:13px; color:#9ca3af; margin-top:8px;">${t.reservation}: ${escapeHtml(String(r.beds24_booking_id || ""))}</div>
+        <!-- ✅ HEADER COMPACTO -->
+        <div style="text-align:center; margin-bottom:20px;">
+          <h1 style="margin-bottom:4px; font-size:24px;">${t.welcome}</h1>
+          <div style="font-size:16px; color:#6b7280; margin-bottom:2px;">${escapeHtml(apartmentName)}</div>
+          <div style="font-size:11px; color:#9ca3af;">${t.reservation}: ${escapeHtml(String(r.beds24_booking_id || ""))}</div>
         </div>
         
-        <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px;">
-          <!-- ✅ NUEVO: Nombre del huésped con iniciales -->
-          <div style="margin-bottom:20px; padding-bottom:20px; border-bottom:1px solid #e5e7eb;">
-            <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:8px;">${t.guest}</div>
+        <!-- ✅ CARD COMPACTA CON GRID -->
+        <div style="border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin-bottom:16px;">
+          
+          <!-- Nombre del huésped - MÁS COMPACTO -->
+          <div style="margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid #e5e7eb;">
+            <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:6px;">${t.guest}</div>
             ${formatGuestName(r.full_name)}
           </div>
           
-          <div style="display:flex; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:16px;">
-            <div style="flex:1; min-width:140px;">
-              <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.arrival}</div>
-              <div style="font-size:16px; font-weight:600;">${fmtDate(r.arrival_date)}</div>
-              ${r.arrival_time ? `<div style="color:#6b7280; font-size:14px;">${fmtTime(r.arrival_time)}</div>` : ''}
+          <!-- Grid de fechas - 2 columnas en móvil también -->
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid #e5e7eb;">
+            <div>
+              <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.arrival}</div>
+              <div style="font-size:15px; font-weight:600;">${fmtDate(r.arrival_date)}</div>
+              ${r.arrival_time ? `<div style="color:#6b7280; font-size:13px;">${fmtTime(r.arrival_time)}</div>` : ''}
             </div>
-            <div style="width:1px; background:#e5e7eb;"></div>
-            <div style="flex:1; min-width:140px;">
-              <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.departure}</div>
-              <div style="font-size:16px; font-weight:600;">${fmtDate(r.departure_date)}</div>
-              ${r.departure_time ? `<div style="color:#6b7280; font-size:14px;">${fmtTime(r.departure_time)}</div>` : ''}
+            <div>
+              <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.departure}</div>
+              <div style="font-size:15px; font-weight:600;">${fmtDate(r.departure_date)}</div>
+              ${r.departure_time ? `<div style="color:#6b7280; font-size:13px;">${fmtTime(r.departure_time)}</div>` : ''}
             </div>
           </div>
           
-          <div style="border-top:1px solid #e5e7eb; padding-top:16px;">
-            <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.guests}</div>
-            <div style="font-size:16px;"><span style="font-weight:600;">${totalGuests}</span> ${t.people} <span style="color:#9ca3af;">•</span> ${Number(r.adults) || 0} ${t.adults}, ${Number(r.children) || 0} ${t.children}</div>
+          <!-- Huéspedes - Más compacto -->
+          <div>
+            <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:4px;">${t.guests}</div>
+            <div style="font-size:15px;"><span style="font-weight:600;">${totalGuests}</span> ${t.people} <span style="color:#d1d5db;">•</span> ${Number(r.adults) || 0} ${t.adults}, ${Number(r.children) || 0} ${t.children}</div>
           </div>
         </div>
         
         ${r.lock_visible && r.lock_code ? `
-          <div style="border:1px solid #e5e7eb; border-radius:12px; padding:20px; margin-bottom:20px; background:#f9fafb;">
-            <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:8px;">
+          <div style="border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin-bottom:16px; background:#f9fafb;">
+            <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:6px;">
               🔑 ${t.accessCode}
             </div>
             <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-              <span id="lockCodeMasked" style="font-size:22px; letter-spacing:3px; color:#374151; font-family:monospace;">••••</span>
-              <span id="lockCodeValue" style="display:none; font-size:28px; font-weight:700; letter-spacing:3px; color:#374151; font-family:monospace;">
+              <span id="lockCodeMasked" style="font-size:20px; letter-spacing:2px; color:#374151; font-family:monospace;">••••</span>
+              <span id="lockCodeValue" style="display:none; font-size:24px; font-weight:700; letter-spacing:2px; color:#374151; font-family:monospace;">
                 ${escapeHtml(String(r.lock_code))}
               </span>
               <button type="button" onclick="toggleLockCode()"
-                style="display:inline-block; padding:10px 16px; background:#3b82f6; color:white; border:0; border-radius:8px; font-weight:600; cursor:pointer;">
+                style="display:inline-block; padding:8px 14px; background:#3b82f6; color:white; border:0; border-radius:8px; font-weight:600; cursor:pointer; font-size:14px;">
                 ${t.showCode}
               </button>
             </div>
-            <p style="margin:10px 0 0; color:#6b7280; font-size:13px;">${t.noShareCode}</p>
+            <p style="margin:8px 0 0; color:#6b7280; font-size:12px;">${t.noShareCode}</p>
           </div>
         ` : ''}
         
@@ -6808,6 +6812,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
