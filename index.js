@@ -5440,6 +5440,133 @@ function safeRedirect(res, returnTo, fallback = "/staff/checkins") {
   return res.redirect(fallback);
 }
 
+const pageHtml = renderNavMenu('staff', req) + toolbar + 
+                 renderTable(arrivals, "arrivals") + 
+                 `<div style="height:24px;"></div>` + 
+                 renderTable(departures, "departures") +
+                 `
+                 <script>
+                 // ============================================
+                 // 🚀 AJAX: Guardar sin recargar página
+                 // ============================================
+                 
+                 // Interceptar todos los formularios de lock
+                 document.addEventListener('submit', function(e) {
+                   const form = e.target;
+                   
+                   // Solo interceptar formularios específicos
+                   if (form.classList.contains('lock-form') || 
+                       form.classList.contains('vis-form') ||
+                       form.closest('td')?.querySelector('.clean-btn')) {
+                     
+                     e.preventDefault();
+                     
+                     const formData = new FormData(form);
+                     const row = form.closest('tr');
+                     
+                     fetch(form.action, {
+                       method: 'POST',
+                       body: formData
+                     })
+                     .then(response => response.text())
+                     .then(() => {
+                       // ✅ Actualizar visualmente sin recargar
+                       
+                       // Si es limpieza
+                       if (form.closest('td')?.querySelector('.clean-btn')) {
+                         const btn = form.querySelector('.clean-btn');
+                         if (btn.classList.contains('pill-yes')) {
+                           btn.classList.remove('pill-yes');
+                           btn.classList.add('pill-no');
+                           btn.textContent = '';
+                         } else {
+                           btn.classList.remove('pill-no');
+                           btn.classList.add('pill-yes');
+                           btn.textContent = '✓';
+                         }
+                       }
+                       
+                       // Si es visibilidad
+                       if (form.classList.contains('vis-form')) {
+                         const pill = form.querySelector('.pill');
+                         const btn = form.querySelector('button');
+                         
+                         if (pill.classList.contains('pill-yes')) {
+                           pill.classList.remove('pill-yes');
+                           pill.classList.add('pill-no');
+                           pill.textContent = 'No';
+                           btn.textContent = 'Mostrar';
+                           btn.classList.remove('btn-ghost');
+                         } else {
+                           pill.classList.remove('pill-no');
+                           pill.classList.add('pill-yes');
+                           pill.textContent = 'Sí';
+                           btn.textContent = 'Ocultar';
+                           btn.classList.add('btn-ghost');
+                         }
+                       }
+                       
+                       // Si es código de acceso
+                       if (form.classList.contains('lock-form')) {
+                         // Mostrar feedback visual
+                         const input = form.querySelector('.lock-input');
+                         const originalBg = input.style.background;
+                         input.style.background = '#d1fae5';
+                         setTimeout(() => {
+                           input.style.background = originalBg;
+                         }, 500);
+                       }
+                       
+                       // ✅ Mostrar confirmación temporal
+                       showToast('✅ Guardado correctamente');
+                     })
+                     .catch(error => {
+                       console.error('Error:', error);
+                       showToast('❌ Error al guardar', 'error');
+                     });
+                   }
+                 });
+                 
+                 // Toast notification
+                 function showToast(message, type = 'success') {
+                   const toast = document.createElement('div');
+                   toast.textContent = message;
+                   toast.style.cssText = \`
+                     position: fixed;
+                     bottom: 20px;
+                     right: 20px;
+                     background: \${type === 'success' ? '#10b981' : '#ef4444'};
+                     color: white;
+                     padding: 12px 20px;
+                     border-radius: 8px;
+                     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                     z-index: 9999;
+                     animation: slideIn 0.3s ease;
+                   \`;
+                   
+                   document.body.appendChild(toast);
+                   
+                   setTimeout(() => {
+                     toast.style.animation = 'slideOut 0.3s ease';
+                     setTimeout(() => toast.remove(), 300);
+                   }, 2000);
+                 }
+                 
+                 // Animaciones
+                 const style = document.createElement('style');
+                 style.textContent = \`
+                   @keyframes slideIn {
+                     from { transform: translateX(100%); opacity: 0; }
+                     to { transform: translateX(0); opacity: 1; }
+                   }
+                   @keyframes slideOut {
+                     from { transform: translateX(0); opacity: 1; }
+                     to { transform: translateX(100%); opacity: 0; }
+                   }
+                 \`;
+                 document.head.appendChild(style);
+                 </script>
+                 `;
 // ============================================
 // 🧹 STAFF: MIS LIMPIEZAS (solo asignadas al usuario)
 // ============================================
@@ -8288,6 +8415,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
