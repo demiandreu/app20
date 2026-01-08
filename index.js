@@ -5418,8 +5418,12 @@ return `
   `;
 }
 
-    const pageHtml = renderNavMenu('staff', req) + toolbar + renderTable(arrivals, "arrivals") + `<div style="height:24px;"></div>` + renderTable(departures, "departures");
-     <script>
+    const pageHtml = renderNavMenu('staff', req) + toolbar + 
+                 renderTable(arrivals, "arrivals") + 
+                 `<div style="height:24px;"></div>` + 
+                 renderTable(departures, "departures") +
+                 `
+                 <script>
                  // ============================================
                  // 🚀 AJAX: Guardar sin recargar página
                  // ============================================
@@ -8410,6 +8414,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
