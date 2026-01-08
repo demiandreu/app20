@@ -3095,14 +3095,14 @@ app.get('/staff', async (req, res) => {
       ` : ''}
 
       ${['ADMIN', 'MANAGER'].includes(user.role) ? `
-        <a href="/staff/whatsapp" class="card" style="text-decoration:none; cursor:pointer; transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+        <a href="/manager/whatsapp" class="card" style="text-decoration:none; cursor:pointer; transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
           <h2 style="margin:0 0 8px; font-size:18px;">💬 WhatsApp Manager</h2>
           <p style="margin:0; color:#6b7280; font-size:14px;">Configurar mensajes automáticos</p>
         </a>
       ` : ''}
 
       ${['ADMIN', 'MANAGER'].includes(user.role) ? `
-        <a href="/staff/apartments" class="card" style="text-decoration:none; cursor:pointer; transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+        <a href="/manager/apartments" class="card" style="text-decoration:none; cursor:pointer; transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
           <h2 style="margin:0 0 8px; font-size:18px;">🏠 Apartamentos</h2>
           <p style="margin:0; color:#6b7280; font-size:14px;">Gestionar información de apartamentos</p>
         </a>
@@ -4950,12 +4950,12 @@ app.get('/staff', async (req, res) => {
         <p style="margin:0; color:#6b7280; font-size:14px;">Gestionar check-ins y check-outs</p>
       </a>
 
-      <a href="/staff/whatsapp" class="card" style="text-decoration:none;">
+      <a href="/manager/whatsapp" class="card" style="text-decoration:none;">
         <h2 style="margin:0 0 8px; font-size:18px;">💬 WhatsApp Manager</h2>
         <p style="margin:0; color:#6b7280; font-size:14px;">Configurar mensajes automáticos</p>
       </a>
 
-      <a href="/staff/apartments" class="card" style="text-decoration:none;">
+      <a href="/manager/apartments" class="card" style="text-decoration:none;">
         <h2 style="margin:0 0 8px; font-size:18px;">🏠 Apartamentos</h2>
         <p style="margin:0; color:#6b7280; font-size:14px;">Gestionar información</p>
       </a>
@@ -7890,6 +7890,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
