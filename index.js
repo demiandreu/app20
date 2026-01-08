@@ -3480,125 +3480,7 @@ app.get("/", (req, res) => {
 </html>`);
 });
 
-// --- Booking page ---
-// ✅ RUTAS CORREGIDAS - Solo con bookingId
-// ✅ RUTAS SIMPLES - Solo con token
-app.get("/booking/:token", async (req, res) => {
-  const { token } = req.params;
-  
-  // Buscar la reserva por token
-  const result = await pool.query(
-    'SELECT * FROM checkins WHERE booking_token = $1',
-    [token]
-  );
-  
-  if (result.rows.length === 0) {
-    return res.status(404).send("Booking not found");
-  }
-  
-  const booking = result.rows[0];
-  
-  const html = `
-    <h1>Booking ${token}</h1>
-    <p>Apartment: <strong>${booking.apartment_name || 'N/A'}</strong></p>
-    <p><a href="/checkin/${token}" class="btn-primary">Go to check-in</a></p>
-    <p><a href="/" class="btn-link">← Back</a></p>
-  `;
-  res.send(renderPage("Booking " + token, html));
-});
 
-app.get("/checkin/:token", async (req, res) => {
-  const { token } = req.params;
-  
-  const result = await pool.query(
-    'SELECT * FROM checkins WHERE booking_token = $1',
-    [token]
-  );
-  
-  if (result.rows.length === 0) {
-    return res.status(404).send("Booking not found");
-  }
-  
-  const now = new Date();
-  const today = ymd(now);
-  const tmr = new Date(now);
-  tmr.setDate(now.getDate() + 1);
-  const tomorrow = ymd(tmr);
-  
-  const html = `
-    <h1>Check-in • ${token}</h1>
-    <form method="POST" action="/checkin/${token}">
-      <div style="margin-bottom:12px;">
-        <label>Full name</label>
-        <input name="fullName" required />
-      </div>
-      <div style="margin-bottom:12px;">
-        <label>Email</label>
-        <input type="email" name="email" required />
-      </div>
-      <div style="margin-bottom:12px;">
-        <label>Phone (WhatsApp)</label>
-        <input name="phone" required />
-      </div>
-      <div class="row" style="margin-bottom:12px;">
-        <div>
-          <label>Arrival date</label>
-          <input type="date" name="arrivalDate" required value="${today}" min="${today}" />
-        </div>
-        <div>
-          <label>Arrival time</label>
-          <select name="arrivalTime" required>
-            ${hourOptions("17:00")}
-          </select>
-        </div>
-      </div>
-      <div class="row" style="margin-bottom:12px;">
-        <div>
-          <label>Departure date</label>
-          <input type="date" name="departureDate" required value="${tomorrow}" min="${today}" />
-        </div>
-        <div>
-          <label>Departure time</label>
-          <select name="departureTime" required>
-            ${hourOptions("11:00")}
-          </select>
-        </div>
-      </div>
-      <button type="submit" class="btn-primary">Submit</button>
-    </form>
-    <p style="margin-top:16px;"><a href="/booking/${token}" class="btn-link">← Back</a></p>
-  `;
-  res.send(renderPage("Check-in", html));
-});
-
-app.post("/checkin/:token", async (req, res) => {
-  const { token } = req.params;
-  
-  try {
-    await pool.query(
-      `UPDATE checkins 
-       SET full_name = $1, email = $2, phone = $3,
-           arrival_date = $4, arrival_time = $5, 
-           departure_date = $6, departure_time = $7
-       WHERE booking_token = $8`,
-      [
-        req.body.fullName,
-        req.body.email,
-        req.body.phone,
-        req.body.arrivalDate,
-        req.body.arrivalTime || "16:00",
-        req.body.departureDate,
-        req.body.departureTime || "11:00",
-        token
-      ]
-    );
-    
-    return res.redirect(`/guest/${token}`);
-  } catch (e) {
-    console.error("DB update error:", e);
-    res.status(500).send("❌ DB error while saving check-in");
-  }
-});
 
 app.get("/guest/:bookingId", async (req, res) => {
   const { bookingId } = req.params;
@@ -7187,6 +7069,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
