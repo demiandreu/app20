@@ -2614,6 +2614,230 @@ const bookings = result.rows.map(row => {
 });
 
 // ============================================
+// 📊 EXPORTAR FACTURAS A EXCEL
+// ============================================
+
+app.get("/manager/invoices/export", requireAuth, requireRole('MANAGER'), async (req, res) => {
+  try {
+    const ExcelJS = require('exceljs');
+    const { month, year, apartment } = req.query;
+    
+    const selectedYear = year ? parseInt(year) : new Date().getFullYear();
+    const selectedMonth = month ? parseInt(month) : new Date().getMonth() + 1;
+    const selectedApartment = apartment || 'all';
+    
+    const startDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
+    const endDate = selectedMonth === 12 
+      ? `${selectedYear + 1}-01-01`
+      : `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+
+    // Query de bookings (mismo que la página)
+    let query = `
+      SELECT 
+        id, beds24_booking_id, full_name, arrival_date, departure_date,
+        apartment_name, beds24_raw, created_at
+      FROM checkins
+      WHERE arrival_date >= $1 AND arrival_date < $2 AND cancelled = false
+    `;
+    
+    const params = [startDate, endDate];
+    
+    if (selectedApartment !== 'all') {
+      query += ` AND apartment_name = $3`;
+      params.push(selectedApartment);
+    }
+    
+    query += ` ORDER BY arrival_date ASC`;
+    const result = await pool.query(query, params);
+
+    // Procesar bookings (mismo código que arriba)
+    const bookings = result.rows.map(row => {
+      const rawData = row.beds24_raw || {};
+      const raw = rawData.booking || rawData;
+      
+      const channel = (raw.channel || '').toLowerCase();
+      const referer = raw.referer || '';
+      let platform = 'unknown';
+      
+      if (channel === 'booking' || referer.includes('Booking')) {
+        platform = 'booking';
+      } else if (channel === 'airbnb' || referer.includes('Airbnb')) {
+        platform = 'airbnb';
+      } else if (referer.includes('iframe') || channel === 'iframe') {
+        platform = 'direct';
+      }
+
+      let price = 0;
+      let firstInvoiceItem = 0;
+      
+      if (platform === 'booking') {
+        const invoiceItems = raw.invoiceItems || [];
+        const roomItem = invoiceItems.find(item => item.subType === 8);
+        if (roomItem) {
+          firstInvoiceItem = roomItem.amount || 0;
+          price = firstInvoiceItem;
+        } else {
+          price = raw.price || 0;
+        }
+      } else {
+        price = raw.price || 0;
+      }
+
+      const commission = raw.commission || 0;
+      const bookingIva = platform === 'booking' ? (price * 0.0472) : 0;
+      const rentalConnect = price * 0.30;
+      const income = price - commission - bookingIva - rentalConnect;
+
+      const nights = row.departure_date && row.arrival_date
+        ? Math.ceil((new Date(row.departure_date) - new Date(row.arrival_date)) / (1000 * 60 * 60 * 24))
+        : 0;
+
+      return {
+        beds24_booking_id: row.beds24_booking_id,
+        full_name: row.full_name,
+        arrival_date: row.arrival_date,
+        departure_date: row.departure_date,
+        apartment_name: row.apartment_name,
+        platform: platform === 'booking' ? 'Booking' : platform === 'airbnb' ? 'Airbnb' : 'Directo',
+        nights,
+        price: parseFloat(price.toFixed(2)),
+        commission: parseFloat(commission.toFixed(2)),
+        bookingIva: parseFloat(bookingIva.toFixed(2)),
+        rentalConnect: parseFloat(rentalConnect.toFixed(2)),
+        income: parseFloat(income.toFixed(2))
+      };
+    });
+
+    // Crear Excel
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Facturas');
+
+    // Nombre del mes
+    const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const monthName = monthNames[selectedMonth - 1];
+
+    // CABECERA
+    worksheet.mergeCells('A1:M1');
+    const titleCell = worksheet.getCell('A1');
+    titleCell.value = selectedApartment === 'all' 
+      ? `Facturas - Todos los Apartamentos - ${monthName} ${selectedYear}`
+      : `Facturas - ${selectedApartment} - ${monthName} ${selectedYear}`;
+    titleCell.font = { size: 16, bold: true };
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    worksheet.getRow(1).height = 30;
+
+    // Espacio
+    worksheet.addRow([]);
+
+    // ENCABEZADOS
+    const headerRow = worksheet.addRow([
+      'ID Booking',
+      'Huésped',
+      'Plataforma',
+      'Check-in',
+      'Check-out',
+      'Noches',
+      'Apartamento',
+      'Precio',
+      'Comisión',
+      'Booking IVA',
+      'Rental Connect',
+      'Income'
+    ]);
+    
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF1e40af' }
+    };
+    headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
+    headerRow.height = 25;
+
+    // DATOS
+    bookings.forEach(b => {
+      worksheet.addRow([
+        b.beds24_booking_id,
+        b.full_name,
+        b.platform,
+        b.arrival_date ? new Date(b.arrival_date).toLocaleDateString('es-ES') : '',
+        b.departure_date ? new Date(b.departure_date).toLocaleDateString('es-ES') : '',
+        b.nights,
+        b.apartment_name,
+        b.price,
+        b.commission,
+        b.bookingIva,
+        b.rentalConnect,
+        b.income
+      ]);
+    });
+
+    // TOTALES
+    const totals = {
+      count: bookings.length,
+      totalPrice: bookings.reduce((sum, b) => sum + b.price, 0),
+      totalCommission: bookings.reduce((sum, b) => sum + b.commission, 0),
+      totalBookingIva: bookings.reduce((sum, b) => sum + b.bookingIva, 0),
+      totalRentalConnect: bookings.reduce((sum, b) => sum + b.rentalConnect, 0),
+      totalIncome: bookings.reduce((sum, b) => sum + b.income, 0)
+    };
+
+    const totalRow = worksheet.addRow([
+      '',
+      `TOTALES (${totals.count} reservas)`,
+      '', '', '', '', '',
+      totals.totalPrice,
+      totals.totalCommission,
+      totals.totalBookingIva,
+      totals.totalRentalConnect,
+      totals.totalIncome
+    ]);
+
+    totalRow.font = { bold: true };
+    totalRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFF3F4F6' }
+    };
+
+    // FORMATO DE COLUMNAS
+    worksheet.getColumn(1).width = 12;  // ID
+    worksheet.getColumn(2).width = 25;  // Huésped
+    worksheet.getColumn(3).width = 12;  // Plataforma
+    worksheet.getColumn(4).width = 12;  // Check-in
+    worksheet.getColumn(5).width = 12;  // Check-out
+    worksheet.getColumn(6).width = 8;   // Noches
+    worksheet.getColumn(7).width = 20;  // Apartamento
+    worksheet.getColumn(8).width = 12;  // Precio
+    worksheet.getColumn(9).width = 12;  // Comisión
+    worksheet.getColumn(10).width = 12; // Booking IVA
+    worksheet.getColumn(11).width = 15; // Rental Connect
+    worksheet.getColumn(12).width = 12; // Income
+
+    // Formato de moneda para columnas de dinero
+    [8, 9, 10, 11, 12].forEach(col => {
+      worksheet.getColumn(col).numFmt = '€#,##0.00';
+      worksheet.getColumn(col).alignment = { horizontal: 'right' };
+    });
+
+    // Generar archivo
+    const buffer = await workbook.xlsx.writeBuffer();
+    
+    const filename = selectedApartment === 'all'
+      ? `Facturas_${monthName}_${selectedYear}.xlsx`
+      : `Facturas_${selectedApartment.replace(/[^a-zA-Z0-9]/g, '_')}_${monthName}_${selectedYear}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+
+  } catch (e) {
+    console.error("Error al exportar Excel:", e);
+    res.status(500).send("Error al generar el archivo Excel");
+  }
+});
+
+// ============================================
 // 🗑️ ELIMINAR RESERVA DE FACTURACIÓN
 // ============================================
 
@@ -8807,6 +9031,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
