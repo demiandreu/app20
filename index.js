@@ -196,10 +196,6 @@ async function beds24SmokeTest(token) {
 }
 
 const PORT = process.env.PORT || 3000;
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-});
 
 // 🆕 AÑADE ESTAS LÍNEAS AQUÍ
 pool.on('connect', (client) => {
@@ -6858,6 +6854,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
