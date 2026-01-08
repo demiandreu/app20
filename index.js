@@ -2277,6 +2277,65 @@ app.get("/manager/checkin-rules", async (req, res) => {
 // RUTAS DEL STAFF - APROBACIÓN DE SOLICITUDES
 // ============================================
 app.use('/staff', requireAuth);
+// ============================================
+// RUTA: Panel principal de Staff
+// ============================================
+
+app.get('/staff', async (req, res) => {
+  const user = await getCurrentUser(req);
+
+  if (!user) {
+    return res.redirect('/logout');
+  }
+
+  const roleLabels = {
+    'ADMIN': '👑 Administrador',
+    'MANAGER': '💼 Manager',
+    'CLEANING_MANAGER': '🧹 Jefe de Limpieza',
+    'STAFF_CLEANING': '🧹 Personal de Limpieza'
+  };
+
+  const html = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+      <div>
+        <h1 style="margin:0 0 4px;">Panel de Control</h1>
+        <p style="margin:0; color:#6b7280;">
+          ${roleLabels[user.role] || user.role} · ${escapeHtml(user.full_name)}
+        </p>
+      </div>
+      <a href="/logout" class="btn-base" style="background:#ef4444; color:white; text-decoration:none; padding:8px 16px; border-radius:8px;">
+        Cerrar Sesión
+      </a>
+    </div>
+
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:16px;">
+      
+      ${['ADMIN', 'MANAGER', 'CLEANING_MANAGER'].includes(user.role) ? `
+        <a href="/staff/checkins" class="card" style="text-decoration:none; cursor:pointer; transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+          <h2 style="margin:0 0 8px; font-size:18px;">📅 Llegadas y Salidas</h2>
+          <p style="margin:0; color:#6b7280; font-size:14px;">Gestionar check-ins y check-outs</p>
+        </a>
+      ` : ''}
+
+      ${['ADMIN', 'MANAGER'].includes(user.role) ? `
+        <a href="/staff/whatsapp" class="card" style="text-decoration:none; cursor:pointer; transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+          <h2 style="margin:0 0 8px; font-size:18px;">💬 WhatsApp Manager</h2>
+          <p style="margin:0; color:#6b7280; font-size:14px;">Configurar mensajes automáticos</p>
+        </a>
+      ` : ''}
+
+      ${['ADMIN', 'MANAGER'].includes(user.role) ? `
+        <a href="/staff/apartments" class="card" style="text-decoration:none; cursor:pointer; transition:transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+          <h2 style="margin:0 0 8px; font-size:18px;">🏠 Apartamentos</h2>
+          <p style="margin:0; color:#6b7280; font-size:14px;">Gestionar información de apartamentos</p>
+        </a>
+      ` : ''}
+
+    </div>
+  `;
+
+  res.send(renderPage('Panel de Control', html, 'staff'));
+});
 app.get("/staff/pending-requests", async (req, res) => {
   try {
     const { rows: requests } = await pool.query(`
@@ -7050,6 +7109,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
