@@ -21,23 +21,25 @@ const pool = new Pool({
 
 // ✅ SEGUNDO: Crear la app
 const app = express();
+app.set('trust proxy', 1);
 
 // ✅ TERCERO: Configurar sesiones (AHORA pool ya existe)
 app.use(session({
   store: new pgSession({
-    pool: pool,  // ← Ahora sí existe
+    pool: pool,
     tableName: 'sessions',
     createTableIfMissing: true
   }),
-  secret: process.env.SESSION_SECRET || 'fallback-dev-only-not-for-production',
+  secret: process.env.SESSION_SECRET || 'fallback-dev-only',
   resave: false,
   saveUninitialized: false,
   cookie: {
     maxAge: 7 * 24 * 60 * 60 * 1000,
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: true,  // ✅ Cambiar a true (porque estás en HTTPS)
     sameSite: 'lax'
-  }
+  },
+  proxy: true  // ✅ AÑADIR esta línea
 }));
 
 app.use(express.urlencoded({ extended: true }));
@@ -7158,6 +7160,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
