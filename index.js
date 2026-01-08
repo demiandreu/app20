@@ -5438,6 +5438,219 @@ function safeRedirect(res, returnTo, fallback = "/staff/checkins") {
   if (target.startsWith("/")) return res.redirect(target);
   return res.redirect(fallback);
 }
+
+// ============================================
+// 🧹 STAFF: MIS LIMPIEZAS (solo asignadas al usuario)
+// ============================================
+
+app.get("/staff/my-cleanings", requireAuth, requireRole('STAFF_CLEANING'), async (req, res) => {
+  try {
+    const userId = req.session.user.id;
+    const { from, to, quick: quickRaw } = req.query;
+
+    const tz = "Europe/Madrid";
+    const today = ymdInTz(new Date(), tz);
+    const tomorrow = ymdInTz(new Date(Date.now() + 86400000), tz);
+    const yesterday = ymdInTz(new Date(Date.now() - 86400000), tz);
+
+    const hasAnyFilter = Boolean(from || to || quickRaw);
+    const quickCandidate = hasAnyFilter ? quickRaw : "today";
+    const quick = ["yesterday", "today", "tomorrow"].includes(quickCandidate) ? quickCandidate : "";
+
+    let fromDate = from;
+    let toDate = to;
+    if (quick) {
+      if (quick === "yesterday") { fromDate = yesterday; toDate = yesterday; }
+      else if (quick === "today") { fromDate = today; toDate = today; }
+      else if (quick === "tomorrow") { fromDate = tomorrow; toDate = tomorrow; }
+    }
+
+    function buildWhereFor(fieldName) {
+      const where = [];
+      const params = [userId]; // Primer parámetro siempre es userId
+
+      if (fromDate) {
+        params.push(fromDate);
+        where.push(`${fieldName} >= $${params.length}`);
+      }
+      if (toDate) {
+        params.push(toDate);
+        where.push(`${fieldName} <= $${params.length}`);
+      }
+
+      const andSql = where.length ? ` AND ${where.join(" AND ")}` : "";
+      return { andSql, params };
+    }
+
+    const wArr = buildWhereFor("c.arrival_date");
+    const wDep = buildWhereFor("c.departure_date");
+
+    // Arrivals asignados a este usuario
+    const arrivalsRes = await pool.query(
+      `
+      SELECT
+        c.id,
+        c.booking_token,
+        c.beds24_booking_id,
+        c.apartment_id,
+        c.apartment_name,
+        c.room_name,
+        c.full_name,
+        c.arrival_date,
+        c.arrival_time,
+        c.departure_date,
+        c.departure_time,
+        c.adults,
+        c.children,
+        c.lock_code,
+        c.clean_ok
+      FROM checkins c
+      WHERE (c.cancelled = false OR c.cancelled IS NULL)
+        AND c.arrival_date IS NOT NULL
+        AND c.assigned_to = $1
+        ${wArr.andSql}
+      ORDER BY c.arrival_date ASC, c.arrival_time ASC
+      LIMIT 100
+      `,
+      wArr.params
+    );
+
+    // Departures asignados a este usuario
+    const departuresRes = await pool.query(
+      `
+      SELECT
+        c.id,
+        c.booking_token,
+        c.beds24_booking_id,
+        c.apartment_id,
+        c.apartment_name,
+        c.room_name,
+        c.full_name,
+        c.arrival_date,
+        c.arrival_time,
+        c.departure_date,
+        c.departure_time,
+        c.adults,
+        c.children,
+        c.lock_code,
+        c.clean_ok
+      FROM checkins c
+      WHERE c.cancelled = false
+        AND c.departure_date IS NOT NULL
+        AND c.assigned_to = $1
+        ${wDep.andSql}
+      ORDER BY c.departure_date ASC, c.departure_time ASC
+      LIMIT 100
+      `,
+      wDep.params
+    );
+
+    const arrivals = arrivalsRes.rows || [];
+    const departures = departuresRes.rows || [];
+
+    // Toolbar
+    const toolbar = `
+      <h1>🧹 Mis Limpiezas</h1>
+      <p class="muted">Limpiezas asignadas a: ${escapeHtml(req.session.user.name)}</p>
+      
+      <form method="GET" action="/staff/my-cleanings" style="margin:20px 0;">
+        <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
+          <div>
+            <label>Desde</label>
+            <input type="date" name="from" value="${fromDate || ""}" />
+          </div>
+          <div>
+            <label>Hasta</label>
+            <input type="date" name="to" value="${toDate || ""}" />
+          </div>
+          <button type="submit" class="btn-primary">Filtrar</button>
+          <a href="/staff/my-cleanings" class="btn-link">Resetear</a>
+        </div>
+        <div style="margin-top:12px;">
+          <p class="muted" style="margin:0 0 8px;">Filtros rápidos</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <a href="?quick=yesterday" class="btn-base ${quick === "yesterday" ? "btn-success" : ""}">Ayer</a>
+            <a href="?quick=today" class="btn-base ${quick === "today" ? "btn-success" : ""}">Hoy</a>
+            <a href="?quick=tomorrow" class="btn-base ${quick === "tomorrow" ? "btn-success" : ""}">Mañana</a>
+          </div>
+        </div>
+      </form>
+    `;
+
+    function renderMyCleaningsTable(rows, mode) {
+      const title = mode === "departures" 
+        ? `Salidas <span class="muted">(${rows.length})</span>` 
+        : `Llegadas <span class="muted">(${rows.length})</span>`;
+      const dateColTitle = mode === "departures" ? "Salida" : "Llegada";
+      
+      const tbody = rows.length ? rows.map(r => {
+        const mainDate = mode === "departures" 
+          ? `${fmtDate(r.departure_date)} ${fmtTime(r.departure_time)}`
+          : `${fmtDate(r.arrival_date)} ${fmtTime(r.arrival_time)}`;
+        
+        return `
+          <tr>
+            <td>
+              <form method="POST" action="/staff/checkins/${r.id}/clean">
+                <button type="submit" class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}">
+                  ${r.clean_ok ? "✓" : ""}
+                </button>
+              </form>
+            </td>
+            <td style="font-family:monospace; font-size:13px;">
+              ${escapeHtml(String(r.beds24_booking_id || r.booking_token || r.id))}
+            </td>
+            <td>${formatGuestName(r.full_name)}</td>
+            <td>${mainDate}</td>
+            <td>${calcNights(r.arrival_date, r.departure_date)}</td>
+            <td style="white-space:nowrap;">${(r.adults || 0)}&nbsp;|&nbsp;${(r.children || 0)}</td>
+            <td>${escapeHtml(r.room_name || r.apartment_name || "Sin nombre")}</td>
+            <td style="font-family:monospace; font-weight:600; color:#1f2937;">
+              ${escapeHtml(r.lock_code || "—")}
+            </td>
+          </tr>
+        `;
+      }).join("") : `<tr><td colspan="8" class="muted">No tienes limpiezas asignadas</td></tr>`;
+
+      return `
+        <h2 style="margin:24px 0 12px;">${title}</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Limpieza</th>
+                <th>ID</th>
+                <th>Huésped</th>
+                <th>${dateColTitle}</th>
+                <th>Noches</th>
+                <th>A|C</th>
+                <th>Apartamento</th>
+                <th>Código</th>
+              </tr>
+            </thead>
+            <tbody>${tbody}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    const pageHtml = renderNavMenu('my-cleanings', req) + toolbar + 
+                     renderMyCleaningsTable(arrivals, "arrivals") + 
+                     `<div style="height:24px;"></div>` + 
+                     renderMyCleaningsTable(departures, "departures");
+    
+    res.send(renderPage("Mis Limpiezas", pageHtml, 'my-cleanings'));
+  } catch (e) {
+    console.error("Error en /staff/my-cleanings:", e);
+    res.status(500).send(renderPage("Error", `
+      <div class="card">
+        <h1 style="color:#991b1b;">❌ Error al cargar tus limpiezas</h1>
+        <p>${escapeHtml(e.message || String(e))}</p>
+        <p><a href="/staff/my-cleanings" class="btn-link">Recargar</a></p>
+      </div>
+    `));
+  }
+});
 // ===================== ADMIN: SET VISIBILITY =====================
 app.post("/staff/checkins/:id/lock", async (req, res) => {
   try {
@@ -7982,6 +8195,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
