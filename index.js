@@ -5734,21 +5734,81 @@ async function translateText(text, targetLang) {
   return data.translations[0].text;
 }
 
-// API endpoint para traducir desde el frontend
+// ============================================
+// 🌍 API: TRADUCIR TEXTO CON DEEPL (protegiendo variables)
+// ============================================
+
 app.post("/api/translate", async (req, res) => {
   try {
     const { text, targetLang } = req.body;
     
     if (!text || !targetLang) {
-      return res.status(400).json({ error: 'Missing text or targetLang' });
+      return res.status(400).json({ error: "Faltan parámetros" });
     }
 
-    const translated = await translateText(text, targetLang);
+    // 🔒 PASO 1: Proteger variables antes de traducir
+    const variablePattern = /\{[^}]+\}/g;
+    const variables = text.match(variablePattern) || [];
     
-    res.json({ translated });
-  } catch (e) {
-    console.error('❌ Translation error:', e);
-    res.status(500).json({ error: e.message });
+    // Crear un mapa de variables → placeholders
+    const placeholderMap = {};
+    let protectedText = text;
+    
+    variables.forEach((variable, index) => {
+      const placeholder = `VARIABLE_${index}_PLACEHOLDER`;
+      placeholderMap[placeholder] = variable;
+      protectedText = protectedText.replace(variable, placeholder);
+    });
+
+    console.log('📝 Texto original:', text);
+    console.log('🔒 Texto protegido:', protectedText);
+    console.log('🗺️ Mapa de variables:', placeholderMap);
+
+    // 🌍 PASO 2: Traducir con DeepL
+    const deeplResponse = await fetch('https://api-free.deepl.com/v2/translate', {
+      method: 'POST',
+      headers: {
+        'Authorization': `DeepL-Auth-Key ${process.env.DEEPL_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        text: [protectedText],
+        target_lang: targetLang,
+        preserve_formatting: true,
+        tag_handling: 'xml'
+      })
+    });
+
+    if (!deeplResponse.ok) {
+      const errorText = await deeplResponse.text();
+      console.error('❌ Error de DeepL:', errorText);
+      return res.status(500).json({ error: 'Error al traducir con DeepL' });
+    }
+
+    const deeplData = await deeplResponse.json();
+    let translatedText = deeplData.translations[0].text;
+
+    console.log('🌍 Texto traducido (con placeholders):', translatedText);
+
+    // 🔓 PASO 3: Restaurar variables originales
+    Object.entries(placeholderMap).forEach(([placeholder, variable]) => {
+      // Buscar el placeholder con o sin espacios
+      const regex = new RegExp(placeholder.replace(/_/g, '[ _]'), 'gi');
+      translatedText = translatedText.replace(regex, variable);
+    });
+
+    console.log('✅ Texto final (variables restauradas):', translatedText);
+
+    res.json({ 
+      success: true, 
+      translated: translatedText,
+      original: text,
+      targetLang 
+    });
+
+  } catch (error) {
+    console.error('❌ Error en /api/translate:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 // ===================== MANAGER SETTINGS =====================
@@ -8069,11 +8129,33 @@ async function handleRulesAcceptance(from, checkin, body, language) {
 // ============ PARSEAR ENTRADA DE HORA ============
 
 function parseTimeInput(input) {
-  // Normalizar entrada
-  const normalized = input.trim().toLowerCase();
+  // Normalizar entrada (quitar espacios)
+  const normalized = input.trim().toLowerCase().replace(/\s+/g, '');
   
-  // Formato 1: Solo número (17, 23)
-  let match = normalized.match(/^(\d{1,2})$/);
+  // ✅ Formato 1: HHMM (4 dígitos) - ej: "1700", "2330", "0100"
+  let match = normalized.match(/^(\d{4})$/);
+  if (match) {
+    const hour = parseInt(match[1].substring(0, 2));
+    const minute = parseInt(match[1].substring(2, 4));
+    if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+      return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+    }
+    return null;
+  }
+  
+  // ✅ Formato 2: HMM (3 dígitos) - ej: "900" → "09:00"
+  match = normalized.match(/^(\d{3})$/);
+  if (match) {
+    const hour = parseInt(match[1].substring(0, 1));
+    const minute = parseInt(match[1].substring(1, 3));
+    if (hour >= 0 && hour <= 9 && minute >= 0 && minute <= 59) {
+      return `0${hour}:${minute.toString().padStart(2, '0')}`;
+    }
+    return null;
+  }
+  
+  // ✅ Formato 3: HH (2 dígitos) - ej: "17" → "17:00"
+  match = normalized.match(/^(\d{2})$/);
   if (match) {
     const hour = parseInt(match[1]);
     if (hour >= 0 && hour <= 23) {
@@ -8082,7 +8164,17 @@ function parseTimeInput(input) {
     return null;
   }
   
-  // Formato 2: HH:MM o HH.MM o HHhMM
+  // ✅ Formato 4: H (1 dígito) - ej: "5" → "05:00"
+  match = normalized.match(/^(\d{1})$/);
+  if (match) {
+    const hour = parseInt(match[1]);
+    if (hour >= 0 && hour <= 9) {
+      return `0${hour}:00`;
+    }
+    return null;
+  }
+  
+  // ✅ Formato 5: HH:MM o HH.MM - ej: "17:30", "17.30"
   match = normalized.match(/^(\d{1,2})[:\.h](\d{2})$/);
   if (match) {
     const hour = parseInt(match[1]);
@@ -8093,7 +8185,7 @@ function parseTimeInput(input) {
     return null;
   }
   
-  // Formato 3: 12h con AM/PM (5pm, 5:30pm)
+  // ✅ Formato 6: 12h con AM/PM - ej: "5pm", "5:30pm"
   match = normalized.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/);
   if (match) {
     let hour = parseInt(match[1]);
@@ -8195,6 +8287,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
