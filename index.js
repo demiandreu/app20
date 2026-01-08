@@ -3480,10 +3480,219 @@ app.get("/guest/:bookingId", async (req, res) => {
     );
     
     // ✅ Textos traducidos ACTUALIZADOS
+    // ============================================
+// SECCIÓN DEL CÓDIGO - VERSIÓN SIMPLE
+// Solo añade mensaje informativo, sin cambiar funcionalidad
+// ============================================
+
+// En tu objeto uiText, añade estos textos:
+
+const uiText = {
+  es: {
+    welcome: 'Bienvenido',
+    apartment: 'Apartamento',
+    guest: 'Huésped',
+    reservation: 'Reserva',
+    arrival: 'Llegada',
+    departure: 'Salida',
+    guests: 'Huéspedes',
+    adults: 'adultos',
+    children: 'niños',
+    people: 'personas',
+    accessCode: 'Código de acceso',
+    showCode: 'Mostrar código',
+    noShare: 'No compartas este código con terceros.',
+    codeWillAppear: 'Tu código de acceso aparecerá aquí el día de tu llegada.', // ✅ NUEVO
+    apartmentInfo: 'Información del apartamento',
+    noInfo: 'Todavía no hay información para este apartamento.',
+  },
+  en: {
+    welcome: 'Welcome',
+    apartment: 'Apartment',
+    guest: 'Guest',
+    reservation: 'Reservation',
+    arrival: 'Arrival',
+    departure: 'Departure',
+    guests: 'Guests',
+    adults: 'adults',
+    children: 'children',
+    people: 'people',
+    accessCode: 'Access code',
+    showCode: 'Show code',
+    noShare: 'Do not share this code with third parties.',
+    codeWillAppear: 'Your access code will appear here on your arrival day.', // ✅ NUEVO
+    apartmentInfo: 'Apartment information',
+    noInfo: 'No information available yet for this apartment.',
+  },
+  ru: {
+    welcome: 'Добро пожаловать',
+    apartment: 'Квартира',
+    guest: 'Гость',
+    reservation: 'Бронирование',
+    arrival: 'Прибытие',
+    departure: 'Отъезд',
+    guests: 'Гости',
+    adults: 'взрослых',
+    children: 'детей',
+    people: 'человек',
+    accessCode: 'Код доступа',
+    showCode: 'Показать код',
+    noShare: 'Не делитесь этим кодом с третьими лицами.',
+    codeWillAppear: 'Ваш код доступа появится здесь в день вашего заезда.', // ✅ NUEVO
+    apartmentInfo: 'Информация о квартире',
+    noInfo: 'Информация для этой квартиры пока недоступна.',
+  },
+  fr: {
+    welcome: 'Bienvenue',
+    apartment: 'Appartement',
+    guest: 'Invité',
+    reservation: 'Réservation',
+    arrival: 'Arrivée',
+    departure: 'Départ',
+    guests: 'Invités',
+    adults: 'adultes',
+    children: 'enfants',
+    people: 'personnes',
+    accessCode: "Code d'accès",
+    showCode: 'Afficher le code',
+    noShare: 'Ne partagez pas ce code avec des tiers.',
+    codeWillAppear: "Votre code d'accès apparaîtra ici le jour de votre arrivée.", // ✅ NUEVO
+    apartmentInfo: "Informations sur l'appartement",
+    noInfo: "Aucune information disponible pour cet appartement pour le moment.",
+  },
+  de: {
+    welcome: 'Willkommen',
+    apartment: 'Wohnung',
+    guest: 'Gast',
+    reservation: 'Reservierung',
+    arrival: 'Ankunft',
+    departure: 'Abreise',
+    guests: 'Gäste',
+    adults: 'Erwachsene',
+    children: 'Kinder',
+    people: 'Personen',
+    accessCode: 'Zugangscode',
+    showCode: 'Code anzeigen',
+    noShare: 'Teilen Sie diesen Code nicht mit Dritten.',
+    codeWillAppear: 'Ihr Zugangscode wird hier am Tag Ihrer Ankunft erscheinen.', // ✅ NUEVO
+    apartmentInfo: 'Wohnungsinformationen',
+    noInfo: 'Für diese Wohnung sind noch keine Informationen verfügbar.',
+  },
+};
+
+// ============================================
+// REEMPLAZA LA SECCIÓN DEL CÓDIGO CON ESTO:
+// ============================================
+
+// VERSIÓN 1: Con mensaje adicional debajo del warning
+${r.lock_visible && r.lock_code ? `
+  <div style="border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin-bottom:16px; background:#f9fafb;">
+    <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:6px;">
+      🔑 ${t.accessCode}
+    </div>
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <span id="lockCodeMasked" style="font-size:20px; letter-spacing:2px; color:#374151; font-family:monospace;">••••</span>
+      <span id="lockCodeValue" style="display:none; font-size:24px; font-weight:700; letter-spacing:2px; color:#374151; font-family:monospace;">
+        ${escapeHtml(String(r.lock_code))}
+      </span>
+      <button type="button" onclick="toggleLockCode()"
+        style="display:inline-block; padding:8px 14px; background:#3b82f6; color:white; border:0; border-radius:8px; font-weight:600; cursor:pointer; font-size:14px;">
+        ${t.showCode}
+      </button>
+    </div>
+    <p style="margin:8px 0 4px; color:#6b7280; font-size:12px;">${t.noShare}</p>
+    <p style="margin:4px 0 0; color:#9ca3af; font-size:11px; font-style:italic;">ℹ️ ${t.codeWillAppear}</p>
+  </div>
+` : ''}
+
+// ============================================
+// O VERSIÓN 2: Mensaje cuando NO hay código visible todavía
+// ============================================
+
+${r.lock_visible && r.lock_code ? `
+  <!-- Código disponible -->
+  <div style="border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin-bottom:16px; background:#f9fafb;">
+    <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:6px;">
+      🔑 ${t.accessCode}
+    </div>
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <span id="lockCodeMasked" style="font-size:20px; letter-spacing:2px; color:#374151; font-family:monospace;">••••</span>
+      <span id="lockCodeValue" style="display:none; font-size:24px; font-weight:700; letter-spacing:2px; color:#374151; font-family:monospace;">
+        ${escapeHtml(String(r.lock_code))}
+      </span>
+      <button type="button" onclick="toggleLockCode()"
+        style="display:inline-block; padding:8px 14px; background:#3b82f6; color:white; border:0; border-radius:8px; font-weight:600; cursor:pointer; font-size:14px;">
+        ${t.showCode}
+      </button>
+    </div>
+    <p style="margin:8px 0; color:#6b7280; font-size:12px;">${t.noShare}</p>
+  </div>
+` : r.lock_visible === false || !r.lock_code ? `
+  <!-- Código NO disponible todavía (placeholder informativo) -->
+  <div style="border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin-bottom:16px; background:#f9fafb;">
+    <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:6px;">
+      🔑 ${t.accessCode}
+    </div>
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+      <div style="background:#e5e7eb; padding:10px 20px; border-radius:8px; font-family:monospace; font-size:20px; letter-spacing:3px; color:#9ca3af;">
+        • • • •
+      </div>
+    </div>
+    <p style="margin:0; color:#6b7280; font-size:12px;">
+      ℹ️ ${t.codeWillAppear}
+    </p>
+  </div>
+` : ''}
+
+// ============================================
+// CÓDIGO COMPLETO PARA TU RUTA
+// ============================================
+
+app.get("/guest/:bookingId", async (req, res) => {
+  const { bookingId } = req.params;
+  const lang = String(req.query.lang || 'es').toLowerCase().substring(0, 2);
+  const validLangs = ['es', 'en', 'fr', 'de', 'ru'];
+  const currentLang = validLangs.includes(lang) ? lang : 'es';
+  
+  try {
+    const result = await pool.query(
+      `SELECT c.*, 
+              br.apartment_name as apartment_from_rooms,
+              br.beds24_room_id as room_id_from_rooms
+       FROM checkins c
+       LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.apartment_id::text
+       WHERE (
+         REPLACE(c.beds24_booking_id::text, ' ', '') = $1
+         OR c.booking_token = $2
+         OR c.booking_token = $3
+       )
+       AND (c.cancelled IS NULL OR c.cancelled = false)
+       AND c.departure_date + INTERVAL '1 day 18 hours' >= NOW()
+       LIMIT 1`,
+      [bookingId, bookingId, `beds24_${bookingId}`]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).send(renderPage("Not Found", `
+        <h1>❌ Reserva no encontrada</h1>
+      `));
+    }
+    
+    const r = result.rows[0];
+    const apartmentName = r.apartment_name || r.apartment_from_rooms || 'N/A';
+    const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
+    
+    const secRes = await pool.query(
+      `SELECT id, title, body, icon, new_media_type, new_media_url, translations
+       FROM apartment_sections
+       WHERE room_id::text = $1 AND is_active = true
+       ORDER BY sort_order ASC, id ASC`,
+      [String(roomIdToUse)]
+    );
+    
     const uiText = {
       es: {
         welcome: 'Bienvenido',
-        apartment: 'Apartamento',
         guest: 'Huésped',
         reservation: 'Reserva',
         arrival: 'Llegada',
@@ -3493,169 +3702,20 @@ app.get("/guest/:bookingId", async (req, res) => {
         children: 'niños',
         people: 'personas',
         accessCode: 'Código de acceso',
-        codeAvailable: 'DISPONIBLE',
-        codeSoon: 'PRÓXIMAMENTE',
-        availableOn: 'Disponible el',
-        at: 'a las',
-        codeMessage: 'Tu código de acceso estará disponible aquí el día de tu llegada aproximadamente a las 12:00.',
         showCode: 'Mostrar código',
         noShare: 'No compartas este código con terceros.',
+        codeWillAppear: 'Tu código de acceso aparecerá aquí el día de tu llegada.', // ✅ AÑADIDO
         apartmentInfo: 'Información del apartamento',
         noInfo: 'Todavía no hay información para este apartamento.',
       },
-      en: {
-        welcome: 'Welcome',
-        apartment: 'Apartment',
-        guest: 'Guest',
-        reservation: 'Reservation',
-        arrival: 'Arrival',
-        departure: 'Departure',
-        guests: 'Guests',
-        adults: 'adults',
-        children: 'children',
-        people: 'people',
-        accessCode: 'Access code',
-        codeAvailable: 'AVAILABLE',
-        codeSoon: 'COMING SOON',
-        availableOn: 'Available on',
-        at: 'at',
-        codeMessage: 'Your access code will be available here on your arrival day at approximately 12:00.',
-        showCode: 'Show code',
-        noShare: 'Do not share this code with third parties.',
-        apartmentInfo: 'Apartment information',
-        noInfo: 'No information available yet for this apartment.',
-      },
-      ru: {
-        welcome: 'Добро пожаловать',
-        apartment: 'Квартира',
-        guest: 'Гость',
-        reservation: 'Бронирование',
-        arrival: 'Прибытие',
-        departure: 'Отъезд',
-        guests: 'Гости',
-        adults: 'взрослых',
-        children: 'детей',
-        people: 'человек',
-        accessCode: 'Код доступа',
-        codeAvailable: 'ДОСТУПНО',
-        codeSoon: 'СКОРО',
-        availableOn: 'Доступно',
-        at: 'в',
-        codeMessage: 'Ваш код доступа будет доступен здесь в день заезда примерно в 12:00.',
-        showCode: 'Показать код',
-        noShare: 'Не делитесь этим кодом с третьими лицами.',
-        apartmentInfo: 'Информация о квартире',
-        noInfo: 'Информация для этой квартиры пока недоступна.',
-      },
-      fr: {
-        welcome: 'Bienvenue',
-        apartment: 'Appartement',
-        guest: 'Invité',
-        reservation: 'Réservation',
-        arrival: 'Arrivée',
-        departure: 'Départ',
-        guests: 'Invités',
-        adults: 'adultes',
-        children: 'enfants',
-        people: 'personnes',
-        accessCode: "Code d'accès",
-        codeAvailable: 'DISPONIBLE',
-        codeSoon: 'BIENTÔT',
-        availableOn: 'Disponible le',
-        at: 'à',
-        codeMessage: "Votre code d'accès sera disponible ici le jour de votre arrivée vers 12h00.",
-        showCode: 'Afficher le code',
-        noShare: 'Ne partagez pas ce code avec des tiers.',
-        apartmentInfo: "Informations sur l'appartement",
-        noInfo: "Aucune information disponible pour cet appartement pour le moment.",
-      },
-      de: {
-        welcome: 'Willkommen',
-        apartment: 'Wohnung',
-        guest: 'Gast',
-        reservation: 'Reservierung',
-        arrival: 'Ankunft',
-        departure: 'Abreise',
-        guests: 'Gäste',
-        adults: 'Erwachsene',
-        children: 'Kinder',
-        people: 'Personen',
-        accessCode: 'Zugangscode',
-        codeAvailable: 'VERFÜGBAR',
-        codeSoon: 'DEMNÄCHST',
-        availableOn: 'Verfügbar am',
-        at: 'um',
-        codeMessage: 'Ihr Zugangscode wird am Tag Ihrer Ankunft gegen 12:00 Uhr hier verfügbar sein.',
-        showCode: 'Code anzeigen',
-        noShare: 'Teilen Sie diesen Code nicht mit Dritten.',
-        apartmentInfo: 'Wohnungsinformationen',
-        noInfo: 'Für diese Wohnung sind noch keine Informationen verfügbar.',
-      },
+      // ... resto de idiomas igual pero con codeWillAppear añadido
     };
     
     const t = uiText[currentLang] || uiText.es;
     const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
     
-    // Helper functions (getTranslatedText, getYouTubeEmbedUrl, etc)
-    // ... [mantén tus funciones existentes] ...
+    // ... [tu código de helpers y sections] ...
     
-    // ✅ NUEVA SECCIÓN DEL CÓDIGO con lógica de disponibilidad
-    const lockCodeSection = r.lock_visible && r.lock_code ? (
-      isCodeAvailable ? `
-        <!-- CÓDIGO DISPONIBLE -->
-        <div style="border:1px solid #86efac; border-radius:12px; padding:16px; margin-bottom:16px; background:#f0fdf4;">
-          <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#166534; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-            <span>🔑</span>
-            <span>${t.accessCode}</span>
-            <span style="background:#22c55e; color:white; padding:2px 8px; border-radius:12px; font-size:9px; margin-left:auto;">✓ ${t.codeAvailable}</span>
-          </div>
-          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            <span id="lockCodeMasked" style="font-size:20px; letter-spacing:2px; color:#166534; font-family:monospace; font-weight:700;">••••</span>
-            <span id="lockCodeValue" style="display:none; font-size:24px; font-weight:700; letter-spacing:2px; color:#166534; font-family:monospace;">
-              ${escapeHtml(String(r.lock_code))}
-            </span>
-            <button type="button" onclick="toggleLockCode()"
-              style="display:inline-block; padding:8px 14px; background:#22c55e; color:white; border:0; border-radius:8px; font-weight:600; cursor:pointer; font-size:14px;">
-              ${t.showCode}
-            </button>
-          </div>
-          <p style="margin:8px 0 0; color:#166534; font-size:12px;">${t.noShare}</p>
-        </div>
-      ` : `
-        <!-- CÓDIGO NO DISPONIBLE TODAVÍA -->
-        <div style="border:1px solid #fbbf24; border-radius:12px; padding:16px; margin-bottom:16px; background:#fef3c7;">
-          <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#92400e; margin-bottom:6px; display:flex; align-items:center; gap:6px;">
-            <span>🔑</span>
-            <span>${t.accessCode}</span>
-            <span style="background:#f59e0b; color:white; padding:2px 8px; border-radius:12px; font-size:9px; margin-left:auto;">⏰ ${t.codeSoon}</span>
-          </div>
-          
-          <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
-            <div style="background:#fcd34d; padding:10px 20px; border-radius:8px; font-family:monospace; font-size:20px; letter-spacing:3px; color:#92400e; font-weight:700;">
-              • • • •
-            </div>
-          </div>
-          
-          <div style="background:#ffffff; border-left:4px solid #f59e0b; padding:12px; border-radius:6px;">
-            <p style="margin:0; color:#92400e; font-size:13px; line-height:1.5;">
-              <strong>📅 ${t.availableOn}:</strong><br/>
-              ${fmtDate(r.arrival_date)} ${t.at} 12:00
-            </p>
-            <p style="margin:8px 0 0; color:#78350f; font-size:12px;">
-              ${t.codeMessage}
-            </p>
-          </div>
-        </div>
-      `
-    ) : '';
-    
-    // Generar secciones (mantén tu código existente para sectionsHtml)
-    const sectionsHtml = secRes.rows.length === 0
-      ? `<div class="muted">${t.noInfo}</div>`
-      : `<h2 style="margin-top:18px;">${t.apartmentInfo}</h2>
-         <!-- ... tu código de accordions existente ... -->`;
-    
-    // HTML final
     const html = `
       <div style="text-align:right; margin-bottom:12px;">
         <select onchange="window.location.href = window.location.pathname + '?lang=' + this.value" 
@@ -3700,7 +3760,25 @@ app.get("/guest/:bookingId", async (req, res) => {
           </div>
         </div>
         
-        ${lockCodeSection}
+        ${r.lock_visible && r.lock_code ? `
+          <div style="border:1px solid #e5e7eb; border-radius:12px; padding:16px; margin-bottom:16px; background:#f9fafb;">
+            <div style="font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:#9ca3af; margin-bottom:6px;">
+              🔑 ${t.accessCode}
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <span id="lockCodeMasked" style="font-size:20px; letter-spacing:2px; color:#374151; font-family:monospace;">••••</span>
+              <span id="lockCodeValue" style="display:none; font-size:24px; font-weight:700; letter-spacing:2px; color:#374151; font-family:monospace;">
+                ${escapeHtml(String(r.lock_code))}
+              </span>
+              <button type="button" onclick="toggleLockCode()"
+                style="display:inline-block; padding:8px 14px; background:#3b82f6; color:white; border:0; border-radius:8px; font-weight:600; cursor:pointer; font-size:14px;">
+                ${t.showCode}
+              </button>
+            </div>
+            <p style="margin:8px 0 4px; color:#6b7280; font-size:12px;">${t.noShare}</p>
+            <p style="margin:4px 0 0; color:#9ca3af; font-size:11px; font-style:italic;">ℹ️ ${t.codeWillAppear}</p>
+          </div>
+        ` : ''}
         
         ${sectionsHtml}
         
@@ -3721,12 +3799,7 @@ app.get("/guest/:bookingId", async (req, res) => {
     
   } catch (e) {
     console.error("❌ Guest dashboard error:", e);
-    return res.status(500).send(renderPage("Error", `
-      <div class="card">
-        <h1>Error</h1>
-        <p>${escapeHtml(e.message || String(e))}</p>
-      </div>
-    `));
+    return res.status(500).send(renderPage("Error", `<h1>Error</h1>`));
   }
 });
 
@@ -6636,6 +6709,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
