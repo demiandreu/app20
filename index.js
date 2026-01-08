@@ -14,8 +14,6 @@ const bcrypt = require('bcrypt');
 const pgSession = require('connect-pg-simple')(session);
 
 
-
-const express = require('express');
 const app = express();
 
 // ✅ CONFIGURACIÓN DE SESIONES (NUEVO)
@@ -6853,6 +6851,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
