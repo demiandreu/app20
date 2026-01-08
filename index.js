@@ -2458,29 +2458,32 @@ const rentalConnect = price * 0.30;
 
       return {
         id: row.id,
-        beds24_booking_id: row.beds24_booking_id,
-        full_name: row.full_name,
-        arrival_date: row.arrival_date,
-        departure_date: row.departure_date,
-        apartment_name: row.apartment_name,
-        platform,
-        referer: referer,
-        nights,
-        price: price.toFixed(2),
-        firstInvoiceItem: firstInvoiceItem.toFixed(2),
-        commission: commission.toFixed(2),
-        bookingIva: bookingIva.toFixed(2),
-        rentalConnect: rentalConnect.toFixed(2)
+  beds24_booking_id: row.beds24_booking_id,
+  full_name: row.full_name,
+  arrival_date: row.arrival_date,
+  departure_date: row.departure_date,
+  apartment_name: row.apartment_name,
+  platform,
+  referer: referer,
+  nights,
+  price: price.toFixed(2),
+  firstInvoiceItem: firstInvoiceItem.toFixed(2),
+  commission: commission.toFixed(2),
+  bookingIva: bookingIva.toFixed(2),
+  rentalConnect: rentalConnect.toFixed(2),
+  income: income.toFixed(2)
       };
     });
 
     // Calcular totales
     const totals = {
-      count: bookings.length,
-      totalPrice: bookings.reduce((sum, b) => sum + parseFloat(b.price), 0).toFixed(2),
-      totalCommission: bookings.reduce((sum, b) => sum + parseFloat(b.commission), 0).toFixed(2),
-      totalBookingIva: bookings.reduce((sum, b) => sum + parseFloat(b.bookingIva), 0).toFixed(2),
-      totalRentalConnect: bookings.reduce((sum, b) => sum + parseFloat(b.rentalConnect), 0).toFixed(2)
+     count: bookings.length,
+  totalPrice: bookings.reduce((sum, b) => sum + parseFloat(b.price), 0).toFixed(2),
+  totalCommission: bookings.reduce((sum, b) => sum + parseFloat(b.commission), 0).toFixed(2),
+  totalBookingIva: bookings.reduce((sum, b) => sum + parseFloat(b.bookingIva), 0).toFixed(2),
+  totalRentalConnect: bookings.reduce((sum, b) => sum + parseFloat(b.rentalConnect), 0).toFixed(2),
+  totalIncome: bookings.reduce((sum, b) => sum + parseFloat(b.income), 0).toFixed(2)
+};
     };
 
     // Generar selector de filtros
@@ -2529,17 +2532,18 @@ const rentalConnect = price * 0.30;
           <thead>
             <tr>
               <th style="width:40px;">Acción</th>
-              <th>ID Booking</th>
-              <th>Huésped</th>
-              <th>Plataforma</th>
-              <th>Check-in</th>
-              <th>Check-out</th>
-              <th>Noches</th>
-              <th>Apartamento</th>
-              <th>Precio</th>
-              <th>Comisión</th>
-              <th>Booking IVA</th>
-              <th>Rental Connect</th>
+    <th>ID Booking</th>
+    <th>Huésped</th>
+    <th>Plataforma</th>
+    <th>Check-in</th>
+    <th>Check-out</th>
+    <th>Noches</th>
+    <th>Apartamento</th>
+    <th>Precio</th>
+    <th>Comisión</th>
+    <th>Booking IVA</th>
+    <th>Rental Connect</th>
+    <th>Income</th>
             </tr>
           </thead>
           <tbody>
@@ -2565,19 +2569,22 @@ const rentalConnect = price * 0.30;
                 <td style="text-align:right;">€${b.commission}</td>
                 <td style="text-align:right; color:#dc2626;">€${b.bookingIva}</td>
                 <td style="text-align:right; color:#059669; font-weight:600;">€${b.rentalConnect}</td>
+                <td style="text-align:right; color:#0891b2; font-weight:700; background:#ecfeff;">€${b.income}</td>
+
               </tr>
             `).join('') : `
-              <tr><td colspan="12" class="muted">No hay reservas en este período</td></tr>
+              <tr><td colspan="13" class="muted">No hay reservas en este período</td></tr>
             `}
           </tbody>
           <tfoot>
-            <tr style="background:#f9fafb; font-weight:600;">
-              <td colspan="8">TOTALES (${totals.count} reservas)</td>
-              <td style="text-align:right;">€${totals.totalPrice}</td>
-              <td style="text-align:right;">€${totals.totalCommission}</td>
-              <td style="text-align:right; color:#dc2626;">€${totals.totalBookingIva}</td>
-              <td style="text-align:right; color:#059669;">€${totals.totalRentalConnect}</td>
-            </tr>
+           <tr style="background:#f9fafb; font-weight:600;">
+    <td colspan="8">TOTALES (${totals.count} reservas)</td>
+    <td style="text-align:right;">€${totals.totalPrice}</td>
+    <td style="text-align:right;">€${totals.totalCommission}</td>
+    <td style="text-align:right; color:#dc2626;">€${totals.totalBookingIva}</td>
+    <td style="text-align:right; color:#059669;">€${totals.totalRentalConnect}</td>
+    <td style="text-align:right; color:#0891b2; font-weight:700; background:#ecfeff;">€${totals.totalIncome}</td>
+  </tr>
           </tfoot>
         </table>
       </div>
@@ -8703,6 +8710,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
