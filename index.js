@@ -1907,35 +1907,7 @@ td.apartment-cell.needs-clean {
 <body>
   <div class="page">
   ${showNav ? `
-    <nav class="nav-menu">
-  <button class="nav-toggle" onclick="toggleNav()">☰</button>
-  
-  <div class="nav-links" id="navLinks">
-    <a href="/manager" class="nav-link ${currentPage === 'manager' ? 'active' : ''}">
-      🏠 Manager
-    </a>
-    
-    <a href="/staff/checkins" class="nav-link ${currentPage === 'staff' ? 'active' : ''}">
-      📋 Staff
-    </a>
-    
-    <a href="/manager/whatsapp" class="nav-link ${currentPage === 'whatsapp' ? 'active' : ''}">
-      💬 WhatsApp
-    </a>
-    
-    <a href="/manager/apartment" class="nav-link ${currentPage === 'apartment' ? 'active' : ''}">
-      🏢 Apartamentos
-    </a>
-  </div>
-</nav>
-` : ''}
-<script>
-  function toggleNav() {
-    const navLinks = document.getElementById('navLinks');
-    navLinks.classList.toggle('active');
-  }
-</script>
-    
+` : ''}    
     <div class="card">
       ${innerHtml}
     </div>
@@ -7139,6 +7111,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
