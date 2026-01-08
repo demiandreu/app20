@@ -2322,7 +2322,7 @@ FROM beds24_rooms
       )
       .join("");
     
-   const html = renderNavMenu('manager', req) + `
+   const html = renderNavMenu('apartamentos', req) + `
      <h1>Manager</h1>
       <h3>Apartment settings</h3>
       <form method="GET" action="/manager/apartment">
@@ -6280,7 +6280,7 @@ app.get("/manager/whatsapp", (req, res) => {
     res.send(renderPage("WhatsApp Manager", html));
   } catch (e) {
     console.error('Error loading manager-whatsapp.html:', e);
-    const html = renderNavMenu('whatsapp', req) + `
+   const html = renderNavMenu('whatsapp', req) + `
       <div class="card">
         <h1>❌ Error</h1>
         <p>No se pudo cargar el contenido de WhatsApp Manager.</p>
@@ -7890,6 +7890,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
