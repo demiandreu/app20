@@ -2443,9 +2443,14 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
         price = raw.price || 0;
       }
 
-      const commission = raw.commission || 0;
-      const bookingIva = price * 0.0472;
-      const rentalConnect = (commission * 0.30) - bookingIva;
+      // Comisión de la plataforma (real de Beds24)
+const commission = raw.commission || 0;
+
+// Calcular Booking IVA (solo para Booking.com: 4.72% del precio)
+const bookingIva = platform === 'booking' ? (price * 0.0472) : 0;
+
+// Calcular Rental Connect (30% del precio menos Booking IVA)
+const rentalConnect = (price * 0.30) - bookingIva;
 
       const nights = row.departure_date && row.arrival_date
         ? Math.ceil((new Date(row.departure_date) - new Date(row.arrival_date)) / (1000 * 60 * 60 * 24))
@@ -8698,6 +8703,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
