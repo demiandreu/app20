@@ -2383,22 +2383,21 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
     const apartments = apartmentsResult.rows.map(r => r.apartment_name);
 
     // Construir query con filtro opcional de apartamento
-    let query = `
-      SELECT 
-        id,
-        beds24_booking_id,
-        full_name,
-        arrival_date,
-        departure_date,
-        apartment_name,
-        beds24_raw,
-        created_at
-      FROM checkins
-      WHERE arrival_date >= $1
-        AND arrival_date < $2
-        AND cancelled = false
-        AND beds24_raw IS NOT NULL
-    `;
+   let query = `
+  SELECT 
+    id,
+    beds24_booking_id,
+    full_name,
+    arrival_date,
+    departure_date,
+    apartment_name,
+    beds24_raw,
+    created_at
+  FROM checkins
+  WHERE arrival_date >= $1
+    AND arrival_date < $2
+    AND cancelled = false
+`;
     
     const params = [startDate, endDate];
     
@@ -8808,6 +8807,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
