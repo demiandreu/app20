@@ -43,6 +43,74 @@ app.use(session({
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+function requireAuth(req, res, next) {
+  if (!req.session || !req.session.userId) {
+    return res.redirect('/login?redirect=' + encodeURIComponent(req.originalUrl));
+  }
+  next();
+}
+
+// MIDDLEWARE: Verificar rol
+function requireRole(...allowedRoles) {
+  return async (req, res, next) => {
+    if (!req.session || !req.session.userId) {
+      return res.redirect('/login');
+    }
+
+    try {
+      const result = await pool.query(
+        'SELECT role FROM users WHERE id = $1 AND is_active = true',
+        [req.session.userId]
+      );
+
+      if (result.rows.length === 0) {
+        req.session.destroy();
+        return res.redirect('/login');
+      }
+
+      const userRole = result.rows[0].role;
+
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).send(renderPage('Acceso Denegado', `
+          <div class="card">
+            <h1>🚫 Acceso Denegado</h1>
+            <p>No tienes permisos para acceder a esta página.</p>
+            <p><a href="/staff" class="btn-link">← Volver</a></p>
+          </div>
+        `));
+      }
+
+      req.userRole = userRole;
+      next();
+    } catch (e) {
+      console.error('Error checking role:', e);
+      return res.status(500).send('Error de autenticación');
+    }
+  };
+}
+
+// HELPER: Obtener usuario actual
+async function getCurrentUser(req) {
+  if (!req.session || !req.session.userId) {
+    return null;
+  }
+
+  try {
+    const result = await pool.query(
+      'SELECT id, email, full_name, role FROM users WHERE id = $1 AND is_active = true',
+      [req.session.userId]
+    );
+    return result.rows[0] || null;
+  } catch (e) {
+    console.error('Error getting current user:', e);
+    return null;
+  }
+}
+
+// ============================================
+// MIDDLEWARE: Verificar autenticación
+// ============================================
+
 
 async function beds24Get(endpoint, params = {}, propertyExternalId) {
   const accessToken = await getBeds24AccessToken(propertyExternalId);
@@ -6854,6 +6922,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
