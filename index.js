@@ -6198,19 +6198,27 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
   }
 });
 app.get("/manager/whatsapp", (req, res) => {
-  const html = renderNavMenu('whatsapp') + `
-    <div style="max-width:1200px; margin:0 auto;">
-      <h1>🤖 Configuración WhatsApp Bot</h1>
-      <p class="muted">Gestiona los mensajes automáticos y configuración de tu bot</p>
-      
-      <div style="margin-top:24px;">
-        <p>El contenido de esta página se cargará desde el archivo HTML.</p>
-        <p><em>Nota: Esta página está en proceso de migración a contenido dinámico.</em></p>
+  try {
+    const htmlFilePath = path.join(__dirname, 'manager-whatsapp.html');
+    const fileContent = fs.readFileSync(htmlFilePath, 'utf8');
+    
+    // Extraer solo el contenido del <body>
+    const bodyMatch = fileContent.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    const bodyContent = bodyMatch ? bodyMatch[1] : fileContent;
+    
+    const html = renderNavMenu('whatsapp') + bodyContent;
+    
+    res.send(renderPage("WhatsApp Manager", html));
+  } catch (e) {
+    console.error('Error loading manager-whatsapp.html:', e);
+    const html = renderNavMenu('whatsapp') + `
+      <div class="card">
+        <h1>❌ Error</h1>
+        <p>No se pudo cargar el contenido de WhatsApp Manager.</p>
       </div>
-    </div>
-  `;
-  
-  res.send(renderPage("WhatsApp Manager", html));
+    `;
+    res.send(renderPage("WhatsApp Manager", html));
+  }
 });
 
 // API: Obtener mensajes del flujo principal (START, REGOK, PAYOK)
@@ -7813,6 +7821,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
