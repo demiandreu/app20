@@ -2220,8 +2220,8 @@ FROM beds24_rooms
       )
       .join("");
     
-    const html = `
-      <h1>Manager</h1>
+   const html = renderNavMenu('manager') + `
+     <h1>Manager</h1>
       <h3>Apartment settings</h3>
       <form method="GET" action="/manager/apartment">
         <label>Select apartment:</label><br/>
@@ -2250,9 +2250,20 @@ FROM beds24_rooms
 
 // Servir página de gestión de apartamentos (nueva versión con acordeones)
 app.get("/manager/apartment", (req, res) => {
-  res.sendFile(path.join(__dirname, "manager-apartment.html"));
+  const html = renderNavMenu('apartamentos') + `
+    <div style="max-width:1200px; margin:0 auto;">
+      <h1>🏢 Gestión de Apartamentos</h1>
+      <p class="muted">Configura la información de tus apartamentos</p>
+      
+      <div style="margin-top:24px;">
+        <p>El contenido de esta página se cargará desde el archivo HTML.</p>
+        <p><em>Nota: Esta página está en proceso de migración a contenido dinámico.</em></p>
+      </div>
+    </div>
+  `;
+  
+  res.send(renderPage("Apartamentos", html));
 });
- 
 
 
 // ============================================
@@ -5513,7 +5524,19 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
   }
 });
 app.get("/manager/whatsapp", (req, res) => {
-  res.sendFile(require('path').join(__dirname, 'manager-whatsapp.html'));
+  const html = renderNavMenu('whatsapp') + `
+    <div style="max-width:1200px; margin:0 auto;">
+      <h1>🤖 Configuración WhatsApp Bot</h1>
+      <p class="muted">Gestiona los mensajes automáticos y configuración de tu bot</p>
+      
+      <div style="margin-top:24px;">
+        <p>El contenido de esta página se cargará desde el archivo HTML.</p>
+        <p><em>Nota: Esta página está en proceso de migración a contenido dinámico.</em></p>
+      </div>
+    </div>
+  `;
+  
+  res.send(renderPage("WhatsApp Manager", html));
 });
 
 // API: Obtener mensajes del flujo principal (START, REGOK, PAYOK)
@@ -7116,6 +7139,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
