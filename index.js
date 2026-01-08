@@ -2446,18 +2446,18 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
       // Comisión de la plataforma (real de Beds24)
 const commission = raw.commission || 0;
 
+
 // Calcular Booking IVA (solo para Booking.com: 4.72% del precio)
 const bookingIva = platform === 'booking' ? (price * 0.0472) : 0;
 
 // Calcular Rental Connect (30% del precio - SIN restar nada)
 const rentalConnect = price * 0.30;
 
-      const nights = row.departure_date && row.arrival_date
-        ? Math.ceil((new Date(row.departure_date) - new Date(row.arrival_date)) / (1000 * 60 * 60 * 24))
-        : 0;
+// Calcular Income (beneficio neto)
+const income = price - commission - bookingIva - rentalConnect;
 
-      return {
-        id: row.id,
+return {
+  id: row.id,
   beds24_booking_id: row.beds24_booking_id,
   full_name: row.full_name,
   arrival_date: row.arrival_date,
@@ -2472,7 +2472,7 @@ const rentalConnect = price * 0.30;
   bookingIva: bookingIva.toFixed(2),
   rentalConnect: rentalConnect.toFixed(2),
   income: income.toFixed(2)
-      };
+};
     });
 
     // Calcular totales
@@ -8710,6 +8710,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
