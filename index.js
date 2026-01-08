@@ -2303,22 +2303,641 @@ FROM beds24_rooms
 });
 
 
-// Servir página de gestión de apartamentos (nueva versión con acordeones)
-app.get("/manager/apartment", (req, res) => {
+app.get("/manager/apartment", async (req, res) => {
   const html = renderNavMenu('apartamentos') + `
-    <div style="max-width:1200px; margin:0 auto;">
-      <h1>🏢 Gestión de Apartamentos</h1>
-      <p class="muted">Configura la información de tus apartamentos</p>
+    <style>
+      .container-apt { max-width: 1200px; margin: 0 auto; }
+      .header-apt { margin-bottom: 24px; }
+      .header-apt h1 { font-size: 28px; color: #1f2937; margin-bottom: 8px; }
+      .header-apt p { color: #6b7280; font-size: 14px; }
+      .back-link { display: inline-block; color: #6366f1; text-decoration: none; margin-bottom: 16px; font-size: 14px; }
+      .back-link:hover { text-decoration: underline; }
       
-      <div style="margin-top:24px;">
-        <p>El contenido de esta página se cargará desde el archivo HTML.</p>
-        <p><em>Nota: Esta página está en proceso de migración a contenido dinámico.</em></p>
+      .apartment-selector {
+        margin-bottom: 32px; padding: 20px; background: #f9fafb;
+        border-radius: 12px; border: 2px solid #e5e7eb;
+      }
+      .apartment-selector label {
+        display: block; font-weight: 600; color: #374151; margin-bottom: 8px;
+      }
+      .apartment-selector select {
+        width: 100%; padding: 12px; border: 2px solid #e5e7eb;
+        border-radius: 8px; font-size: 16px; background: white; cursor: pointer;
+      }
+      .apartment-selector select:focus {
+        outline: none; border-color: #6366f1;
+      }
+      
+      .quick-links { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+      .quick-link {
+        padding: 10px 16px; background: #f3f4f6; color: #374151;
+        text-decoration: none; border-radius: 8px; font-size: 14px;
+        font-weight: 500; transition: all 0.2s;
+      }
+      .quick-link:hover { background: #e5e7eb; }
+      
+      .accordion-section {
+        border: 1px solid #e5e7eb; border-radius: 12px;
+        margin-bottom: 16px; overflow: hidden; transition: all 0.3s ease;
+      }
+      .accordion-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 20px; background: #f9fafb; cursor: pointer; user-select: none;
+      }
+      .accordion-header:hover { background: #f3f4f6; }
+      .accordion-title {
+        display: flex; align-items: center; gap: 12px;
+        font-size: 18px; font-weight: 600; color: #1f2937;
+      }
+      .accordion-icon { font-size: 24px; }
+      .accordion-arrow {
+        font-size: 20px; transition: transform 0.3s ease; color: #6b7280;
+      }
+      .accordion-section.open .accordion-arrow { transform: rotate(180deg); }
+      .accordion-content {
+        max-height: 0; overflow: hidden; transition: max-height 0.3s ease;
+      }
+      .accordion-section.open .accordion-content { max-height: 3000px; }
+      .accordion-body { padding: 24px; background: white; }
+      
+      .form-grid {
+        display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;
+      }
+      .form-grid.single { grid-template-columns: 1fr; }
+      .form-group { display: flex; flex-direction: column; gap: 8px; }
+      .form-group label { font-size: 14px; font-weight: 500; color: #374151; }
+      .form-group input, .form-group textarea, .form-group select {
+        padding: 10px 12px; border: 1px solid #d1d5db;
+        border-radius: 8px; font-size: 14px; font-family: inherit;
+      }
+      .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+        outline: none; border-color: #6366f1;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+      }
+      .form-group textarea { min-height: 80px; resize: vertical; }
+      
+      .checkbox-group {
+        display: flex; align-items: center; gap: 8px; padding: 10px 0;
+      }
+      .checkbox-group input[type="checkbox"] {
+        width: 20px; height: 20px; cursor: pointer;
+      }
+      .checkbox-group label {
+        font-size: 14px; color: #374151; cursor: pointer;
+      }
+      
+      .muted { color: #6b7280; font-size: 13px; }
+      
+      .form-actions {
+        margin-top: 32px; display: flex; gap: 16px; justify-content: flex-end;
+        padding: 20px; background: #f9fafb; border-radius: 12px;
+        position: sticky; bottom: 20px;
+      }
+      .btn {
+        padding: 12px 24px; border: none; border-radius: 8px;
+        font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s;
+      }
+      .btn-primary { background: #6366f1; color: white; }
+      .btn-primary:hover { background: #4f46e5; }
+      
+      .alert {
+        padding: 16px; border-radius: 8px; margin-bottom: 16px;
+        font-size: 14px; display: none; width: 100%;
+      }
+      .alert.show { display: block; }
+      .alert.success {
+        background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7;
+      }
+      .alert.error {
+        background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5;
+      }
+      
+      .loading { text-align: center; padding: 40px; color: #6b7280; }
+      
+      @media (max-width: 768px) {
+        .form-grid { grid-template-columns: 1fr; }
+      }
+    </style>
+    
+    <div class="container-apt">
+      <a href="/manager" class="back-link">← Volver a Manager</a>
+      
+      <div class="header-apt">
+        <h1>🏠 Gestión de Apartamentos</h1>
+        <p>Configura toda la información de tus apartamentos para usar variables en autorespuestas</p>
+      </div>
+
+      <div class="apartment-selector">
+        <label>Selecciona un apartamento:</label>
+        <select id="apartment-select">
+          <option value="">Cargando apartamentos...</option>
+        </select>
+      </div>
+
+      <div id="quick-links" class="quick-links" style="display: none;">
+        <a href="#" class="quick-link" id="sections-link">🪗 Gestionar secciones acordeón</a>
+      </div>
+
+      <div id="loading" class="loading" style="display: none;">
+        <p>⏳ Cargando información...</p>
+      </div>
+
+      <div id="form-container" style="display: none;">
+        ${generateApartmentAccordions()}
+        
+        <div id="alert" class="alert"></div>
+        
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="saveApartment()">
+            💾 Guardar Cambios
+          </button>
+        </div>
       </div>
     </div>
+
+    ${generateApartmentScript()}
   `;
   
   res.send(renderPage("Apartamentos", html));
 });
+
+// Helper: Generar acordeones
+function generateApartmentAccordions() {
+  const sections = [
+    {
+      icon: '📍',
+      title: 'Información Básica y Beds24',
+      fields: `
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nombre del apartamento</label>
+            <input type="text" id="apartment_name">
+            <p class="muted">Nombre que verán los huéspedes</p>
+          </div>
+          <div class="form-group">
+            <label>Beds24 Room ID</label>
+            <input type="text" id="beds24_room_id" readonly>
+            <p class="muted">ID de Beds24 (solo lectura)</p>
+          </div>
+          <div class="form-group">
+            <label>Registration link</label>
+            <input type="url" id="registration_url">
+          </div>
+          <div class="form-group">
+            <label>Payment link</label>
+            <input type="url" id="payment_url">
+          </div>
+          <div class="form-group">
+            <label>Keys / Instructions link</label>
+            <input type="url" id="keys_instructions_url">
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="checkbox-group">
+            <input type="checkbox" id="show_in_staff">
+            <label for="show_in_staff">Mostrar en Staff Panel</label>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Dirección completa</label>
+            <input type="text" id="address">
+          </div>
+          <div class="form-group">
+            <label>Ciudad</label>
+            <input type="text" id="city">
+          </div>
+          <div class="form-group">
+            <label>Piso</label>
+            <input type="text" id="floor">
+          </div>
+          <div class="form-group">
+            <label>Número de puerta</label>
+            <input type="text" id="door_number">
+          </div>
+        </div>
+      `
+    },
+    {
+      icon: '🔑',
+      title: 'Acceso y Llaves',
+      fields: `
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Código caja de llaves</label>
+            <input type="text" id="lockbox_code">
+          </div>
+          <div class="form-group">
+            <label>Ubicación caja de llaves</label>
+            <input type="text" id="lockbox_location">
+          </div>
+          <div class="form-group">
+            <label>Código puerta principal</label>
+            <input type="text" id="door_code">
+          </div>
+          <div class="form-group">
+            <label>Código portón/verja</label>
+            <input type="text" id="gate_code">
+          </div>
+        </div>
+        <div class="form-grid single">
+          <div class="form-group">
+            <label>Instrucciones para las llaves</label>
+            <textarea id="key_instructions"></textarea>
+          </div>
+        </div>
+      `
+    },
+    {
+      icon: '📶',
+      title: 'WiFi e Internet',
+      fields: `
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nombre red WiFi</label>
+            <input type="text" id="wifi_network">
+          </div>
+          <div class="form-group">
+            <label>Contraseña WiFi</label>
+            <input type="text" id="wifi_password">
+          </div>
+        </div>
+        <div class="form-grid single">
+          <div class="form-group">
+            <label>Qué hacer si no funciona WiFi</label>
+            <textarea id="wifi_troubleshooting"></textarea>
+          </div>
+        </div>
+      `
+    },
+    {
+      icon: '⏰',
+      title: 'Horarios',
+      fields: `
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Hora entrada estándar</label>
+            <input type="time" id="checkin_time" value="17:00">
+          </div>
+          <div class="form-group">
+            <label>Hora salida estándar</label>
+            <input type="time" id="checkout_time" value="11:00">
+          </div>
+          <div class="form-group">
+            <label>Precio entrada anticipada (€)</label>
+            <input type="number" step="0.01" id="early_checkin_price">
+          </div>
+          <div class="form-group">
+            <label>Precio salida tardía (€)</label>
+            <input type="number" step="0.01" id="late_checkout_price">
+          </div>
+        </div>
+      `
+    },
+    {
+      icon: '💰',
+      title: 'Precios y Depósitos',
+      fields: `
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Fianza/Depósito seguridad (€)</label>
+            <input type="number" step="0.01" id="security_deposit_amount">
+          </div>
+          <div class="form-group">
+            <label>Impuesto turístico (€)</label>
+            <input type="number" step="0.01" id="tourist_tax_amount">
+          </div>
+        </div>
+      `
+    },
+    {
+      icon: '🚗',
+      title: 'Parking',
+      fields: `
+        <div class="checkbox-group">
+          <input type="checkbox" id="parking_available">
+          <label for="parking_available">Parking disponible</label>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Ubicación parking</label>
+            <input type="text" id="parking_location">
+          </div>
+          <div class="form-group">
+            <label>Código acceso parking</label>
+            <input type="text" id="parking_code">
+          </div>
+        </div>
+        <div class="form-grid single">
+          <div class="form-group">
+            <label>Instrucciones parking</label>
+            <textarea id="parking_instructions"></textarea>
+          </div>
+        </div>
+      `
+    },
+    {
+      icon: '🏊',
+      title: 'Piscina',
+      fields: `
+        <div class="checkbox-group">
+          <input type="checkbox" id="pool_available">
+          <label for="pool_available">Piscina disponible</label>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Horario piscina</label>
+            <input type="text" id="pool_hours" placeholder="10:00 - 21:00">
+          </div>
+          <div class="form-group">
+            <label>Ubicación piscina</label>
+            <input type="text" id="pool_location">
+          </div>
+        </div>
+        <div class="form-grid single">
+          <div class="form-group">
+            <label>Normas de la piscina</label>
+            <textarea id="pool_rules"></textarea>
+          </div>
+        </div>
+      `
+    },
+    {
+      icon: '📞',
+      title: 'Contacto y Soporte',
+      fields: `
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Teléfono soporte</label>
+            <input type="tel" id="support_phone">
+          </div>
+          <div class="form-group">
+            <label>WhatsApp soporte</label>
+            <input type="tel" id="support_whatsapp">
+          </div>
+        </div>
+      `
+    }
+  ];
+
+  return sections.map((section, index) => `
+    <div class="accordion-section ${index === 0 ? 'open' : ''}">
+      <div class="accordion-header" onclick="toggleAccordion(this)">
+        <div class="accordion-title">
+          <span class="accordion-icon">${section.icon}</span>
+          <span>${section.title}</span>
+        </div>
+        <span class="accordion-arrow">▼</span>
+      </div>
+      <div class="accordion-content">
+        <div class="accordion-body">
+          ${section.fields}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Helper: Generar script
+function generateApartmentScript() {
+  return `
+    <script>
+      let apartments = [];
+      let currentApartmentId = null;
+      let beds24Data = null;
+
+      async function loadApartments() {
+        try {
+          const response = await fetch('/api/beds24-rooms');
+          const data = await response.json();
+          
+          if (data.success) {
+            apartments = data.rooms;
+            renderApartmentSelect();
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const id = urlParams.get('id');
+            if (id) {
+              document.getElementById('apartment-select').value = id;
+              await loadApartment(id);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading apartments:', error);
+          showAlert('Error al cargar apartamentos', 'error');
+        }
+      }
+
+      function renderApartmentSelect() {
+        const select = document.getElementById('apartment-select');
+        select.innerHTML = '<option value="">Selecciona un apartamento...</option>';
+        
+        apartments.forEach(apt => {
+          const option = document.createElement('option');
+          option.value = apt.id;
+          option.textContent = apt.apartment_name || apt.beds24_room_id || \`Apartamento #\${apt.id}\`;
+          select.appendChild(option);
+        });
+      }
+
+      document.getElementById('apartment-select')?.addEventListener('change', (e) => {
+        const aptId = e.target.value;
+        if (aptId) {
+          const url = new URL(window.location);
+          url.searchParams.set('id', aptId);
+          window.history.pushState({}, '', url);
+          loadApartment(aptId);
+        } else {
+          document.getElementById('form-container').style.display = 'none';
+          document.getElementById('quick-links').style.display = 'none';
+        }
+      });
+
+      async function loadApartment(beds24RoomId) {
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('form-container').style.display = 'none';
+        
+        try {
+          const beds24Response = await fetch(\`/api/beds24-room/\${beds24RoomId}\`);
+          const beds24Result = await beds24Response.json();
+          
+          if (!beds24Result.success) {
+            showAlert('Error al cargar apartamento', 'error');
+            return;
+          }
+          
+          beds24Data = beds24Result.room;
+          currentApartmentId = beds24RoomId;
+          
+          let apartmentData = null;
+          if (beds24Data.apartment_id) {
+            const aptResponse = await fetch(\`/api/apartment/\${beds24Data.apartment_id}\`);
+            const aptResult = await aptResponse.json();
+            if (aptResult.success) {
+              apartmentData = aptResult.apartment;
+            }
+          }
+          
+          fillForm(beds24Data, apartmentData);
+          
+          document.getElementById('form-container').style.display = 'block';
+          document.getElementById('quick-links').style.display = 'flex';
+          document.getElementById('loading').style.display = 'none';
+          
+          if (beds24Data.beds24_room_id) {
+            document.getElementById('sections-link').href = 
+              \`/manager/apartment/sections?room_id=\${encodeURIComponent(beds24Data.beds24_room_id)}\`;
+          }
+          
+        } catch (error) {
+          console.error('Error loading apartment:', error);
+          showAlert('Error al cargar apartamento', 'error');
+          document.getElementById('loading').style.display = 'none';
+        }
+      }
+
+      function fillForm(beds24, apartment) {
+        setValue('apartment_name', apartment?.name || beds24.apartment_name || '');
+        setValue('beds24_room_id', beds24.beds24_room_id || '');
+        setValue('registration_url', beds24.registration_url || '');
+        setValue('payment_url', beds24.payment_url || '');
+        setValue('keys_instructions_url', beds24.keys_instructions_url || '');
+        setChecked('show_in_staff', beds24.show_in_staff !== false);
+        setValue('support_phone', beds24.support_phone || '');
+        setValue('checkin_time', beds24.default_arrival_time || '17:00');
+        setValue('checkout_time', beds24.default_departure_time || '11:00');
+        
+        if (!apartment) return;
+        
+        setValue('address', apartment.address);
+        setValue('city', apartment.city);
+        setValue('floor', apartment.floor);
+        setValue('door_number', apartment.door_number);
+        setValue('lockbox_code', apartment.lockbox_code);
+        setValue('lockbox_location', apartment.lockbox_location);
+        setValue('door_code', apartment.door_code);
+        setValue('gate_code', apartment.gate_code);
+        setValue('key_instructions', apartment.key_instructions);
+        setValue('wifi_network', apartment.wifi_network);
+        setValue('wifi_password', apartment.wifi_password);
+        setValue('wifi_troubleshooting', apartment.wifi_troubleshooting);
+        setValue('early_checkin_price', apartment.early_checkin_price);
+        setValue('late_checkout_price', apartment.late_checkout_price);
+        setValue('security_deposit_amount', apartment.security_deposit_amount);
+        setValue('tourist_tax_amount', apartment.tourist_tax_amount);
+        setChecked('parking_available', apartment.parking_available);
+        setValue('parking_location', apartment.parking_location);
+        setValue('parking_code', apartment.parking_code);
+        setValue('parking_instructions', apartment.parking_instructions);
+        setChecked('pool_available', apartment.pool_available);
+        setValue('pool_hours', apartment.pool_hours);
+        setValue('pool_location', apartment.pool_location);
+        setValue('pool_rules', apartment.pool_rules);
+        setValue('support_whatsapp', apartment.support_whatsapp);
+      }
+
+      function setValue(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.value = value || '';
+      }
+
+      function setChecked(id, checked) {
+        const el = document.getElementById(id);
+        if (el) el.checked = checked || false;
+      }
+
+      function getValue(id) {
+        const el = document.getElementById(id);
+        return el ? el.value : null;
+      }
+
+      function getChecked(id) {
+        const el = document.getElementById(id);
+        return el ? el.checked : false;
+      }
+
+      async function saveApartment() {
+        if (!currentApartmentId) {
+          showAlert('No hay apartamento seleccionado', 'error');
+          return;
+        }
+        
+        try {
+          const data = {
+            beds24_room_id: currentApartmentId,
+            name: getValue('apartment_name'),
+            address: getValue('address'),
+            city: getValue('city'),
+            floor: getValue('floor'),
+            door_number: getValue('door_number'),
+            lockbox_code: getValue('lockbox_code'),
+            lockbox_location: getValue('lockbox_location'),
+            door_code: getValue('door_code'),
+            gate_code: getValue('gate_code'),
+            key_instructions: getValue('key_instructions'),
+            wifi_network: getValue('wifi_network'),
+            wifi_password: getValue('wifi_password'),
+            wifi_troubleshooting: getValue('wifi_troubleshooting'),
+            checkin_time: getValue('checkin_time'),
+            checkout_time: getValue('checkout_time'),
+            early_checkin_price: getValue('early_checkin_price') || null,
+            late_checkout_price: getValue('late_checkout_price') || null,
+            security_deposit_amount: getValue('security_deposit_amount') || null,
+            tourist_tax_amount: getValue('tourist_tax_amount') || null,
+            parking_available: getChecked('parking_available'),
+            parking_location: getValue('parking_location'),
+            parking_code: getValue('parking_code'),
+            parking_instructions: getValue('parking_instructions'),
+            pool_available: getChecked('pool_available'),
+            pool_hours: getValue('pool_hours'),
+            pool_location: getValue('pool_location'),
+            pool_rules: getValue('pool_rules'),
+            support_phone: getValue('support_phone'),
+            support_whatsapp: getValue('support_whatsapp'),
+            registration_url: getValue('registration_url'),
+            payment_url: getValue('payment_url'),
+            keys_instructions_url: getValue('keys_instructions_url'),
+            show_in_staff: getChecked('show_in_staff')
+          };
+          
+          const response = await fetch('/api/apartment/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            showAlert('✅ Apartamento guardado correctamente', 'success');
+          } else {
+            showAlert('❌ Error al guardar: ' + result.error, 'error');
+          }
+        } catch (error) {
+          console.error('Error saving:', error);
+          showAlert('❌ Error al guardar apartamento', 'error');
+        }
+      }
+
+      function toggleAccordion(header) {
+        const section = header.parentElement;
+        section.classList.toggle('open');
+      }
+
+      function showAlert(message, type) {
+        const alert = document.getElementById('alert');
+        alert.className = \`alert \${type} show\`;
+        alert.textContent = message;
+        
+        setTimeout(() => {
+          alert.classList.remove('show');
+        }, 5000);
+      }
+
+      loadApartments();
+    </script>
+  `;
+}
 
 
 // ============================================
@@ -7194,6 +7813,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
