@@ -5510,7 +5510,9 @@ if (form.classList.contains('lock-form')) {
 }
                        
                        // ✅ Mostrar confirmación temporal
-                       showToast('✅ Guardado correctamente');
+                       if (!form.classList.contains('lock-form')) {
+  showToast('✅ Guardado correctamente');
+}
                      })
                      .catch(error => {
                        console.error('Error:', error);
@@ -8428,6 +8430,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
