@@ -2322,7 +2322,7 @@ FROM beds24_rooms
       )
       .join("");
     
-   const html = renderNavMenu('manager') + `
+   const html = renderNavMenu('manager', req) + `
      <h1>Manager</h1>
       <h3>Apartment settings</h3>
       <form method="GET" action="/manager/apartment">
@@ -2351,7 +2351,7 @@ FROM beds24_rooms
 
 
 app.get("/manager/apartment", async (req, res) => {
-  const html = renderNavMenu('apartamentos') + `
+  const html = renderNavMenu('apartamentos', req) + `
     <style>
       .container-apt { max-width: 1200px; margin: 0 auto; }
       .header-apt { margin-bottom: 24px; }
@@ -5325,7 +5325,7 @@ return `
   `;
 }
 
-    const pageHtml = renderNavMenu('staff') + toolbar + renderTable(arrivals, "arrivals") + `<div style="height:24px;"></div>` + renderTable(departures, "departures");
+    const pageHtml = renderNavMenu('staff', req) + toolbar + renderTable(arrivals, "arrivals") + `<div style="height:24px;"></div>` + renderTable(departures, "departures");
     
     res.send(renderPage("Staff · Llegadas y Salidas", pageHtml, 'staff'));
   } catch (e) {
@@ -6275,12 +6275,12 @@ app.get("/manager/whatsapp", (req, res) => {
     // Eliminar el nav viejo del body si todavía está
     bodyContent = bodyContent.replace(/<nav class="nav-menu">[\s\S]*?<\/nav>/i, '');
     
-    const html = styles + renderNavMenu('whatsapp') + bodyContent + scripts;
+    const html = styles + renderNavMenu('whatsapp', req) + bodyContent + scripts;
     
     res.send(renderPage("WhatsApp Manager", html));
   } catch (e) {
     console.error('Error loading manager-whatsapp.html:', e);
-    const html = renderNavMenu('whatsapp') + `
+    const html = renderNavMenu('whatsapp', req) + `
       <div class="card">
         <h1>❌ Error</h1>
         <p>No se pudo cargar el contenido de WhatsApp Manager.</p>
@@ -7890,6 +7890,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
