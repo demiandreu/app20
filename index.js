@@ -5484,16 +5484,30 @@ return `
                          }
                        }
                        
-                       // Si es código de acceso
-                       if (form.classList.contains('lock-form')) {
-                         // Mostrar feedback visual
-                         const input = form.querySelector('.lock-input');
-                         const originalBg = input.style.background;
-                         input.style.background = '#d1fae5';
-                         setTimeout(() => {
-                           input.style.background = originalBg;
-                         }, 500);
-                       }
+                      // Si es código de acceso
+if (form.classList.contains('lock-form')) {
+  const input = form.querySelector('.lock-input');
+  const clearButton = e.submitter; // Botón que activó el submit
+  
+  // Si se presionó "Clear", borrar el input
+  if (clearButton && clearButton.name === 'clear') {
+    input.value = '';
+    input.style.background = '#fee2e2'; // Rojo suave
+    setTimeout(() => {
+      input.style.background = '';
+    }, 500);
+    showToast('🗑️ Código borrado');
+  } else {
+    // Si se presionó "Save", feedback verde
+    const originalBg = input.style.background;
+    input.style.background = '#d1fae5';
+    setTimeout(() => {
+      input.style.background = originalBg;
+    }, 500);
+    showToast('✅ Guardado correctamente');
+  }
+  return; // Importante: salir aquí para no mostrar el toast dos veces
+}
                        
                        // ✅ Mostrar confirmación temporal
                        showToast('✅ Guardado correctamente');
@@ -8414,6 +8428,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
