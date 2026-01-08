@@ -13,17 +13,23 @@ const session = require('express-session');
 const bcrypt = require('bcrypt');
 const pgSession = require('connect-pg-simple')(session);
 
+// ✅ PRIMERO: Crear el pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
+// ✅ SEGUNDO: Crear la app
 const app = express();
 
-// ✅ CONFIGURACIÓN DE SESIONES (NUEVO)
+// ✅ TERCERO: Configurar sesiones (AHORA pool ya existe)
 app.use(session({
   store: new pgSession({
-    pool: pool,
+    pool: pool,  // ← Ahora sí existe
     tableName: 'sessions',
     createTableIfMissing: true
   }),
-  secret: process.env.SESSION_SECRET || 'fallback-dev-only-not-for-production',  // ✅ CAMBIADO
+  secret: process.env.SESSION_SECRET || 'fallback-dev-only-not-for-production',
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -36,6 +42,7 @@ app.use(session({
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
+
 
 async function beds24Get(endpoint, params = {}, propertyExternalId) {
   const accessToken = await getBeds24AccessToken(propertyExternalId);
@@ -6851,6 +6858,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
