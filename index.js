@@ -3458,7 +3458,7 @@ app.get("/guest/:bookingId", async (req, res) => {
         <h1>❌ Reserva no encontrada</h1>
         <p>La reserva ${bookingId} no existe.</p>
       `));
-    }
+  
     
     const r = result.rows[0];
     const apartmentName = r.apartment_name || r.apartment_from_rooms || 'N/A';
@@ -6500,6 +6500,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
