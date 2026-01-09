@@ -1203,13 +1203,27 @@ function switchTab(tabName) {
 
         // Switch language in message sections
         function switchLang(msgType, lang) {
-            const section = event.target.closest('.message-section');
-            section.querySelectorAll('.lang-tab').forEach(t => t.classList.remove('active'));
-            section.querySelectorAll('.textarea-container').forEach(c => c.classList.remove('active'));
-            
-            event.target.classList.add('active');
-            section.querySelector(`[data-msg="${msgType}"][data-lang="${lang}"]`).classList.add('active');
+    const section = event.target.closest('.message-section');
+    
+    // 💾 Guardar altura del textarea actual ANTES de cambiar
+    const currentTextarea = section.querySelector('.textarea-container.active textarea');
+    const savedHeight = currentTextarea ? currentTextarea.style.height : null;
+    
+    section.querySelectorAll('.lang-tab').forEach(t => t.classList.remove('active'));
+    section.querySelectorAll('.textarea-container').forEach(c => c.classList.remove('active'));
+    
+    event.target.classList.add('active');
+    const targetContainer = section.querySelector(`[data-msg="${msgType}"][data-lang="${lang}"]`);
+    targetContainer.classList.add('active');
+    
+    // 🔄 Aplicar la altura guardada al nuevo textarea
+    if (savedHeight) {
+        const newTextarea = targetContainer.querySelector('textarea');
+        if (newTextarea) {
+            newTextarea.style.height = savedHeight;
         }
+    }
+}
 
         // Show alert
         // Show alert
