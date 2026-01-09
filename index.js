@@ -2358,163 +2358,205 @@ FROM beds24_rooms
 
 app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, res) => {
   try {
-    const { month, year, apartment } = req.query;
+    const { month, year, apartment, filterType, dateFrom, dateTo } = req.query;
     
-    // Detectar mes/año actual si no se especifica
-    const now = new Date();
-    const selectedYear = year ? parseInt(year) : now.getFullYear();
-    const selectedMonth = month ? parseInt(month) : now.getMonth() + 1;
+    // Detectar tipo de filtro
+    const isCustomFilter = filterType === 'custom';
+    
+    let startDate, endDate;
+    let displayPeriod;
+    
+    if (isCustomFilter) {
+      // Filtro custom (rango de fechas)
+      startDate = dateFrom || '2025-01-01';
+      endDate = dateTo || '2025-12-31';
+      displayPeriod = `${startDate} → ${endDate}`;
+    } else {
+      // Filtro mensual (por defecto)
+      const now = new Date();
+      const selectedYear = year ? parseInt(year) : now.getFullYear();
+      const selectedMonth = month ? parseInt(month) : now.getMonth() + 1;
+      
+      startDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
+      endDate = selectedMonth === 12 
+        ? `${selectedYear + 1}-01-01`
+        : `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+      
+      const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+      displayPeriod = `${monthNames[selectedMonth - 1]} ${selectedYear}`;
+    }
+    
     const selectedApartment = apartment || 'all';
     
-    // Calcular rango de fechas
-    const startDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
-    const endDate = selectedMonth === 12 
-      ? `${selectedYear + 1}-01-01`
-      : `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
-
     // Obtener lista de apartamentos únicos
     const apartmentsResult = await pool.query(`
-  SELECT DISTINCT 
-    TRIM(REGEXP_REPLACE(apartment_name, '\\s+', ' ', 'g')) as apartment_name
-  FROM checkins 
-  WHERE apartment_name IS NOT NULL 
-    AND apartment_name != ''
-  ORDER BY apartment_name
-`);
+      SELECT DISTINCT 
+        TRIM(REGEXP_REPLACE(apartment_name, '\\s+', ' ', 'g')) as apartment_name
+      FROM checkins 
+      WHERE apartment_name IS NOT NULL 
+        AND apartment_name != ''
+      ORDER BY apartment_name
+    `);
     const apartments = apartmentsResult.rows.map(r => r.apartment_name);
 
     // Construir query con filtro opcional de apartamento
-   let query = `
-  SELECT 
-    id,
-    beds24_booking_id,
-    full_name,
-    arrival_date,
-    departure_date,
-    apartment_name,
-    beds24_raw,
-    created_at
-  FROM checkins
-  WHERE arrival_date >= $1
-    AND arrival_date < $2
-    AND cancelled = false
-`;
+    let query = `
+      SELECT 
+        id,
+        beds24_booking_id,
+        full_name,
+        arrival_date,
+        departure_date,
+        apartment_name,
+        beds24_raw,
+        created_at
+      FROM checkins
+      WHERE arrival_date >= $1
+        AND arrival_date < $2
+        AND cancelled = false
+    `;
     
     const params = [startDate, endDate];
     
-   if (selectedApartment !== 'all') {
-  query += ` AND TRIM(REGEXP_REPLACE(apartment_name, '\\s+', ' ', 'g')) = $3`;
-  params.push(selectedApartment);
-}
+    if (selectedApartment !== 'all') {
+      query += ` AND TRIM(REGEXP_REPLACE(apartment_name, '\\s+', ' ', 'g')) = $3`;
+      params.push(selectedApartment);
+    }
     
     query += ` ORDER BY arrival_date ASC`;
 
     const result = await pool.query(query, params);
 
-const bookings = result.rows.map(row => {
-  const rawData = row.beds24_raw || {};
-  const raw = rawData.booking || rawData;
-  
-  // Detectar plataforma
-  const channel = (raw.channel || '').toLowerCase();
-  const referer = raw.referer || '';
-  let platform = 'unknown';
-  
-  if (channel === 'booking' || referer.includes('Booking')) {
-    platform = 'booking';
-  } else if (channel === 'airbnb' || referer.includes('Airbnb')) {
-    platform = 'airbnb';
-  } else if (referer.includes('iframe') || channel === 'iframe') {
-    platform = 'direct';
-  }
+    const bookings = result.rows.map(row => {
+      const rawData = row.beds24_raw || {};
+      const raw = rawData.booking || rawData;
+      
+      // Detectar plataforma
+      const channel = (raw.channel || '').toLowerCase();
+      const referer = raw.referer || '';
+      let platform = 'unknown';
+      
+      if (channel === 'booking' || referer.includes('Booking')) {
+        platform = 'booking';
+      } else if (channel === 'airbnb' || referer.includes('Airbnb')) {
+        platform = 'airbnb';
+      } else if (referer.includes('iframe') || channel === 'iframe') {
+        platform = 'direct';
+      }
 
-  // Extraer precio según plataforma
-  let price = 0;
-  
-  if (platform === 'booking') {
-    // ⚠️ IMPORTANTE: invoiceItems está en rawData (raíz), NO en raw (booking)
-    const invoiceItems = rawData.invoiceItems || [];
-    const roomItem = invoiceItems.find(item => item.subType === 8);
-    
-    if (roomItem) {
-      price = roomItem.amount || 0;
-    } else {
-      // Fallback si no hay invoiceItems
-      price = raw.price || 0;
-    }
-  } else {
-    // Para Airbnb y otros: usar el precio normal
-    price = raw.price || 0;
-  }
+      // Extraer precio según plataforma
+      let price = 0;
+      
+      if (platform === 'booking') {
+        // ⚠️ IMPORTANTE: invoiceItems está en rawData (raíz), NO en raw (booking)
+        const invoiceItems = rawData.invoiceItems || [];
+        const roomItem = invoiceItems.find(item => item.subType === 8);
+        
+        if (roomItem) {
+          price = roomItem.amount || 0;
+        } else {
+          // Fallback si no hay invoiceItems
+          price = raw.price || 0;
+        }
+      } else {
+        // Para Airbnb y otros: usar el precio normal
+        price = raw.price || 0;
+      }
 
-  // Comisión de la plataforma
-  const commission = raw.commission || 0;
+      // Comisión de la plataforma
+      const commission = raw.commission || 0;
 
-  // Calcular Booking IVA (solo para Booking.com)
-  const bookingIva = platform === 'booking' ? (price * 0.0472) : 0;
+      // Calcular Booking IVA (solo para Booking.com)
+      const bookingIva = platform === 'booking' ? (price * 0.0472) : 0;
 
-  // Calcular Rental Connect (30% del precio)
-  const rentalConnect = price * 0.30;
+      // Calcular Rental Connect (30% del precio)
+      const rentalConnect = price * 0.30;
 
-  // Calcular Income (beneficio neto)
-  const income = price - commission - bookingIva - rentalConnect;
+      // Calcular Income (beneficio neto)
+      const income = price - commission - bookingIva - rentalConnect;
 
-  // Calcular noches
-  const nights = row.departure_date && row.arrival_date
-    ? Math.ceil((new Date(row.departure_date) - new Date(row.arrival_date)) / (1000 * 60 * 60 * 24))
-    : 0;
+      // Calcular noches
+      const nights = row.departure_date && row.arrival_date
+        ? Math.ceil((new Date(row.departure_date) - new Date(row.arrival_date)) / (1000 * 60 * 60 * 24))
+        : 0;
 
-  return {
-    id: row.id,
-    beds24_booking_id: row.beds24_booking_id,
-    full_name: row.full_name,
-    arrival_date: row.arrival_date,
-    departure_date: row.departure_date,
-    apartment_name: row.apartment_name,
-    platform,
-    referer: referer,
-    nights,
-    price: price.toFixed(2),
-    commission: commission.toFixed(2),
-    bookingIva: bookingIva.toFixed(2),
-    rentalConnect: rentalConnect.toFixed(2),
-    income: income.toFixed(2)
-  };
-});
+      return {
+        id: row.id,
+        beds24_booking_id: row.beds24_booking_id,
+        full_name: row.full_name,
+        arrival_date: row.arrival_date,
+        departure_date: row.departure_date,
+        apartment_name: row.apartment_name,
+        platform,
+        referer: referer,
+        nights,
+        price: price.toFixed(2),
+        commission: commission.toFixed(2),
+        bookingIva: bookingIva.toFixed(2),
+        rentalConnect: rentalConnect.toFixed(2),
+        income: income.toFixed(2)
+      };
+    });
 
     // Calcular totales
     const totals = {
-     count: bookings.length,
-  totalPrice: bookings.reduce((sum, b) => sum + parseFloat(b.price), 0).toFixed(2),
-  totalCommission: bookings.reduce((sum, b) => sum + parseFloat(b.commission), 0).toFixed(2),
-  totalBookingIva: bookings.reduce((sum, b) => sum + parseFloat(b.bookingIva), 0).toFixed(2),
-  totalRentalConnect: bookings.reduce((sum, b) => sum + parseFloat(b.rentalConnect), 0).toFixed(2),
-  totalIncome: bookings.reduce((sum, b) => sum + parseFloat(b.income), 0).toFixed(2)
-};
-  
+      count: bookings.length,
+      totalPrice: bookings.reduce((sum, b) => sum + parseFloat(b.price), 0).toFixed(2),
+      totalCommission: bookings.reduce((sum, b) => sum + parseFloat(b.commission), 0).toFixed(2),
+      totalBookingIva: bookings.reduce((sum, b) => sum + parseFloat(b.bookingIva), 0).toFixed(2),
+      totalRentalConnect: bookings.reduce((sum, b) => sum + parseFloat(b.rentalConnect), 0).toFixed(2),
+      totalIncome: bookings.reduce((sum, b) => sum + parseFloat(b.income), 0).toFixed(2)
+    };
 
-    // Generar selector de filtros
+    // Generar selector de filtros con opción CUSTOM
+    const selectedMonth = month ? parseInt(month) : new Date().getMonth() + 1;
+    const selectedYear = year ? parseInt(year) : new Date().getFullYear();
+    
     const filterForm = `
-      <form method="GET" action="/manager/invoices" style="margin:20px 0;">
+      <form method="GET" action="/manager/invoices" style="margin:20px 0;" id="filterForm">
         <div style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
           <div>
-            <label>Mes</label>
-            <select name="month" class="form-input">
-              ${[1,2,3,4,5,6,7,8,9,10,11,12].map(m => `
-                <option value="${m}" ${m === selectedMonth ? 'selected' : ''}>
-                  ${['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][m-1]}
-                </option>
-              `).join('')}
+            <label>Tipo de Filtro</label>
+            <select name="filterType" class="form-input" id="filterType" onchange="toggleFilterType()">
+              <option value="monthly" ${!filterType || filterType === 'monthly' ? 'selected' : ''}>Por Mes</option>
+              <option value="custom" ${filterType === 'custom' ? 'selected' : ''}>Custom (Rango)</option>
             </select>
           </div>
-          <div>
-            <label>Año</label>
-            <select name="year" class="form-input">
-              ${[2024, 2025, 2026, 2027].map(y => `
-                <option value="${y}" ${y === selectedYear ? 'selected' : ''}>${y}</option>
-              `).join('')}
-            </select>
+          
+          <!-- Filtros mensuales -->
+          <div id="monthlyFilters" style="display:flex; gap:12px; align-items:end;">
+            <div>
+              <label>Mes</label>
+              <select name="month" class="form-input">
+                ${[1,2,3,4,5,6,7,8,9,10,11,12].map(m => `
+                  <option value="${m}" ${m === selectedMonth ? 'selected' : ''}>
+                    ${['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][m-1]}
+                  </option>
+                `).join('')}
+              </select>
+            </div>
+            <div>
+              <label>Año</label>
+              <select name="year" class="form-input">
+                ${[2024, 2025, 2026, 2027].map(y => `
+                  <option value="${y}" ${y === selectedYear ? 'selected' : ''}>${y}</option>
+                `).join('')}
+              </select>
+            </div>
           </div>
+          
+          <!-- Filtros custom -->
+          <div id="customFilters" style="display:none; gap:12px; align-items:end;">
+            <div>
+              <label>Desde</label>
+              <input type="date" name="dateFrom" class="form-input" value="${dateFrom || '2025-01-01'}" />
+            </div>
+            <div>
+              <label>Hasta</label>
+              <input type="date" name="dateTo" class="form-input" value="${dateTo || '2025-12-31'}" />
+            </div>
+          </div>
+          
           <div>
             <label>Apartamento</label>
             <select name="apartment" class="form-input">
@@ -2527,13 +2569,36 @@ const bookings = result.rows.map(row => {
             </select>
           </div>
           <button type="submit" class="btn-primary">Filtrar</button>
-          <a href="/manager/invoices/export?month=${selectedMonth}&year=${selectedYear}${selectedApartment !== 'all' ? '&apartment=' + encodeURIComponent(selectedApartment) : ''}" class="btn-success">📊 Exportar Excel</a>
+          <a href="/manager/invoices/export?${new URLSearchParams(req.query).toString()}" class="btn-success">📊 Exportar Excel</a>
         </div>
       </form>
+      
+      <script>
+        function toggleFilterType() {
+          const filterType = document.getElementById('filterType').value;
+          const monthlyFilters = document.getElementById('monthlyFilters');
+          const customFilters = document.getElementById('customFilters');
+          
+          if (filterType === 'monthly') {
+            monthlyFilters.style.display = 'flex';
+            customFilters.style.display = 'none';
+          } else {
+            monthlyFilters.style.display = 'none';
+            customFilters.style.display = 'flex';
+          }
+        }
+        
+        // Inicializar al cargar
+        toggleFilterType();
+      </script>
     `;
 
     // Generar tabla
     const tableHtml = `
+      <div style="margin-bottom:16px;">
+        <h2 style="margin:0; color:#374151;">Período: ${displayPeriod}</h2>
+        ${selectedApartment !== 'all' ? `<p style="margin:4px 0 0; color:#6b7280;">Apartamento: ${escapeHtml(selectedApartment)}</p>` : ''}
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -2577,14 +2642,13 @@ const bookings = result.rows.map(row => {
                 <td style="text-align:right; color:#dc2626;">€${b.bookingIva}</td>
                 <td style="text-align:right; color:#059669; font-weight:600;">€${b.rentalConnect}</td>
                 <td style="text-align:right; color:#0891b2; font-weight:700; background:#ecfeff;">€${b.income}</td>
-
               </tr>
             `).join('') : `
               <tr><td colspan="13" class="muted">No hay reservas en este período</td></tr>
             `}
           </tbody>
           <tfoot>
-           <tr style="background:#f9fafb; font-weight:600;">
+            <tr style="background:#f9fafb; font-weight:600;">
               <td colspan="8">TOTALES (${totals.count} reservas)</td>
               <td style="text-align:right;">€${totals.totalPrice}</td>
               <td style="text-align:right;">€${totals.totalCommission}</td>
@@ -2614,6 +2678,7 @@ const bookings = result.rows.map(row => {
     `));
   }
 });
+
 // ============================================
 // 📊 EXPORTAR FACTURAS A EXCEL
 // ============================================
@@ -9259,6 +9324,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
