@@ -2428,6 +2428,14 @@ const bookings = result.rows.map(row => {
     platform = 'direct';
   }
 
+  // ===== INSERTAR DEBUG AQUÍ =====
+  console.log("=== DEBUG BOOKING ===");
+  console.log("Nombre:", row.full_name);
+  console.log("Platform:", platform);
+  console.log("Raw price:", raw.price);
+  console.log("Invoice items exists:", !!raw.invoiceItems);
+  console.log("Invoice items:", JSON.stringify(raw.invoiceItems, null, 2));
+
   // Extraer precio según plataforma
   let price = 0;
   
@@ -9026,6 +9034,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
