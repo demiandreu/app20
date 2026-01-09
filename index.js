@@ -143,9 +143,13 @@ Willkommen! 😊`
   }
 }
 
-// ============================================
-// 🔄 RUTA MODIFICADA: Mostrar código
-// ============================================
+
+
+
+// ✅ SEGUNDO: Crear la app
+const app = express();
+app.set('trust proxy', 1);
+
 app.post("/staff/checkins/:id/visibility", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -210,10 +214,6 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
-
-// ✅ SEGUNDO: Crear la app
-const app = express();
-app.set('trust proxy', 1);
 
 // ✅ TERCERO: Configurar sesiones (AHORA pool ya existe)
 app.use(session({
@@ -9472,6 +9472,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
