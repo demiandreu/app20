@@ -4993,7 +4993,8 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     console.log("📋 Sections found:", secRes.rows.length, "for room_id:", roomIdToUse);
     
     // Textos traducidos
-   const uiText = {
+
+    const uiText = {
   es: {
     welcome: 'Bienvenido',
     apartment: 'Apartamento',
@@ -5006,7 +5007,7 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     children: 'niños',
     people: 'personas',
     accessCode: 'Código de acceso',
-    codeWillAppear: 'Tu código aparecerá aquí el día de tu llegada aproximadamente a las 12:00.', 
+    codeWillAppear: 'Tu código aparecerá el día de tu llegada cuando el apartamento esté limpio.', 
     showCode: 'Mostrar código',
     noShareCode: 'No compartas este código con terceros.',
     apartmentInfo: 'Información del apartamento',
@@ -5024,7 +5025,7 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     children: 'children',
     people: 'people',
     accessCode: 'Access code',
-    codeWillAppear: 'Your code will appear here on your arrival day at approximately 12:00.',
+    codeWillAppear: 'Your code will appear on your arrival day when the apartment is clean.',
     showCode: 'Show code',
     noShareCode: 'Do not share this code with third parties.',
     apartmentInfo: 'Apartment information',
@@ -5042,7 +5043,7 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     children: 'детей',
     people: 'человек',
     accessCode: 'Код доступа',
-    codeWillAppear: 'Ваш код появится здесь в день заезда примерно в 12:00.',
+    codeWillAppear: 'Ваш код появится в день заезда, когда квартира будет убрана.',
     showCode: 'Показать код',
     noShareCode: 'Не делитесь этим кодом с третьими лицами.',
     apartmentInfo: 'Информация о квартире',
@@ -5060,7 +5061,7 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     children: 'enfants',
     people: 'personnes',
     accessCode: "Code d'accès",
-    codeWillAppear: "Votre code apparaîtra ici le jour de votre arrivée vers 12h00.",
+    codeWillAppear: "Votre code apparaîtra le jour de votre arrivée lorsque l'appartement sera propre.",
     showCode: 'Afficher le code',
     noShareCode: 'Ne partagez pas ce code avec des tiers.',
     apartmentInfo: "Informations sur l'appartement",
@@ -5078,13 +5079,15 @@ const roomIdToUse = r.beds24_room_id || r.apartment_id || '0';
     children: 'Kinder',
     people: 'Personen',
     accessCode: 'Zugangscode',
-    codeWillAppear: 'Ihr Code wird hier am Tag Ihrer Ankunft gegen 12:00 Uhr erscheinen.',
+    codeWillAppear: 'Ihr Code wird am Tag Ihrer Ankunft erscheinen, wenn die Wohnung sauber ist.',
     showCode: 'Code anzeigen',
     noShareCode: 'Teilen Sie diesen Code nicht mit Dritten.',
     apartmentInfo: 'Wohnungsinformationen',
     noInfo: 'Für diese Wohnung sind noch keine Informationen verfügbar.',
   },
 };
+
+    
     const t = uiText[currentLang] || uiText.es;
     const totalGuests = (Number(r.adults) || 0) + (Number(r.children) || 0);
     
@@ -5858,7 +5861,6 @@ function renderTable(rows, mode) {
       ? `${fmtDate(r.departure_date)} ${fmtTime(r.departure_time)}`
       : `${fmtDate(r.arrival_date)} ${fmtTime(r.arrival_time)}`;
     
-    // ✅ NUEVO - Determinar bookingId y URL del guest panel
     const bookingId = r.beds24_booking_id 
       ? String(r.beds24_booking_id).replace(/\s/g, '')
       : r.booking_token || r.id;
@@ -5871,12 +5873,11 @@ function renderTable(rows, mode) {
       ? `<a class="btn-small btn-ghost" href="${guestPortalUrl}" target="_blank">Abrir</a>`
       : `<span class="muted">Sin link</span>`;
     
-   const earlyLateClass = getEarlyLateClass(r);
+    const earlyLateClass = getEarlyLateClass(r);
 
-return `
-  <tr class="${earlyLateClass}">
+    return `
+      <tr class="${earlyLateClass}" id="checkin-${r.id}">
         <!-- 1. Limpieza -->
-        <tr id="checkin-${r.id}">
         <td class="sticky-col">
           <form method="POST" action="/staff/checkins/${r.id}/clean">
             <button type="submit" class="clean-btn ${r.clean_ok ? "pill-yes" : "pill-no"}">
@@ -5884,14 +5885,14 @@ return `
             </button>
           </form>
         </td>
-       <td style="font-family:monospace; font-size:13px;">
+        
+        <td style="font-family:monospace; font-size:13px;">
           ${escapeHtml(String(r.beds24_booking_id || r.booking_token || r.id))}
         </td>
         
         <!-- 2. Huésped -->
         <td>${guestBtn}</td>
-        <!-- Nombre del huésped -->
-<td>${formatGuestName(r.full_name)}</td>
+        <td>${formatGuestName(r.full_name)}</td>
         
         <!-- 3. Llegada -->
         <td>${mainDate}</td>
@@ -5907,36 +5908,18 @@ return `
           ${escapeHtml(r.room_name || r.apartment_name || "Sin nombre")}
         </td>
         
-        <!-- 7. Código -->
+        <!-- 7. Código - AHORA CON data-checkin-id -->
         <td>
-          <form method="POST" action="/staff/checkins/${r.id}/lock" class="lock-form">
-             <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}#checkin-${r.id}" />
-            
-            <input
-              type="text"
-              class="lock-input"
-              name="lock_code"
-              value="${escapeHtml(r.lock_code || "")}"
-              placeholder="0000"
-              inputmode="numeric"
-              pattern="[0-9]*"
-            />
-
-            <div class="lock-actions">
-              <button type="submit" class="btn-small btn-primary">
-                Guardar
-              </button>
-
-              <button
-                type="submit"
-                name="clear"
-                value="1"
-                class="btn-small btn-danger"
-              >
-                Clear
-              </button>
-            </div>
-          </form>
+          <input
+            type="text"
+            class="lock-input"
+            data-checkin-id="${r.id}"
+            value="${escapeHtml(r.lock_code || "")}"
+            placeholder="0000"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            style="width:80px; padding:6px 8px; border:1px solid #d1d5db; border-radius:6px; font-family:monospace;"
+          />
         </td>
         
         <!-- 8. Visible -->
@@ -5958,13 +5941,30 @@ return `
         <td>
           <form method="POST" action="/staff/checkins/${r.id}/delete"
                 onsubmit="return confirm('¿Seguro que quieres borrar esta reserva?');">
-           <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}#checkin-${r.id}" />
+            <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}#checkin-${r.id}" />
             <button type="submit" class="btn-small danger">Borrar</button>
           </form>
         </td>
       </tr>
     `;
   }).join("") : `<tr><td colspan="10" class="muted">No hay registros</td></tr>`;
+
+  // 🆕 BOTÓN GUARDAR TODOS (solo si hay filas)
+  const saveAllButton = rows.length ? `
+    <div style="margin-top:16px; padding:16px; background:#f9fafb; border-radius:8px; display:flex; gap:12px; align-items:center; justify-content:space-between;">
+      <div>
+        <p style="margin:0; font-weight:600;">💾 Guardar todos los códigos</p>
+        <p style="margin:4px 0 0; font-size:13px; color:#6b7280;">Guarda todos los códigos modificados en esta tabla de una vez</p>
+      </div>
+      <button 
+        type="button" 
+        onclick="saveAllLockCodes('${mode}')"
+        class="btn-primary"
+        style="white-space:nowrap; padding:12px 24px;">
+        💾 Guardar Todos
+      </button>
+    </div>
+  ` : '';
 
   return `
     <h2 style="margin:24px 0 12px;">${title}</h2>
@@ -5988,6 +5988,7 @@ return `
         <tbody>${tbody}</tbody>
       </table>
     </div>
+    ${saveAllButton}
   `;
 }
 
@@ -5997,29 +5998,119 @@ return `
                  renderTable(departures, "departures") +
                  `
 
-                 <script>
+                <script>
                  // ============================================
-                 // 📍 MANTENER SCROLL AL RECARGAR
+                 // 💾 GUARDAR TODOS LOS CÓDIGOS
                  // ============================================
                  
-                 // Guardar posición antes de submit
-                 document.addEventListener('submit', function(e) {
-                   const form = e.target;
+                 async function saveAllLockCodes(tableMode) {
+                   // Encontrar todos los inputs de código en la tabla actual
+                   const inputs = document.querySelectorAll('.lock-input[data-checkin-id]');
                    
-                   // Solo para formularios que tienen anchor (#checkin-ID)
-                   if (form.querySelector('input[name="returnTo"]')) {
-                     sessionStorage.setItem('scrollPos', window.scrollY);
+                   if (inputs.length === 0) {
+                     alert('No hay códigos para guardar');
+                     return;
                    }
-                 });
+                   
+                   const button = event.target;
+                   const originalText = button.textContent;
+                   button.disabled = true;
+                   button.textContent = '⏳ Guardando...';
+                   
+                   let saved = 0;
+                   let errors = 0;
+                   
+                   // Guardar cada código uno por uno
+                   for (const input of inputs) {
+                     const checkinId = input.getAttribute('data-checkin-id');
+                     const lockCode = input.value.trim();
+                     
+                     try {
+                       const formData = new FormData();
+                       formData.append('lock_code', lockCode);
+                       formData.append('returnTo', window.location.pathname + window.location.search);
+                       
+                       const response = await fetch(\`/staff/checkins/\${checkinId}/lock\`, {
+                         method: 'POST',
+                         body: formData
+                       });
+                       
+                       if (response.ok) {
+                         saved++;
+                         // Feedback visual
+                         input.style.background = '#d1fae5';
+                         setTimeout(() => { input.style.background = ''; }, 500);
+                       } else {
+                         errors++;
+                         input.style.background = '#fee2e2';
+                       }
+                     } catch (error) {
+                       console.error('Error saving code:', error);
+                       errors++;
+                       input.style.background = '#fee2e2';
+                     }
+                     
+                     // Pequeña pausa entre requests
+                     await new Promise(resolve => setTimeout(resolve, 100));
+                   }
+                   
+                   // Mostrar resultado
+                   button.disabled = false;
+                   button.textContent = originalText;
+                   
+                   if (errors === 0) {
+                     showToast(\`✅ \${saved} códigos guardados correctamente\`);
+                   } else {
+                     showToast(\`⚠️ \${saved} guardados, \${errors} errores\`, 'warning');
+                   }
+                 }
                  
-                 // Restaurar posición después de recargar
-                 window.addEventListener('load', function() {
-                   const savedPos = sessionStorage.getItem('scrollPos');
-                   if (savedPos) {
-                     window.scrollTo(0, parseInt(savedPos));
-                     sessionStorage.removeItem('scrollPos');
+                 // Toast notification
+                 function showToast(message, type = 'success') {
+                   const toast = document.createElement('div');
+                   toast.textContent = message;
+                   
+                   const colors = {
+                     success: '#10b981',
+                     warning: '#f59e0b',
+                     error: '#ef4444'
+                   };
+                   
+                   toast.style.cssText = \`
+                     position: fixed;
+                     bottom: 20px;
+                     right: 20px;
+                     background: \${colors[type] || colors.success};
+                     color: white;
+                     padding: 12px 20px;
+                     border-radius: 8px;
+                     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                     z-index: 9999;
+                     font-weight: 600;
+                     animation: slideIn 0.3s ease;
+                   \`;
+                   
+                   document.body.appendChild(toast);
+                   
+                   setTimeout(() => {
+                     toast.style.animation = 'slideOut 0.3s ease';
+                     setTimeout(() => toast.remove(), 300);
+                   }, 3000);
+                 }
+                 
+                 // Animaciones CSS
+                 const style = document.createElement('style');
+                 style.textContent = \`
+                   @keyframes slideIn {
+                     from { transform: translateX(100%); opacity: 0; }
+                     to { transform: translateX(0); opacity: 1; }
                    }
-                 });
+                   @keyframes slideOut {
+                     from { transform: translateX(0); opacity: 1; }
+                     to { transform: translateX(100%); opacity: 0; }
+                   }
+                 \`;
+                 document.head.appendChild(style);
                  </script>
                  
                  `;
@@ -9190,6 +9281,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
