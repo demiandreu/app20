@@ -6509,10 +6509,21 @@ app.post("/staff/checkins/:id/delete", async (req, res) => {
 // 🔄 SYNC: Página con formulario
 // ============================================
 
-app.get("/manager/channels/bookingssync", async (req, res) => {
+app.get("/manager/channels/bookingssync", requireAuth, requireRole('MANAGER'), async (req, res) => {
   try {
     // Si no hay parámetros, mostrar formulario
     if (!req.query.action) {
+      // Obtener lista de apartamentos para el filtro
+      const apartmentsResult = await pool.query(`
+        SELECT DISTINCT 
+          TRIM(REGEXP_REPLACE(apartment_name, '\\s+', ' ', 'g')) as apartment_name
+        FROM checkins 
+        WHERE apartment_name IS NOT NULL 
+          AND apartment_name != ''
+        ORDER BY apartment_name
+      `);
+      const apartments = apartmentsResult.rows.map(r => r.apartment_name);
+      
       const syncForm = `
         <div class="card" style="max-width:600px; margin:40px auto;">
           <h1 style="margin:0 0 20px;">🔄 Sincronizar Reservas desde Beds24</h1>
@@ -6522,8 +6533,19 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
             <input type="hidden" name="action" value="sync" />
             
             <div style="margin-bottom:16px;">
+              <label style="display:block; margin-bottom:6px; font-weight:600;">Apartamento (opcional)</label>
+              <select name="apartment" class="form-input" style="width:100%;">
+                <option value="">Todos los apartamentos</option>
+                ${apartments.map(apt => `
+                  <option value="${escapeHtml(apt)}">${escapeHtml(apt)}</option>
+                `).join('')}
+              </select>
+              <small class="muted">Deja en blanco para sincronizar todos</small>
+            </div>
+            
+            <div style="margin-bottom:16px;">
               <label style="display:block; margin-bottom:6px; font-weight:600;">Desde (Check-in)</label>
-              <input type="date" name="from" value="2025-11-01" required class="form-input" style="width:100%;" />
+              <input type="date" name="from" value="2025-12-01" required class="form-input" style="width:100%;" />
             </div>
             
             <div style="margin-bottom:16px;">
@@ -6535,6 +6557,13 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
               <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
                 <input type="checkbox" name="includeCancelled" value="true" />
                 <span>Incluir reservas canceladas</span>
+              </label>
+            </div>
+            
+            <div style="margin-bottom:24px;">
+              <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                <input type="checkbox" name="debug" value="true" checked />
+                <span>Mostrar debug detallado</span>
               </label>
             </div>
             
@@ -6559,7 +6588,7 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
         </div>
       `;
       
-      return res.send(renderPage("Sincronizar Reservas", syncForm));
+      return res.send(renderPage("Sincronizar Reservas", syncForm, 'manager'));
     }
     
     // Si hay parámetros, ejecutar sincronización
@@ -6569,7 +6598,21 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
     const fromDate = String(req.query.from || "2000-01-01");
     const toDate = String(req.query.to || "2027-12-31");
     const includeCancelled = String(req.query.includeCancelled || "false");
+    const filterApartment = String(req.query.apartment || "");
+    const showDebug = String(req.query.debug || "false") === "true";
     
+    let debugLog = [];
+    const log = (msg) => {
+      console.log(msg);
+      if (showDebug) debugLog.push(msg);
+    };
+    
+    log(`🔍 === INICIO SINCRONIZACIÓN ===`);
+    log(`📅 Rango: ${fromDate} → ${toDate}`);
+    log(`🏠 Apartamento filtro: ${filterApartment || 'TODOS'}`);
+    log(`❌ Incluir canceladas: ${includeCancelled}`);
+    
+    // Obtener properties
     const propsResp = await fetch("https://beds24.com/api/v2/properties?includeAllRooms=true", {
       headers: { accept: "application/json", token },
     });
@@ -6586,6 +6629,8 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
       .filter((x) => x != null)
       .map((x) => String(x));
       
+    log(`🏢 Properties encontradas: ${propIds.length}`);
+    
     if (!propIds.length) {
       return res.send(renderPage("Sync Bookings", `
         <div class="card">
@@ -6593,32 +6638,35 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
           <p>Could not load properties from API.</p>
           <p><a class="btn-link" href="/manager/channels/bookingssync">← Volver</a></p>
         </div>
-      `));
+      `, 'manager'));
     }
     
+    // Mapear rooms
     const roomsMap = new Map();
     for (const prop of properties) {
       const roomTypes = prop.roomTypes || [];
-      console.log(`Property ${prop.id}: found ${roomTypes.length} roomTypes`);
+      log(`🏨 Property ${prop.id}: ${roomTypes.length} rooms`);
       
       for (const room of roomTypes) {
         const roomId = String(room.id || room.roomId || "");
         const roomName = room.name || room.roomName || "";
         if (roomId && roomName) {
           roomsMap.set(roomId, roomName);
-          console.log(`  ✓ Mapped roomId "${roomId}" -> "${roomName}"`);
+          log(`  ✓ RoomID "${roomId}" → "${roomName}"`);
         }
       }
     }
     
-    console.log(`=== TOTAL: Loaded ${roomsMap.size} room names from ${properties.length} properties ===`);
-    console.log('All roomIds in map:', Array.from(roomsMap.keys()));
+    log(`📊 TOTAL: ${roomsMap.size} rooms mapeadas`);
     
     let processed = 0;
     let inserted = 0;
     let updated = 0;
     let skipped = 0;
     let errors = 0;
+    let filteredOut = 0;
+    
+    const bookingsDetails = [];
     
     for (const propId of propIds) {
       const url =
@@ -6626,13 +6674,15 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
         `?propertyId=${encodeURIComponent(propId)}` +
         `&includeInvoiceItems=true`;
       
+      log(`\n🔗 Fetching bookings para property ${propId}...`);
+      
       const bookingsResp = await fetch(url, {
         headers: { accept: "application/json", token },
       });
       
       if (!bookingsResp.ok) {
         const text = await bookingsResp.text();
-        console.error(`Beds24 bookings error for propId=${propId}:`, text.slice(0, 300));
+        log(`❌ Error fetching property ${propId}: ${text.slice(0, 200)}`);
         errors++;
         continue;
       }
@@ -6640,43 +6690,217 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
       const data = await bookingsResp.json();
       const bookings = Array.isArray(data) ? data : (data.bookings || data.data || []);
       
+      log(`📦 Recibidas ${bookings.length} reservas de property ${propId}`);
+      
       for (const b of bookings) {
         const arrival = new Date(b.arrival || b.arrivalDate);
         const departure = new Date(b.departure || b.departureDate);
         const from = new Date(fromDate);
         const to = new Date(toDate);
         
+        // Filtro por fecha
         if (arrival < from || arrival > to) {
+          log(`  ⏭️  Booking ${b.id}: fuera de rango (${b.arrival})`);
+          filteredOut++;
           continue;
         }
         
+        // Filtro por cancelación
         if (includeCancelled === "false" && 
             (b.status === "cancelled" || b.status === "canceled")) {
+          log(`  ❌ Booking ${b.id}: cancelada`);
+          filteredOut++;
           continue;
         }
         
         const roomId = String(b.roomId || "");
         const realRoomName = roomsMap.get(roomId) || "";
         
-        console.log(`Booking ${b.id}: roomId="${roomId}" (type: ${typeof roomId}), found name="${realRoomName}"`);
+        // Filtro por apartamento
+        if (filterApartment && realRoomName !== filterApartment) {
+          log(`  🏠 Booking ${b.id}: apartamento no coincide ("${realRoomName}" ≠ "${filterApartment}")`);
+          filteredOut++;
+          continue;
+        }
         
-        const row = mapBeds24BookingToRow(b, realRoomName, roomId);
-        console.log(`  -> row.room_name="${row.room_name}"`);
+        log(`\n  ✅ Procesando Booking ${b.id}:`);
+        log(`     - RoomID: ${roomId}`);
+        log(`     - Apartamento: ${realRoomName}`);
+        log(`     - Guest: ${b.firstName} ${b.lastName}`);
+        log(`     - Check-in: ${b.arrival}`);
+        log(`     - Status: ${b.status}`);
         
-        const result = await upsertCheckinFromBeds24(row);
-        processed++;
-        if (result?.skipped) skipped++;
-        else if (result?.inserted) inserted++;
-        else if (result?.updated) updated++;
-        else if (result?.ok) inserted++;
+        // Preparar datos para guardar
+        const guestLanguage = (b.guestLanguage || b.lang || 'en').toLowerCase().substring(0, 2);
+        const isCancelled = (b.status === 'cancelled' || b.status === 'canceled');
+        
+        const insertData = {
+          beds24_booking_id: b.id,
+          beds24_room_id: roomId,
+          apartment_name: realRoomName,
+          full_name: `${b.firstName || ''} ${b.lastName || ''}`.trim() || 'Unknown Guest',
+          email: b.email || 'unknown@beds24',
+          phone: b.phone || b.mobile || '',
+          arrival_date: b.arrival || null,
+          arrival_time: b.arrivalTime || null,
+          departure_date: b.departure || null,
+          departure_time: null,
+          adults: b.numAdult || 0,
+          children: b.numChild || 0,
+          beds24_raw: b,
+          guest_language: guestLanguage,
+          cancelled: isCancelled
+        };
+        
+        log(`     - Datos preparados para insertar en DB`);
+        
+        try {
+          // Intentar insertar/actualizar
+          const result = await pool.query(
+            `INSERT INTO checkins (
+              apartment_id,
+              booking_token,
+              beds24_booking_id,
+              beds24_room_id,
+              apartment_name,
+              full_name,
+              email,
+              phone,
+              arrival_date,
+              arrival_time,
+              departure_date,
+              departure_time,
+              adults,
+              children,
+              beds24_raw,
+              guest_language,
+              cancelled
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15::jsonb, $16, $17)
+            ON CONFLICT (beds24_booking_id)
+            DO UPDATE SET
+              apartment_name = EXCLUDED.apartment_name,
+              full_name = EXCLUDED.full_name,
+              email = EXCLUDED.email,
+              phone = EXCLUDED.phone,
+              arrival_date = COALESCE(EXCLUDED.arrival_date, checkins.arrival_date),
+              departure_date = COALESCE(EXCLUDED.departure_date, checkins.departure_date),
+              adults = COALESCE(EXCLUDED.adults, checkins.adults),
+              children = COALESCE(EXCLUDED.children, checkins.children),
+              beds24_raw = COALESCE(EXCLUDED.beds24_raw, checkins.beds24_raw),
+              guest_language = EXCLUDED.guest_language,
+              cancelled = EXCLUDED.cancelled
+            RETURNING id, (xmax = 0) AS inserted`,
+            [
+              roomId,
+              `beds24_${b.id}`,
+              b.id,
+              roomId,
+              realRoomName,
+              insertData.full_name,
+              insertData.email,
+              insertData.phone,
+              insertData.arrival_date,
+              insertData.arrival_time,
+              insertData.departure_date,
+              insertData.departure_time,
+              insertData.adults,
+              insertData.children,
+              JSON.stringify(insertData.beds24_raw),
+              insertData.guest_language,
+              insertData.cancelled
+            ]
+          );
+          
+          const wasInserted = result.rows[0]?.inserted;
+          
+          if (wasInserted) {
+            log(`     ✅ INSERTADA en DB (ID: ${result.rows[0].id})`);
+            inserted++;
+            bookingsDetails.push({
+              id: b.id,
+              guest: insertData.full_name,
+              apartment: realRoomName,
+              arrival: b.arrival,
+              action: 'INSERTADA'
+            });
+          } else {
+            log(`     🔄 ACTUALIZADA en DB`);
+            updated++;
+            bookingsDetails.push({
+              id: b.id,
+              guest: insertData.full_name,
+              apartment: realRoomName,
+              arrival: b.arrival,
+              action: 'ACTUALIZADA'
+            });
+          }
+          
+          processed++;
+          
+        } catch (dbError) {
+          log(`     ❌ ERROR DB: ${dbError.message}`);
+          errors++;
+        }
       }
     }
     
+    log(`\n📊 === RESUMEN FINAL ===`);
+    log(`✅ Procesadas: ${processed}`);
+    log(`➕ Insertadas: ${inserted}`);
+    log(`🔄 Actualizadas: ${updated}`);
+    log(`⏭️  Filtradas: ${filteredOut}`);
+    log(`❌ Errores: ${errors}`);
+    
+    // Generar HTML del reporte
+    const bookingsTableHtml = bookingsDetails.length ? `
+      <div style="margin-top:24px; overflow-x:auto;">
+        <h3 style="margin:0 0 12px;">📋 Reservas Procesadas</h3>
+        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+          <thead>
+            <tr style="background:#f3f4f6;">
+              <th style="padding:8px; text-align:left; border-bottom:2px solid #e5e7eb;">ID</th>
+              <th style="padding:8px; text-align:left; border-bottom:2px solid #e5e7eb;">Huésped</th>
+              <th style="padding:8px; text-align:left; border-bottom:2px solid #e5e7eb;">Apartamento</th>
+              <th style="padding:8px; text-align:left; border-bottom:2px solid #e5e7eb;">Check-in</th>
+              <th style="padding:8px; text-align:left; border-bottom:2px solid #e5e7eb;">Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${bookingsDetails.map(b => `
+              <tr style="border-bottom:1px solid #e5e7eb;">
+                <td style="padding:8px;">${b.id}</td>
+                <td style="padding:8px;">${escapeHtml(b.guest)}</td>
+                <td style="padding:8px;">${escapeHtml(b.apartment)}</td>
+                <td style="padding:8px;">${b.arrival}</td>
+                <td style="padding:8px;">
+                  <span style="padding:4px 8px; border-radius:4px; font-size:12px; font-weight:600; 
+                    background:${b.action === 'INSERTADA' ? '#dcfce7' : '#fef3c7'};
+                    color:${b.action === 'INSERTADA' ? '#15803d' : '#a16207'};">
+                    ${b.action}
+                  </span>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    ` : '';
+    
+    const debugHtml = showDebug ? `
+      <div style="margin-top:24px;">
+        <h3 style="margin:0 0 12px;">🔍 Debug Log</h3>
+        <div style="background:#1f2937; color:#f3f4f6; padding:16px; border-radius:8px; max-height:400px; overflow-y:auto; font-family:monospace; font-size:12px; white-space:pre-wrap;">
+${debugLog.join('\n')}
+        </div>
+      </div>
+    ` : '';
+    
     return res.send(renderPage("Sync Bookings", `
-      <div class="card" style="max-width:600px; margin:40px auto;">
+      <div class="card" style="max-width:900px; margin:40px auto;">
         <h1 style="margin:0 0 20px;">✅ Sincronización Completada</h1>
         
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:16px; margin-bottom:24px;">
           <div style="background:#f0fdf4; padding:16px; border-radius:8px; border-left:4px solid #22c55e;">
             <div style="font-size:32px; font-weight:700; color:#16a34a;">${inserted}</div>
             <div style="color:#15803d; font-size:14px;">Nuevas</div>
@@ -6686,8 +6910,8 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
             <div style="color:#a16207; font-size:14px;">Actualizadas</div>
           </div>
           <div style="background:#f3f4f6; padding:16px; border-radius:8px; border-left:4px solid #9ca3af;">
-            <div style="font-size:32px; font-weight:700; color:#6b7280;">${skipped}</div>
-            <div style="color:#4b5563; font-size:14px;">Omitidas</div>
+            <div style="font-size:32px; font-weight:700; color:#6b7280;">${filteredOut}</div>
+            <div style="color:#4b5563; font-size:14px;">Filtradas</div>
           </div>
           <div style="background:#fee2e2; padding:16px; border-radius:8px; border-left:4px solid #ef4444;">
             <div style="font-size:32px; font-weight:700; color:#dc2626;">${errors}</div>
@@ -6700,11 +6924,15 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
           <p style="margin:0 0 8px;"><strong>Properties:</strong> ${propIds.length} · <strong>Rooms:</strong> ${roomsMap.size}</p>
           <p style="margin:0; color:#6b7280; font-size:14px;">
             Rango: ${escapeHtml(fromDate)} → ${escapeHtml(toDate)}
+            ${filterApartment ? ` · Apartamento: ${escapeHtml(filterApartment)}` : ''}
             ${includeCancelled === 'true' ? ' · Incluye canceladas' : ''}
           </p>
         </div>
         
-        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        ${bookingsTableHtml}
+        ${debugHtml}
+        
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:24px;">
           <a href="/manager/invoices" class="btn-primary">💰 Ver Facturas</a>
           <a href="/staff/checkins" class="btn-primary">📋 Ver Check-ins</a>
           <a href="/manager/channels/bookingssync" class="btn-link">🔄 Nueva Sync</a>
@@ -6714,23 +6942,22 @@ app.get("/manager/channels/bookingssync", async (req, res) => {
           <a href="/manager" class="btn-link">← Volver al Manager</a>
         </p>
       </div>
-    `));
+    `, 'manager'));
   } catch (e) {
     console.error("Sync error:", e);
     return res.status(500).send(renderPage("Error Sync", `
       <div class="card" style="max-width:600px; margin:40px auto;">
         <h1 style="color:#991b1b; margin:0 0 16px;">❌ Error en Sincronización</h1>
         <div style="background:#fee2e2; padding:16px; border-radius:8px; border-left:4px solid #dc2626;">
-          <p style="margin:0; color:#991b1b;">${escapeHtml(e.message || String(e))}</p>
+          <p style="margin:0; color:#991b1b; white-space:pre-wrap;">${escapeHtml(e.message || String(e))}\n\n${escapeHtml(e.stack || '')}</p>
         </div>
         <p style="margin-top:24px; text-align:center;">
           <a href="/manager/channels/bookingssync" class="btn-link">← Volver a intentar</a>
         </p>
       </div>
-    `));
+    `, 'manager'));
   }
 });
-
 // ===================== MANAGER: one page for apartments + defaults =====================
 
 // helper: safe value
@@ -9030,6 +9257,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
