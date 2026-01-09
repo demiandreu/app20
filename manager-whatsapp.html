@@ -74,6 +74,126 @@
             margin-top: 8px;
             text-align: center;
         }
+        /* ESTILOS PARA LOS MENSAJES DEL FLUJO */
+.message-section {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.message-section h3 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    color: #111827;
+    font-weight: 600;
+}
+
+.message-section > p {
+    color: #6b7280;
+    font-size: 13px;
+    margin-bottom: 16px;
+}
+
+/* Tabs de idioma MEJORADOS */
+.language-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    background: #f9fafb;
+    padding: 6px;
+    border-radius: 10px;
+}
+
+.language-tabs .lang-tab {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 12px;
+    color: #6b7280;
+    border-radius: 6px;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.language-tabs .lang-tab.active {
+    background: white;
+    color: #111827;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Contenedores de textarea */
+.textarea-container {
+    display: none;
+}
+
+.textarea-container.active {
+    display: block;
+}
+
+.textarea-container textarea {
+    width: 100%;
+    padding: 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 150px;
+    background: white;
+    color: #111827;
+}
+
+.textarea-container textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+
+/* Botón traducir */
+.btn-translate {
+    background: #f0f9ff;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 16px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-translate:hover {
+    background: #e0f2fe;
+}
+
+/* Botón guardar */
+.btn-save {
+    background: #22c55e;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 24px;
+    transition: all 0.2s;
+    display: block;
+    width: 100%;
+}
+
+.btn-save:hover {
+    background: #16a34a;
+}
     </style>
 <body>
     <div class="container">
@@ -195,31 +315,37 @@ Para completar tu registro: {registration_url}</code>
                 
                 <!-- Los mensajes del flujo se mantienen igual -->
                 <!-- START -->
+<!-- START - Mensaje Inicial -->
 <div class="message-section">
     <h3>START - Mensaje Inicial</h3>
-    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Primer mensaje al iniciar conversación</p>
+    <p>Primer mensaje al iniciar conversación</p>
     
     <div class="language-tabs">
-        <button class="lang-tab active" onclick="switchLang('START', 'es')">🇪🇸 ES</button>
-        <button class="lang-tab" onclick="switchLang('START', 'en')">🇬🇧 EN</button>
-        <button class="lang-tab" onclick="switchLang('START', 'fr')">🇫🇷 FR</button>
-        <button class="lang-tab" onclick="switchLang('START', 'ru')">🇷🇺 RU</button>
+        <button class="lang-tab active" onclick="switchLang('START', 'es')">🇪🇸 Español</button>
+        <button class="lang-tab" onclick="switchLang('START', 'en')">🇬🇧 English</button>
+        <button class="lang-tab" onclick="switchLang('START', 'fr')">🇫🇷 Français</button>
+        <button class="lang-tab" onclick="switchLang('START', 'ru')">🇷🇺 Русский</button>
     </div>
     
     <div class="textarea-container active" data-msg="START" data-lang="es">
-        <textarea id="START_es" placeholder="¡Hola, {guest_name}! Soy tu conserje personal..."></textarea>
-    </div>
-    <div class="textarea-container" data-msg="START" data-lang="en">
-        <textarea id="START_en" placeholder="Hello, {guest_name}! I'm your personal concierge..."></textarea>
-    </div>
-    <div class="textarea-container" data-msg="START" data-lang="fr">
-        <textarea id="START_fr" placeholder="Bonjour, {guest_name}! Je suis votre concierge personnel..."></textarea>
-    </div>
-    <div class="textarea-container" data-msg="START" data-lang="ru">
-        <textarea id="START_ru" placeholder="Здравствуйте, {guest_name}! Я ваш личный консьерж..."></textarea>
+        <textarea id="START_es" placeholder="¡Hola, {guest_name}! Soy tu conserje personal...">¡Hola, {guest_name}! Soy tu conserje personal y te ayudaré con todo el proceso. 🏠</textarea>
     </div>
     
-    <button class="btn-translate" onclick="translateMessage('START')">🌍 Traducir desde ES</button>
+    <div class="textarea-container" data-msg="START" data-lang="en">
+        <textarea id="START_en" placeholder="Hello, {guest_name}! I'm your personal concierge...">Hello, {guest_name}! I'm your personal concierge and I'll help you with the whole process. 🏠</textarea>
+    </div>
+    
+    <div class="textarea-container" data-msg="START" data-lang="fr">
+        <textarea id="START_fr" placeholder="Bonjour, {guest_name}! Je suis votre concierge personnel...">Bonjour, {guest_name}! Je suis votre concierge personnel et je vous aiderai avec tout le processus. 🏠</textarea>
+    </div>
+    
+    <div class="textarea-container" data-msg="START" data-lang="ru">
+        <textarea id="START_ru" placeholder="Здравствуйте, {guest_name}! Я ваш личный консьерж...">Здравствуйте, {guest_name}! Я ваш личный консьерж и помогу вам со всем процессом. 🏠</textarea>
+    </div>
+    
+    <button class="btn-translate" onclick="translateMessage('START')">
+        🌍 Traducir desde Español
+    </button>
 </div>
                 <!-- ASK_RULES -->
 <div class="message-section">
