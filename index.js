@@ -7653,6 +7653,56 @@ app.get("/api/whatsapp/flow-messages", async (req, res) => {
   }
 });
 
+// Guardar mensajes del flujo
+app.post("/api/whatsapp/flow-messages", requireAuth, async (req, res) => {
+  try {
+    const { messages } = req.body;
+    
+    if (!messages || !Array.isArray(messages)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Messages array is required' 
+      });
+    }
+    
+    console.log('📝 Guardando mensajes del flujo:', messages.length);
+    
+    for (const msg of messages) {
+      await pool.query(`
+        INSERT INTO whatsapp_flow_messages 
+          (message_key, content_es, content_en, content_fr, content_ru, updated_at)
+        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
+        ON CONFLICT (message_key) 
+        DO UPDATE SET
+          content_es = EXCLUDED.content_es,
+          content_en = EXCLUDED.content_en,
+          content_fr = EXCLUDED.content_fr,
+          content_ru = EXCLUDED.content_ru,
+          updated_at = CURRENT_TIMESTAMP
+      `, [
+        msg.message_key,
+        msg.content_es || '',
+        msg.content_en || '',
+        msg.content_fr || '',
+        msg.content_ru || ''
+      ]);
+      
+      console.log(`✅ Guardado: ${msg.message_key}`);
+    }
+    
+    res.json({
+      success: true,
+      message: 'Mensajes guardados correctamente'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error guardando mensajes:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
 // ===================== API: TRADUCCIÓN CON DEEPL =====================
 app.post("/api/translate", requireAuth, async (req, res) => {
   try {
@@ -7672,7 +7722,16 @@ app.post("/api/translate", requireAuth, async (req, res) => {
         error: 'DeepL API key not configured' 
       });
     }
+     const variablePattern = /\{[a-zA-Z_]+\}/g;
+    const variables = text.match(variablePattern) || [];
+    const placeholders = {};
     
+    let protectedText = text;
+    variables.forEach((variable, index) => {
+      const placeholder = `VARIABLE${index}`;
+      placeholders[placeholder] = variable;
+      protectedText = protectedText.replace(variable, placeholder);
+    });
     const deeplUrl = 'https://api-free.deepl.com/v2/translate';
     
     const response = await fetch(deeplUrl, {
@@ -7682,7 +7741,7 @@ app.post("/api/translate", requireAuth, async (req, res) => {
       },
       body: new URLSearchParams({
         auth_key: process.env.DEEPL_API_KEY,
-        text: text,
+         text: protectedText,
         target_lang: targetLang,
         source_lang: 'ES'
       })
@@ -9274,6 +9333,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
