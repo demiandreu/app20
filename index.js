@@ -2430,18 +2430,19 @@ const bookings = result.rows.map(row => {
 
   // Extraer precio según plataforma
   let price = 0;
-  let firstInvoiceItem = 0;
   
   if (platform === 'booking') {
+    // Para Booking.com: usar el First Invoice Item (subType 8)
     const invoiceItems = raw.invoiceItems || [];
     const roomItem = invoiceItems.find(item => item.subType === 8);
     if (roomItem) {
-      firstInvoiceItem = roomItem.amount || 0;
-      price = firstInvoiceItem;
+      price = roomItem.amount || 0;
     } else {
+      // Fallback si no hay invoiceItems
       price = raw.price || 0;
     }
   } else {
+    // Para Airbnb y otros: usar el precio normal
     price = raw.price || 0;
   }
 
@@ -2473,7 +2474,6 @@ const bookings = result.rows.map(row => {
     referer: referer,
     nights,
     price: price.toFixed(2),
-    firstInvoiceItem: firstInvoiceItem.toFixed(2),
     commission: commission.toFixed(2),
     bookingIva: bookingIva.toFixed(2),
     rentalConnect: rentalConnect.toFixed(2),
@@ -2538,18 +2538,18 @@ const bookings = result.rows.map(row => {
           <thead>
             <tr>
               <th style="width:40px;">Acción</th>
-    <th>ID Booking</th>
-    <th>Huésped</th>
-    <th>Plataforma</th>
-    <th>Check-in</th>
-    <th>Check-out</th>
-    <th>Noches</th>
-    <th>Apartamento</th>
-    <th>Precio</th>
-    <th>Comisión</th>
-    <th>Booking IVA</th>
-    <th>Rental Connect</th>
-    <th>Income</th>
+              <th>ID Booking</th>
+              <th>Huésped</th>
+              <th>Plataforma</th>
+              <th>Check-in</th>
+              <th>Check-out</th>
+              <th>Noches</th>
+              <th>Apartamento</th>
+              <th>Precio</th>
+              <th>Comisión</th>
+              <th>Booking IVA</th>
+              <th>Rental Connect</th>
+              <th>Income</th>
             </tr>
           </thead>
           <tbody>
@@ -2584,13 +2584,13 @@ const bookings = result.rows.map(row => {
           </tbody>
           <tfoot>
            <tr style="background:#f9fafb; font-weight:600;">
-    <td colspan="8">TOTALES (${totals.count} reservas)</td>
-    <td style="text-align:right;">€${totals.totalPrice}</td>
-    <td style="text-align:right;">€${totals.totalCommission}</td>
-    <td style="text-align:right; color:#dc2626;">€${totals.totalBookingIva}</td>
-    <td style="text-align:right; color:#059669;">€${totals.totalRentalConnect}</td>
-    <td style="text-align:right; color:#0891b2; font-weight:700; background:#ecfeff;">€${totals.totalIncome}</td>
-  </tr>
+              <td colspan="8">TOTALES (${totals.count} reservas)</td>
+              <td style="text-align:right;">€${totals.totalPrice}</td>
+              <td style="text-align:right;">€${totals.totalCommission}</td>
+              <td style="text-align:right; color:#dc2626;">€${totals.totalBookingIva}</td>
+              <td style="text-align:right; color:#059669;">€${totals.totalRentalConnect}</td>
+              <td style="text-align:right; color:#0891b2; font-weight:700; background:#ecfeff;">€${totals.totalIncome}</td>
+            </tr>
           </tfoot>
         </table>
       </div>
@@ -2613,7 +2613,6 @@ const bookings = result.rows.map(row => {
     `));
   }
 });
-
 // ============================================
 // 📊 EXPORTAR FACTURAS A EXCEL
 // ============================================
@@ -9027,6 +9026,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
