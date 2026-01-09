@@ -369,7 +369,38 @@ app.post("/staff/checkins/:id/visibility", requireAuth, requireRole('CLEANING_MA
   }
 });
 
+// ===================== STAFF: TOGGLE LIMPIEZA =====================
+app.post("/staff/checkins/:id/clean", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { returnTo } = req.body;
+    
+    await pool.query(
+      `UPDATE checkins SET clean_ok = NOT COALESCE(clean_ok, false) WHERE id = $1`,
+      [id]
+    );
+    
+    return safeRedirect(res, returnTo || req.headers.referer || "/staff/checkins");
+  } catch (e) {
+    console.error("Error toggling clean status:", e);
+    res.status(500).send("Error updating clean status");
+  }
+});
 
+// ===================== STAFF: DELETE CHECKIN =====================
+app.post("/staff/checkins/:id/delete", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { returnTo } = req.body;
+    
+    await pool.query(`DELETE FROM checkins WHERE id = $1`, [id]);
+    
+    return safeRedirect(res, returnTo || req.headers.referer || "/staff/checkins");
+  } catch (e) {
+    console.error("Error deleting checkin:", e);
+    res.status(500).send("Error deleting checkin");
+  }
+});
 
 // Helper: Verificar si el usuario tiene un rol específico o superior
 function hasRole(req, minRole) {
@@ -9224,6 +9255,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
