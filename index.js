@@ -7747,7 +7747,13 @@ app.post("/api/translate", requireAuth, async (req, res) => {
       })
     });
     
-    const data = await response.json();
+   const data = await response.json();
+    
+    // 🔓 Restaurar variables en el texto traducido
+    let translatedText = data.translations[0].text;
+    Object.keys(placeholders).forEach(placeholder => {
+      translatedText = translatedText.replace(new RegExp(placeholder, 'g'), placeholders[placeholder]);
+    });
     
     if (!response.ok) {
       console.error('DeepL API error:', data);
@@ -7759,7 +7765,7 @@ app.post("/api/translate", requireAuth, async (req, res) => {
     
     res.json({
       success: true,
-      translated: data.translations[0].text
+      translated: translatedText
     });
     
   } catch (error) {
@@ -9333,6 +9339,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
