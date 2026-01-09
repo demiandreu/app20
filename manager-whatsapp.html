@@ -879,10 +879,15 @@ function renderAutoReplies() {
   }
   
   container.innerHTML = autoReplies.map((reply, index) => {
-    const keywordsDisplay = (reply.keywords || []).slice(0, 5).map(k => 
-      `<span class="keyword-tag">${k}</span>`
-    ).join('');
-    const moreCount = (reply.keywords || []).length > 5 ? `+${(reply.keywords || []).length - 5}` : '';
+   let keywordsArray = reply.keywords || [];
+if (typeof keywordsArray === 'string') {
+  keywordsArray = keywordsArray.split(',').map(k => k.trim()).filter(k => k);
+}
+
+const keywordsDisplay = keywordsArray.slice(0, 5).map(k => 
+  `<span class="keyword-tag">${k}</span>`
+).join('');
+const moreCount = keywordsArray.length > 5 ? `+${keywordsArray.length - 5}` : '';
     
     return `
     <div class="auto-reply-card" data-index="${index}">
@@ -929,7 +934,7 @@ function renderAutoReplies() {
         <div class="reply-settings">
           <label>
             Palabras clave (separadas por comas):
-            <textarea id="keywords_${index}" placeholder="wifi, contraseña wifi, clave wifi...">${(reply.keywords || []).join(', ')}</textarea>
+            <textarea id="keywords_${index}" ...>${Array.isArray(reply.keywords) ? reply.keywords.join(', ') : (reply.keywords || '')}</textarea>
           </label>
           
           <div class="reply-meta">
