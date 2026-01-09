@@ -1772,6 +1772,7 @@ document.getElementById('save-auto-replies-btn')?.addEventListener('click', asyn
       return {
         ...reply,
         category: document.getElementById(`category_${index}`)?.value || reply.category,
+          apartment_ids: reply.apartment_ids || [],
         keywords: keywordsArray,
         response_es: document.getElementById(`reply_${index}_es`)?.value || '',
         response_en: document.getElementById(`reply_${index}_en`)?.value || '',
