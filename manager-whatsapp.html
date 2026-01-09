@@ -4,32 +4,251 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manager - WhatsApp Bot</title>
-</head>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
-        :root { color-scheme: light; }
-        
+        /* Auto-replies styles */
+.auto-reply-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.reply-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.reply-header h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.keywords-display {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+         .nav-menu {
+      background: #1f2937;
+      padding: 12px 20px;
+      margin: 0 0 16px 0;
+      border-radius: 0;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    
+    .nav-links {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    
+    .nav-link {
+      color: #fff;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: 400;
+    }
+    
+    .nav-link.active {
+      color: #60a5fa;
+      background: #374151;
+      font-weight: 600;
+    }
+    
+    .nav-toggle {
+      display: none;
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    
+    @media (max-width: 768px) {
+      .nav-links {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+      }
+      .nav-links.active { display: flex; }
+      .nav-toggle { display: block; margin-left: auto; }
+    }
+  
+    
+.keyword-tag {
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.reply-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.reply-content {
+  margin-top: 16px;
+}
+
+.lang-content {
+  position: relative;
+  min-height: 150px;
+}
+
+.lang-textarea {
+  display: none;
+  width: 100%;
+  min-height: 150px;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.lang-textarea.active {
+  display: block;
+}
+
+.reply-settings {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr; /* ✅ Una sola columna */
+  gap: 12px;
+}
+
+.reply-settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.reply-settings input,
+.reply-settings select {
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.reply-settings textarea {
+  min-height: 80px; /* ✅ Textarea para keywords */
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.reply-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* ✅ Categoría y prioridad en fila */
+  gap: 12px;
+  margin-top: 12px;
+}
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.empty-state p {
+  margin: 8px 0;
+}
+
+.btn-primary {
+  background: #4f46e5;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.btn-primary:hover {
+  background: #4338ca;
+}
+
+.btn-small {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-danger {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.toggle input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.section-header {
+  margin-bottom: 24px;
+}
+
+.section-header h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: #111827;
+}
+
+.description {
+  margin: 0;
+  color: #6b7280;
+  font-size: 14px;
+}
         body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: #f6f7fb;
-            color: #111827;
-            margin: 0;
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #f5f5f5;
             min-height: 100vh;
+            padding: 20px;
         }
 
         .container {
-            max-width: 1100px;
+            max-width: 1200px;
             margin: 0 auto;
             background: white;
-            border-radius: 18px;
-            box-shadow: 0 10px 28px rgba(17,24,39,0.08);
-            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             overflow: hidden;
         }
 
@@ -37,12 +256,12 @@
             background: #ffffff;
             border-bottom: 1px solid #e5e7eb;
             color: #374151;
-            padding: 20px 24px;
+            padding: 20px 30px;
         }
 
         .header h1 {
             font-size: 22px;
-            margin-bottom: 4px;
+            margin-bottom: 5px;
             font-weight: 600;
             color: #111827;
         }
@@ -50,7 +269,6 @@
         .header p {
             color: #6b7280;
             font-size: 14px;
-            margin: 0;
         }
 
         .tabs {
@@ -61,12 +279,12 @@
 
         .tab {
             flex: 1;
-            padding: 12px 16px;
+            padding: 14px 20px;
             text-align: center;
             cursor: pointer;
             background: transparent;
             border: none;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 500;
             color: #6b7280;
             transition: all 0.2s ease;
@@ -82,498 +300,390 @@
         .tab.active {
             color: #111827;
             background: white;
-            border-bottom: 2px solid #111827;
+            border-bottom: 2px solid #374151;
         }
 
         .tab-content {
             display: none;
-            padding: 24px;
+            padding: 30px;
+            animation: fadeIn 0.2s ease;
         }
 
         .tab-content.active {
             display: block;
         }
 
-        /* Acordeón */
-        .accordion-item {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            margin-bottom: 10px;
-            overflow: hidden;
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
-        
-        .accordion-item.open {
-            border-color: #2563eb;
+
+        /* Auto-replies styles */
+/* Acordeón */
+.auto-reply-card {
+  transition: all 0.3s ease;
+}
+
+.auto-reply-card .reply-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.auto-reply-card .reply-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.auto-reply-card.open .reply-content {
+  max-height: 2000px;
+}
+
+.accordion-arrow {
+  transition: transform 0.3s ease;
+  display: inline-block;
+  margin-left: 8px;
+}
+
+.auto-reply-card.open .accordion-arrow {
+  transform: rotate(180deg);
+}
+
+.reply-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.reply-header h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.keywords-display {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.keyword-tag {
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.reply-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.language-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.lang-tab {
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.lang-tab.active {
+  background: #4f46e5;
+  color: white;
+  border-color: #4f46e5;
+}
+ .btn-translate {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.btn-translate:hover {
+  background: #059669;
+}
+
+.btn-translate:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}       
+
+.lang-textarea {
+  display: none;
+  width: 100%;
+  min-height: 150px;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.lang-textarea.active {
+  display: block;
+}
+
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+}
+
+.empty-state p {
+  margin: 8px 0;
+}
+
+        /* Variables Panel */
+        .variables-panel {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 25px;
         }
-        
-        .accordion-header {
-            padding: 14px 18px;
-            background: #f9fafb;
-            cursor: pointer;
+
+        .variables-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            transition: background 0.2s;
+            cursor: pointer;
+            user-select: none;
         }
-        
-        .accordion-header:hover {
-            background: #f3f4f6;
-        }
-        
-        .accordion-header h3 {
-            font-size: 14px;
+
+        .variables-header h4 {
+            color: #0c4a6e;
+            font-size: 15px;
             font-weight: 600;
-            color: #111827;
-            margin: 0;
         }
-        
-        .accordion-icon {
-            transition: transform 0.3s;
-            font-size: 16px;
-            color: #6b7280;
+
+        .variables-toggle {
+            color: #0369a1;
+            font-size: 18px;
+            transition: transform 0.2s;
         }
-        
-        .accordion-item.open .accordion-icon {
+
+        .variables-toggle.open {
             transform: rotate(180deg);
         }
-        
-        .accordion-content {
+
+        .variables-content {
             max-height: 0;
             overflow: hidden;
             transition: max-height 0.3s ease;
         }
-        
-        .accordion-item.open .accordion-content {
-            max-height: 3000px;
-        }
-        
-        .accordion-body {
-            padding: 18px;
-            border-top: 1px solid #e5e7eb;
+
+        .variables-content.open {
+            max-height: 600px;
+            margin-top: 12px;
         }
 
-        /* Keywords tags */
-        .keyword-tag {
-            background: #e0e7ff;
-            color: #3730a3;
-            padding: 3px 8px;
+        .variables-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 12px;
+        }
+
+        .variable-item {
+            background: white;
+            border: 1px solid #e0f2fe;
+            border-radius: 4px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .variable-item:hover {
+            background: #e0f2fe;
+            border-color: #0369a1;
+        }
+
+        .variable-code {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #0369a1;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .variable-desc {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .message-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f9fafb;
             border-radius: 6px;
-            font-size: 11px;
-            display: inline-block;
-            margin: 2px;
+            border: 1px solid #e5e7eb;
         }
 
-        .keywords-display {
-            display: flex;
-            gap: 4px;
-            flex-wrap: wrap;
-            margin-top: 4px;
-        }
-
-        /* Tabs de idioma */
-        .lang-tabs {
-            display: flex;
-            gap: 6px;
+        .message-section h3 {
+            color: #374151;
             margin-bottom: 12px;
-            border-bottom: 1px solid #e5e7eb;
-            padding-bottom: 8px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .language-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
         }
 
         .lang-tab {
-            padding: 6px 12px;
-            border: none;
-            background: transparent;
+            padding: 6px 14px;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 13px;
+            font-weight: 500;
             color: #6b7280;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
-            border-radius: 0;
+            transition: all 0.15s ease;
+        }
+
+        .lang-tab:hover {
+            border-color: #9ca3af;
+            color: #374151;
         }
 
         .lang-tab.active {
-            color: #111827;
-            border-bottom-color: #111827;
-            font-weight: 500;
+            background: #374151;
+            color: white;
+            border-color: #374151;
         }
 
-        /* Textareas y inputs */
-        textarea, input[type="text"], input[type="number"] {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 10px;
-            font-family: inherit;
-            font-size: 13px;
-            resize: vertical;
-            background: #fff;
-            color: #111827;
+        .textarea-container {
+            display: none;
         }
 
-        textarea:focus, input:focus {
-            outline: none;
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+        .textarea-container.active {
+            display: block;
         }
 
         textarea {
+            width: 100%;
             min-height: 120px;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.15s ease;
+            margin-bottom: 8px;
         }
 
-        .lang-textarea {
-            display: none;
+        textarea:focus {
+            outline: none;
+            border-color: #9ca3af;
         }
 
-        .lang-textarea.active {
-            display: block;
-        }
-
-        label {
-            font-size: 12px;
-            display: block;
-            margin-bottom: 6px;
-            color: #374151;
-            font-weight: 500;
-        }
-
-        /* Botones */
-        .btn-primary {
-            background: #e8eef4;
-            color: #2c4a66;
-            border: 1px solid #d6dee8;
-            padding: 10px 16px;
-            border-radius: 999px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-primary:hover {
-            background: #dde4ec;
-        }
-
-        .btn-success {
-            background: #22c55e;
+        .btn-translate {
+            padding: 6px 12px;
+            background: #6b7280;
             color: white;
             border: none;
-            padding: 10px 16px;
-            border-radius: 999px;
+            border-radius: 4px;
             font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .btn-success:hover {
-            background: #16a34a;
-        }
-
-        .btn-small {
-            background: #f3f4f6;
-            border: 1px solid #e5e7eb;
-            color: #6b7280;
-            padding: 6px 12px;
-            font-size: 12px;
-            border-radius: 6px;
-            cursor: pointer;
             font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
         }
 
-        .btn-small:hover {
-            background: #e5e7eb;
+        .btn-translate:hover {
+            background: #4b5563;
         }
 
-        .btn-danger {
+        .btn-translate:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .alert.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .alert.error {
             background: #fee2e2;
             color: #991b1b;
-            border: 1px solid #fca5a5;
-        }
-
-        .btn-danger:hover {
-            background: #fecaca;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        /* Section header */
-        .section-header {
-            margin-bottom: 20px;
-        }
-
-        .section-header h2 {
-            margin: 0 0 6px;
-            font-size: 18px;
-            color: #111827;
-        }
-
-        .description {
-            margin: 0;
-            color: #6b7280;
-            font-size: 13px;
-        }
-
-        /* Toggle */
-        .toggle {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .toggle input[type="checkbox"] {
-            width: 14px;
-            height: 14px;
-            cursor: pointer;
-        }
-
-        /* Alert */
-        .alert {
-            padding: 12px 14px;
-            border-radius: 10px;
-            margin-bottom: 16px;
-            display: none;
-            font-size: 13px;
+            border: 1px solid #fecaca;
         }
 
         .alert.show {
             display: block;
         }
 
-        .alert-success {
-            background: #d1fae5;
-            color: #065f46;
-            border: 1px solid #10b981;
-        }
-
-        .alert-error {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #ef4444;
-        }
-
-        /* Empty state */
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #6b7280;
-            background: #f9fafb;
-            border-radius: 10px;
-            font-size: 13px;
-        }
-
-        .empty-state p {
-            margin: 6px 0;
-        }
-
-        /* Reply settings */
-        .reply-settings {
-            margin-top: 14px;
-            display: grid;
-            gap: 12px;
-        }
-
-        /* Auto Reply Card */
-        .auto-reply-card {
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            margin-bottom: 12px;
-            overflow: hidden;
-            background: white;
-        }
-        
-        .auto-reply-card.open {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 1px rgba(37,99,235,0.1);
-        }
-        
-        .reply-header {
-            padding: 14px 18px;
-            background: #f9fafb;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: background 0.2s;
-        }
-        
-        .reply-header:hover {
-            background: #f3f4f6;
-        }
-        
-        .reply-actions {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .accordion-arrow {
-            transition: transform 0.3s;
-            color: #6b7280;
-            font-size: 12px;
-        }
-        
-        .auto-reply-card.open .accordion-arrow {
-            transform: rotate(180deg);
-        }
-        
-        .reply-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-        
-        .auto-reply-card.open .reply-content {
-            max-height: 3000px;
-        }
-        
-        .lang-content {
-            padding: 0;
-        }
-        
-        .btn-translate {
-            background: #f0f9ff;
-            color: #0369a1;
-            border: 1px solid #bae6fd;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            cursor: pointer;
-            margin-top: 12px;
-            transition: all 0.2s;
-        }
-        
-        .btn-translate:hover {
-            background: #e0f2fe;
-        }
-
-        /* Variables Panel */
-        .variables-panel {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            overflow: hidden;
-        }
-        
-        .variables-header {
-            padding: 14px 18px;
-            background: #f9fafb;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .variables-header h4 {
-            font-size: 14px;
-            font-weight: 600;
-            color: #111827;
-            margin: 0;
-        }
-        
-        .variables-content {
-            max-height: 3000px;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-        
-        .variables-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 12px;
-            padding: 18px;
-        }
-        
-        .variable-item {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .variable-item:hover {
-            background: #f1f5f9;
-            border-color: #cbd5e1;
-        }
-        
-        .variable-code {
-            font-family: monospace;
-            font-size: 12px;
-            color: #2563eb;
-            margin-bottom: 4px;
-            font-weight: 600;
-        }
-        
-        .variable-desc {
-            font-size: 11px;
-            color: #64748b;
-        }
-        
-        .variable-category {
+        .btn-save {
+            width: 100%;
             padding: 12px;
-            background: #f8fafc;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
-        }
-        
-        .variable-list code {
-            display: block;
-            padding: 4px 0;
-            font-family: monospace;
-            font-size: 12px;
-            color: #0c4a6e;
+            background: #374151;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s ease;
         }
 
-        /* Mobile responsive */
-        @media (max-width: 640px) {
-            body {
-                padding: 1px;
-            }
-            
-            .container {
-                border-radius: 1px;
-            }
-            
-            .header {
-                padding: 16px;
-            }
-            
-            .tab-content {
-                padding: 16px;
-            }
-            
-            .accordion-body {
-                padding: 14px;
-            }
-            
-            .keywords-display {
-                gap: 3px;
-            }
-            
-            .keyword-tag {
-                font-size: 10px;
-                padding: 2px 6px;
-            }
-            
-            .variables-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .reply-actions {
-                flex-direction: column;
-                align-items: flex-end;
-                gap: 6px;
-            }
+        .btn-save:hover {
+            background: #1f2937;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .copy-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #10b981;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+
+        .copy-notification.show {
+            opacity: 1;
         }
     </style>
+</head>
 <body>
     <div class="container">
         <div class="header">
@@ -591,7 +701,7 @@
         <div id="flow" class="tab-content active">
             <div id="alert-flow" class="alert"></div>
 
-            <!-- PANEL DE VARIABLES (AHORA ABIERTO POR DEFECTO) -->
+            <!-- PANEL DE VARIABLES -->
             <div class="variables-panel">
                 <div class="variables-header" onclick="toggleVariables()">
                     <h4>📝 Variables Disponibles (click para copiar)</h4>
@@ -645,7 +755,8 @@
 
             <div id="loading-flow" class="loading">⏳ Cargando mensajes...</div>
             <div id="flow-content" style="display: none;">
-                <!-- Los mensajes del flujo se mantienen igual -->
+                <!-- START -->
+              <!-- ASK_RULES -->
                 <!-- START -->
 <div class="message-section">
     <h3>START - Mensaje Inicial</h3>
@@ -673,7 +784,6 @@
     
     <button class="btn-translate" onclick="translateMessage('START')">🌍 Traducir desde ES</button>
 </div>
-                <!-- ASK_RULES -->
 <div class="message-section">
     <h3>ASK_RULES - Aceptar Normas de Casa</h3>
     <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Normas que el huésped debe aceptar escribiendo ACEPTO</p>
@@ -748,7 +858,7 @@
                         <textarea id="PAYOK_en" placeholder="You can use variables..."></textarea>
                     </div>
                     <div class="textarea-container" data-msg="PAYOK" data-lang="fr">
-                        <textarea id="PAYOK_fr" placeholder="Vous pouvez utilizar des variables..."></textarea>
+                        <textarea id="PAYOK_fr" placeholder="Vous pouvez utiliser des variables..."></textarea>
                     </div>
                     <div class="textarea-container" data-msg="PAYOK" data-lang="ru">
                         <textarea id="PAYOK_ru" placeholder="Вы можете использовать переменные..."></textarea>
@@ -922,120 +1032,120 @@
       ➕ Añadir Nueva Respuesta
     </button>
   </div>
-
-  <!-- 📋 Variables Disponibles - ACORDEÓN (AHORA ABIERTO POR DEFECTO) -->
-  <div class="accordion-item open" id="variables-accordion">
-    <div class="accordion-header" onclick="toggleVariablesAccordion()">
-      <div>
-        <h3>💡 Variables Disponibles</h3>
-        <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Click para copiar cada variable</p>
+    <!-- 📋 Variables Disponibles -->
+<div class="variables-info" style="margin: 24px 0; padding: 20px; background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 12px;">
+  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+    <span style="font-size: 24px;">💡</span>
+    <h3 style="margin: 0; color: #0369a1;">Variables Disponibles</h3>
+  </div>
+  
+  <p style="color: #075985; margin-bottom: 16px;">
+    Puedes usar estas variables en tus respuestas. El bot las reemplazará automáticamente con los datos del apartamento del huésped.
+  </p>
+  
+  <div class="variables-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+    
+    <!-- Información Básica -->
+    <div class="variable-category">
+      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📍 Información Básica</h4>
+      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+        <code>{apartment_name}</code><br>
+        <code>{address}</code><br>
+        <code>{city}</code><br>
+        <code>{floor}</code><br>
+        <code>{door_number}</code>
       </div>
-      <span class="accordion-icon">▼</span>
     </div>
     
-    <div class="accordion-content">
-      <div class="accordion-body">
-        <p style="color: #075985; margin-bottom: 16px; font-size: 13px;">
-          Puedes usar estas variables en tus respuestas. El bot las reemplazará automáticamente con los datos del apartamento del huésped.
-        </p>
-        
-        <div class="variables-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
-          
-          <div class="variable-category">
-            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📍 Información Básica</h4>
-            <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-              <code>{apartment_name}</code><br>
-              <code>{address}</code><br>
-              <code>{city}</code><br>
-              <code>{floor}</code><br>
-              <code>{door_number}</code>
-            </div>
-          </div>
-          
-          <div class="variable-category">
-            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🔑 Acceso y Llaves</h4>
-            <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-              <code>{lockbox_code}</code><br>
-              <code>{lockbox_location}</code><br>
-              <code>{door_code}</code><br>
-              <code>{gate_code}</code><br>
-              <code>{key_instructions}</code>
-            </div>
-          </div>
-          
-          <div class="variable-category">
-            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📶 WiFi</h4>
-            <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-              <code>{wifi_network}</code><br>
-              <code>{wifi_password}</code><br>
-              <code>{wifi_troubleshooting}</code>
-            </div>
-          </div>
-          
-          <div class="variable-category">
-            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">⏰ Horarios</h4>
-            <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-              <code>{checkin_time}</code><br>
-              <code>{checkout_time}</code>
-            </div>
-          </div>
-          
-          <div class="variable-category">
-            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">💰 Precios</h4>
-            <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-              <code>{security_deposit_amount}</code><br>
-              <code>{tourist_tax_amount}</code><br>
-              <code>{early_checkin_price}</code><br>
-              <code>{late_checkout_price}</code>
-            </div>
-          </div>
-          
-          <div class="variable-category">
-            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🚗 Parking</h4>
-            <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-              <code>{parking_location}</code><br>
-              <code>{parking_code}</code><br>
-              <code>{parking_instructions}</code>
-            </div>
-          </div>
-          
-          <div class="variable-category">
-            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🏊 Piscina</h4>
-            <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-              <code>{pool_hours}</code><br>
-              <code>{pool_location}</code><br>
-              <code>{pool_rules}</code>
-            </div>
-          </div>
-          
-          <div class="variable-category">
-            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📞 Contacto</h4>
-            <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-              <code>{support_phone}</code><br>
-              <code>{support_whatsapp}</code>
-            </div>
-          </div>
-          
-        </div>
-        
-        <div style="margin-top: 16px; padding: 12px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #0ea5e9;">
-          <strong style="color: #0369a1; font-size: 13px;">Ejemplo:</strong><br>
-          <code style="color: #0c4a6e; display: block; margin-top: 8px; white-space: pre-wrap; font-size: 12px;">📶 WiFi:
+    <!-- Acceso -->
+    <div class="variable-category">
+      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🔑 Acceso y Llaves</h4>
+      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+        <code>{lockbox_code}</code><br>
+        <code>{lockbox_location}</code><br>
+        <code>{door_code}</code><br>
+        <code>{gate_code}</code><br>
+        <code>{key_instructions}</code>
+      </div>
+    </div>
+    
+    <!-- WiFi -->
+    <div class="variable-category">
+      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📶 WiFi</h4>
+      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+        <code>{wifi_network}</code><br>
+        <code>{wifi_password}</code><br>
+        <code>{wifi_troubleshooting}</code>
+      </div>
+    </div>
+    
+    <!-- Horarios -->
+    <div class="variable-category">
+      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">⏰ Horarios</h4>
+      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+        <code>{checkin_time}</code><br>
+        <code>{checkout_time}</code>
+      </div>
+    </div>
+    
+    <!-- Precios -->
+    <div class="variable-category">
+      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">💰 Precios</h4>
+      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+        <code>{security_deposit_amount}</code><br>
+        <code>{tourist_tax_amount}</code><br>
+        <code>{early_checkin_price}</code><br>
+        <code>{late_checkout_price}</code>
+      </div>
+    </div>
+    
+    <!-- Parking -->
+    <div class="variable-category">
+      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🚗 Parking</h4>
+      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+        <code>{parking_location}</code><br>
+        <code>{parking_code}</code><br>
+        <code>{parking_instructions}</code>
+      </div>
+    </div>
+    
+    <!-- Piscina -->
+    <div class="variable-category">
+      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🏊 Piscina</h4>
+      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+        <code>{pool_hours}</code><br>
+        <code>{pool_location}</code><br>
+        <code>{pool_rules}</code>
+      </div>
+    </div>
+    
+    <!-- Contacto -->
+    <div class="variable-category">
+      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📞 Contacto</h4>
+      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+        <code>{support_phone}</code><br>
+        <code>{support_whatsapp}</code>
+      </div>
+    </div>
+    
+  </div>
+  
+  <div style="margin-top: 16px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #0ea5e9;">
+    <strong style="color: #0369a1;">Ejemplo:</strong><br>
+    <code style="color: #0c4a6e; display: block; margin-top: 8px; white-space: pre-wrap;">📶 WiFi:
 Red: {wifi_network}
 Contraseña: {wifi_password}
 
 Si tienes problemas: {wifi_troubleshooting}</code>
-        </div>
-      </div>
-    </div>
   </div>
+</div>
+
 
   <!-- Lista de respuestas -->
   <div id="auto-replies-list">
     <!-- Se llenará dinámicamente con JavaScript -->
   </div>
-  <div id="alert-auto-replies" class="alert"></div>
-  
+ <div id="alert-auto-replies" class="alert"></div>
   <!-- Botón guardar -->
   <div style="margin-top: 24px; text-align: right;">
     <button id="save-auto-replies-btn" class="btn-primary">
@@ -1044,10 +1154,13 @@ Si tienes problemas: {wifi_troubleshooting}</code>
   </div>
 </div>
 
- 
+    <!-- Notificación de copiado -->
+    <div id="copy-notification" class="copy-notification">
+        ✓ Variable copiada al portapapeles
+    </div>
 
     <script>
-        // Toggle variables panel (ahora abierto por defecto)
+        // Toggle variables panel
         function toggleVariables() {
             const content = document.getElementById('variables-content');
             const toggle = document.getElementById('variables-toggle');
@@ -1061,14 +1174,6 @@ Si tienes problemas: {wifi_troubleshooting}</code>
             }
         }
 
-        // Asegurar que el panel de variables esté abierto al cargar
-        document.addEventListener('DOMContentLoaded', function() {
-            const content = document.getElementById('variables-content');
-            if (content) {
-                content.classList.add('open');
-            }
-        });
-
         // Copy variable to clipboard
         function copyVariable(variable) {
             navigator.clipboard.writeText(variable).then(() => {
@@ -1081,19 +1186,20 @@ Si tienes problemas: {wifi_troubleshooting}</code>
         }
 
         // Switch between tabs
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            
-            event.target.classList.add('active');
-            document.getElementById(tabName).classList.add('active');
+      // Switch between tabs
+function switchTab(tabName) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    
+    event.target.classList.add('active');
+    document.getElementById(tabName).classList.add('active');
 
-            if (tabName === 'flow') {
-                loadFlowMessages();
-            } else if (tabName === 'auto-replies') {
-                loadAutoReplies();
-            }
-        }
+    if (tabName === 'flow') {
+        loadFlowMessages();
+    } else if (tabName === 'auto-replies') {
+        loadAutoReplies();
+    }
+}
 
         // Switch language in message sections
         function switchLang(msgType, lang) {
@@ -1106,17 +1212,18 @@ Si tienes problemas: {wifi_troubleshooting}</code>
         }
 
         // Show alert
-        function showAlert(tabName, message, type) {
-            const alert = document.getElementById(`alert-${tabName}`);
-            if (!alert) return;
-            
-            alert.className = `alert ${type} show`;
-            alert.textContent = message;
-            
-            setTimeout(() => {
-                alert.classList.remove('show');
-            }, 5000);
-        }
+        // Show alert
+function showAlert(tabName, message, type) {
+    const alert = document.getElementById(`alert-${tabName}`);
+    if (!alert) return;
+    
+    alert.className = `alert ${type} show`;
+    alert.textContent = message;
+    
+    setTimeout(() => {
+        alert.classList.remove('show');
+    }, 5000);
+}
 
         // Load flow messages
         async function loadFlowMessages() {
@@ -1304,12 +1411,12 @@ function renderAutoReplies() {
     
     return `
     <div class="auto-reply-card ${isOpen ? 'open' : ''}" data-id="${reply.id || ''}" data-index="${index}">
-      <div class="reply-header" onclick="toggleReplyCard(${index})">
+      <div class="reply-header" onclick="toggleCard(${index})">
         <div>
-          <h3>${getCategoryIcon(reply.category)} Respuesta Automática ${index + 1}</h3>
+          <h3>${getCategoryIcon(reply.category)} ${reply.category}</h3>
           <div class="keywords-display">
-            ${keywordsArray.slice(0, 2).map(kw => `<span class="keyword-tag">${kw}</span>`).join('')}
-            ${keywordsArray.length > 2 ? `<span class="keyword-tag">+${keywordsArray.length - 2} más</span>` : ''}
+            ${keywordsArray.slice(0, 5).map(kw => `<span class="keyword-tag">${kw}</span>`).join('')}
+            ${keywordsArray.length > 5 ? `<span class="keyword-tag">+${keywordsArray.length - 5} más</span>` : ''}
           </div>
         </div>
         <div class="reply-actions">
@@ -1326,33 +1433,70 @@ function renderAutoReplies() {
       </div>
 
       <div class="reply-content">
-        <div style="padding: 18px;">
-          <div class="language-tabs">
-            <button class="lang-tab active" onclick="showLangReply(${index}, 'es')">🇪🇸 ES</button>
-            <button class="lang-tab" onclick="showLangReply(${index}, 'en')">🇬🇧 EN</button>
-            <button class="lang-tab" onclick="showLangReply(${index}, 'fr')">🇫🇷 FR</button>
-            <button class="lang-tab" onclick="showLangReply(${index}, 'ru')">🇷🇺 RU</button>
-          </div>
+        <div class="language-tabs">
+          <button class="lang-tab active" onclick="showLangReply(${index}, 'es')">🇪🇸 ES</button>
+          <button class="lang-tab" onclick="showLangReply(${index}, 'en')">🇬🇧 EN</button>
+          <button class="lang-tab" onclick="showLangReply(${index}, 'fr')">🇫🇷 FR</button>
+          <button class="lang-tab" onclick="showLangReply(${index}, 'ru')">🇷🇺 RU</button>
+        </div>
 
-          <div class="lang-content">
-            <textarea id="reply_${index}_es" class="lang-textarea active" 
-                      placeholder="Respuesta en español...">${reply.response_es || ''}</textarea>
-            <textarea id="reply_${index}_en" class="lang-textarea" 
-                      placeholder="Response in English...">${reply.response_en || ''}</textarea>
-            <textarea id="reply_${index}_fr" class="lang-textarea" 
-                      placeholder="Réponse en français...">${reply.response_fr || ''}</textarea>
-            <textarea id="reply_${index}_ru" class="lang-textarea" 
-                      placeholder="Ответ на русском...">${reply.response_ru || ''}</textarea>
-          </div>
+        <div class="lang-content">
+          <textarea id="reply_${index}_es" class="lang-textarea active" 
+                    placeholder="Respuesta en español...">${reply.response_es || ''}</textarea>
+          <textarea id="reply_${index}_en" class="lang-textarea" 
+                    placeholder="Response in English...">${reply.response_en || ''}</textarea>
+          <textarea id="reply_${index}_fr" class="lang-textarea" 
+                    placeholder="Réponse en français...">${reply.response_fr || ''}</textarea>
+          <textarea id="reply_${index}_ru" class="lang-textarea" 
+                    placeholder="Ответ на русском...">${reply.response_ru || ''}</textarea>
+        </div>
 
-          <button class="btn-translate" onclick="translateAutoReply(${index})">🌍 Traducir desde ES</button>
+        <button class="btn-translate" onclick="translateAutoReply(${index})">🌍 Traducir desde ES</button>
 
-          <div class="reply-settings">
+        <div class="reply-settings">
+          <label>
+            Keywords (separados por coma):
+            <textarea id="keywords_${index}" 
+                      placeholder="wifi, contraseña, password, internet, red"
+                      style="min-height: 80px;">${keywordsText}</textarea>
+          </label>
+          
+          <div class="reply-meta">
             <label>
-              Keywords (separados por coma):
-              <textarea id="keywords_${index}" 
-                        placeholder="wifi, contraseña, password, internet, red"
-                        style="min-height: 80px;">${keywordsText}</textarea>
+              Categoría:
+              <select id="category_${index}">
+  <option value="custom" ${reply.category === 'custom' ? 'selected' : ''}>✏️ Custom</option>
+  <option value="direccion" ${reply.category === 'direccion' ? 'selected' : ''}>📍 Dirección</option>
+  <option value="llaves" ${reply.category === 'llaves' ? 'selected' : ''}>🔑 Llaves</option>
+  <option value="wifi" ${reply.category === 'wifi' ? 'selected' : ''}>📶 WiFi</option>
+  <option value="cafetera" ${reply.category === 'cafetera' ? 'selected' : ''}>☕ Cafetera</option>
+  <option value="maletas" ${reply.category === 'maletas' ? 'selected' : ''}>🧳 Maletas</option>
+  <option value="entradas" ${reply.category === 'entradas' ? 'selected' : ''}>🎫 Entradas</option>
+  <option value="parking" ${reply.category === 'parking' ? 'selected' : ''}>🚗 Parking</option>
+  <option value="accesibilidad" ${reply.category === 'accesibilidad' ? 'selected' : ''}>♿ Accesibilidad</option>
+  <option value="piscina" ${reply.category === 'piscina' ? 'selected' : ''}>🏊 Piscina</option>
+  <option value="restaurantes" ${reply.category === 'restaurantes' ? 'selected' : ''}>🍽️ Restaurantes</option>
+  <option value="playa" ${reply.category === 'playa' ? 'selected' : ''}>🏖️ Playa</option>
+  <option value="bano" ${reply.category === 'bano' ? 'selected' : ''}>🚿 Baño</option>
+  <option value="dormitorio" ${reply.category === 'dormitorio' ? 'selected' : ''}>🛏️ Dormitorio</option>
+  <option value="tv" ${reply.category === 'tv' ? 'selected' : ''}>📺 TV</option>
+  <option value="aire" ${reply.category === 'aire' ? 'selected' : ''}>❄️ Aire acondicionado</option>
+  <option value="calefaccion" ${reply.category === 'calefaccion' ? 'selected' : ''}>🔥 Calefacción</option>
+  <option value="lavanderia" ${reply.category === 'lavanderia' ? 'selected' : ''}>🧺 Lavandería</option>
+  <option value="cocina" ${reply.category === 'cocina' ? 'selected' : ''}>🍳 Cocina</option>
+  <option value="entretenimiento" ${reply.category === 'entretenimiento' ? 'selected' : ''}>🎮 Entretenimiento</option>
+  <option value="contacto" ${reply.category === 'contacto' ? 'selected' : ''}>📞 Contacto</option>
+  <option value="horarios" ${reply.category === 'horarios' ? 'selected' : ''}>⏰ Horarios</option>
+  <option value="checkout" ${reply.category === 'checkout' ? 'selected' : ''}>🚪 Checkout</option>
+  <option value="informacion" ${reply.category === 'informacion' ? 'selected' : ''}>ℹ️ Información</option>
+  <option value="importante" ${reply.category === 'importante' ? 'selected' : ''}>⚠️ Importante</option>
+</select>
+            </label>
+
+            <label>
+              Prioridad:
+              <input type="number" id="priority_${index}" 
+                     value="${reply.priority || 0}" min="0" max="100">
             </label>
           </div>
         </div>
@@ -1364,19 +1508,11 @@ function renderAutoReplies() {
   console.log('✅ Renderizado completado');
 }
 
-// Toggle acordeón de las respuestas automáticas
-function toggleReplyCard(index) {
+// Toggle acordeón
+function toggleCard(index) {
   const card = document.querySelector(`[data-index="${index}"]`);
   if (card) {
     card.classList.toggle('open');
-  }
-}
-
-// Toggle acordeón de Variables (en el panel de auto-replies)
-function toggleVariablesAccordion() {
-  const accordion = document.getElementById("variables-accordion");
-  if (accordion) {
-    accordion.classList.toggle("open");
   }
 }
 
@@ -1536,13 +1672,13 @@ document.getElementById('save-auto-replies-btn')?.addEventListener('click', asyn
       
       return {
         ...reply,
-        category: reply.category || 'custom',
+        category: document.getElementById(`category_${index}`)?.value || reply.category,
         keywords: keywordsArray,
         response_es: document.getElementById(`reply_${index}_es`)?.value || '',
         response_en: document.getElementById(`reply_${index}_en`)?.value || '',
         response_fr: document.getElementById(`reply_${index}_fr`)?.value || '',
         response_ru: document.getElementById(`reply_${index}_ru`)?.value || '',
-        priority: reply.priority || 0
+        priority: parseInt(document.getElementById(`priority_${index}`)?.value) || 0
       };
     });
 
@@ -1600,7 +1736,7 @@ document.getElementById('save-auto-replies-btn')?.addEventListener('click', asyn
 
 function getCategoryIcon(category) {
   const icons = {
-    custom: '📝',
+    custom: '✏️',
     direccion: '📍',
     llaves: '🔑',
     wifi: '📶',
