@@ -2724,7 +2724,7 @@ app.get("/manager/invoices/export", requireAuth, requireRole('MANAGER'), async (
       ? `Facturas - Todos los Apartamentos - ${monthName} ${selectedYear}`
       : `Facturas - ${selectedApartment} - ${monthName} ${selectedYear}`;
     titleCell.font = { size: 16, bold: true };
-    titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+    titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
     worksheet.getRow(1).height = 30;
 
     // Espacio
@@ -2821,21 +2821,22 @@ app.get("/manager/invoices/export", requireAuth, requireRole('MANAGER'), async (
       worksheet.getColumn(col).alignment = { horizontal: 'left' };
     });
 
-    // Generar archivo
-    const buffer = await workbook.xlsx.writeBuffer();
-    
-    const filename = selectedApartment === 'all'
-      ? `Facturas_${monthName}_${selectedYear}.xlsx`
-      : `Facturas_${selectedApartment.replace(/[^a-zA-Z0-9]/g, '_')}_${monthName}_${selectedYear}.xlsx`;
+// Generar archivo
+const buffer = await workbook.xlsx.writeBuffer();
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="Reporte-${apartmentName}-${monthName}-${selectedYear}.xlsx"`);
-    res.send(buffer);
+// Definir nombre del apartamento para el archivo
+const apartmentName = selectedApartment === 'all' ? 'Todos' : selectedApartment;
 
-  } catch (e) {
-    console.error("Error al exportar Excel:", e);
-    res.status(500).send("Error al generar el archivo Excel");
-  }
+// Nombre del archivo
+const filename = `Reporte-${apartmentName.replace(/[^a-zA-Z0-9]/g, '_')}-${monthName}-${selectedYear}.xlsx`;
+
+res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+res.send(buffer);
+} catch (e) {
+console.error("Error al exportar Excel:", e);
+res.status(500).send("Error al generar el archivo Excel");
+}
 });
 
 // ============================================
@@ -9032,6 +9033,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
