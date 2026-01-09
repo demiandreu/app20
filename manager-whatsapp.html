@@ -753,113 +753,112 @@
       ➕ Añadir Nueva Respuesta
     </button>
   </div>
-    <!-- 📋 Variables Disponibles -->
-<div class="variables-info" style="margin: 24px 0; padding: 20px; background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 12px;">
-  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-    <span style="font-size: 24px;">💡</span>
-    <h3 style="margin: 0; color: #0369a1;">Variables Disponibles</h3>
-  </div>
-  
-  <p style="color: #075985; margin-bottom: 16px;">
-    Puedes usar estas variables en tus respuestas. El bot las reemplazará automáticamente con los datos del apartamento del huésped.
-  </p>
-  
-  <div class="variables-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
-    
-    <!-- Información Básica -->
-    <div class="variable-category">
-      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📍 Información Básica</h4>
-      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-        <code>{apartment_name}</code><br>
-        <code>{address}</code><br>
-        <code>{city}</code><br>
-        <code>{floor}</code><br>
-        <code>{door_number}</code>
+    <!-- 📋 Variables Disponibles - ACORDEÓN -->
+    <div class="accordion-item" id="variables-accordion">
+      <div class="accordion-header" onclick="toggleVariablesAccordion()">
+        <div>
+          <h3>💡 Variables Disponibles</h3>
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Click para copiar cada variable</p>
+        </div>
+        <span class="accordion-icon">▼</span>
       </div>
-    </div>
-    
-    <!-- Acceso -->
-    <div class="variable-category">
-      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🔑 Acceso y Llaves</h4>
-      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-        <code>{lockbox_code}</code><br>
-        <code>{lockbox_location}</code><br>
-        <code>{door_code}</code><br>
-        <code>{gate_code}</code><br>
-        <code>{key_instructions}</code>
-      </div>
-    </div>
-    
-    <!-- WiFi -->
-    <div class="variable-category">
-      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📶 WiFi</h4>
-      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-        <code>{wifi_network}</code><br>
-        <code>{wifi_password}</code><br>
-        <code>{wifi_troubleshooting}</code>
-      </div>
-    </div>
-    
-    <!-- Horarios -->
-    <div class="variable-category">
-      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">⏰ Horarios</h4>
-      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-        <code>{checkin_time}</code><br>
-        <code>{checkout_time}</code>
-      </div>
-    </div>
-    
-    <!-- Precios -->
-    <div class="variable-category">
-      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">💰 Precios</h4>
-      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-        <code>{security_deposit_amount}</code><br>
-        <code>{tourist_tax_amount}</code><br>
-        <code>{early_checkin_price}</code><br>
-        <code>{late_checkout_price}</code>
-      </div>
-    </div>
-    
-    <!-- Parking -->
-    <div class="variable-category">
-      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🚗 Parking</h4>
-      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-        <code>{parking_location}</code><br>
-        <code>{parking_code}</code><br>
-        <code>{parking_instructions}</code>
-      </div>
-    </div>
-    
-    <!-- Piscina -->
-    <div class="variable-category">
-      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🏊 Piscina</h4>
-      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-        <code>{pool_hours}</code><br>
-        <code>{pool_location}</code><br>
-        <code>{pool_rules}</code>
-      </div>
-    </div>
-    
-    <!-- Contacto -->
-    <div class="variable-category">
-      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📞 Contacto</h4>
-      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-        <code>{support_phone}</code><br>
-        <code>{support_whatsapp}</code>
-      </div>
-    </div>
-    
-  </div>
-  
-  <div style="margin-top: 16px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #0ea5e9;">
-    <strong style="color: #0369a1;">Ejemplo:</strong><br>
-    <code style="color: #0c4a6e; display: block; margin-top: 8px; white-space: pre-wrap;">📶 WiFi:
+      
+      <div class="accordion-content">
+        <div class="accordion-body">
+          <p style="color: #075985; margin-bottom: 16px; font-size: 13px;">
+            Puedes usar estas variables en tus respuestas. El bot las reemplazará automáticamente con los datos del apartamento del huésped.
+          </p>
+          
+          <div class="variables-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+            
+            <div class="variable-category">
+              <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📍 Información Básica</h4>
+              <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+                <code>{apartment_name}</code><br>
+                <code>{address}</code><br>
+                <code>{city}</code><br>
+                <code>{floor}</code><br>
+                <code>{door_number}</code>
+              </div>
+            </div>
+            
+            <div class="variable-category">
+              <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🔑 Acceso y Llaves</h4>
+              <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+                <code>{lockbox_code}</code><br>
+                <code>{lockbox_location}</code><br>
+                <code>{door_code}</code><br>
+                <code>{gate_code}</code><br>
+                <code>{key_instructions}</code>
+              </div>
+            </div>
+            
+            <div class="variable-category">
+              <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📶 WiFi</h4>
+              <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+                <code>{wifi_network}</code><br>
+                <code>{wifi_password}</code><br>
+                <code>{wifi_troubleshooting}</code>
+              </div>
+            </div>
+            
+            <div class="variable-category">
+              <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">⏰ Horarios</h4>
+              <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+                <code>{checkin_time}</code><br>
+                <code>{checkout_time}</code>
+              </div>
+            </div>
+            
+            <div class="variable-category">
+              <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">💰 Precios</h4>
+              <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+                <code>{security_deposit_amount}</code><br>
+                <code>{tourist_tax_amount}</code><br>
+                <code>{early_checkin_price}</code><br>
+                <code>{late_checkout_price}</code>
+              </div>
+            </div>
+            
+            <div class="variable-category">
+              <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🚗 Parking</h4>
+              <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+                <code>{parking_location}</code><br>
+                <code>{parking_code}</code><br>
+                <code>{parking_instructions}</code>
+              </div>
+            </div>
+            
+            <div class="variable-category">
+              <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🏊 Piscina</h4>
+              <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+                <code>{pool_hours}</code><br>
+                <code>{pool_location}</code><br>
+                <code>{pool_rules}</code>
+              </div>
+            </div>
+            
+            <div class="variable-category">
+              <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📞 Contacto</h4>
+              <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+                <code>{support_phone}</code><br>
+                <code>{support_whatsapp}</code>
+              </div>
+            </div>
+            
+          </div>
+          
+          <div style="margin-top: 16px; padding: 12px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #0ea5e9;">
+            <strong style="color: #0369a1; font-size: 13px;">Ejemplo:</strong><br>
+            <code style="color: #0c4a6e; display: block; margin-top: 8px; white-space: pre-wrap; font-size: 12px;">📶 WiFi:
 Red: {wifi_network}
 Contraseña: {wifi_password}
 
 Si tienes problemas: {wifi_troubleshooting}</code>
-  </div>
-</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
 
   <!-- Lista de respuestas -->
@@ -1134,10 +1133,10 @@ function renderAutoReplies() {
     <div class="auto-reply-card ${isOpen ? 'open' : ''}" data-id="${reply.id || ''}" data-index="${index}">
       <div class="reply-header" onclick="toggleCard(${index})">
         <div>
-          <h3>${getCategoryIcon(reply.category)} ${reply.category}</h3>
+          <h3>${getCategoryIcon(reply.category)}</h3>
           <div class="keywords-display">
-            ${keywordsArray.slice(0, 5).map(kw => `<span class="keyword-tag">${kw}</span>`).join('')}
-            ${keywordsArray.length > 5 ? `<span class="keyword-tag">+${keywordsArray.length - 5} más</span>` : ''}
+            ${keywordsArray.slice(0, 2).map(kw => `<span class="keyword-tag">${kw}</span>`).join('')}
+            ${keywordsArray.length > 2 ? `<span class="keyword-tag">+${keywordsArray.length - 2} más</span>` : ''}
           </div>
         </div>
         <div class="reply-actions">
@@ -1182,44 +1181,6 @@ function renderAutoReplies() {
                       style="min-height: 80px;">${keywordsText}</textarea>
           </label>
           
-          <div class="reply-meta">
-            <label>
-              Categoría:
-              <select id="category_${index}">
-  <option value="custom" ${reply.category === 'custom' ? 'selected' : ''}>✏️ Custom</option>
-  <option value="direccion" ${reply.category === 'direccion' ? 'selected' : ''}>📍 Dirección</option>
-  <option value="llaves" ${reply.category === 'llaves' ? 'selected' : ''}>🔑 Llaves</option>
-  <option value="wifi" ${reply.category === 'wifi' ? 'selected' : ''}>📶 WiFi</option>
-  <option value="cafetera" ${reply.category === 'cafetera' ? 'selected' : ''}>☕ Cafetera</option>
-  <option value="maletas" ${reply.category === 'maletas' ? 'selected' : ''}>🧳 Maletas</option>
-  <option value="entradas" ${reply.category === 'entradas' ? 'selected' : ''}>🎫 Entradas</option>
-  <option value="parking" ${reply.category === 'parking' ? 'selected' : ''}>🚗 Parking</option>
-  <option value="accesibilidad" ${reply.category === 'accesibilidad' ? 'selected' : ''}>♿ Accesibilidad</option>
-  <option value="piscina" ${reply.category === 'piscina' ? 'selected' : ''}>🏊 Piscina</option>
-  <option value="restaurantes" ${reply.category === 'restaurantes' ? 'selected' : ''}>🍽️ Restaurantes</option>
-  <option value="playa" ${reply.category === 'playa' ? 'selected' : ''}>🏖️ Playa</option>
-  <option value="bano" ${reply.category === 'bano' ? 'selected' : ''}>🚿 Baño</option>
-  <option value="dormitorio" ${reply.category === 'dormitorio' ? 'selected' : ''}>🛏️ Dormitorio</option>
-  <option value="tv" ${reply.category === 'tv' ? 'selected' : ''}>📺 TV</option>
-  <option value="aire" ${reply.category === 'aire' ? 'selected' : ''}>❄️ Aire acondicionado</option>
-  <option value="calefaccion" ${reply.category === 'calefaccion' ? 'selected' : ''}>🔥 Calefacción</option>
-  <option value="lavanderia" ${reply.category === 'lavanderia' ? 'selected' : ''}>🧺 Lavandería</option>
-  <option value="cocina" ${reply.category === 'cocina' ? 'selected' : ''}>🍳 Cocina</option>
-  <option value="entretenimiento" ${reply.category === 'entretenimiento' ? 'selected' : ''}>🎮 Entretenimiento</option>
-  <option value="contacto" ${reply.category === 'contacto' ? 'selected' : ''}>📞 Contacto</option>
-  <option value="horarios" ${reply.category === 'horarios' ? 'selected' : ''}>⏰ Horarios</option>
-  <option value="checkout" ${reply.category === 'checkout' ? 'selected' : ''}>🚪 Checkout</option>
-  <option value="informacion" ${reply.category === 'informacion' ? 'selected' : ''}>ℹ️ Información</option>
-  <option value="importante" ${reply.category === 'importante' ? 'selected' : ''}>⚠️ Importante</option>
-</select>
-            </label>
-
-            <label>
-              Prioridad:
-              <input type="number" id="priority_${index}" 
-                     value="${reply.priority || 0}" min="0" max="100">
-            </label>
-          </div>
         </div>
       </div>
     </div>
@@ -1231,6 +1192,14 @@ function renderAutoReplies() {
 
 // Toggle acordeón
 function toggleCard(index) {
+
+// Toggle acordeón de Variables
+function toggleVariablesAccordion() {
+  const accordion = document.getElementById("variables-accordion");
+  if (accordion) {
+    accordion.classList.toggle("open");
+  }
+}
   const card = document.querySelector(`[data-index="${index}"]`);
   if (card) {
     card.classList.toggle('open');
