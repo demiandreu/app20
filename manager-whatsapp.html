@@ -879,6 +879,12 @@ function renderAutoReplies() {
   }
   
   container.innerHTML = autoReplies.map((reply, index) => {
+  // ✅ Guardar qué acordeones están abiertos antes de re-renderizar
+  const openAccordions = [];
+  document.querySelectorAll(".accordion-item.open").forEach(item => {
+    const id = item.id.replace("reply-accordion-", "");
+    openAccordions.push(parseInt(id));
+  });
     // ✅ Convertir keywords a array si viene como string
     let keywordsArray = reply.keywords || [];
     if (typeof keywordsArray === 'string') {
@@ -890,8 +896,10 @@ function renderAutoReplies() {
     ).join('');
     const moreCount = keywordsArray.length > 5 ? `+${keywordsArray.length - 5}` : '';
     
+    // ✅ Mantener abierto si estaba abierto antes
+    const isOpen = openAccordions.includes(index) || (openAccordions.length === 0 && index === 0);
     return `
-    <div class="accordion-item ${index === 0 ? 'open' : ''}" id="reply-accordion-${index}">
+    <div class="accordion-item ${isOpen ? 'open' : ''}" id="reply-accordion-${index}">
       <div class="accordion-header" onclick="toggleReplyAccordion(${index})">
         <div>
           <h3>${getCategoryIcon(reply.category)} ${getCategoryName(reply.category)}</h3>
