@@ -879,100 +879,96 @@ function renderAutoReplies() {
   }
   
   container.innerHTML = autoReplies.map((reply, index) => {
-   let keywordsArray = reply.keywords || [];
-if (typeof keywordsArray === 'string') {
-  keywordsArray = keywordsArray.split(',').map(k => k.trim()).filter(k => k);
-}
-
-const keywordsDisplay = keywordsArray.slice(0, 5).map(k => 
-  `<span class="keyword-tag">${k}</span>`
-).join('');
-const moreCount = keywordsArray.length > 5 ? `+${keywordsArray.length - 5}` : '';
+    // ✅ Convertir keywords a array si viene como string
+    let keywordsArray = reply.keywords || [];
+    if (typeof keywordsArray === 'string') {
+      keywordsArray = keywordsArray.split(',').map(k => k.trim()).filter(k => k);
+    }
+    
+    const keywordsDisplay = keywordsArray.slice(0, 5).map(k => 
+      `<span class="keyword-tag">${k}</span>`
+    ).join('');
+    const moreCount = keywordsArray.length > 5 ? `+${keywordsArray.length - 5}` : '';
     
     return `
-    <div class="auto-reply-card" data-index="${index}">
-      <div class="reply-header">
+    <div class="accordion-item ${index === 0 ? 'open' : ''}" id="reply-accordion-${index}">
+      <div class="accordion-header" onclick="toggleReplyAccordion(${index})">
         <div>
-          <h3>${getCategoryIcon(reply.category)} ${reply.category || 'Custom'}</h3>
-          <div class="keywords-display">
+          <h3>${reply.icon || getCategoryIcon(reply.category)} ${reply.title || 'Sin título'}</h3>
+          <div class="keywords-display" style="margin-top: 4px;">
             ${keywordsDisplay}
             ${moreCount ? `<span class="keyword-tag">${moreCount}</span>` : ''}
           </div>
         </div>
-        <div class="reply-actions">
-          <label class="toggle">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <label class="toggle" onclick="event.stopPropagation()">
             <input type="checkbox" 
                    ${reply.active ? 'checked' : ''} 
                    onchange="toggleReply(${index})">
             Activo
           </label>
-          <button class="btn-small btn-danger" onclick="deleteReply(${index})">
+          <button class="btn-small btn-danger" onclick="event.stopPropagation(); deleteReply(${index})">
             🗑️
           </button>
+          <span class="accordion-icon">▼</span>
         </div>
       </div>
-      
-      <div class="reply-content">
-        <div class="lang-tabs">
-          <button class="lang-tab active" onclick="showLangReply(${index}, 'es')">🇪🇸 ES</button>
-          <button class="lang-tab" onclick="showLangReply(${index}, 'en')">🇬🇧 EN</button>
-          <button class="lang-tab" onclick="showLangReply(${index}, 'fr')">🇫🇷 FR</button>
-          <button class="lang-tab" onclick="showLangReply(${index}, 'ru')">🇷🇺 RU</button>
-        </div>
-        
-        <div class="lang-content">
-          <textarea class="lang-textarea active" id="reply_${index}_es" placeholder="Respuesta en español...">${reply.response_es || ''}</textarea>
-          <textarea class="lang-textarea" id="reply_${index}_en" placeholder="Respuesta en inglés...">${reply.response_en || ''}</textarea>
-          <textarea class="lang-textarea" id="reply_${index}_fr" placeholder="Respuesta en francés...">${reply.response_fr || ''}</textarea>
-          <textarea class="lang-textarea" id="reply_${index}_ru" placeholder="Respuesta en ruso...">${reply.response_ru || ''}</textarea>
-        </div>
-        
-        <button class="btn-primary" onclick="translateAutoReply(${index})" style="margin-top: 12px;">
-          🌍 Traducir desde ES
-        </button>
-        
-        <div class="reply-settings">
-          <label>
-            Palabras clave (separadas por comas):
-            <textarea id="keywords_${index}" ...>${Array.isArray(reply.keywords) ? reply.keywords.join(', ') : (reply.keywords || '')}</textarea>
+      <div class="accordion-content">
+        <div class="accordion-body">
+          
+          <!-- ✅ Campo: Título -->
+          <label style="margin-bottom: 16px;">
+            Título de la respuesta:
+            <input type="text" id="title_${index}" 
+                   value="${reply.title || ''}" 
+                   placeholder="Ej: WiFi, Llaves, Dirección..."
+                   style="padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
           </label>
           
-          <div class="reply-meta">
+          <!-- ✅ Selector de Iconos -->
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; margin-bottom: 8px; font-size: 13px; color: #374151;">Icono:</label>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 8px;">
+              ${['✏️', '📍', '🔑', '📶', '☕', '🧳', '🎫', '🚗', '♿', '🏊', '🍽️', '🏖️', '🚿', '🛏️', '📺', '❄️', '🔥', '🧺', '🍳', '🎮', '📞', '⏰', '🚪', 'ℹ️', '⚠️'].map(icon => `
+                <button type="button" 
+                        class="icon-btn ${reply.icon === icon ? 'selected' : ''}" 
+                        onclick="selectIcon(${index}, '${icon}')"
+                        style="padding: 10px; border: 2px solid ${reply.icon === icon ? '#4f46e5' : '#e5e7eb'}; border-radius: 8px; background: ${reply.icon === icon ? '#eef2ff' : 'white'}; font-size: 24px; cursor: pointer; transition: all 0.2s;">
+                  ${icon}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+          
+          <div class="lang-tabs">
+            <button class="lang-tab active" onclick="showLangReply(${index}, 'es')">🇪🇸 ES</button>
+            <button class="lang-tab" onclick="showLangReply(${index}, 'en')">🇬🇧 EN</button>
+            <button class="lang-tab" onclick="showLangReply(${index}, 'fr')">🇫🇷 FR</button>
+            <button class="lang-tab" onclick="showLangReply(${index}, 'ru')">🇷🇺 RU</button>
+          </div>
+          
+          <div class="lang-content">
+            <textarea class="lang-textarea active" id="reply_${index}_es" placeholder="Respuesta en español...">${reply.response_es || ''}</textarea>
+            <textarea class="lang-textarea" id="reply_${index}_en" placeholder="Respuesta en inglés...">${reply.response_en || ''}</textarea>
+            <textarea class="lang-textarea" id="reply_${index}_fr" placeholder="Respuesta en francés...">${reply.response_fr || ''}</textarea>
+            <textarea class="lang-textarea" id="reply_${index}_ru" placeholder="Respuesta en ruso...">${reply.response_ru || ''}</textarea>
+          </div>
+          
+          <button class="btn-primary" onclick="translateAutoReply(${index})" style="margin-top: 12px;">
+            🌍 Traducir desde ES
+          </button>
+          
+          <div class="reply-settings">
             <label>
-              Categoría:
-              <select id="category_${index}">
-  <option value="custom" ${reply.category === 'custom' ? 'selected' : ''}>✏️ Personalizado</option>
-  <option value="direccion" ${reply.category === 'direccion' ? 'selected' : ''}>📍 Dirección</option>
-  <option value="llaves" ${reply.category === 'llaves' ? 'selected' : ''}>🔑 Llaves</option>
-  <option value="wifi" ${reply.category === 'wifi' ? 'selected' : ''}>📶 WiFi</option>
-  <option value="cafetera" ${reply.category === 'cafetera' ? 'selected' : ''}>☕ Cafetera</option>
-  <option value="maletas" ${reply.category === 'maletas' ? 'selected' : ''}>🧳 Maletas</option>
-  <option value="entradas" ${reply.category === 'entradas' ? 'selected' : ''}>🎫 Entradas</option>
-  <option value="parking" ${reply.category === 'parking' ? 'selected' : ''}>🚗 Parking</option>
-  <option value="accesibilidad" ${reply.category === 'accesibilidad' ? 'selected' : ''}>♿ Accesibilidad</option>
-  <option value="piscina" ${reply.category === 'piscina' ? 'selected' : ''}>🏊 Piscina</option>
-  <option value="restaurantes" ${reply.category === 'restaurantes' ? 'selected' : ''}>🍽️ Restaurantes</option>
-  <option value="playa" ${reply.category === 'playa' ? 'selected' : ''}>🏖️ Playa</option>
-  <option value="bano" ${reply.category === 'bano' ? 'selected' : ''}>🚿 Baño</option>
-  <option value="dormitorio" ${reply.category === 'dormitorio' ? 'selected' : ''}>🛏️ Dormitorio</option>
-  <option value="tv" ${reply.category === 'tv' ? 'selected' : ''}>📺 TV</option>
-  <option value="aire" ${reply.category === 'aire' ? 'selected' : ''}>❄️ Aire acondicionado</option>
-  <option value="calefaccion" ${reply.category === 'calefaccion' ? 'selected' : ''}>🔥 Calefacción</option>
-  <option value="lavanderia" ${reply.category === 'lavanderia' ? 'selected' : ''}>🧺 Lavandería</option>
-  <option value="cocina" ${reply.category === 'cocina' ? 'selected' : ''}>🍳 Cocina</option>
-  <option value="entretenimiento" ${reply.category === 'entretenimiento' ? 'selected' : ''}>🎮 Entretenimiento</option>
-  <option value="contacto" ${reply.category === 'contacto' ? 'selected' : ''}>📞 Contacto</option>
-  <option value="horarios" ${reply.category === 'horarios' ? 'selected' : ''}>⏰ Horarios</option>
-  <option value="checkout" ${reply.category === 'checkout' ? 'selected' : ''}>🚪 Checkout</option>
-  <option value="informacion" ${reply.category === 'informacion' ? 'selected' : ''}>ℹ️ Información</option>
-  <option value="importante" ${reply.category === 'importante' ? 'selected' : ''}>⚠️ Importante</option>
-</select>
+              Palabras clave (separadas por comas):
+              <textarea id="keywords_${index}" placeholder="wifi, contraseña wifi, clave wifi...">${Array.isArray(reply.keywords) ? reply.keywords.join(', ') : (reply.keywords || '')}</textarea>
             </label>
-
-            <label>
+            
+            <label style="margin-top: 12px;">
               Prioridad:
               <input type="number" id="priority_${index}" 
-                     value="${reply.priority || 0}" min="0" max="100">
+                     value="${reply.priority || 0}" min="0" max="100"
+                     style="padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
             </label>
           </div>
         </div>
@@ -984,7 +980,54 @@ const moreCount = keywordsArray.length > 5 ? `+${keywordsArray.length - 5}` : ''
   console.log('✅ Renderizado completado');
 }
 
-// Toggle acordeón
+// Toggle acordeón de respuestas
+function toggleReplyAccordion(index) {
+  const item = document.getElementById(`reply-accordion-${index}`);
+  if (item) {
+    item.classList.toggle('open');
+  }
+}
+
+// Seleccionar icono
+function selectIcon(index, icon) {
+  autoReplies[index].icon = icon;
+  autoReplies[index].category = getCategoryFromIcon(icon);
+  renderAutoReplies();
+}
+
+// Obtener categoría desde icono (para compatibilidad con BD)
+function getCategoryFromIcon(icon) {
+  const iconMap = {
+    '✏️': 'custom',
+    '📍': 'direccion',
+    '🔑': 'llaves',
+    '📶': 'wifi',
+    '☕': 'cafetera',
+    '🧳': 'maletas',
+    '🎫': 'entradas',
+    '🚗': 'parking',
+    '♿': 'accesibilidad',
+    '🏊': 'piscina',
+    '🍽️': 'restaurantes',
+    '🏖️': 'playa',
+    '🚿': 'bano',
+    '🛏️': 'dormitorio',
+    '📺': 'tv',
+    '❄️': 'aire',
+    '🔥': 'calefaccion',
+    '🧺': 'lavanderia',
+    '🍳': 'cocina',
+    '🎮': 'entretenimiento',
+    '📞': 'contacto',
+    '⏰': 'horarios',
+    '🚪': 'checkout',
+    'ℹ️': 'informacion',
+    '⚠️': 'importante'
+  };
+  return iconMap[icon] || 'custom';
+}
+
+// Toggle acordeón (mantener función antigua por compatibilidad)
 function toggleCard(index) {
   const card = document.querySelector(`[data-index="${index}"]`);
   if (card) {
@@ -1055,6 +1098,8 @@ document.getElementById('add-reply-btn')?.addEventListener('click', () => {
   
   autoReplies.unshift({
     id: null,
+    title: '',
+    icon: '✏️',
     category: 'custom',
     keywords: [],
     response_es: '',
@@ -1148,7 +1193,9 @@ document.getElementById('save-auto-replies-btn')?.addEventListener('click', asyn
       
       return {
         ...reply,
-        category: document.getElementById(`category_${index}`)?.value || reply.category,
+        title: document.getElementById(`title_${index}`)?.value || '',
+        icon: reply.icon || '✏️',
+        category: reply.category || getCategoryFromIcon(reply.icon || '✏️'),
         keywords: keywordsArray,
         response_es: document.getElementById(`reply_${index}_es`)?.value || '',
         response_en: document.getElementById(`reply_${index}_en`)?.value || '',
