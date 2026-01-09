@@ -2627,12 +2627,17 @@ app.get("/manager/invoices/export", requireAuth, requireRole('MANAGER'), async (
     const selectedMonth = month ? parseInt(month) : new Date().getMonth() + 1;
     const selectedApartment = apartment || 'all';
     
+    // ✅ DECLARAR AQUÍ AL INICIO
+    const apartmentName = selectedApartment === 'all' ? 'Todos los Apartamentos' : selectedApartment;
+    const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    const monthName = monthNames[selectedMonth - 1];
+    
     const startDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
     const endDate = selectedMonth === 12 
       ? `${selectedYear + 1}-01-01`
       : `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
 
-    // Query de bookings (mismo que la página)
+    // Query de bookings
     let query = `
       SELECT 
         id, beds24_booking_id, full_name, arrival_date, departure_date,
@@ -2644,14 +2649,14 @@ app.get("/manager/invoices/export", requireAuth, requireRole('MANAGER'), async (
     const params = [startDate, endDate];
     
     if (selectedApartment !== 'all') {
-  query += ` AND TRIM(REGEXP_REPLACE(apartment_name, '\\s+', ' ', 'g')) = $3`;
-  params.push(selectedApartment);
-}
+      query += ` AND TRIM(REGEXP_REPLACE(apartment_name, '\\\\s+', ' ', 'g')) = $3`;
+      params.push(selectedApartment);
+    }
     
     query += ` ORDER BY arrival_date ASC`;
     const result = await pool.query(query, params);
 
-    // Procesar bookings (mismo código que arriba)
+    // Procesar bookings
     const bookings = result.rows.map(row => {
       const rawData = row.beds24_raw || {};
       const raw = rawData.booking || rawData;
@@ -2711,19 +2716,15 @@ app.get("/manager/invoices/export", requireAuth, requireRole('MANAGER'), async (
 
     // Crear Excel
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Facturas');
+    const worksheet = workbook.addWorksheet('Reporte');
 
-    // Nombre del mes
-    const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-    const monthName = monthNames[selectedMonth - 1];
-
-  // CABECERA
-worksheet.mergeCells('A1:M1');
-const titleCell = worksheet.getCell('A1');
-titleCell.value = `Reporte - ${apartmentName} - ${monthName} ${selectedYear}`;
-titleCell.font = { size: 16, bold: true };
-titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
-worksheet.getRow(1).height = 30;
+    // CABECERA
+    worksheet.mergeCells('A1:M1');
+    const titleCell = worksheet.getCell('A1');
+    titleCell.value = `Reporte - ${apartmentName} - ${monthName} ${selectedYear}`;
+    titleCell.font = { size: 16, bold: true };
+    titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
+    worksheet.getRow(1).height = 30;
 
     // Espacio
     worksheet.addRow([]);
@@ -2796,45 +2797,40 @@ worksheet.getRow(1).height = 30;
     totalRow.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FFFFFFFF' }
+      fgColor: { argb: 'FFF9FAFB' }
     };
 
     // FORMATO DE COLUMNAS
-    worksheet.getColumn(1).width = 12;  // ID
-    worksheet.getColumn(2).width = 25;  // Huésped
-    worksheet.getColumn(3).width = 12;  // Plataforma
-    worksheet.getColumn(4).width = 12;  // Check-in
-    worksheet.getColumn(5).width = 12;  // Check-out
-    worksheet.getColumn(6).width = 8;   // Noches
-    worksheet.getColumn(7).width = 20;  // Apartamento
-    worksheet.getColumn(8).width = 12;  // Precio
-    worksheet.getColumn(9).width = 12;  // Comisión
-    worksheet.getColumn(10).width = 12; // Booking IVA
-    worksheet.getColumn(11).width = 15; // Rental Connect
-    worksheet.getColumn(12).width = 12; // Income
+    worksheet.getColumn(1).width = 12;
+    worksheet.getColumn(2).width = 25;
+    worksheet.getColumn(3).width = 12;
+    worksheet.getColumn(4).width = 12;
+    worksheet.getColumn(5).width = 12;
+    worksheet.getColumn(6).width = 8;
+    worksheet.getColumn(7).width = 20;
+    worksheet.getColumn(8).width = 12;
+    worksheet.getColumn(9).width = 12;
+    worksheet.getColumn(10).width = 12;
+    worksheet.getColumn(11).width = 15;
+    worksheet.getColumn(12).width = 12;
 
-    // Formato de moneda para columnas de dinero
+    // Formato de moneda
     [8, 9, 10, 11, 12].forEach(col => {
       worksheet.getColumn(col).numFmt = '€#,##0.00';
-      worksheet.getColumn(col).alignment = { horizontal: 'left' };
+      worksheet.getColumn(col).alignment = { horizontal: 'right' };
     });
 
-// Generar archivo
-const buffer = await workbook.xlsx.writeBuffer();
+    // Generar archivo
+    const buffer = await workbook.xlsx.writeBuffer();
+    const filename = `Reporte-${apartmentName.replace(/[^a-zA-Z0-9]/g, '_')}-${monthName}-${selectedYear}.xlsx`;
 
-// Definir nombre del apartamento para el archivo
-const apartmentName = selectedApartment === 'all' ? 'Todos' : selectedApartment;
-
-// Nombre del archivo
-const filename = `Reporte-${apartmentName.replace(/[^a-zA-Z0-9]/g, '_')}-${monthName}-${selectedYear}.xlsx`;
-
-res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-res.send(buffer);
-} catch (e) {
-console.error("Error al exportar Excel:", e);
-res.status(500).send("Error al generar el archivo Excel");
-}
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
+  } catch (e) {
+    console.error("Error al exportar Excel:", e);
+    res.status(500).send("Error al generar el archivo Excel");
+  }
 });
 
 // ============================================
@@ -9031,6 +9027,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
