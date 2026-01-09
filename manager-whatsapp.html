@@ -10,9 +10,6 @@
             padding: 0;
             box-sizing: border-box;
         }
-    .reply-settings > div:first-child {
-  display: none !important;
-}
         
         /* ===== ACORDEÓN STYLES ===== */
         .accordion-item {
@@ -897,7 +894,7 @@ function renderAutoReplies() {
     <div class="accordion-item ${index === 0 ? 'open' : ''}" id="reply-accordion-${index}">
       <div class="accordion-header" onclick="toggleReplyAccordion(${index})">
         <div>
-          <h3>${reply.icon || getCategoryIcon(reply.category)} ${reply.title || 'Sin título'}</h3>
+          <h3>${getCategoryIcon(reply.category)} ${getCategoryName(reply.category)}</h3>
           <div class="keywords-display" style="margin-top: 4px;">
             ${keywordsDisplay}
             ${moreCount ? `<span class="keyword-tag">${moreCount}</span>` : ''}
@@ -918,31 +915,6 @@ function renderAutoReplies() {
       </div>
       <div class="accordion-content">
         <div class="accordion-body">
-          
-          <!-- ✅ Campo: Título -->
-          <label style="margin-bottom: 16px;">
-            Título de la respuesta:
-            <input type="text" id="title_${index}" 
-                   value="${reply.title || ''}" 
-                   placeholder="Ej: WiFi, Llaves, Dirección..."
-                   style="padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
-          </label>
-          
-          <!-- ✅ Selector de Iconos -->
-          <div style="margin-bottom: 16px;">
-            <label style="display: block; margin-bottom: 8px; font-size: 13px; color: #374151;">Icono:</label>
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 8px;">
-              ${['✏️', '📍', '🔑', '📶', '☕', '🧳', '🎫', '🚗', '♿', '🏊', '🍽️', '🏖️', '🚿', '🛏️', '📺', '❄️', '🔥', '🧺', '🍳', '🎮', '📞', '⏰', '🚪', 'ℹ️', '⚠️'].map(icon => `
-                <button type="button" 
-                        class="icon-btn ${reply.icon === icon ? 'selected' : ''}" 
-                        onclick="selectIcon(${index}, '${icon}')"
-                        style="padding: 10px; border: 2px solid ${reply.icon === icon ? '#4f46e5' : '#e5e7eb'}; border-radius: 8px; background: ${reply.icon === icon ? '#eef2ff' : 'white'}; font-size: 24px; cursor: pointer; transition: all 0.2s;">
-                  ${icon}
-                </button>
-              `).join('')}
-            </div>
-          </div>
-          
           <div class="lang-tabs">
             <button class="lang-tab active" onclick="showLangReply(${index}, 'es')">🇪🇸 ES</button>
             <button class="lang-tab" onclick="showLangReply(${index}, 'en')">🇬🇧 EN</button>
@@ -1101,8 +1073,6 @@ document.getElementById('add-reply-btn')?.addEventListener('click', () => {
   
   autoReplies.unshift({
     id: null,
-    title: '',
-    icon: '✏️',
     category: 'custom',
     keywords: [],
     response_es: '',
@@ -1196,9 +1166,6 @@ document.getElementById('save-auto-replies-btn')?.addEventListener('click', asyn
       
       return {
         ...reply,
-        title: document.getElementById(`title_${index}`)?.value || '',
-        icon: reply.icon || '✏️',
-        category: reply.category || getCategoryFromIcon(reply.icon || '✏️'),
         keywords: keywordsArray,
         response_es: document.getElementById(`reply_${index}_es`)?.value || '',
         response_en: document.getElementById(`reply_${index}_en`)?.value || '',
@@ -1289,6 +1256,37 @@ function getCategoryIcon(category) {
     importante: '⚠️'
   };
   return icons[category] || '📝';
+}
+
+function getCategoryName(category) {
+  const names = {
+    custom: 'Personalizado',
+    direccion: 'Dirección',
+    llaves: 'Llaves',
+    wifi: 'WiFi',
+    cafetera: 'Cafetera',
+    maletas: 'Maletas',
+    entradas: 'Entradas',
+    parking: 'Parking',
+    accesibilidad: 'Accesibilidad',
+    piscina: 'Piscina',
+    restaurantes: 'Restaurantes',
+    playa: 'Playa',
+    bano: 'Baño',
+    dormitorio: 'Dormitorio',
+    tv: 'TV',
+    aire: 'Aire acondicionado',
+    calefaccion: 'Calefacción',
+    lavanderia: 'Lavandería',
+    cocina: 'Cocina',
+    entretenimiento: 'Entretenimiento',
+    contacto: 'Contacto',
+    horarios: 'Horarios',
+    checkout: 'Checkout',
+    informacion: 'Información',
+    importante: 'Importante'
+  };
+  return names[category] || 'Sin categoría';
 }
 
 // Cargar al cambiar a la pestaña
