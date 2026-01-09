@@ -701,57 +701,112 @@
         <div id="flow" class="tab-content active">
             <div id="alert-flow" class="alert"></div>
 
-            <!-- PANEL DE VARIABLES -->
-            <div class="variables-panel">
-                <div class="variables-header" onclick="toggleVariables()">
-                    <h4>📝 Variables Disponibles (click para copiar)</h4>
-                    <span class="variables-toggle" id="variables-toggle">▼</span>
-                </div>
-                <div class="variables-content" id="variables-content">
-                    <div class="variables-grid">
-                        <div class="variable-item" onclick="copyVariable('{booking_id}')">
-                            <div class="variable-code">{booking_id}</div>
-                            <div class="variable-desc">Número de reserva</div>
-                        </div>
-                        <div class="variable-item" onclick="copyVariable('{guest_name}')">
-                            <div class="variable-code">{guest_name}</div>
-                            <div class="variable-desc">Nombre del huésped</div>
-                        </div>
-                        <div class="variable-item" onclick="copyVariable('{apartment_name}')">
-                            <div class="variable-code">{apartment_name}</div>
-                            <div class="variable-desc">Nombre del apartamento</div>
-                        </div>
-                        <div class="variable-item" onclick="copyVariable('{arrival_date}')">
-                            <div class="variable-code">{arrival_date}</div>
-                            <div class="variable-desc">Fecha de llegada</div>
-                        </div>
-                        <div class="variable-item" onclick="copyVariable('{departure_date}')">
-                            <div class="variable-code">{departure_date}</div>
-                            <div class="variable-desc">Fecha de salida</div>
-                        </div>
-                        <div class="variable-item" onclick="copyVariable('{arrival_time}')">
-                            <div class="variable-code">{arrival_time}</div>
-                            <div class="variable-desc">Hora de llegada</div>
-                        </div>
-                        <div class="variable-item" onclick="copyVariable('{departure_time}')">
-                            <div class="variable-code">{departure_time}</div>
-                            <div class="variable-desc">Hora de salida</div>
-                        </div>
-                        <div class="variable-item" onclick="copyVariable('{guests_text}')">
-                            <div class="variable-code">{guests_text}</div>
-                            <div class="variable-desc">Texto de huéspedes (ej: "2 adultos, 1 niño")</div>
-                        </div>
-                        <div class="variable-item" onclick="copyVariable('{registration_url}')">
-                            <div class="variable-code">{registration_url}</div>
-                            <div class="variable-desc">Enlace de registro</div>
-                        </div>
-                        <div class="variable-item" onclick="copyVariable('{payment_url}')">
-                            <div class="variable-code">{payment_url}</div>
-                            <div class="variable-desc">Enlace de pago</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+         <div class="variables-info" style="margin: 24px 0; padding: 20px; background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 12px;">
+  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+    <span style="font-size: 24px;">💡</span>
+    <h3 style="margin: 0; color: #0369a1;">Variables Disponibles</h3>
+  </div>
+  
+  <p style="color: #075985; margin-bottom: 16px;">
+    Puedes usar estas variables en tus respuestas. El bot las reemplazará automáticamente con los datos del apartamento del huésped.
+  </p>
+  
+  <div class="variables-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+    
+    <!-- Información Básica -->
+    <div class="variable-category">
+      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📍 Información Básica</h4>
+      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+        <code>{apartment_name}</code><br>
+        <code>{address}</code><br>
+        <code>{city}</code><br>
+        <code>{floor}</code><br>
+        <code>{door_number}</code>
+      </div>
+    </div>
+    
+    <!-- Acceso -->
+    <div class="variable-category">
+      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🔑 Acceso y Llaves</h4>
+      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+        <code>{lockbox_code}</code><br>
+        <code>{lockbox_location}</code><br>
+        <code>{door_code}</code><br>
+        <code>{gate_code}</code><br>
+        <code>{key_instructions}</code>
+      </div>
+    </div>
+    
+    <!-- WiFi -->
+    <div class="variable-category">
+      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📶 WiFi</h4>
+      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+        <code>{wifi_network}</code><br>
+        <code>{wifi_password}</code><br>
+        <code>{wifi_troubleshooting}</code>
+      </div>
+    </div>
+    
+    <!-- Horarios -->
+    <div class="variable-category">
+      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">⏰ Horarios</h4>
+      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+        <code>{checkin_time}</code><br>
+        <code>{checkout_time}</code>
+      </div>
+    </div>
+    
+    <!-- Precios -->
+    <div class="variable-category">
+      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">💰 Precios</h4>
+      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+        <code>{security_deposit_amount}</code><br>
+        <code>{tourist_tax_amount}</code><br>
+        <code>{early_checkin_price}</code><br>
+        <code>{late_checkout_price}</code>
+      </div>
+    </div>
+    
+    <!-- Parking -->
+    <div class="variable-category">
+      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🚗 Parking</h4>
+      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+        <code>{parking_location}</code><br>
+        <code>{parking_code}</code><br>
+        <code>{parking_instructions}</code>
+      </div>
+    </div>
+    
+    <!-- Piscina -->
+    <div class="variable-category">
+      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🏊 Piscina</h4>
+      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+        <code>{pool_hours}</code><br>
+        <code>{pool_location}</code><br>
+        <code>{pool_rules}</code>
+      </div>
+    </div>
+    
+    <!-- Contacto -->
+    <div class="variable-category">
+      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📞 Contacto</h4>
+      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
+        <code>{support_phone}</code><br>
+        <code>{support_whatsapp}</code>
+      </div>
+    </div>
+    
+  </div>
+  
+  <div style="margin-top: 16px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #0ea5e9;">
+    <strong style="color: #0369a1;">Ejemplo:</strong><br>
+    <code style="color: #0c4a6e; display: block; margin-top: 8px; white-space: pre-wrap;">📶 WiFi:
+Red: {wifi_network}
+Contraseña: {wifi_password}
+
+Si tienes problemas: {wifi_troubleshooting}</code>
+  </div>
+</div>
 
             <div id="loading-flow" class="loading">⏳ Cargando mensajes...</div>
             <div id="flow-content" style="display: none;">
