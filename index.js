@@ -6669,10 +6669,12 @@ app.get("/manager/channels/bookingssync", requireAuth, requireRole('MANAGER'), a
     const bookingsDetails = [];
     
     for (const propId of propIds) {
-      const url =
-        `https://beds24.com/api/v2/bookings` +
-        `?propertyId=${encodeURIComponent(propId)}` +
-        `&includeInvoiceItems=true`;
+     const url =
+  `https://beds24.com/api/v2/bookings` +
+  `?propertyId=${encodeURIComponent(propId)}` +
+  `&includeInvoiceItems=true` +
+  `&arrivalFrom=${encodeURIComponent(fromDate)}` +
+  `&arrivalTo=${encodeURIComponent(toDate)}`;
       
       log(`\n🔗 Fetching bookings para property ${propId}...`);
       
@@ -9257,6 +9259,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
