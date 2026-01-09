@@ -147,88 +147,6 @@ Willkommen! 😊`
 const app = express();
 app.set('trust proxy', 1);
 
-// ===================== STAFF: GUARDAR/BORRAR CÓDIGO =====================
-app.post("/staff/checkins/:id/lock", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { lock_code, clear, returnTo } = req.body;
-    
-    // Si presionó "Clear", borrar código
-    // Si no, guardar el código
-    const newCode = clear ? null : (lock_code || null);
-    
-    await pool.query(
-      `UPDATE checkins SET lock_code = $1 WHERE id = $2`,
-      [newCode, id]
-    );
-    
-    return safeRedirect(res, returnTo || req.headers.referer || "/staff/checkins");
-    
-  } catch (e) {
-    console.error("Error en lock:", e);
-    res.status(500).send("Error");
-  }
-});
-
-app.post("/staff/checkins/:id/visibility", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { returnTo } = req.body;
-    
-    // Obtener datos completos del checkin
-    const current = await pool.query(
-      `SELECT 
-        id, 
-        lock_visible, 
-        lock_code,
-        phone,
-        guest_language,
-        full_name,
-        apartment_name,
-        room_name
-      FROM checkins 
-      WHERE id = $1`,
-      [id]
-    );
-    
-    if (current.rows.length === 0) {
-      return res.status(404).send("Not found");
-    }
-    
-    const checkin = current.rows[0];
-    const newVisible = !checkin.lock_visible;
-    
-    // Actualizar visibilidad
-    await pool.query(
-      `UPDATE checkins SET lock_visible = $1 WHERE id = $2`,
-      [newVisible, id]
-    );
-    
-    // 📱 SI SE ESTÁ MOSTRANDO EL CÓDIGO (newVisible = true), enviar WhatsApp
-    if (newVisible && checkin.lock_code && checkin.phone) {
-      console.log(`📱 Sending WhatsApp to ${checkin.full_name} (${checkin.phone})`);
-      
-      const result = await sendWhatsAppCodeNotification({
-        ...checkin,
-        lock_code: checkin.lock_code
-      });
-      
-      if (result.success) {
-        console.log(`✅ WhatsApp sent successfully to ${result.to}`);
-      } else {
-        console.log(`⚠️ WhatsApp not sent: ${result.reason || result.error}`);
-      }
-    }
-    
-    // Redirect normal
-    return safeRedirect(res, returnTo || req.headers.referer || "/staff/checkins");
-    
-  } catch (e) {
-    console.error("Error en visibility:", e);
-    res.status(500).send("Error");
-  }
-});
-
 // ✅ PRIMERO: Crear el pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -360,6 +278,98 @@ function requireRole(minRole) {
     }
   };
 }
+
+function safeRedirect(res, url) {
+  const fallback = '/staff/checkins';
+  const target = url || fallback;
+  if (typeof target === 'string' && target.startsWith('/')) {
+    return res.redirect(303, target);
+  }
+  return res.redirect(303, fallback);
+}
+// ===================== STAFF: GUARDAR/BORRAR CÓDIGO =====================
+app.post("/staff/checkins/:id/lock", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { lock_code, clear, returnTo } = req.body;
+    
+    // Si presionó "Clear", borrar código
+    // Si no, guardar el código
+    const newCode = clear ? null : (lock_code || null);
+    
+    await pool.query(
+      `UPDATE checkins SET lock_code = $1 WHERE id = $2`,
+      [newCode, id]
+    );
+    
+    return safeRedirect(res, returnTo || req.headers.referer || "/staff/checkins");
+    
+  } catch (e) {
+    console.error("Error en lock:", e);
+    res.status(500).send("Error");
+  }
+});
+
+app.post("/staff/checkins/:id/visibility", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { returnTo } = req.body;
+    
+    // Obtener datos completos del checkin
+    const current = await pool.query(
+      `SELECT 
+        id, 
+        lock_visible, 
+        lock_code,
+        phone,
+        guest_language,
+        full_name,
+        apartment_name,
+        room_name
+      FROM checkins 
+      WHERE id = $1`,
+      [id]
+    );
+    
+    if (current.rows.length === 0) {
+      return res.status(404).send("Not found");
+    }
+    
+    const checkin = current.rows[0];
+    const newVisible = !checkin.lock_visible;
+    
+    // Actualizar visibilidad
+    await pool.query(
+      `UPDATE checkins SET lock_visible = $1 WHERE id = $2`,
+      [newVisible, id]
+    );
+    
+    // 📱 SI SE ESTÁ MOSTRANDO EL CÓDIGO (newVisible = true), enviar WhatsApp
+    if (newVisible && checkin.lock_code && checkin.phone) {
+      console.log(`📱 Sending WhatsApp to ${checkin.full_name} (${checkin.phone})`);
+      
+      const result = await sendWhatsAppCodeNotification({
+        ...checkin,
+        lock_code: checkin.lock_code
+      });
+      
+      if (result.success) {
+        console.log(`✅ WhatsApp sent successfully to ${result.to}`);
+      } else {
+        console.log(`⚠️ WhatsApp not sent: ${result.reason || result.error}`);
+      }
+    }
+    
+    // Redirect normal
+    return safeRedirect(res, returnTo || req.headers.referer || "/staff/checkins");
+    
+  } catch (e) {
+    console.error("Error en visibility:", e);
+    res.status(500).send("Error");
+  }
+});
+
+
 
 // Helper: Verificar si el usuario tiene un rol específico o superior
 function hasRole(req, minRole) {
@@ -9214,6 +9224,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
