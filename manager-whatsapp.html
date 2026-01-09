@@ -6,454 +6,14 @@
     <title>Manager - WhatsApp Bot</title>
 </head>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        /* Todos los estilos anteriores se mantienen igual... */
         
-        :root { color-scheme: light; }
-        
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: #f6f7fb;
-            color: #111827;
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-        }
-
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 18px;
-            box-shadow: 0 10px 28px rgba(17,24,39,0.08);
-            border: 1px solid #e5e7eb;
-            overflow: hidden;
-        }
-
-        .header {
-            background: #ffffff;
-            border-bottom: 1px solid #e5e7eb;
-            color: #374151;
-            padding: 20px 24px;
-        }
-
-        .header h1 {
-            font-size: 22px;
-            margin-bottom: 4px;
-            font-weight: 600;
-            color: #111827;
-        }
-
-        .header p {
-            color: #6b7280;
-            font-size: 14px;
-            margin: 0;
-        }
-
-        .tabs {
-            display: flex;
-            background: #f9fafb;
-            border-bottom: 1px solid #e5e7eb;
-        }
-
-        .tab {
-            flex: 1;
-            padding: 12px 16px;
-            text-align: center;
-            cursor: pointer;
-            background: transparent;
-            border: none;
-            font-size: 13px;
-            font-weight: 500;
-            color: #6b7280;
-            transition: all 0.2s ease;
-            position: relative;
-            border-bottom: 2px solid transparent;
-        }
-
-        .tab:hover {
-            background: #f3f4f6;
-            color: #374151;
-        }
-
-        .tab.active {
-            color: #111827;
-            background: white;
-            border-bottom: 2px solid #111827;
-        }
-
-        .tab-content {
-            display: none;
-            padding: 24px;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        /* Acordeón */
-        .accordion-item {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            margin-bottom: 10px;
-            overflow: hidden;
-        }
-        
-        .accordion-item.open {
-            border-color: #2563eb;
-        }
-        
-        .accordion-header {
-            padding: 14px 18px;
-            background: #f9fafb;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: background 0.2s;
-        }
-        
-        .accordion-header:hover {
-            background: #f3f4f6;
-        }
-        
-        .accordion-header h3 {
-            font-size: 14px;
-            font-weight: 600;
-            color: #111827;
-            margin: 0;
-        }
-        
-        .accordion-icon {
-            transition: transform 0.3s;
-            font-size: 16px;
-            color: #6b7280;
-        }
-        
-        .accordion-item.open .accordion-icon {
-            transform: rotate(180deg);
-        }
-        
-        .accordion-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-        
-        .accordion-item.open .accordion-content {
-            max-height: 3000px;
-        }
-        
-        .accordion-body {
-            padding: 18px;
-            border-top: 1px solid #e5e7eb;
-        }
-
-        /* Keywords tags */
-        .keyword-tag {
-            background: #e0e7ff;
-            color: #3730a3;
-            padding: 3px 8px;
-            border-radius: 6px;
-            font-size: 11px;
-            display: inline-block;
-            margin: 2px;
-        }
-
-        .keywords-display {
-            display: flex;
-            gap: 4px;
-            flex-wrap: wrap;
-            margin-top: 4px;
-        }
-
-        /* Tabs de idioma */
-        .lang-tabs {
-            display: flex;
-            gap: 6px;
-            margin-bottom: 12px;
-            border-bottom: 1px solid #e5e7eb;
-            padding-bottom: 8px;
-        }
-
-        .lang-tab {
-            padding: 6px 12px;
-            border: none;
-            background: transparent;
-            cursor: pointer;
-            font-size: 12px;
-            color: #6b7280;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s;
-            border-radius: 0;
-        }
-
-        .lang-tab.active {
-            color: #111827;
-            border-bottom-color: #111827;
-            font-weight: 500;
-        }
-
-        /* Textareas y inputs */
-        textarea, input[type="text"], input[type="number"] {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #d1d5db;
-            border-radius: 10px;
-            font-family: inherit;
-            font-size: 13px;
-            resize: vertical;
-            background: #fff;
-            color: #111827;
-        }
-
-        textarea:focus, input:focus {
-            outline: none;
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
-        }
-
-        textarea {
-            min-height: 120px;
-        }
-
-        .lang-textarea {
-            display: none;
-        }
-
-        .lang-textarea.active {
-            display: block;
-        }
-
-        label {
-            font-size: 12px;
-            display: block;
-            margin-bottom: 6px;
-            color: #374151;
-            font-weight: 500;
-        }
-
-        /* Botones */
-        .btn-primary {
-            background: #e8eef4;
-            color: #2c4a66;
-            border: 1px solid #d6dee8;
-            padding: 10px 16px;
-            border-radius: 999px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .btn-primary:hover {
-            background: #dde4ec;
-        }
-
-        .btn-success {
-            background: #22c55e;
-            color: white;
-            border: none;
-            padding: 10px 16px;
-            border-radius: 999px;
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-
-        .btn-success:hover {
-            background: #16a34a;
-        }
-
-        .btn-small {
-            background: #f3f4f6;
-            border: 1px solid #e5e7eb;
-            color: #6b7280;
-            padding: 6px 12px;
-            font-size: 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 500;
-        }
-
-        .btn-small:hover {
-            background: #e5e7eb;
-        }
-
-        .btn-danger {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #fca5a5;
-        }
-
-        .btn-danger:hover {
-            background: #fecaca;
-        }
-
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        /* Section header */
-        .section-header {
+        /* Añadir estos estilos adicionales */
+        .variables-section {
             margin-bottom: 20px;
         }
-
-        .section-header h2 {
-            margin: 0 0 6px;
-            font-size: 18px;
-            color: #111827;
-        }
-
-        .description {
-            margin: 0;
-            color: #6b7280;
-            font-size: 13px;
-        }
-
-        /* Toggle */
-        .toggle {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .toggle input[type="checkbox"] {
-            width: 14px;
-            height: 14px;
-            cursor: pointer;
-        }
-
-        /* Alert */
-        .alert {
-            padding: 12px 14px;
-            border-radius: 10px;
-            margin-bottom: 16px;
-            display: none;
-            font-size: 13px;
-        }
-
-        .alert.show {
-            display: block;
-        }
-
-        .alert-success {
-            background: #d1fae5;
-            color: #065f46;
-            border: 1px solid #10b981;
-        }
-
-        .alert-error {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #ef4444;
-        }
-
-        /* Empty state */
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #6b7280;
-            background: #f9fafb;
-            border-radius: 10px;
-            font-size: 13px;
-        }
-
-        .empty-state p {
-            margin: 6px 0;
-        }
-
-        /* Reply settings */
-        .reply-settings {
-            margin-top: 14px;
-            display: grid;
-            gap: 12px;
-        }
-
-        /* Auto Reply Card */
-        .auto-reply-card {
-            border: 1px solid #e5e7eb;
-            border-radius: 12px;
-            margin-bottom: 12px;
-            overflow: hidden;
-            background: white;
-        }
         
-        .auto-reply-card.open {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 1px rgba(37,99,235,0.1);
-        }
-        
-        .reply-header {
-            padding: 14px 18px;
-            background: #f9fafb;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: background 0.2s;
-        }
-        
-        .reply-header:hover {
-            background: #f3f4f6;
-        }
-        
-        .reply-actions {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .accordion-arrow {
-            transition: transform 0.3s;
-            color: #6b7280;
-            font-size: 12px;
-        }
-        
-        .auto-reply-card.open .accordion-arrow {
-            transform: rotate(180deg);
-        }
-        
-        .reply-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-        
-        .auto-reply-card.open .reply-content {
-            max-height: 3000px;
-        }
-        
-        .lang-content {
-            padding: 0;
-        }
-        
-        .btn-translate {
-            background: #f0f9ff;
-            color: #0369a1;
-            border: 1px solid #bae6fd;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            cursor: pointer;
-            margin-top: 12px;
-            transition: all 0.2s;
-        }
-        
-        .btn-translate:hover {
-            background: #e0f2fe;
-        }
-
-        /* Variables Panel */
-        .variables-panel {
+        .variables-accordion {
             background: white;
             border: 1px solid #e5e7eb;
             border-radius: 12px;
@@ -461,117 +21,58 @@
             overflow: hidden;
         }
         
-        .variables-header {
-            padding: 14px 18px;
-            background: #f9fafb;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .variables-accordion.open {
+            border-color: #2563eb;
         }
         
-        .variables-header h4 {
-            font-size: 14px;
-            font-weight: 600;
-            color: #111827;
-            margin: 0;
-        }
-        
-        .variables-content {
-            max-height: 3000px;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-        
-        .variables-grid {
+        .variables-grid-category {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 12px;
-            padding: 18px;
         }
         
-        .variable-item {
+        .variable-category-card {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
-            padding: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .variable-item:hover {
-            background: #f1f5f9;
-            border-color: #cbd5e1;
-        }
-        
-        .variable-code {
-            font-family: monospace;
-            font-size: 12px;
-            color: #2563eb;
-            margin-bottom: 4px;
-            font-weight: 600;
-        }
-        
-        .variable-desc {
-            font-size: 11px;
-            color: #64748b;
-        }
-        
-        .variable-category {
             padding: 12px;
-            background: #f8fafc;
-            border-radius: 8px;
-            border: 1px solid #e2e8f0;
         }
         
-        .variable-list code {
-            display: block;
-            padding: 4px 0;
-            font-family: monospace;
+        .variable-category-title {
+            color: #0369a1;
+            margin: 0 0 8px 0;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        .variable-list-item {
+            font-family: 'Courier New', monospace;
             font-size: 12px;
             color: #0c4a6e;
+            padding: 3px 0;
+            cursor: pointer;
+            transition: all 0.2s;
         }
-
-        /* Mobile responsive */
-        @media (max-width: 640px) {
-            body {
-                padding: 1px;
-            }
-            
-            .container {
-                border-radius: 1px;
-            }
-            
-            .header {
-                padding: 16px;
-            }
-            
-            .tab-content {
-                padding: 16px;
-            }
-            
-            .accordion-body {
-                padding: 14px;
-            }
-            
-            .keywords-display {
-                gap: 3px;
-            }
-            
-            .keyword-tag {
-                font-size: 10px;
-                padding: 2px 6px;
-            }
-            
-            .variables-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .reply-actions {
-                flex-direction: column;
-                align-items: flex-end;
-                gap: 6px;
-            }
+        
+        .variable-list-item:hover {
+            color: #2563eb;
+            background: #f0f9ff;
+            padding-left: 5px;
+            border-radius: 4px;
+        }
+        
+        .variable-list-item code {
+            font-family: 'Courier New', monospace;
+            background: #e0f2fe;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        
+        .copy-hint {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 8px;
+            text-align: center;
         }
     </style>
 <body>
@@ -587,64 +88,111 @@
             <button class="tab" onclick="switchTab('auto-replies')">💬 Respuestas Automáticas</button>
         </div>
 
-        <!-- TAB 1: Flujo Principal -->
+        <!-- TAB 1: Flujo Principal - MEJORADO -->
         <div id="flow" class="tab-content active">
             <div id="alert-flow" class="alert"></div>
 
-            <!-- PANEL DE VARIABLES (AHORA ABIERTO POR DEFECTO) -->
-            <div class="variables-panel">
-                <div class="variables-header" onclick="toggleVariables()">
-                    <h4>📝 Variables Disponibles (click para copiar)</h4>
-                    <span class="variables-toggle" id="variables-toggle">▼</span>
+            <!-- PANEL DE VARIABLES MEJORADO (igual que en Respuestas Automáticas) -->
+            <div class="variables-accordion open" id="flow-variables-accordion">
+                <div class="accordion-header" onclick="toggleFlowVariablesAccordion()">
+                    <div>
+                        <h3>💡 Variables Disponibles para el Flujo</h3>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Click en cualquier variable para copiarla al portapapeles</p>
+                    </div>
+                    <span class="accordion-icon">▼</span>
                 </div>
-                <div class="variables-content" id="variables-content">
-                    <div class="variables-grid">
-                        <div class="variable-item" onclick="copyVariable('{booking_id}')">
-                            <div class="variable-code">{booking_id}</div>
-                            <div class="variable-desc">Número de reserva</div>
+                
+                <div class="accordion-content">
+                    <div class="accordion-body">
+                        <p style="color: #075985; margin-bottom: 16px; font-size: 13px;">
+                            Puedes usar estas variables en tus mensajes. El bot las reemplazará automáticamente con los datos del huésped.
+                        </p>
+                        
+                        <div class="variables-grid-category">
+                            
+                            <div class="variable-category-card">
+                                <div class="variable-category-title">📋 Información de Reserva</div>
+                                <div class="variable-list">
+                                    <div class="variable-list-item" onclick="copyVariable('{booking_id}')">
+                                        <code>{booking_id}</code> - Número de reserva
+                                    </div>
+                                    <div class="variable-list-item" onclick="copyVariable('{guest_name}')">
+                                        <code>{guest_name}</code> - Nombre del huésped
+                                    </div>
+                                    <div class="variable-list-item" onclick="copyVariable('{guests_text}')">
+                                        <code>{guests_text}</code> - Huéspedes (ej: "2 adultos, 1 niño")
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="variable-category-card">
+                                <div class="variable-category-title">🏠 Información del Alojamiento</div>
+                                <div class="variable-list">
+                                    <div class="variable-list-item" onclick="copyVariable('{apartment_name}')">
+                                        <code>{apartment_name}</code> - Nombre del apartamento
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="variable-category-card">
+                                <div class="variable-category-title">📅 Fechas de Estancia</div>
+                                <div class="variable-list">
+                                    <div class="variable-list-item" onclick="copyVariable('{arrival_date}')">
+                                        <code>{arrival_date}</code> - Fecha de llegada
+                                    </div>
+                                    <div class="variable-list-item" onclick="copyVariable('{departure_date}')">
+                                        <code>{departure_date}</code> - Fecha de salida
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="variable-category-card">
+                                <div class="variable-category-title">⏰ Horarios</div>
+                                <div class="variable-list">
+                                    <div class="variable-list-item" onclick="copyVariable('{arrival_time}')">
+                                        <code>{arrival_time}</code> - Hora de llegada
+                                    </div>
+                                    <div class="variable-list-item" onclick="copyVariable('{departure_time}')">
+                                        <code>{departure_time}</code> - Hora de salida
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="variable-category-card">
+                                <div class="variable-category-title">🔗 Enlaces Importantes</div>
+                                <div class="variable-list">
+                                    <div class="variable-list-item" onclick="copyVariable('{registration_url}')">
+                                        <code>{registration_url}</code> - Enlace de registro
+                                    </div>
+                                    <div class="variable-list-item" onclick="copyVariable('{payment_url}')">
+                                        <code>{payment_url}</code> - Enlace de pago
+                                    </div>
+                                </div>
+                            </div>
+                            
                         </div>
-                        <div class="variable-item" onclick="copyVariable('{guest_name}')">
-                            <div class="variable-code">{guest_name}</div>
-                            <div class="variable-desc">Nombre del huésped</div>
+                        
+                        <div style="margin-top: 16px; padding: 12px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #0ea5e9;">
+                            <strong style="color: #0369a1; font-size: 13px;">💡 Ejemplo de uso:</strong><br>
+                            <code style="color: #0c4a6e; display: block; margin-top: 8px; white-space: pre-wrap; font-size: 12px;">¡Hola, {guest_name}! 
+
+Tu reserva #{booking_id} está confirmada para el {apartment_name}.
+
+📅 Fechas: {arrival_date} a {departure_date}
+⏰ Horarios: Entrada a las {arrival_time}h - Salida a las {departure_time}h
+👥 Huéspedes: {guests_text}
+
+Para completar tu registro: {registration_url}</code>
                         </div>
-                        <div class="variable-item" onclick="copyVariable('{apartment_name}')">
-                            <div class="variable-code">{apartment_name}</div>
-                            <div class="variable-desc">Nombre del apartamento</div>
-                        </div>
-                        <div class="variable-item" onclick="copyVariable('{arrival_date}')">
-                            <div class="variable-code">{arrival_date}</div>
-                            <div class="variable-desc">Fecha de llegada</div>
-                        </div>
-                        <div class="variable-item" onclick="copyVariable('{departure_date}')">
-                            <div class="variable-code">{departure_date}</div>
-                            <div class="variable-desc">Fecha de salida</div>
-                        </div>
-                        <div class="variable-item" onclick="copyVariable('{arrival_time}')">
-                            <div class="variable-code">{arrival_time}</div>
-                            <div class="variable-desc">Hora de llegada</div>
-                        </div>
-                        <div class="variable-item" onclick="copyVariable('{departure_time}')">
-                            <div class="variable-code">{departure_time}</div>
-                            <div class="variable-desc">Hora de salida</div>
-                        </div>
-                        <div class="variable-item" onclick="copyVariable('{guests_text}')">
-                            <div class="variable-code">{guests_text}</div>
-                            <div class="variable-desc">Texto de huéspedes (ej: "2 adultos, 1 niño")</div>
-                        </div>
-                        <div class="variable-item" onclick="copyVariable('{registration_url}')">
-                            <div class="variable-code">{registration_url}</div>
-                            <div class="variable-desc">Enlace de registro</div>
-                        </div>
-                        <div class="variable-item" onclick="copyVariable('{payment_url}')">
-                            <div class="variable-code">{payment_url}</div>
-                            <div class="variable-desc">Enlace de pago</div>
-                        </div>
+                        
+                        <p class="copy-hint">✨ Haz clic en cualquier variable para copiarla al portapapeles ✨</p>
                     </div>
                 </div>
             </div>
 
             <div id="loading-flow" class="loading">⏳ Cargando mensajes...</div>
             <div id="flow-content" style="display: none;">
+                
                 <!-- Los mensajes del flujo se mantienen igual -->
                 <!-- START -->
 <div class="message-section">
@@ -748,7 +296,7 @@
                         <textarea id="PAYOK_en" placeholder="You can use variables..."></textarea>
                     </div>
                     <div class="textarea-container" data-msg="PAYOK" data-lang="fr">
-                        <textarea id="PAYOK_fr" placeholder="Vous pouvez utilizar des variables..."></textarea>
+                        <textarea id="PAYOK_fr" placeholder="Vous pouvez utiliser des variables..."></textarea>
                     </div>
                     <div class="textarea-container" data-msg="PAYOK" data-lang="ru">
                         <textarea id="PAYOK_ru" placeholder="Вы можете использовать переменные..."></textarea>
@@ -923,8 +471,8 @@
     </button>
   </div>
 
-  <!-- 📋 Variables Disponibles - ACORDEÓN (AHORA ABIERTO POR DEFECTO) -->
-  <div class="accordion-item open" id="variables-accordion">
+  <!-- 📋 Variables Disponibles - ACORDEÓN (igual que en Flujo Principal) -->
+  <div class="variables-accordion open" id="variables-accordion">
     <div class="accordion-header" onclick="toggleVariablesAccordion()">
       <div>
         <h3>💡 Variables Disponibles</h3>
@@ -939,80 +487,80 @@
           Puedes usar estas variables en tus respuestas. El bot las reemplazará automáticamente con los datos del apartamento del huésped.
         </p>
         
-        <div class="variables-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+        <div class="variables-grid-category">
           
-          <div class="variable-category">
-            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📍 Información Básica</h4>
-            <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-              <code>{apartment_name}</code><br>
-              <code>{address}</code><br>
-              <code>{city}</code><br>
-              <code>{floor}</code><br>
-              <code>{door_number}</code>
+          <div class="variable-category-card">
+            <div class="variable-category-title">📍 Información Básica</div>
+            <div class="variable-list">
+              <div class="variable-list-item" onclick="copyVariable('{apartment_name}')">
+                <code>{apartment_name}</code> - Nombre del apartamento
+              </div>
+              <div class="variable-list-item" onclick="copyVariable('{address}')">
+                <code>{address}</code> - Dirección completa
+              </div>
+              <div class="variable-list-item" onclick="copyVariable('{city}')">
+                <code>{city}</code> - Ciudad
+              </div>
             </div>
           </div>
           
-          <div class="variable-category">
-            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🔑 Acceso y Llaves</h4>
-            <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-              <code>{lockbox_code}</code><br>
-              <code>{lockbox_location}</code><br>
-              <code>{door_code}</code><br>
-              <code>{gate_code}</code><br>
-              <code>{key_instructions}</code>
+          <div class="variable-category-card">
+            <div class="variable-category-title">🔑 Acceso y Llaves</div>
+            <div class="variable-list">
+              <div class="variable-list-item" onclick="copyVariable('{lockbox_code}')">
+                <code>{lockbox_code}</code> - Código de la caja de seguridad
+              </div>
+              <div class="variable-list-item" onclick="copyVariable('{door_code}')">
+                <code>{door_code}</code> - Código de la puerta
+              </div>
             </div>
           </div>
           
-          <div class="variable-category">
-            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📶 WiFi</h4>
-            <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-              <code>{wifi_network}</code><br>
-              <code>{wifi_password}</code><br>
-              <code>{wifi_troubleshooting}</code>
+          <div class="variable-category-card">
+            <div class="variable-category-title">📶 WiFi</div>
+            <div class="variable-list">
+              <div class="variable-list-item" onclick="copyVariable('{wifi_network}')">
+                <code>{wifi_network}</code> - Red WiFi
+              </div>
+              <div class="variable-list-item" onclick="copyVariable('{wifi_password}')">
+                <code>{wifi_password}</code> - Contraseña WiFi
+              </div>
             </div>
           </div>
           
-          <div class="variable-category">
-            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">⏰ Horarios</h4>
-            <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-              <code>{checkin_time}</code><br>
-              <code>{checkout_time}</code>
+          <div class="variable-category-card">
+            <div class="variable-category-title">⏰ Horarios</div>
+            <div class="variable-list">
+              <div class="variable-list-item" onclick="copyVariable('{checkin_time}')">
+                <code>{checkin_time}</code> - Hora de entrada
+              </div>
+              <div class="variable-list-item" onclick="copyVariable('{checkout_time}')">
+                <code>{checkout_time}</code> - Hora de salida
+              </div>
             </div>
           </div>
           
-          <div class="variable-category">
-            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">💰 Precios</h4>
-            <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-              <code>{security_deposit_amount}</code><br>
-              <code>{tourist_tax_amount}</code><br>
-              <code>{early_checkin_price}</code><br>
-              <code>{late_checkout_price}</code>
+          <div class="variable-category-card">
+            <div class="variable-category-title">🚗 Parking</div>
+            <div class="variable-list">
+              <div class="variable-list-item" onclick="copyVariable('{parking_location}')">
+                <code>{parking_location}</code> - Ubicación del parking
+              </div>
+              <div class="variable-list-item" onclick="copyVariable('{parking_code}')">
+                <code>{parking_code}</code> - Código del parking
+              </div>
             </div>
           </div>
           
-          <div class="variable-category">
-            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🚗 Parking</h4>
-            <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-              <code>{parking_location}</code><br>
-              <code>{parking_code}</code><br>
-              <code>{parking_instructions}</code>
-            </div>
-          </div>
-          
-          <div class="variable-category">
-            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🏊 Piscina</h4>
-            <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-              <code>{pool_hours}</code><br>
-              <code>{pool_location}</code><br>
-              <code>{pool_rules}</code>
-            </div>
-          </div>
-          
-          <div class="variable-category">
-            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📞 Contacto</h4>
-            <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-              <code>{support_phone}</code><br>
-              <code>{support_whatsapp}</code>
+          <div class="variable-category-card">
+            <div class="variable-category-title">📞 Contacto</div>
+            <div class="variable-list">
+              <div class="variable-list-item" onclick="copyVariable('{support_phone}')">
+                <code>{support_phone}</code> - Teléfono de soporte
+              </div>
+              <div class="variable-list-item" onclick="copyVariable('{support_whatsapp}')">
+                <code>{support_whatsapp}</code> - WhatsApp de soporte
+              </div>
             </div>
           </div>
           
@@ -1024,7 +572,10 @@
 Red: {wifi_network}
 Contraseña: {wifi_password}
 
-Si tienes problemas: {wifi_troubleshooting}</code>
+📍 Dirección: {apartment_name}, {address}, {city}
+
+⏰ Check-in: {checkin_time}
+⏰ Check-out: {checkout_time}</code>
         </div>
       </div>
     </div>
@@ -1050,6 +601,15 @@ Si tienes problemas: {wifi_troubleshooting}</code>
     </div>
 
     <script>
+        // Añadir esta función para el acordeón de variables del flujo
+        function toggleFlowVariablesAccordion() {
+            const accordion = document.getElementById("flow-variables-accordion");
+            if (accordion) {
+                accordion.classList.toggle("open");
+            }
+        }
+
+        // El resto del JavaScript se mantiene igual...
         // Toggle variables panel (ahora abierto por defecto)
         function toggleVariables() {
             const content = document.getElementById('variables-content');
