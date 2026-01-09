@@ -6440,40 +6440,8 @@ app.get("/staff/my-cleanings", requireAuth, requireRole('STAFF_CLEANING'), async
     `));
   }
 });
-// ===================== ADMIN: SET VISIBILITY =====================
-app.post("/staff/checkins/:id/lock", async (req, res) => {
-  try {
-    const checkinId = req.params.id;
-    const { lock_code, clear } = req.body;
 
-    if (clear === "1") {
-      // Clear lock code
-      await pool.query(
-        `
-        UPDATE checkins
-        SET lock_code = NULL, lock_visible = false
-        WHERE id = $1
-        `,
-        [checkinId]
-      );
-    } else {
-      // Update lock code
-      await pool.query(
-        `
-        UPDATE checkins
-        SET lock_code = $1
-        WHERE id = $2
-        `,
-        [lock_code || null, checkinId]
-      );
-    }
 
-    return safeRedirect(res, req.body.returnTo || req.headers.referer);
-  } catch (e) {
-    console.error("Error saving lock code:", e);
-    return res.status(500).send("Error saving lock code");
-  }
-});
 // ===================== ADMIN: VISIBILITY TOGGLE =====================
 
 app.post("/staff/checkins/:id/visibility", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
@@ -9332,6 +9300,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
