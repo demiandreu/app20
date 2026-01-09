@@ -1307,9 +1307,9 @@ function showAlert(tabName, message, type) {
             const messages = ['START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE', 'ASK_RULES', 'EARLY_CHECKIN_NOTICE', 'LATE_CHECKOUT_NOTICE', 'CONFIRMATION'].map(key => ({
                 message_key: key,
                 content_es: document.getElementById(`${key}_es`).value,
-                content_en: document.getElementById(`${key}_en`).value,
-                content_fr: document.getElementById(`${key}_fr`).value,
-                content_ru: document.getElementById(`${key}_ru`).value
+content_en: document.getElementById(`${key}_en`).value,
+content_fr: document.getElementById(`${key}_fr`).value,
+content_ru: document.getElementById(`${key}_ru`).value
             }));
 
             try {
