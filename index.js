@@ -6099,18 +6099,36 @@ function renderTable(rows, mode) {
           ${escapeHtml(r.room_name || r.apartment_name || "Sin nombre")}
         </td>
         
-        <!-- 7. Código - AHORA CON data-checkin-id -->
+        <!-- 7. Código - CON BOTONES INDIVIDUALES -->
         <td>
-          <input
-            type="text"
-            class="lock-input"
-            data-checkin-id="${r.id}"
-            value="${escapeHtml(r.lock_code || "")}"
-            placeholder="0000"
-            inputmode="numeric"
-            pattern="[0-9]*"
-            style="width:80px; padding:6px 8px; border:1px solid #d1d5db; border-radius:6px; font-family:monospace;"
-          />
+          <form method="POST" action="/staff/checkins/${r.id}/lock" class="lock-form">
+            <input type="hidden" name="returnTo" value="${escapeHtml(req.originalUrl)}#checkin-${r.id}" />
+            
+            <input
+              type="text"
+              class="lock-input"
+              name="lock_code"
+              value="${escapeHtml(r.lock_code || "")}"
+              placeholder="0000"
+              inputmode="numeric"
+              pattern="[0-9]*"
+            />
+
+            <div class="lock-actions">
+              <button type="submit" class="btn-small btn-primary">
+                Guardar
+              </button>
+
+              <button
+                type="submit"
+                name="clear"
+                value="1"
+                class="btn-small btn-danger"
+              >
+                Clear
+              </button>
+            </div>
+          </form>
         </td>
         
         <!-- 8. Visible -->
@@ -6140,16 +6158,16 @@ function renderTable(rows, mode) {
     `;
   }).join("") : `<tr><td colspan="10" class="muted">No hay registros</td></tr>`;
 
-  // 🆕 BOTÓN GUARDAR TODOS (solo si hay filas)
-  const saveAllButton = rows.length ? `
-    <div style="margin-top:16px; padding:16px; background:#f9fafb; border-radius:8px; display:flex; gap:12px; align-items:center; justify-content:space-between;">
+  // 🆕 BOTÓN GUARDAR TODOS - SOLO PARA LLEGADAS (mode === "arrivals")
+  const saveAllButton = (rows.length && mode === "arrivals") ? `
+    <div style="margin-top:16px; padding:16px; background:#f9fafb; border-radius:8px; display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
       <div>
         <p style="margin:0; font-weight:600;">💾 Guardar todos los códigos</p>
-        <p style="margin:4px 0 0; font-size:13px; color:#6b7280;">Guarda todos los códigos modificados en esta tabla de una vez</p>
+        <p style="margin:4px 0 0; font-size:13px; color:#6b7280;">Guarda todos los códigos de esta tabla en una sola acción</p>
       </div>
       <button 
         type="button" 
-        onclick="saveAllLockCodes('${mode}')"
+        onclick="saveAllLockCodes()"
         class="btn-primary"
         style="white-space:nowrap; padding:12px 24px;">
         💾 Guardar Todos
@@ -6189,16 +6207,15 @@ function renderTable(rows, mode) {
                  renderTable(departures, "departures") +
                  `
 
-                <script>
+                 <script>
                  // ============================================
-                 // 💾 GUARDAR TODOS LOS CÓDIGOS
+                 // 💾 GUARDAR TODOS LOS CÓDIGOS (OPCIONAL)
                  // ============================================
                  
-                 async function saveAllLockCodes(tableMode) {
-                   // Encontrar todos los inputs de código en la tabla actual
-                   const inputs = document.querySelectorAll('.lock-input[data-checkin-id]');
+                 async function saveAllLockCodes() {
+                   const forms = document.querySelectorAll('.lock-form');
                    
-                   if (inputs.length === 0) {
+                   if (forms.length === 0) {
                      alert('No hay códigos para guardar');
                      return;
                    }
@@ -6211,41 +6228,37 @@ function renderTable(rows, mode) {
                    let saved = 0;
                    let errors = 0;
                    
-                   // Guardar cada código uno por uno
-                   for (const input of inputs) {
-                     const checkinId = input.getAttribute('data-checkin-id');
-                     const lockCode = input.value.trim();
+                   for (const form of forms) {
+                     const input = form.querySelector('.lock-input');
+                     const lockCode = input ? input.value.trim() : '';
                      
                      try {
-                       const formData = new FormData();
-                       formData.append('lock_code', lockCode);
-                       formData.append('returnTo', window.location.pathname + window.location.search);
+                       const formData = new FormData(form);
                        
-                       const response = await fetch(\`/staff/checkins/\${checkinId}/lock\`, {
+                       const response = await fetch(form.action, {
                          method: 'POST',
                          body: formData
                        });
                        
                        if (response.ok) {
                          saved++;
-                         // Feedback visual
-                         input.style.background = '#d1fae5';
-                         setTimeout(() => { input.style.background = ''; }, 500);
+                         if (input) {
+                           input.style.background = '#d1fae5';
+                           setTimeout(() => { input.style.background = ''; }, 500);
+                         }
                        } else {
                          errors++;
-                         input.style.background = '#fee2e2';
+                         if (input) input.style.background = '#fee2e2';
                        }
                      } catch (error) {
                        console.error('Error saving code:', error);
                        errors++;
-                       input.style.background = '#fee2e2';
+                       if (input) input.style.background = '#fee2e2';
                      }
                      
-                     // Pequeña pausa entre requests
                      await new Promise(resolve => setTimeout(resolve, 100));
                    }
                    
-                   // Mostrar resultado
                    button.disabled = false;
                    button.textContent = originalText;
                    
@@ -6256,7 +6269,6 @@ function renderTable(rows, mode) {
                    }
                  }
                  
-                 // Toast notification
                  function showToast(message, type = 'success') {
                    const toast = document.createElement('div');
                    toast.textContent = message;
@@ -6278,30 +6290,11 @@ function renderTable(rows, mode) {
                      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
                      z-index: 9999;
                      font-weight: 600;
-                     animation: slideIn 0.3s ease;
                    \`;
                    
                    document.body.appendChild(toast);
-                   
-                   setTimeout(() => {
-                     toast.style.animation = 'slideOut 0.3s ease';
-                     setTimeout(() => toast.remove(), 300);
-                   }, 3000);
+                   setTimeout(() => toast.remove(), 3000);
                  }
-                 
-                 // Animaciones CSS
-                 const style = document.createElement('style');
-                 style.textContent = \`
-                   @keyframes slideIn {
-                     from { transform: translateX(100%); opacity: 0; }
-                     to { transform: translateX(0); opacity: 1; }
-                   }
-                   @keyframes slideOut {
-                     from { transform: translateX(0); opacity: 1; }
-                     to { transform: translateX(100%); opacity: 0; }
-                   }
-                 \`;
-                 document.head.appendChild(style);
                  </script>
                  
                  `;
@@ -9472,6 +9465,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
