@@ -1563,6 +1563,23 @@ ${keywordsArray.length > 2 ? `<span class="keyword-tag">+${keywordsArray.length 
       </div>
     </div>
     `;
+      // Renderizar checkboxes de apartamentos
+setTimeout(() => {
+  const container = document.getElementById(`apartments_${index}`);
+  if (container && availableApartments.length > 0) {
+    const selectedApts = reply.apartment_ids || [];
+    
+    container.innerHTML = availableApartments.map(apt => `
+      <label style="display: flex; align-items: center; gap: 6px; padding: 6px; background: #f9fafb; border-radius: 6px; cursor: pointer;">
+        <input type="checkbox" 
+               value="${apt.id}" 
+               ${selectedApts.includes(String(apt.id)) ? 'checked' : ''}
+               onchange="updateApartmentSelection(${index}, this)">
+        <span style="font-size: 13px;">${apt.apartment_name || apt.beds24_room_id}</span>
+      </label>
+    `).join('');
+  }
+}, 100);
   }).join('');
   
   console.log('✅ Renderizado completado');
@@ -1625,7 +1642,29 @@ async function deleteReply(index) {
       return;
     }
   }
+
+
+// Actualizar selección de apartamentos
+function updateApartmentSelection(index, checkbox) {
+  if (!autoReplies[index].apartment_ids) {
+    autoReplies[index].apartment_ids = [];
+  }
   
+  const aptId = checkbox.value;
+  
+  if (checkbox.checked) {
+    // Agregar si no existe
+    if (!autoReplies[index].apartment_ids.includes(aptId)) {
+      autoReplies[index].apartment_ids.push(aptId);
+    }
+  } else {
+    // Quitar
+    autoReplies[index].apartment_ids = autoReplies[index].apartment_ids.filter(id => id !== aptId);
+  }
+  
+  console.log(`Apartamentos para reply ${index}:`, autoReplies[index].apartment_ids);
+}
+    
   // Eliminar del array local
   autoReplies.splice(index, 1);
   renderAutoReplies();
