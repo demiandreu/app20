@@ -8246,6 +8246,31 @@ app.get("/api/whatsapp/auto-replies", async (req, res) => {
   }
 });
 
+
+// Listar apartamentos disponibles
+app.get("/api/apartments/list", requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT id, beds24_room_id, apartment_name, is_active
+      FROM beds24_rooms
+      WHERE is_active = true
+      ORDER BY apartment_name ASC
+    `);
+    
+    res.json({
+      success: true,
+      apartments: result.rows
+    });
+  } catch (error) {
+    console.error('Error loading apartments:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+
 app.post("/api/whatsapp/auto-replies", async (req, res) => {
   try {
     let { category, keywords, response_es, response_en, response_fr, response_ru, active, priority } = req.body;
@@ -9339,6 +9364,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
