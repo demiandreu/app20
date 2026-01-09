@@ -2718,8 +2718,6 @@ app.get("/manager/invoices/export", requireAuth, requireRole('MANAGER'), async (
     const monthName = monthNames[selectedMonth - 1];
 
   // CABECERA
-const apartmentName = selectedApartment === 'all' ? 'Todos los Apartamentos' : selectedApartment;
-
 worksheet.mergeCells('A1:M1');
 const titleCell = worksheet.getCell('A1');
 titleCell.value = `Reporte - ${apartmentName} - ${monthName} ${selectedYear}`;
@@ -9033,6 +9031,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
