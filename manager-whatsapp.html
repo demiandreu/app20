@@ -1403,6 +1403,26 @@ content_ru: document.getElementById(`${key}_ru`).value
 
         // Load initial data
         loadFlowMessages();
+        loadAutoReplies();
+
+
+
+        // Cargar lista de apartamentos disponibles
+let availableApartments = [];
+
+async function loadApartments() {
+  try {
+    const response = await fetch('/api/apartments/list');
+    const data = await response.json();
+    
+    if (data.success) {
+      availableApartments = data.apartments;
+      console.log('✅ Apartamentos cargados:', availableApartments.length);
+    }
+  } catch (error) {
+    console.error('Error cargando apartamentos:', error);
+  }
+}
 
 // ============================================
 // 🤖 AUTO-REPLIES MANAGEMENT
@@ -1524,6 +1544,14 @@ ${keywordsArray.length > 2 ? `<span class="keyword-tag">+${keywordsArray.length 
 
         <div class="reply-settings">
           <label>
+          <div style="margin-bottom: 16px;">
+  <label style="font-weight: 600; display: block; margin-bottom: 8px;">
+    🏢 Apartamentos donde aplicar esta respuesta:
+  </label>
+  <div id="apartments_${index}" class="apartments-checkboxes" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px;">
+    <!-- Se llenarán dinámicamente con JavaScript -->
+  </div>
+</div>
             Keywords (separados por coma):
             <textarea id="keywords_${index}" 
                       placeholder="wifi, contraseña, password, internet, red"
