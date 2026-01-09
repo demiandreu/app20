@@ -2606,7 +2606,7 @@ const bookings = result.rows.map(row => {
     console.error("Error en /manager/invoices:", e);
     res.status(500).send(renderPage("Error", `
       <div class="card">
-        <h1 style="color:#991b1b;">❌ Error al cargar facturas</h1>
+        <h1 style="color:#991b1b;">❌ Error al cargar reporte</h1>
         <p>${escapeHtml(e.message || String(e))}</p>
         <p><a href="/manager/invoices" class="btn-link">Recargar</a></p>
       </div>
@@ -2717,15 +2717,15 @@ app.get("/manager/invoices/export", requireAuth, requireRole('MANAGER'), async (
     const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
     const monthName = monthNames[selectedMonth - 1];
 
-    // CABECERA
-    worksheet.mergeCells('A1:M1');
-    const titleCell = worksheet.getCell('A1');
-    titleCell.value = selectedApartment === 'all' 
-      ? `Facturas - Todos los Apartamentos - ${monthName} ${selectedYear}`
-      : `Facturas - ${selectedApartment} - ${monthName} ${selectedYear}`;
-    titleCell.font = { size: 16, bold: true };
-    titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
-    worksheet.getRow(1).height = 30;
+  // CABECERA
+const apartmentName = selectedApartment === 'all' ? 'Todos los Apartamentos' : selectedApartment;
+
+worksheet.mergeCells('A1:M1');
+const titleCell = worksheet.getCell('A1');
+titleCell.value = `Reporte - ${apartmentName} - ${monthName} ${selectedYear}`;
+titleCell.font = { size: 16, bold: true };
+titleCell.alignment = { horizontal: 'left', vertical: 'middle' };
+worksheet.getRow(1).height = 30;
 
     // Espacio
     worksheet.addRow([]);
@@ -2750,7 +2750,7 @@ app.get("/manager/invoices/export", requireAuth, requireRole('MANAGER'), async (
     headerRow.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FF1e40af' }
+      fgColor: { argb: 'FF17375E' }
     };
     headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
     headerRow.height = 25;
@@ -2798,7 +2798,7 @@ app.get("/manager/invoices/export", requireAuth, requireRole('MANAGER'), async (
     totalRow.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FF17375E' }
+      fgColor: { argb: 'FFFFFFFF' }
     };
 
     // FORMATO DE COLUMNAS
@@ -9033,6 +9033,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
