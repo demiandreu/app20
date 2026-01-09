@@ -5996,7 +5996,8 @@ return `
                  `<div style="height:24px;"></div>` + 
                  renderTable(departures, "departures") +
                  `
-                           <script>
+
+                  <script>
                  // ============================================
                  // 🚀 AJAX: Guardar sin recargar página
                  // ============================================
@@ -6020,50 +6021,47 @@ return `
                    
                    fetch(form.action, {
                      method: 'POST',
-                     headers: {
-                       'X-Requested-With': 'XMLHttpRequest' // ← Indicar que es AJAX
-                     },
                      body: formData
                    })
-                   .then(response => response.json()) // ← Ahora esperamos JSON
-                   .then(data => {
-                     if (!data.success) {
-                       throw new Error('Server error');
-                     }
-                     
+                   .then(response => {
+                     // ✅ Aceptar cualquier respuesta (HTML o JSON)
                      window.scrollTo(0, scrollPos);
+                     return response; // No parseamos, solo restauramos scroll
+                   })
+                   .then(() => {
+                     // ✅ Actualizar UI manualmente sin esperar respuesta
                      
-                     // Si es limpieza
+                     // Si es limpieza - simplemente toggle visual
                      if (isCleanForm) {
                        const btn = form.querySelector('.clean-btn');
-                       if (data.newClean) {
-                         btn.classList.remove('pill-no');
-                         btn.classList.add('pill-yes');
-                         btn.textContent = '✓';
-                       } else {
+                       if (btn.classList.contains('pill-yes')) {
                          btn.classList.remove('pill-yes');
                          btn.classList.add('pill-no');
                          btn.textContent = '';
+                       } else {
+                         btn.classList.remove('pill-no');
+                         btn.classList.add('pill-yes');
+                         btn.textContent = '✓';
                        }
                      }
                      
-                     // Si es visibilidad
+                     // Si es visibilidad - toggle visual
                      if (isVisForm) {
                        const pill = form.querySelector('.pill');
                        const btn = form.querySelector('button[type="submit"]');
                        
-                       if (data.newVisible) {
-                         pill.classList.remove('pill-no');
-                         pill.classList.add('pill-yes');
-                         pill.textContent = 'Sí';
-                         btn.textContent = 'Ocultar';
-                         btn.classList.add('btn-ghost');
-                       } else {
+                       if (pill.classList.contains('pill-yes')) {
                          pill.classList.remove('pill-yes');
                          pill.classList.add('pill-no');
                          pill.textContent = 'No';
                          btn.textContent = 'Mostrar';
                          btn.classList.remove('btn-ghost');
+                       } else {
+                         pill.classList.remove('pill-no');
+                         pill.classList.add('pill-yes');
+                         pill.textContent = 'Sí';
+                         btn.textContent = 'Ocultar';
+                         btn.classList.add('btn-ghost');
                        }
                      }
                      
@@ -6092,6 +6090,10 @@ return `
                    .catch(error => {
                      console.error('Error:', error);
                      showToast('❌ Error al guardar', 'error');
+                     // En caso de error, recargar la página
+                     setTimeout(() => {
+                       window.location.reload();
+                     }, 1000);
                    });
                  });
                  
@@ -6130,6 +6132,7 @@ return `
                  \`;
                  document.head.appendChild(style);
                  </script>
+                 
                  `;
     
     res.send(renderPage("Staff · Llegadas y Salidas", pageHtml, 'staff'));
@@ -9298,6 +9301,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
