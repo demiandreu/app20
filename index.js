@@ -143,12 +143,32 @@ Willkommen! 😊`
   }
 }
 
-
-
-
 // ✅ SEGUNDO: Crear la app
 const app = express();
 app.set('trust proxy', 1);
+
+// ===================== STAFF: GUARDAR/BORRAR CÓDIGO =====================
+app.post("/staff/checkins/:id/lock", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { lock_code, clear, returnTo } = req.body;
+    
+    // Si presionó "Clear", borrar código
+    // Si no, guardar el código
+    const newCode = clear ? null : (lock_code || null);
+    
+    await pool.query(
+      `UPDATE checkins SET lock_code = $1 WHERE id = $2`,
+      [newCode, id]
+    );
+    
+    return safeRedirect(res, returnTo || req.headers.referer || "/staff/checkins");
+    
+  } catch (e) {
+    console.error("Error en lock:", e);
+    res.status(500).send("Error");
+  }
+});
 
 app.post("/staff/checkins/:id/visibility", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
   try {
@@ -201,7 +221,7 @@ app.post("/staff/checkins/:id/visibility", requireAuth, requireRole('CLEANING_MA
     }
     
     // Redirect normal
-    return res.redirect(returnTo || "/staff/checkins");
+    return safeRedirect(res, returnTo || req.headers.referer || "/staff/checkins");
     
   } catch (e) {
     console.error("Error en visibility:", e);
@@ -301,9 +321,7 @@ async function getCurrentUser(req) {
   }
 }
 
-// ============================================
-// MIDDLEWARE: Verificar autenticación
-// ============================================
+
 
 // ============================================
 // 🛡️ MIDDLEWARE: AUTORIZACIÓN POR ROL
@@ -6442,110 +6460,6 @@ app.get("/staff/my-cleanings", requireAuth, requireRole('STAFF_CLEANING'), async
 });
 
 
-// ===================== ADMIN: VISIBILITY TOGGLE =====================
-
-app.post("/staff/checkins/:id/visibility", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { returnTo } = req.body;
-    
-    // Obtener estado actual
-    const current = await pool.query(
-      `SELECT lock_visible FROM checkins WHERE id = $1`,
-      [id]
-    );
-    
-    if (current.rows.length === 0) {
-      return res.status(404).send("Not found");
-    }
-    
-    const newVisible = !current.rows[0].lock_visible;
-    
-    // Actualizar
-    await pool.query(
-      `UPDATE checkins SET lock_visible = $1 WHERE id = $2`,
-      [newVisible, id]
-    );
-    
-    // Redirect normal
-    return res.redirect(returnTo || "/staff/checkins");
-    
-  } catch (e) {
-    console.error("Error en visibility:", e);
-    res.status(500).send("Error");
-  }
-});
-
-// Ruta de código - MODIFICAR para soportar AJAX
-app.post("/staff/checkins/:id/lock", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { lock_code, clear, returnTo } = req.body;
-    
-    const newCode = clear ? null : (lock_code || null);
-    
-    await pool.query(
-      `UPDATE checkins SET lock_code = $1 WHERE id = $2`,
-      [newCode, id]
-    );
-    
-    // ✅ Si es request AJAX, devolver JSON
-    if (req.headers['x-requested-with'] === 'XMLHttpRequest' || 
-        req.headers['accept']?.includes('application/json')) {
-      return res.json({ success: true, newCode });
-    }
-    
-    // ❌ Si NO es AJAX, hacer redirect normal
-    return res.redirect(returnTo || "/staff/checkins");
-  } catch (e) {
-    console.error("Error en lock:", e);
-    res.status(500).send("Error");
-  }
-});
-
-// ===================== MANAGER SETTINGS =====================
-
-app.post("/staff/checkins/:id/clean", async (req, res) => {
-  try {
-    const checkinId = req.params.id;
-
-    await pool.query(
-      `
-      UPDATE checkins
-      SET clean_ok = NOT COALESCE(clean_ok, false)
-      WHERE id = $1
-      `,
-      [checkinId]
-    );
-
-    return safeRedirect(res, req.body.returnTo || req.headers.referer);
-  } catch (e) {
-    console.error("Error toggling clean status:", e);
-    return res.status(500).send("Error updating clean status");
-  }
-});
-
-// ===================== ADMIN: DELETE CHECKIN =====================
-
-app.post("/staff/checkins/:id/delete", async (req, res) => {
-  try {
-    const checkinId = req.params.id;
-
-    await pool.query(
-      `
-      DELETE FROM checkins
-      WHERE id = $1
-      `,
-      [checkinId]
-    );
-
-    return safeRedirect(res, req.body.returnTo || req.headers.referer);
-  } catch (e) {
-    console.error("Error deleting checkin:", e);
-    return res.status(500).send("Error deleting checkin");
-  }
-});
-
 // ============================================
 // 🔄 SYNC: Página con formulario
 // ============================================
@@ -9300,6 +9214,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
