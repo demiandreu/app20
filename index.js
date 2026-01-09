@@ -2428,29 +2428,14 @@ const bookings = result.rows.map(row => {
     platform = 'direct';
   }
 
-// ===== DEBUG ESTRUCTURA COMPLETA =====
-  if (row.full_name === 'Francisco Lopez Ortiz') {
-    console.log("=== ESTRUCTURA COMPLETA Francisco ===");
-    console.log("rawData keys:", Object.keys(rawData));
-    console.log("rawData.booking exists:", !!rawData.booking);
-    console.log("rawData.invoiceItems exists:", !!rawData.invoiceItems);
-    
-    if (rawData.booking) {
-      console.log("rawData.booking.invoiceItems exists:", !!rawData.booking.invoiceItems);
-      console.log("rawData.booking.invoiceItems:", JSON.stringify(rawData.booking.invoiceItems, null, 2));
-    }
-    
-    console.log("Full rawData:", JSON.stringify(rawData, null, 2));
-  }
-  // ===== FIN DEBUG =====
-
   // Extraer precio según plataforma
   let price = 0;
   
   if (platform === 'booking') {
-    // Para Booking.com: usar el First Invoice Item (subType 8)
-    const invoiceItems = raw.invoiceItems || [];
+    // ⚠️ IMPORTANTE: invoiceItems está en rawData (raíz), NO en raw (booking)
+    const invoiceItems = rawData.invoiceItems || [];
     const roomItem = invoiceItems.find(item => item.subType === 8);
+    
     if (roomItem) {
       price = roomItem.amount || 0;
     } else {
@@ -2672,63 +2657,66 @@ app.get("/manager/invoices/export", requireAuth, requireRole('MANAGER'), async (
     const result = await pool.query(query, params);
 
     // Procesar bookings
-    const bookings = result.rows.map(row => {
-      const rawData = row.beds24_raw || {};
-      const raw = rawData.booking || rawData;
-      
-      const channel = (raw.channel || '').toLowerCase();
-      const referer = raw.referer || '';
-      let platform = 'unknown';
-      
-      if (channel === 'booking' || referer.includes('Booking')) {
-        platform = 'booking';
-      } else if (channel === 'airbnb' || referer.includes('Airbnb')) {
-        platform = 'airbnb';
-      } else if (referer.includes('iframe') || channel === 'iframe') {
-        platform = 'direct';
-      }
+    // Procesar bookings
+const bookings = result.rows.map(row => {
+  const rawData = row.beds24_raw || {};
+  const raw = rawData.booking || rawData;
+  
+  const channel = (raw.channel || '').toLowerCase();
+  const referer = raw.referer || '';
+  let platform = 'unknown';
+  
+  if (channel === 'booking' || referer.includes('Booking')) {
+    platform = 'booking';
+  } else if (channel === 'airbnb' || referer.includes('Airbnb')) {
+    platform = 'airbnb';
+  } else if (referer.includes('iframe') || channel === 'iframe') {
+    platform = 'direct';
+  }
 
-      let price = 0;
-      let firstInvoiceItem = 0;
-      
-      if (platform === 'booking') {
-        const invoiceItems = raw.invoiceItems || [];
-        const roomItem = invoiceItems.find(item => item.subType === 8);
-        if (roomItem) {
-          firstInvoiceItem = roomItem.amount || 0;
-          price = firstInvoiceItem;
-        } else {
-          price = raw.price || 0;
-        }
-      } else {
-        price = raw.price || 0;
-      }
+  // Extraer precio según plataforma
+  let price = 0;
+  
+  if (platform === 'booking') {
+    // ⚠️ IMPORTANTE: invoiceItems está en rawData (raíz), NO en raw (booking)
+    const invoiceItems = rawData.invoiceItems || [];
+    const roomItem = invoiceItems.find(item => item.subType === 8);
+    
+    if (roomItem) {
+      price = roomItem.amount || 0;
+    } else {
+      // Fallback si no hay invoiceItems
+      price = raw.price || 0;
+    }
+  } else {
+    // Para Airbnb y otros: usar el precio normal
+    price = raw.price || 0;
+  }
 
-      const commission = raw.commission || 0;
-      const bookingIva = platform === 'booking' ? (price * 0.0472) : 0;
-      const rentalConnect = price * 0.30;
-      const income = price - commission - bookingIva - rentalConnect;
+  const commission = raw.commission || 0;
+  const bookingIva = platform === 'booking' ? (price * 0.0472) : 0;
+  const rentalConnect = price * 0.30;
+  const income = price - commission - bookingIva - rentalConnect;
 
-      const nights = row.departure_date && row.arrival_date
-        ? Math.ceil((new Date(row.departure_date) - new Date(row.arrival_date)) / (1000 * 60 * 60 * 24))
-        : 0;
+  const nights = row.departure_date && row.arrival_date
+    ? Math.ceil((new Date(row.departure_date) - new Date(row.arrival_date)) / (1000 * 60 * 60 * 24))
+    : 0;
 
-      return {
-        beds24_booking_id: row.beds24_booking_id,
-        full_name: row.full_name,
-        arrival_date: row.arrival_date,
-        departure_date: row.departure_date,
-        apartment_name: row.apartment_name,
-        platform: platform === 'booking' ? 'Booking' : platform === 'airbnb' ? 'Airbnb' : 'Directo',
-        nights,
-        price: parseFloat(price.toFixed(2)),
-        commission: parseFloat(commission.toFixed(2)),
-        bookingIva: parseFloat(bookingIva.toFixed(2)),
-        rentalConnect: parseFloat(rentalConnect.toFixed(2)),
-        income: parseFloat(income.toFixed(2))
-      };
-    });
-
+  return {
+    beds24_booking_id: row.beds24_booking_id,
+    full_name: row.full_name,
+    arrival_date: row.arrival_date,
+    departure_date: row.departure_date,
+    apartment_name: row.apartment_name,
+    platform: platform === 'booking' ? 'Booking' : platform === 'airbnb' ? 'Airbnb' : 'Directo',
+    nights,
+    price: parseFloat(price.toFixed(2)),
+    commission: parseFloat(commission.toFixed(2)),
+    bookingIva: parseFloat(bookingIva.toFixed(2)),
+    rentalConnect: parseFloat(rentalConnect.toFixed(2)),
+    income: parseFloat(income.toFixed(2))
+  };
+});
     // Crear Excel
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Reporte');
@@ -9042,6 +9030,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
