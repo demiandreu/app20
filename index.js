@@ -8490,6 +8490,17 @@ async function handleStartCommand(from, phoneNumber, startMatch, originalBody) {
     
     const checkin = result.rows[0];
     console.log(`✅ Booking encontrado: ${checkin.full_name} (ID: ${checkin.id})`);
+    if (checkin.cancelled) {
+  console.log(`❌ Reserva cancelada: ${bookingId}`);
+  const cancelledMessages = {
+    es: '❌ Esta reserva ha sido cancelada.\n\nSi tienes una nueva reserva, por favor usa el nuevo enlace de WhatsApp que recibiste.',
+    en: '❌ This booking has been cancelled.\n\nIf you have a new booking, please use the new WhatsApp link you received.',
+    fr: '❌ Cette réservation a été annulée.\n\nSi vous avez une nouvelle réservation, veuillez utiliser le nouveau lien WhatsApp que vous avez reçu.',
+    ru: '❌ Эта бронь отменена.\n\nЕсли у вас есть новое бронирование, пожалуйста, используйте новую ссылку WhatsApp, которую вы получили.'
+  };
+  await sendWhatsAppMessage(from, cancelledMessages[language] || cancelledMessages.es);
+  return;
+}
     
     // Actualizar idioma si se especificó
     if (startMatch[2]) {
@@ -9263,6 +9274,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
