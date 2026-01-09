@@ -2798,7 +2798,7 @@ app.get("/manager/invoices/export", requireAuth, requireRole('MANAGER'), async (
     totalRow.fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FFF3F4F6' }
+      fgColor: { argb: 'FF17375E' }
     };
 
     // FORMATO DE COLUMNAS
@@ -2818,7 +2818,7 @@ app.get("/manager/invoices/export", requireAuth, requireRole('MANAGER'), async (
     // Formato de moneda para columnas de dinero
     [8, 9, 10, 11, 12].forEach(col => {
       worksheet.getColumn(col).numFmt = '€#,##0.00';
-      worksheet.getColumn(col).alignment = { horizontal: 'right' };
+      worksheet.getColumn(col).alignment = { horizontal: 'left' };
     });
 
     // Generar archivo
@@ -2829,7 +2829,7 @@ app.get("/manager/invoices/export", requireAuth, requireRole('MANAGER'), async (
       : `Facturas_${selectedApartment.replace(/[^a-zA-Z0-9]/g, '_')}_${monthName}_${selectedYear}.xlsx`;
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Disposition', `attachment; filename="Reporte-${apartmentName}-${monthName}-${selectedYear}.xlsx"`);
     res.send(buffer);
 
   } catch (e) {
@@ -9032,6 +9032,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
