@@ -9039,7 +9039,7 @@ async function handleRulesAcceptance(from, checkin, body, language) {
   console.log(`📋 Procesando aceptación de normas: "${body}"`);
   
   // Validar si el usuario aceptó (en cualquier idioma)
-  const accepted = /^(acepto|accept|j'accepte|принимаю|si|yes|oui|да)$/i.test(body.trim());
+  const accepted = /^(acepto|accept|accepte|принимаю|si|yes|oui|да)$/i.test(body.trim());
   
   if (accepted) {
     console.log(`✅ Usuario aceptó las normas`);
@@ -9255,6 +9255,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
