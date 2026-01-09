@@ -7590,22 +7590,18 @@ app.get("/manager/whatsapp", requireAuth, requireRole('MANAGER'), (req, res) => 
     const htmlFilePath = path.join(__dirname, 'manager-whatsapp.html');
     const fileContent = fs.readFileSync(htmlFilePath, 'utf8');
     
-    // Extraer CSS
     const styleMatch = fileContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
     const styles = styleMatch ? `<style>${styleMatch[1]}</style>` : '';
     
-    // Extraer scripts
     const scriptMatches = fileContent.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi);
     let scripts = '';
     for (const match of scriptMatches) {
       scripts += `<script>${match[1]}</script>`;
     }
     
-    // Extraer body
     const bodyMatch = fileContent.match(/<body[^>]*>([\s\S]*)<\/body>/i);
     let bodyContent = bodyMatch ? bodyMatch[1] : fileContent;
     
-    // Eliminar el nav viejo del body si todavía está
     bodyContent = bodyContent.replace(/<nav class="nav-menu">[\s\S]*?<\/nav>/i, '');
     
     const html = styles + renderNavMenu('whatsapp', req) + bodyContent + scripts;
@@ -7613,7 +7609,7 @@ app.get("/manager/whatsapp", requireAuth, requireRole('MANAGER'), (req, res) => 
     res.send(renderPage("WhatsApp Manager", html));
   } catch (e) {
     console.error('Error loading manager-whatsapp.html:', e);
-   const html = renderNavMenu('whatsapp', req) + `
+    const html = renderNavMenu('whatsapp', req) + `
       <div class="card">
         <h1>❌ Error</h1>
         <p>No se pudo cargar el contenido de WhatsApp Manager.</p>
@@ -7659,53 +7655,8 @@ app.get("/api/whatsapp/flow-messages", async (req, res) => {
 
 
 
-// =============== MANAGER: WhatsApp Bot Configuration ===============
-app.get("/manager/whatsapp", (req, res) => {
-  res.sendFile(require('path').join(__dirname, 'manager-whatsapp.html'));
-});
 
-app.post("/api/whatsapp/flow-messages", async (req, res) => {
-  const { messages } = req.body;
-  
-  try {
-    console.log('📝 Guardando mensajes:', messages);
-    
-    for (const msg of messages) {
-      await pool.query(`
-        INSERT INTO whatsapp_flow_messages 
-          (message_key, content_es, content_en, content_fr, content_ru, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        ON CONFLICT (message_key) 
-        DO UPDATE SET
-          content_es = EXCLUDED.content_es,
-          content_en = EXCLUDED.content_en,
-          content_fr = EXCLUDED.content_fr,
-          content_ru = EXCLUDED.content_ru,
-          updated_at = CURRENT_TIMESTAMP
-      `, [
-        msg.message_key,
-        msg.content_es || '',
-        msg.content_en || '',
-        msg.content_fr || '',
-        msg.content_ru || ''
-      ]);
-      
-      console.log(`✅ Guardado ${msg.message_key}`);
-    }
-    
-    console.log('✅ Todos los mensajes guardados');
-    res.json({
-      success: true,
-      message: 'Messages updated successfully'
-    });
-  } catch (error) {
-    console.error('❌ Error saving flow messages:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
-  }
-});
+
 
 // ============================================
 // 📸 CLOUDINARY PHOTO UPLOAD
@@ -9255,6 +9206,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
