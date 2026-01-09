@@ -5996,106 +5996,95 @@ return `
                  `<div style="height:24px;"></div>` + 
                  renderTable(departures, "departures") +
                  `
-                              <script>
+                           <script>
                  // ============================================
                  // 🚀 AJAX: Guardar sin recargar página
                  // ============================================
                  
-                 // Interceptar SOLO los formularios específicos
                  document.addEventListener('submit', function(e) {
                    const form = e.target;
                    
-                   // ⚠️ IMPORTANTE: Solo interceptar estos formularios específicos
-                   // NO interceptar el formulario de "Mostrar código"
                    const isLockForm = form.classList.contains('lock-form');
                    const isVisForm = form.classList.contains('vis-form');
                    const isCleanForm = form.closest('td')?.querySelector('.clean-btn');
                    
                    // Si NO es uno de estos formularios, dejar que funcione normal
                    if (!isLockForm && !isVisForm && !isCleanForm) {
-                     return; // ← Dejar que el formulario funcione normalmente
+                     return;
                    }
                    
-                   // Solo para estos formularios específicos, usar AJAX
                    e.preventDefault();
                    
                    const formData = new FormData(form);
-                   const row = form.closest('tr');
-                   
-                   // Guardar posición del scroll ANTES de hacer el request
                    const scrollPos = window.scrollY;
                    
                    fetch(form.action, {
                      method: 'POST',
+                     headers: {
+                       'X-Requested-With': 'XMLHttpRequest' // ← Indicar que es AJAX
+                     },
                      body: formData
                    })
-                   .then(response => response.text())
-                   .then(() => {
-                     // ✅ Restaurar posición del scroll
-                     window.scrollTo(0, scrollPos);
+                   .then(response => response.json()) // ← Ahora esperamos JSON
+                   .then(data => {
+                     if (!data.success) {
+                       throw new Error('Server error');
+                     }
                      
-                     // ✅ Actualizar visualmente sin recargar
+                     window.scrollTo(0, scrollPos);
                      
                      // Si es limpieza
                      if (isCleanForm) {
                        const btn = form.querySelector('.clean-btn');
-                       if (btn.classList.contains('pill-yes')) {
-                         btn.classList.remove('pill-yes');
-                         btn.classList.add('pill-no');
-                         btn.textContent = '';
-                       } else {
+                       if (data.newClean) {
                          btn.classList.remove('pill-no');
                          btn.classList.add('pill-yes');
                          btn.textContent = '✓';
+                       } else {
+                         btn.classList.remove('pill-yes');
+                         btn.classList.add('pill-no');
+                         btn.textContent = '';
                        }
                      }
                      
                      // Si es visibilidad
                      if (isVisForm) {
                        const pill = form.querySelector('.pill');
-                       const btn = form.querySelector('button');
+                       const btn = form.querySelector('button[type="submit"]');
                        
-                       if (pill.classList.contains('pill-yes')) {
-                         pill.classList.remove('pill-yes');
-                         pill.classList.add('pill-no');
-                         pill.textContent = 'No';
-                         btn.textContent = 'Mostrar';
-                         btn.classList.remove('btn-ghost');
-                       } else {
+                       if (data.newVisible) {
                          pill.classList.remove('pill-no');
                          pill.classList.add('pill-yes');
                          pill.textContent = 'Sí';
                          btn.textContent = 'Ocultar';
                          btn.classList.add('btn-ghost');
+                       } else {
+                         pill.classList.remove('pill-yes');
+                         pill.classList.add('pill-no');
+                         pill.textContent = 'No';
+                         btn.textContent = 'Mostrar';
+                         btn.classList.remove('btn-ghost');
                        }
                      }
                      
-                     // Si es código de acceso
+                     // Si es código
                      if (isLockForm) {
                        const input = form.querySelector('.lock-input');
-                       const clearButton = e.submitter; // Botón que activó el submit
+                       const clearButton = e.submitter;
                        
-                       // Si se presionó "Clear", borrar el input
                        if (clearButton && clearButton.name === 'clear') {
                          input.value = '';
-                         input.style.background = '#fee2e2'; // Rojo suave
-                         setTimeout(() => {
-                           input.style.background = '';
-                         }, 500);
+                         input.style.background = '#fee2e2';
+                         setTimeout(() => { input.style.background = ''; }, 500);
                          showToast('🗑️ Código borrado');
                        } else {
-                         // Si se presionó "Save", feedback verde
-                         const originalBg = input.style.background;
                          input.style.background = '#d1fae5';
-                         setTimeout(() => {
-                           input.style.background = originalBg;
-                         }, 500);
+                         setTimeout(() => { input.style.background = ''; }, 500);
                          showToast('✅ Guardado correctamente');
                        }
-                       return; // Salir aquí para no mostrar el toast dos veces
+                       return;
                      }
                      
-                     // ✅ Mostrar confirmación temporal
                      if (!isLockForm) {
                        showToast('✅ Guardado correctamente');
                      }
@@ -6106,7 +6095,6 @@ return `
                    });
                  });
                  
-                 // Toast notification
                  function showToast(message, type = 'success') {
                    const toast = document.createElement('div');
                    toast.textContent = message;
@@ -6122,16 +6110,13 @@ return `
                      z-index: 9999;
                      animation: slideIn 0.3s ease;
                    \`;
-                   
                    document.body.appendChild(toast);
-                   
                    setTimeout(() => {
                      toast.style.animation = 'slideOut 0.3s ease';
                      setTimeout(() => toast.remove(), 300);
                    }, 2000);
                  }
                  
-                 // Animaciones
                  const style = document.createElement('style');
                  style.textContent = \`
                    @keyframes slideIn {
@@ -6414,131 +6399,108 @@ app.post("/staff/checkins/:id/lock", async (req, res) => {
   }
 });
 // ===================== ADMIN: VISIBILITY TOGGLE =====================
-app.post("/staff/checkins/:id/visibility", async (req, res) => {
-  try {
-    const checkinId = req.params.id;
 
-    await pool.query(
-      `
-      UPDATE checkins
-      SET lock_visible = NOT COALESCE(lock_visible, false)
-      WHERE id = $1
-      `,
-      [checkinId]
+// Ruta de visibilidad - MODIFICAR para soportar AJAX
+app.post("/staff/checkins/:id/visibility", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { returnTo } = req.body;
+    
+    // Obtener estado actual
+    const current = await pool.query(
+      `SELECT lock_visible FROM checkins WHERE id = $1`,
+      [id]
     );
-
-    return safeRedirect(res, req.body.returnTo || req.headers.referer);
+    
+    if (current.rows.length === 0) {
+      return res.status(404).send("Not found");
+    }
+    
+    const newVisible = !current.rows[0].lock_visible;
+    
+    // Actualizar
+    await pool.query(
+      `UPDATE checkins SET lock_visible = $1 WHERE id = $2`,
+      [newVisible, id]
+    );
+    
+    // ✅ Si es request AJAX, devolver JSON
+    if (req.headers['x-requested-with'] === 'XMLHttpRequest' || 
+        req.headers['accept']?.includes('application/json')) {
+      return res.json({ success: true, newVisible });
+    }
+    
+    // ❌ Si NO es AJAX, hacer redirect normal
+    return res.redirect(returnTo || "/staff/checkins");
   } catch (e) {
-    console.error("Error toggling visibility:", e);
-    return res.status(500).send("Error updating visibility");
+    console.error("Error en visibility:", e);
+    res.status(500).send("Error");
   }
 });
-// ========== DEEPL TRANSLATION API ==========
-async function translateText(text, targetLang) {
-  const apiKey = process.env.DEEPL_API_KEY;
-  
-  if (!apiKey) {
-    throw new Error('DEEPL_API_KEY not configured');
-  }
 
-  const response = await fetch('https://api-free.deepl.com/v2/translate', {
-    method: 'POST',
-    headers: {
-      'Authorization': `DeepL-Auth-Key ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      text: [text],
-      target_lang: targetLang.toUpperCase(),
-      source_lang: 'ES',
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`DeepL API error: ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return data.translations[0].text;
-}
-
-// ============================================
-// 🌍 API: TRADUCIR TEXTO CON DEEPL (protegiendo variables)
-// ============================================
-
-app.post("/api/translate", async (req, res) => {
+// Ruta de limpieza - MODIFICAR para soportar AJAX
+app.post("/staff/checkins/:id/clean", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
   try {
-    const { text, targetLang } = req.body;
+    const { id } = req.params;
     
-    if (!text || !targetLang) {
-      return res.status(400).json({ error: "Faltan parámetros" });
+    // Toggle clean_ok
+    const current = await pool.query(
+      `SELECT clean_ok FROM checkins WHERE id = $1`,
+      [id]
+    );
+    
+    if (current.rows.length === 0) {
+      return res.status(404).send("Not found");
     }
-
-    // 🔒 PASO 1: Proteger variables antes de traducir
-    const variablePattern = /\{[^}]+\}/g;
-    const variables = text.match(variablePattern) || [];
     
-    // Crear un mapa de variables → placeholders
-    const placeholderMap = {};
-    let protectedText = text;
+    const newClean = !current.rows[0].clean_ok;
     
-    variables.forEach((variable, index) => {
-      const placeholder = `VARIABLE_${index}_PLACEHOLDER`;
-      placeholderMap[placeholder] = variable;
-      protectedText = protectedText.replace(variable, placeholder);
-    });
-
-    console.log('📝 Texto original:', text);
-    console.log('🔒 Texto protegido:', protectedText);
-    console.log('🗺️ Mapa de variables:', placeholderMap);
-
-    // 🌍 PASO 2: Traducir con DeepL
-    const deeplResponse = await fetch('https://api-free.deepl.com/v2/translate', {
-      method: 'POST',
-      headers: {
-        'Authorization': `DeepL-Auth-Key ${process.env.DEEPL_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        text: [protectedText],
-        target_lang: targetLang,
-        preserve_formatting: true,
-        tag_handling: 'xml'
-      })
-    });
-
-    if (!deeplResponse.ok) {
-      const errorText = await deeplResponse.text();
-      console.error('❌ Error de DeepL:', errorText);
-      return res.status(500).json({ error: 'Error al traducir con DeepL' });
+    await pool.query(
+      `UPDATE checkins SET clean_ok = $1 WHERE id = $2`,
+      [newClean, id]
+    );
+    
+    // ✅ Si es request AJAX, devolver JSON
+    if (req.headers['x-requested-with'] === 'XMLHttpRequest' || 
+        req.headers['accept']?.includes('application/json')) {
+      return res.json({ success: true, newClean });
     }
-
-    const deeplData = await deeplResponse.json();
-    let translatedText = deeplData.translations[0].text;
-
-    console.log('🌍 Texto traducido (con placeholders):', translatedText);
-
-    // 🔓 PASO 3: Restaurar variables originales
-    Object.entries(placeholderMap).forEach(([placeholder, variable]) => {
-      // Buscar el placeholder con o sin espacios
-      const regex = new RegExp(placeholder.replace(/_/g, '[ _]'), 'gi');
-      translatedText = translatedText.replace(regex, variable);
-    });
-
-    console.log('✅ Texto final (variables restauradas):', translatedText);
-
-    res.json({ 
-      success: true, 
-      translated: translatedText,
-      original: text,
-      targetLang 
-    });
-
-  } catch (error) {
-    console.error('❌ Error en /api/translate:', error);
-    res.status(500).json({ error: error.message });
+    
+    // ❌ Si NO es AJAX, hacer redirect normal
+    return res.redirect(req.body.returnTo || "/staff/checkins");
+  } catch (e) {
+    console.error("Error en clean:", e);
+    res.status(500).send("Error");
   }
 });
+
+// Ruta de código - MODIFICAR para soportar AJAX
+app.post("/staff/checkins/:id/lock", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { lock_code, clear, returnTo } = req.body;
+    
+    const newCode = clear ? null : (lock_code || null);
+    
+    await pool.query(
+      `UPDATE checkins SET lock_code = $1 WHERE id = $2`,
+      [newCode, id]
+    );
+    
+    // ✅ Si es request AJAX, devolver JSON
+    if (req.headers['x-requested-with'] === 'XMLHttpRequest' || 
+        req.headers['accept']?.includes('application/json')) {
+      return res.json({ success: true, newCode });
+    }
+    
+    // ❌ Si NO es AJAX, hacer redirect normal
+    return res.redirect(returnTo || "/staff/checkins");
+  } catch (e) {
+    console.error("Error en lock:", e);
+    res.status(500).send("Error");
+  }
+});
+
 // ===================== MANAGER SETTINGS =====================
 
 app.post("/staff/checkins/:id/clean", async (req, res) => {
@@ -9336,6 +9298,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
