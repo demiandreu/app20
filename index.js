@@ -6201,102 +6201,11 @@ function renderTable(rows, mode) {
   `;
 }
 
-    const pageHtml = renderNavMenu('staff', req) + toolbar + 
-                 renderTable(arrivals, "arrivals") + 
-                 `<div style="height:24px;"></div>` + 
-                 renderTable(departures, "departures") +
-                 `
-
-                 <script>
-                 // ============================================
-                 // 💾 GUARDAR TODOS LOS CÓDIGOS (OPCIONAL)
-                 // ============================================
-                 
-                 async function saveAllLockCodes() {
-                   const forms = document.querySelectorAll('.lock-form');
-                   
-                   if (forms.length === 0) {
-                     alert('No hay códigos para guardar');
-                     return;
-                   }
-                   
-                   const button = event.target;
-                   const originalText = button.textContent;
-                   button.disabled = true;
-                   button.textContent = '⏳ Guardando...';
-                   
-                   let saved = 0;
-                   let errors = 0;
-                   
-                   for (const form of forms) {
-                     const input = form.querySelector('.lock-input');
-                     const lockCode = input ? input.value.trim() : '';
-                     
-                     try {
-                       const formData = new FormData(form);
-                       
-                       const response = await fetch(form.action, {
-                         method: 'POST',
-                         body: formData
-                       });
-                       
-                       if (response.ok) {
-                         saved++;
-                         if (input) {
-                           input.style.background = '#d1fae5';
-                           setTimeout(() => { input.style.background = ''; }, 500);
-                         }
-                       } else {
-                         errors++;
-                         if (input) input.style.background = '#fee2e2';
-                       }
-                     } catch (error) {
-                       console.error('Error saving code:', error);
-                       errors++;
-                       if (input) input.style.background = '#fee2e2';
-                     }
-                     
-                     await new Promise(resolve => setTimeout(resolve, 100));
-                   }
-                   
-                   button.disabled = false;
-                   button.textContent = originalText;
-                   
-                   if (errors === 0) {
-                     showToast(\`✅ \${saved} códigos guardados correctamente\`);
-                   } else {
-                     showToast(\`⚠️ \${saved} guardados, \${errors} errores\`, 'warning');
-                   }
-                 }
-                 
-                 function showToast(message, type = 'success') {
-                   const toast = document.createElement('div');
-                   toast.textContent = message;
-                   
-                   const colors = {
-                     success: '#10b981',
-                     warning: '#f59e0b',
-                     error: '#ef4444'
-                   };
-                   
-                   toast.style.cssText = \`
-                     position: fixed;
-                     bottom: 20px;
-                     right: 20px;
-                     background: \${colors[type] || colors.success};
-                     color: white;
-                     padding: 12px 20px;
-                     border-radius: 8px;
-                     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                     z-index: 9999;
-                     font-weight: 600;
-                   \`;
-                   
-                   document.body.appendChild(toast);
-                   setTimeout(() => toast.remove(), 3000);
-                 }
-                 </script>
-                 
+   const pageHtml = renderNavMenu('staff', req) + toolbar + 
+             renderTable(arrivals, "arrivals") + 
+             `<div style="height:24px;"></div>` + 
+             renderTable(departures, "departures");
+                 `                 
                  `;
     
     res.send(renderPage("Staff · Llegadas y Salidas", pageHtml, 'staff'));
@@ -6567,7 +6476,6 @@ app.post("/staff/checkins/:id/lock", async (req, res) => {
 });
 // ===================== ADMIN: VISIBILITY TOGGLE =====================
 
-// Ruta de visibilidad - MODIFICAR para soportar AJAX
 app.post("/staff/checkins/:id/visibility", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -6591,52 +6499,11 @@ app.post("/staff/checkins/:id/visibility", requireAuth, requireRole('CLEANING_MA
       [newVisible, id]
     );
     
-    // ✅ Si es request AJAX, devolver JSON
-    if (req.headers['x-requested-with'] === 'XMLHttpRequest' || 
-        req.headers['accept']?.includes('application/json')) {
-      return res.json({ success: true, newVisible });
-    }
-    
-    // ❌ Si NO es AJAX, hacer redirect normal
+    // Redirect normal
     return res.redirect(returnTo || "/staff/checkins");
+    
   } catch (e) {
     console.error("Error en visibility:", e);
-    res.status(500).send("Error");
-  }
-});
-
-// Ruta de limpieza - MODIFICAR para soportar AJAX
-app.post("/staff/checkins/:id/clean", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    // Toggle clean_ok
-    const current = await pool.query(
-      `SELECT clean_ok FROM checkins WHERE id = $1`,
-      [id]
-    );
-    
-    if (current.rows.length === 0) {
-      return res.status(404).send("Not found");
-    }
-    
-    const newClean = !current.rows[0].clean_ok;
-    
-    await pool.query(
-      `UPDATE checkins SET clean_ok = $1 WHERE id = $2`,
-      [newClean, id]
-    );
-    
-    // ✅ Si es request AJAX, devolver JSON
-    if (req.headers['x-requested-with'] === 'XMLHttpRequest' || 
-        req.headers['accept']?.includes('application/json')) {
-      return res.json({ success: true, newClean });
-    }
-    
-    // ❌ Si NO es AJAX, hacer redirect normal
-    return res.redirect(req.body.returnTo || "/staff/checkins");
-  } catch (e) {
-    console.error("Error en clean:", e);
     res.status(500).send("Error");
   }
 });
@@ -9465,6 +9332,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
