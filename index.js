@@ -7653,7 +7653,64 @@ app.get("/api/whatsapp/flow-messages", async (req, res) => {
   }
 });
 
-
+// ===================== API: TRADUCCIÓN CON DEEPL =====================
+app.post("/api/translate", requireAuth, async (req, res) => {
+  try {
+    const { text, targetLang } = req.body;
+    
+    if (!text || !targetLang) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Text and targetLang are required' 
+      });
+    }
+    
+    // Verificar que existe la API key de DeepL
+    if (!process.env.DEEPL_API_KEY) {
+      return res.status(500).json({ 
+        success: false, 
+        error: 'DeepL API key not configured' 
+      });
+    }
+    
+    const deeplUrl = 'https://api-free.deepl.com/v2/translate';
+    
+    const response = await fetch(deeplUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        auth_key: process.env.DEEPL_API_KEY,
+        text: text,
+        target_lang: targetLang,
+        source_lang: 'ES'
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      console.error('DeepL API error:', data);
+      return res.status(500).json({ 
+        success: false, 
+        error: data.message || 'Translation failed' 
+      });
+    }
+    
+    res.json({
+      success: true,
+      translated: data.translations[0].text
+    });
+    
+  } catch (error) {
+    console.error('Translation error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
 
 
 
@@ -9206,6 +9263,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
