@@ -14,6 +14,197 @@ const bcrypt = require('bcrypt');
 const pgSession = require('connect-pg-simple')(session);
 const fs = require('fs'); 
 
+// ============================================
+// 📱 FUNCIÓN: Normalizar número de teléfono
+// ============================================
+function normalizePhoneNumber(phone) {
+  if (!phone) return null;
+  
+  // Limpiar espacios, guiones, paréntesis
+  let cleaned = String(phone).replace(/[\s\-\(\)]/g, '');
+  
+  // Si ya tiene +, dejarlo como está
+  if (cleaned.startsWith('+')) {
+    return cleaned;
+  }
+  
+  // Si empieza con 00, reemplazar por +
+  if (cleaned.startsWith('00')) {
+    return '+' + cleaned.substring(2);
+  }
+  
+  // Si empieza con 34 (España) pero no tiene +
+  if (cleaned.startsWith('34') && cleaned.length >= 11) {
+    return '+' + cleaned;
+  }
+  
+  // Si es un número español sin prefijo (9 dígitos, empieza con 6 o 7)
+  if (cleaned.length === 9 && (cleaned.startsWith('6') || cleaned.startsWith('7'))) {
+    return '+34' + cleaned;
+  }
+  
+  // Si tiene otro prefijo internacional
+  if (cleaned.length > 9) {
+    return '+' + cleaned;
+  }
+  
+  // Default: asumir España
+  return '+34' + cleaned;
+}
+
+// ============================================
+// 📱 FUNCIÓN: Enviar mensaje de WhatsApp
+// ============================================
+async function sendWhatsAppCodeNotification(checkin) {
+  try {
+    const twilio = require('twilio');
+    const client = twilio(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_AUTH_TOKEN
+    );
+    
+    // Normalizar número
+    const toNumber = normalizePhoneNumber(checkin.phone);
+    
+    if (!toNumber) {
+      console.log(`⚠️ No phone number for checkin ${checkin.id}`);
+      return { success: false, reason: 'no_phone' };
+    }
+    
+    // Detectar idioma del huésped (con fallback a español)
+    const lang = (checkin.guest_language || 'es').toLowerCase().substring(0, 2);
+    
+    // Mensajes por idioma
+    const messages = {
+      es: `✅ ¡Tu apartamento está limpio! Ya puedes entrar.
+
+🔑 Código de acceso: ${checkin.lock_code}
+
+📍 ${checkin.apartment_name || checkin.room_name || 'Tu apartamento'}
+
+¡Bienvenido! 😊`,
+      
+      en: `✅ Your apartment is clean! You can enter now.
+
+🔑 Access code: ${checkin.lock_code}
+
+📍 ${checkin.apartment_name || checkin.room_name || 'Your apartment'}
+
+Welcome! 😊`,
+      
+      fr: `✅ Votre appartement est propre ! Vous pouvez entrer maintenant.
+
+🔑 Code d'accès : ${checkin.lock_code}
+
+📍 ${checkin.apartment_name || checkin.room_name || 'Votre appartement'}
+
+Bienvenue ! 😊`,
+      
+      ru: `✅ Ваша квартира убрана! Можете войти.
+
+🔑 Код доступа: ${checkin.lock_code}
+
+📍 ${checkin.apartment_name || checkin.room_name || 'Ваша квартира'}
+
+Добро пожаловать! 😊`,
+      
+      de: `✅ Ihre Wohnung ist sauber! Sie können jetzt eintreten.
+
+🔑 Zugangscode: ${checkin.lock_code}
+
+📍 ${checkin.apartment_name || checkin.room_name || 'Ihre Wohnung'}
+
+Willkommen! 😊`
+    };
+    
+    const messageBody = messages[lang] || messages.es;
+    
+    // Enviar mensaje por WhatsApp
+    const message = await client.messages.create({
+      from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+      to: `whatsapp:${toNumber}`,
+      body: messageBody
+    });
+    
+    console.log(`✅ WhatsApp sent to ${toNumber}: ${message.sid}`);
+    
+    return { 
+      success: true, 
+      messageSid: message.sid,
+      to: toNumber 
+    };
+    
+  } catch (error) {
+    console.error('❌ Error sending WhatsApp:', error);
+    return { 
+      success: false, 
+      error: error.message 
+    };
+  }
+}
+
+// ============================================
+// 🔄 RUTA MODIFICADA: Mostrar código
+// ============================================
+app.post("/staff/checkins/:id/visibility", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { returnTo } = req.body;
+    
+    // Obtener datos completos del checkin
+    const current = await pool.query(
+      `SELECT 
+        id, 
+        lock_visible, 
+        lock_code,
+        phone,
+        guest_language,
+        full_name,
+        apartment_name,
+        room_name
+      FROM checkins 
+      WHERE id = $1`,
+      [id]
+    );
+    
+    if (current.rows.length === 0) {
+      return res.status(404).send("Not found");
+    }
+    
+    const checkin = current.rows[0];
+    const newVisible = !checkin.lock_visible;
+    
+    // Actualizar visibilidad
+    await pool.query(
+      `UPDATE checkins SET lock_visible = $1 WHERE id = $2`,
+      [newVisible, id]
+    );
+    
+    // 📱 SI SE ESTÁ MOSTRANDO EL CÓDIGO (newVisible = true), enviar WhatsApp
+    if (newVisible && checkin.lock_code && checkin.phone) {
+      console.log(`📱 Sending WhatsApp to ${checkin.full_name} (${checkin.phone})`);
+      
+      const result = await sendWhatsAppCodeNotification({
+        ...checkin,
+        lock_code: checkin.lock_code
+      });
+      
+      if (result.success) {
+        console.log(`✅ WhatsApp sent successfully to ${result.to}`);
+      } else {
+        console.log(`⚠️ WhatsApp not sent: ${result.reason || result.error}`);
+      }
+    }
+    
+    // Redirect normal
+    return res.redirect(returnTo || "/staff/checkins");
+    
+  } catch (e) {
+    console.error("Error en visibility:", e);
+    res.status(500).send("Error");
+  }
+});
+
 // ✅ PRIMERO: Crear el pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -9281,6 +9472,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
