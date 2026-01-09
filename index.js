@@ -2374,12 +2374,13 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
 
     // Obtener lista de apartamentos únicos
     const apartmentsResult = await pool.query(`
-      SELECT DISTINCT apartment_name 
-      FROM checkins 
-      WHERE apartment_name IS NOT NULL 
-        AND apartment_name != ''
-      ORDER BY apartment_name
-    `);
+  SELECT DISTINCT 
+    TRIM(REGEXP_REPLACE(apartment_name, '\\s+', ' ', 'g')) as apartment_name
+  FROM checkins 
+  WHERE apartment_name IS NOT NULL 
+    AND apartment_name != ''
+  ORDER BY apartment_name
+`);
     const apartments = apartmentsResult.rows.map(r => r.apartment_name);
 
     // Construir query con filtro opcional de apartamento
@@ -9031,6 +9032,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
