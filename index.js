@@ -2401,10 +2401,10 @@ app.get("/manager/invoices", requireAuth, requireRole('MANAGER'), async (req, re
     
     const params = [startDate, endDate];
     
-    if (selectedApartment !== 'all') {
-      query += ` AND apartment_name = $3`;
-      params.push(selectedApartment);
-    }
+   if (selectedApartment !== 'all') {
+  query += ` AND TRIM(REGEXP_REPLACE(apartment_name, '\\s+', ' ', 'g')) = $3`;
+  params.push(selectedApartment);
+}
     
     query += ` ORDER BY arrival_date ASC`;
 
@@ -2643,9 +2643,9 @@ app.get("/manager/invoices/export", requireAuth, requireRole('MANAGER'), async (
     const params = [startDate, endDate];
     
     if (selectedApartment !== 'all') {
-      query += ` AND apartment_name = $3`;
-      params.push(selectedApartment);
-    }
+  query += ` AND TRIM(REGEXP_REPLACE(apartment_name, '\\s+', ' ', 'g')) = $3`;
+  params.push(selectedApartment);
+}
     
     query += ` ORDER BY arrival_date ASC`;
     const result = await pool.query(query, params);
@@ -9031,6 +9031,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
