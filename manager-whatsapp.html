@@ -404,6 +404,61 @@
                 padding: 2px 6px;
             }
         }
+
+        /* Variables panel styles */
+        .variables-header {
+            padding: 14px 18px;
+            background: #f9fafb;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        
+        .variables-header:hover {
+            background: #f3f4f6;
+        }
+        
+        .variables-header h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #111827;
+            margin: 0;
+        }
+        
+        .variables-toggle {
+            transition: transform 0.3s;
+            font-size: 16px;
+            color: #6b7280;
+        }
+        
+        .variables-toggle.open {
+            transform: rotate(180deg);
+        }
+        
+        .variables-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .variables-content.open {
+            max-height: 3000px;
+        }
+        
+        .variables-grid {
+            padding: 18px;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .variable-category {
+            margin-bottom: 16px;
+        }
+        
+        .variable-list code {
+            cursor: pointer;
+        }
     </style>
 <body>
     <div class="container">
@@ -659,117 +714,7 @@
         <textarea id="EARLY_CHECKIN_NOTICE_es" placeholder="Lo siento, la entrada estándar es a las 17:00h..."></textarea>
     </div>
     <div class="textarea-container" data-msg="EARLY_CHECKIN_NOTICE" data-lang="en">
-        <textarea id="EARLY_CHECKIN_NOTICE_en" placeholder="Sorry, standard check-in is at 5:00pm..."></textarea>
-    </div>
-    <div class="textarea-container" data-msg="EARLY_CHECKIN_NOTICE" data-lang="fr">
-        <textarea id="EARLY_CHECKIN_NOTICE_fr" placeholder="Désolé, l'enregistrement standard..."></textarea>
-    </div>
-    <div class="textarea-container" data-msg="EARLY_CHECKIN_NOTICE" data-lang="ru">
-        <textarea id="EARLY_CHECKIN_NOTICE_ru" placeholder="Извините, стандартная регистрация..."></textarea>
-    </div>
-    
-    <button class="btn-translate" onclick="translateMessage('EARLY_CHECKIN_NOTICE')">🌍 Traducir desde ES</button>
-</div>
-
-<!-- LATE_CHECKOUT_NOTICE -->
-<div class="message-section">
-    <h3>LATE_CHECKOUT_NOTICE - Aviso Late Checkout</h3>
-    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Mensaje automático cuando solicitan salida después de las 11:00h</p>
-    
-    <div class="language-tabs">
-        <button class="lang-tab active" onclick="switchLang('LATE_CHECKOUT_NOTICE', 'es')">🇪🇸 ES</button>
-        <button class="lang-tab" onclick="switchLang('LATE_CHECKOUT_NOTICE', 'en')">🇬🇧 EN</button>
-        <button class="lang-tab" onclick="switchLang('LATE_CHECKOUT_NOTICE', 'fr')">🇫🇷 FR</button>
-        <button class="lang-tab" onclick="switchLang('LATE_CHECKOUT_NOTICE', 'ru')">🇷🇺 RU</button>
-    </div>
-    
-    <div class="textarea-container active" data-msg="LATE_CHECKOUT_NOTICE" data-lang="es">
-        <textarea id="LATE_CHECKOUT_NOTICE_es" placeholder="Lo siento, la salida estándar es a las 11:00h..."></textarea>
-    </div>
-    <div class="textarea-container" data-msg="LATE_CHECKOUT_NOTICE" data-lang="en">
-        <textarea id="LATE_CHECKOUT_NOTICE_en" placeholder="Sorry, standard check-out is at 11:00am..."></textarea>
-    </div>
-    <div class="textarea-container" data-msg="LATE_CHECKOUT_NOTICE" data-lang="fr">
-        <textarea id="LATE_CHECKOUT_NOTICE_fr" placeholder="Désolé, le départ standard..."></textarea>
-    </div>
-    <div class="textarea-container" data-msg="LATE_CHECKOUT_NOTICE" data-lang="ru">
-        <textarea id="LATE_CHECKOUT_NOTICE_ru" placeholder="Извините, стандартное время выезда..."></textarea>
-    </div>
-    
-    <button class="btn-translate" onclick="translateMessage('LATE_CHECKOUT_NOTICE')">🌍 Traducir desde ES</button>
-</div>
-                <!-- CONFIRMATION -->
-                <div class="message-section">
-                    <h3>CONFIRMATION - Confirmación Final</h3>
-                    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Mensaje al completar todo el flujo</p>
-                    
-                    <div class="language-tabs">
-                        <button class="lang-tab active" onclick="switchLang('CONFIRMATION', 'es')">🇪🇸 ES</button>
-                        <button class="lang-tab" onclick="switchLang('CONFIRMATION', 'en')">🇬🇧 EN</button>
-                        <button class="lang-tab" onclick="switchLang('CONFIRMATION', 'fr')">🇫🇷 FR</button>
-                        <button class="lang-tab" onclick="switchLang('CONFIRMATION', 'ru')">🇷🇺 RU</button>
-                    </div>
-                    
-                    <div class="textarea-container active" data-msg="CONFIRMATION" data-lang="es">
-                        <textarea id="CONFIRMATION_es" placeholder="Puedes usar todas las variables..."></textarea>
-                    </div>
-                    <div class="textarea-container" data-msg="CONFIRMATION" data-lang="en">
-                        <textarea id="CONFIRMATION_en" placeholder="You can use all variables..."></textarea>
-                    </div>
-                    <div class="textarea-container" data-msg="CONFIRMATION" data-lang="fr">
-                        <textarea id="CONFIRMATION_fr" placeholder="Vous pouvez utiliser toutes les variables..."></textarea>
-                    </div>
-                    <div class="textarea-container" data-msg="CONFIRMATION" data-lang="ru">
-                        <textarea id="CONFIRMATION_ru" placeholder="Вы можете использовать все переменные..."></textarea>
-                    </div>
-                    
-                    <button class="btn-translate" onclick="translateMessage('CONFIRMATION')">🌍 Traducir desde ES</button>
-                </div>
-
-                <button class="btn-save" onclick="saveFlowMessages()">💾 Guardar Todos los Mensajes</button>
-            </div>
-        </div>
-
-        <!-- TAB 2: Early/Late -->
-        <div id="early-late" class="tab-content">
-            <p style="text-align: center; color: #6b7280;">Configuración Early/Late Check-in</p>
-        </div>
-
-     <!-- ============================================ -->
-<!-- 🤖 TAB: RESPUESTAS AUTOMÁTICAS -->
-<!-- ============================================ -->
-<div id="auto-replies" class="tab-content">
-  <div class="section-header">
-    <h2>🤖 Respuestas Automáticas</h2>
-    <p class="description">
-      Configura respuestas automáticas a palabras clave. 
-      El bot responderá automáticamente cuando los huéspedes escriban estas keywords.
-    </p>
-  </div>
-
-  <!-- Botón para añadir nueva respuesta -->
-  <div style="margin-bottom: 20px;">
-    <button id="add-reply-btn" class="btn-primary">
-      ➕ Añadir Nueva Respuesta
-    </button>
-  </div>
-    <!-- 📋 Variables Disponibles - ACORDEÓN -->
-    <div class="accordion-item" id="variables-accordion">
-      <div class="accordion-header" onclick="toggleVariablesAccordion()">
-        <div>
-          <h3>💡 Variables Disponibles</h3>
-          <p style="margin: 4px 0 0 0; font-size: 12px; color: #6b7280;">Click para copiar cada variable</p>
-        </div>
-        <span class="accordion-icon">▼</span>
-      </div>
-      
-      <div class="accordion-content">
-        <div class="accordion-body">
-          <p style="color: #075985; margin-bottom: 16px; font-size: 13px;">
-            Puedes usar estas variables en tus respuestas. El bot las reemplazará automáticamente con los datos del apartamento del huésped.
-          </p>
-          
-          <div class="variables-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
+        <textarea id="EARLY_CHECKIN_NOTICE_en" placeholder="Sorry, standard check-in is at 5:00p...(truncated 6020 characters)...nmax(250px, 1fr)); gap: 16px;">
             
             <div class="variable-category">
               <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📍 Información Básica</h4>
@@ -1133,7 +1078,6 @@ function renderAutoReplies() {
     <div class="auto-reply-card ${isOpen ? 'open' : ''}" data-id="${reply.id || ''}" data-index="${index}">
       <div class="reply-header" onclick="toggleCard(${index})">
         <div>
-          <h3>${getCategoryIcon(reply.category)}</h3>
           <div class="keywords-display">
             ${keywordsArray.slice(0, 2).map(kw => `<span class="keyword-tag">${kw}</span>`).join('')}
             ${keywordsArray.length > 2 ? `<span class="keyword-tag">+${keywordsArray.length - 2} más</span>` : ''}
@@ -1153,34 +1097,50 @@ function renderAutoReplies() {
       </div>
 
       <div class="reply-content">
-        <div class="language-tabs">
-          <button class="lang-tab active" onclick="showLangReply(${index}, 'es')">🇪🇸 ES</button>
-          <button class="lang-tab" onclick="showLangReply(${index}, 'en')">🇬🇧 EN</button>
-          <button class="lang-tab" onclick="showLangReply(${index}, 'fr')">🇫🇷 FR</button>
-          <button class="lang-tab" onclick="showLangReply(${index}, 'ru')">🇷🇺 RU</button>
+        <div class="accordion-item open">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <h3>Respuestas</h3>
+            <span class="accordion-icon">▼</span>
+          </div>
+          <div class="accordion-content">
+            <div class="accordion-body">
+              <div class="language-tabs">
+                <button class="lang-tab active" onclick="showLangReply(${index}, 'es')">🇪🇸 ES</button>
+                <button class="lang-tab" onclick="showLangReply(${index}, 'en')">🇬🇧 EN</button>
+                <button class="lang-tab" onclick="showLangReply(${index}, 'fr')">🇫🇷 FR</button>
+                <button class="lang-tab" onclick="showLangReply(${index}, 'ru')">🇷🇺 RU</button>
+              </div>
+              <div class="lang-content">
+                <textarea id="reply_${index}_es" class="lang-textarea active" 
+                          placeholder="Respuesta en español...">${reply.response_es || ''}</textarea>
+                <textarea id="reply_${index}_en" class="lang-textarea" 
+                          placeholder="Response in English...">${reply.response_en || ''}</textarea>
+                <textarea id="reply_${index}_fr" class="lang-textarea" 
+                          placeholder="Réponse en français...">${reply.response_fr || ''}</textarea>
+                <textarea id="reply_${index}_ru" class="lang-textarea" 
+                          placeholder="Ответ на русском...">${reply.response_ru || ''}</textarea>
+              </div>
+              <button class="btn-translate" onclick="translateAutoReply(${index})">🌍 Traducir desde ES</button>
+            </div>
+          </div>
         </div>
-
-        <div class="lang-content">
-          <textarea id="reply_${index}_es" class="lang-textarea active" 
-                    placeholder="Respuesta en español...">${reply.response_es || ''}</textarea>
-          <textarea id="reply_${index}_en" class="lang-textarea" 
-                    placeholder="Response in English...">${reply.response_en || ''}</textarea>
-          <textarea id="reply_${index}_fr" class="lang-textarea" 
-                    placeholder="Réponse en français...">${reply.response_fr || ''}</textarea>
-          <textarea id="reply_${index}_ru" class="lang-textarea" 
-                    placeholder="Ответ на русском...">${reply.response_ru || ''}</textarea>
-        </div>
-
-        <button class="btn-translate" onclick="translateAutoReply(${index})">🌍 Traducir desde ES</button>
-
-        <div class="reply-settings">
-          <label>
-            Keywords (separados por coma):
-            <textarea id="keywords_${index}" 
-                      placeholder="wifi, contraseña, password, internet, red"
-                      style="min-height: 80px;">${keywordsText}</textarea>
-          </label>
-          
+        <div class="accordion-item open">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <h3>Keywords</h3>
+            <span class="accordion-icon">▼</span>
+          </div>
+          <div class="accordion-content">
+            <div class="accordion-body">
+              <div class="reply-settings">
+                <label>
+                  Keywords (separados por coma):
+                  <textarea id="keywords_${index}" 
+                            placeholder="wifi, contraseña, password, internet, red"
+                            style="min-height: 80px;">${keywordsText}</textarea>
+                </label>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1195,9 +1155,13 @@ function toggleCard(index) {
 
 // Toggle acordeón de Variables
 function toggleVariablesAccordion() {
-  const accordion = document.getElementById("variables-accordion");
-  if (accordion) {
-    accordion.classList.toggle("open");
+  const content = document.getElementById("variables-content");
+  const toggle = document.getElementById("variables-toggle");
+  if (content) {
+    content.classList.toggle("open");
+  }
+  if (toggle) {
+    toggle.classList.toggle("open");
   }
 }
   const card = document.querySelector(`[data-index="${index}"]`);
@@ -1467,6 +1431,12 @@ if (autoRepliesTab) {
 // Cargar al inicio si ya está en la pestaña
 if (document.getElementById('auto-replies')?.classList.contains('active')) {
   loadAutoReplies();
+}
+
+// Toggle sub-accordion
+function toggleAccordion(header) {
+  const item = header.parentElement;
+  item.classList.toggle('open');
 }
     </script>
 </body>
