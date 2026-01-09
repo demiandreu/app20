@@ -5997,140 +5997,29 @@ return `
                  renderTable(departures, "departures") +
                  `
 
-                  <script>
+                 <script>
                  // ============================================
-                 // 🚀 AJAX: Guardar sin recargar página
+                 // 📍 MANTENER SCROLL AL RECARGAR
                  // ============================================
                  
+                 // Guardar posición antes de submit
                  document.addEventListener('submit', function(e) {
                    const form = e.target;
                    
-                   const isLockForm = form.classList.contains('lock-form');
-                   const isVisForm = form.classList.contains('vis-form');
-                   const isCleanForm = form.closest('td')?.querySelector('.clean-btn');
-                   
-                   // Si NO es uno de estos formularios, dejar que funcione normal
-                   if (!isLockForm && !isVisForm && !isCleanForm) {
-                     return;
+                   // Solo para formularios que tienen anchor (#checkin-ID)
+                   if (form.querySelector('input[name="returnTo"]')) {
+                     sessionStorage.setItem('scrollPos', window.scrollY);
                    }
-                   
-                   e.preventDefault();
-                   
-                   const formData = new FormData(form);
-                   const scrollPos = window.scrollY;
-                   
-                   fetch(form.action, {
-                     method: 'POST',
-                     body: formData
-                   })
-                   .then(response => {
-                     // ✅ Aceptar cualquier respuesta (HTML o JSON)
-                     window.scrollTo(0, scrollPos);
-                     return response; // No parseamos, solo restauramos scroll
-                   })
-                   .then(() => {
-                     // ✅ Actualizar UI manualmente sin esperar respuesta
-                     
-                     // Si es limpieza - simplemente toggle visual
-                     if (isCleanForm) {
-                       const btn = form.querySelector('.clean-btn');
-                       if (btn.classList.contains('pill-yes')) {
-                         btn.classList.remove('pill-yes');
-                         btn.classList.add('pill-no');
-                         btn.textContent = '';
-                       } else {
-                         btn.classList.remove('pill-no');
-                         btn.classList.add('pill-yes');
-                         btn.textContent = '✓';
-                       }
-                     }
-                     
-                     // Si es visibilidad - toggle visual
-                     if (isVisForm) {
-                       const pill = form.querySelector('.pill');
-                       const btn = form.querySelector('button[type="submit"]');
-                       
-                       if (pill.classList.contains('pill-yes')) {
-                         pill.classList.remove('pill-yes');
-                         pill.classList.add('pill-no');
-                         pill.textContent = 'No';
-                         btn.textContent = 'Mostrar';
-                         btn.classList.remove('btn-ghost');
-                       } else {
-                         pill.classList.remove('pill-no');
-                         pill.classList.add('pill-yes');
-                         pill.textContent = 'Sí';
-                         btn.textContent = 'Ocultar';
-                         btn.classList.add('btn-ghost');
-                       }
-                     }
-                     
-                     // Si es código
-                     if (isLockForm) {
-                       const input = form.querySelector('.lock-input');
-                       const clearButton = e.submitter;
-                       
-                       if (clearButton && clearButton.name === 'clear') {
-                         input.value = '';
-                         input.style.background = '#fee2e2';
-                         setTimeout(() => { input.style.background = ''; }, 500);
-                         showToast('🗑️ Código borrado');
-                       } else {
-                         input.style.background = '#d1fae5';
-                         setTimeout(() => { input.style.background = ''; }, 500);
-                         showToast('✅ Guardado correctamente');
-                       }
-                       return;
-                     }
-                     
-                     if (!isLockForm) {
-                       showToast('✅ Guardado correctamente');
-                     }
-                   })
-                   .catch(error => {
-                     console.error('Error:', error);
-                     showToast('❌ Error al guardar', 'error');
-                     // En caso de error, recargar la página
-                     setTimeout(() => {
-                       window.location.reload();
-                     }, 1000);
-                   });
                  });
                  
-                 function showToast(message, type = 'success') {
-                   const toast = document.createElement('div');
-                   toast.textContent = message;
-                   toast.style.cssText = \`
-                     position: fixed;
-                     bottom: 20px;
-                     right: 20px;
-                     background: \${type === 'success' ? '#10b981' : '#ef4444'};
-                     color: white;
-                     padding: 12px 20px;
-                     border-radius: 8px;
-                     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                     z-index: 9999;
-                     animation: slideIn 0.3s ease;
-                   \`;
-                   document.body.appendChild(toast);
-                   setTimeout(() => {
-                     toast.style.animation = 'slideOut 0.3s ease';
-                     setTimeout(() => toast.remove(), 300);
-                   }, 2000);
-                 }
-                 
-                 const style = document.createElement('style');
-                 style.textContent = \`
-                   @keyframes slideIn {
-                     from { transform: translateX(100%); opacity: 0; }
-                     to { transform: translateX(0); opacity: 1; }
+                 // Restaurar posición después de recargar
+                 window.addEventListener('load', function() {
+                   const savedPos = sessionStorage.getItem('scrollPos');
+                   if (savedPos) {
+                     window.scrollTo(0, parseInt(savedPos));
+                     sessionStorage.removeItem('scrollPos');
                    }
-                   @keyframes slideOut {
-                     from { transform: translateX(0); opacity: 1; }
-                     to { transform: translateX(100%); opacity: 0; }
-                   }
-                 \`;
-                 document.head.appendChild(style);
+                 });
                  </script>
                  
                  `;
@@ -9301,6 +9190,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
