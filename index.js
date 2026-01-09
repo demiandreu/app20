@@ -5996,102 +5996,114 @@ return `
                  `<div style="height:24px;"></div>` + 
                  renderTable(departures, "departures") +
                  `
-                 <script>
+                              <script>
                  // ============================================
                  // 🚀 AJAX: Guardar sin recargar página
                  // ============================================
                  
-                 // Interceptar todos los formularios de lock
+                 // Interceptar SOLO los formularios específicos
                  document.addEventListener('submit', function(e) {
                    const form = e.target;
                    
-                   // Solo interceptar formularios específicos
-                   if (form.classList.contains('lock-form') || 
-                       form.classList.contains('vis-form') ||
-                       form.closest('td')?.querySelector('.clean-btn')) {
-                     
-                     e.preventDefault();
-                     
-                     const formData = new FormData(form);
-                     const row = form.closest('tr');
-                     
-                     fetch(form.action, {
-                       method: 'POST',
-                       body: formData
-                     })
-                     .then(response => response.text())
-                     .then(() => {
-                       // ✅ Actualizar visualmente sin recargar
-                       
-                       // Si es limpieza
-                       if (form.closest('td')?.querySelector('.clean-btn')) {
-                         const btn = form.querySelector('.clean-btn');
-                         if (btn.classList.contains('pill-yes')) {
-                           btn.classList.remove('pill-yes');
-                           btn.classList.add('pill-no');
-                           btn.textContent = '';
-                         } else {
-                           btn.classList.remove('pill-no');
-                           btn.classList.add('pill-yes');
-                           btn.textContent = '✓';
-                         }
-                       }
-                       
-                       // Si es visibilidad
-                       if (form.classList.contains('vis-form')) {
-                         const pill = form.querySelector('.pill');
-                         const btn = form.querySelector('button');
-                         
-                         if (pill.classList.contains('pill-yes')) {
-                           pill.classList.remove('pill-yes');
-                           pill.classList.add('pill-no');
-                           pill.textContent = 'No';
-                           btn.textContent = 'Mostrar';
-                           btn.classList.remove('btn-ghost');
-                         } else {
-                           pill.classList.remove('pill-no');
-                           pill.classList.add('pill-yes');
-                           pill.textContent = 'Sí';
-                           btn.textContent = 'Ocultar';
-                           btn.classList.add('btn-ghost');
-                         }
-                       }
-                       
-                      // Si es código de acceso
-if (form.classList.contains('lock-form')) {
-  const input = form.querySelector('.lock-input');
-  const clearButton = e.submitter; // Botón que activó el submit
-  
-  // Si se presionó "Clear", borrar el input
-  if (clearButton && clearButton.name === 'clear') {
-    input.value = '';
-    input.style.background = '#fee2e2'; // Rojo suave
-    setTimeout(() => {
-      input.style.background = '';
-    }, 500);
-    showToast('🗑️ Código borrado');
-  } else {
-    // Si se presionó "Save", feedback verde
-    const originalBg = input.style.background;
-    input.style.background = '#d1fae5';
-    setTimeout(() => {
-      input.style.background = originalBg;
-    }, 500);
-    showToast('✅ Guardado correctamente');
-  }
-  return; // Importante: salir aquí para no mostrar el toast dos veces
-}
-                       
-                       // ✅ Mostrar confirmación temporal
-                       if (!form.classList.contains('lock-form')) {
-  showToast('✅ Guardado correctamente');
-}
-                     })
-                     .catch(error => {
-                       console.error('Error:', error);
-                       showToast('❌ Error al guardar', 'error');
-                     });
+                   // ⚠️ IMPORTANTE: Solo interceptar estos formularios específicos
+                   // NO interceptar el formulario de "Mostrar código"
+                   const isLockForm = form.classList.contains('lock-form');
+                   const isVisForm = form.classList.contains('vis-form');
+                   const isCleanForm = form.closest('td')?.querySelector('.clean-btn');
+                   
+                   // Si NO es uno de estos formularios, dejar que funcione normal
+                   if (!isLockForm && !isVisForm && !isCleanForm) {
+                     return; // ← Dejar que el formulario funcione normalmente
                    }
+                   
+                   // Solo para estos formularios específicos, usar AJAX
+                   e.preventDefault();
+                   
+                   const formData = new FormData(form);
+                   const row = form.closest('tr');
+                   
+                   // Guardar posición del scroll ANTES de hacer el request
+                   const scrollPos = window.scrollY;
+                   
+                   fetch(form.action, {
+                     method: 'POST',
+                     body: formData
+                   })
+                   .then(response => response.text())
+                   .then(() => {
+                     // ✅ Restaurar posición del scroll
+                     window.scrollTo(0, scrollPos);
+                     
+                     // ✅ Actualizar visualmente sin recargar
+                     
+                     // Si es limpieza
+                     if (isCleanForm) {
+                       const btn = form.querySelector('.clean-btn');
+                       if (btn.classList.contains('pill-yes')) {
+                         btn.classList.remove('pill-yes');
+                         btn.classList.add('pill-no');
+                         btn.textContent = '';
+                       } else {
+                         btn.classList.remove('pill-no');
+                         btn.classList.add('pill-yes');
+                         btn.textContent = '✓';
+                       }
+                     }
+                     
+                     // Si es visibilidad
+                     if (isVisForm) {
+                       const pill = form.querySelector('.pill');
+                       const btn = form.querySelector('button');
+                       
+                       if (pill.classList.contains('pill-yes')) {
+                         pill.classList.remove('pill-yes');
+                         pill.classList.add('pill-no');
+                         pill.textContent = 'No';
+                         btn.textContent = 'Mostrar';
+                         btn.classList.remove('btn-ghost');
+                       } else {
+                         pill.classList.remove('pill-no');
+                         pill.classList.add('pill-yes');
+                         pill.textContent = 'Sí';
+                         btn.textContent = 'Ocultar';
+                         btn.classList.add('btn-ghost');
+                       }
+                     }
+                     
+                     // Si es código de acceso
+                     if (isLockForm) {
+                       const input = form.querySelector('.lock-input');
+                       const clearButton = e.submitter; // Botón que activó el submit
+                       
+                       // Si se presionó "Clear", borrar el input
+                       if (clearButton && clearButton.name === 'clear') {
+                         input.value = '';
+                         input.style.background = '#fee2e2'; // Rojo suave
+                         setTimeout(() => {
+                           input.style.background = '';
+                         }, 500);
+                         showToast('🗑️ Código borrado');
+                       } else {
+                         // Si se presionó "Save", feedback verde
+                         const originalBg = input.style.background;
+                         input.style.background = '#d1fae5';
+                         setTimeout(() => {
+                           input.style.background = originalBg;
+                         }, 500);
+                         showToast('✅ Guardado correctamente');
+                       }
+                       return; // Salir aquí para no mostrar el toast dos veces
+                     }
+                     
+                     // ✅ Mostrar confirmación temporal
+                     if (!isLockForm) {
+                       showToast('✅ Guardado correctamente');
+                     }
+                   })
+                   .catch(error => {
+                     console.error('Error:', error);
+                     showToast('❌ Error al guardar', 'error');
+                   });
                  });
                  
                  // Toast notification
@@ -9324,6 +9336,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
