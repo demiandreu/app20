@@ -2428,13 +2428,21 @@ const bookings = result.rows.map(row => {
     platform = 'direct';
   }
 
-  // ===== INSERTAR DEBUG AQUÍ =====
-  console.log("=== DEBUG BOOKING ===");
-  console.log("Nombre:", row.full_name);
-  console.log("Platform:", platform);
-  console.log("Raw price:", raw.price);
-  console.log("Invoice items exists:", !!raw.invoiceItems);
-  console.log("Invoice items:", JSON.stringify(raw.invoiceItems, null, 2));
+// ===== DEBUG ESTRUCTURA COMPLETA =====
+  if (row.full_name === 'Francisco Lopez Ortiz') {
+    console.log("=== ESTRUCTURA COMPLETA Francisco ===");
+    console.log("rawData keys:", Object.keys(rawData));
+    console.log("rawData.booking exists:", !!rawData.booking);
+    console.log("rawData.invoiceItems exists:", !!rawData.invoiceItems);
+    
+    if (rawData.booking) {
+      console.log("rawData.booking.invoiceItems exists:", !!rawData.booking.invoiceItems);
+      console.log("rawData.booking.invoiceItems:", JSON.stringify(rawData.booking.invoiceItems, null, 2));
+    }
+    
+    console.log("Full rawData:", JSON.stringify(rawData, null, 2));
+  }
+  // ===== FIN DEBUG =====
 
   // Extraer precio según plataforma
   let price = 0;
@@ -9034,6 +9042,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
