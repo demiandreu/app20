@@ -76,13 +76,19 @@ async function sendWhatsAppCodeNotification(checkin) {
     
 // Obtener mensaje de la base de datos
 let message = await getFlowMessage('APARTMENT_READY', lang);
-
 if (message) {
+  // Generar link del portal
+  const guestPortalLink = `https://rcscheckin.com/guest/${checkin.booking_id}`;
+  
   // Reemplazar variables
   message = message
+    .replace(/{door_code}/g, checkin.lock_code || '')
+    .replace(/{lockbox_code}/g, checkin.lock_code || '')
     .replace(/{lock_code}/g, checkin.lock_code || '')
+    .replace(/{address}/g, checkin.address || '')
     .replace(/{apartment_name}/g, checkin.apartment_name || checkin.room_name || 'Tu apartamento')
-    .replace(/{guest_name}/g, checkin.full_name || '');
+    .replace(/{guest_name}/g, checkin.full_name || '')
+    .replace(/{guest_portal_link}/g, guestPortalLink);
 } else {
   // Fallback si no existe en BD
   message = `✅ ¡Tu apartamento está limpio! Ya puedes entrar.\n\n🔑 Código de acceso: ${checkin.lock_code}\n📍 ${checkin.apartment_name || checkin.room_name || 'Tu apartamento'}\n\n¡Bienvenido! 😊`;
@@ -9589,6 +9595,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
