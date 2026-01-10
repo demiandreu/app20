@@ -447,18 +447,6 @@ if (!checkinResult.rows.length) {
 const apartmentId = checkinResult.rows[0].apartment_id;
 console.log(`🏢 Apartamento del huésped: ${apartmentId}`);
 
-    // 🏢 Obtener apartamento del checkin
-const checkinResult = await pool.query(`
-  SELECT apartment_id FROM checkins WHERE id = $1
-`, [checkinId]);
-
-if (!checkinResult.rows.length) {
-  console.log('❌ Checkin no encontrado');
-  return null;
-}
-
-const apartmentId = checkinResult.rows[0].apartment_id;
-console.log(`🏢 Apartamento del huésped: ${apartmentId}`);
 
     // Obtener autorespuestas activas
     const result = await pool.query(`
@@ -9414,6 +9402,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
