@@ -6592,7 +6592,7 @@ function generateDayButtons(fromDate, toDate, tz) {
   return days.join('');
 }
 
-    function renderMyCleaningsTable(rows, mode) {
+function renderMyCleaningsTable(rows, mode) {
       const title = mode === "departures" 
         ? `Salidas <span class="muted">(${rows.length})</span>` 
         : `Llegadas <span class="muted">(${rows.length})</span>`;
@@ -9608,6 +9608,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
