@@ -691,11 +691,10 @@
             <p>Gestiona los mensajes automáticos y configuración de tu bot</p>
         </div>
 
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab('flow')">📱 Flujo Principal</button>
-            <button class="tab" onclick="switchTab('early-late')">⏰ Early/Late Check-in</button>
-            <button class="tab" onclick="switchTab('auto-replies')">💬 Respuestas Automáticas</button>
-        </div>
+      <div class="tabs">
+    <button class="tab active" onclick="switchTab('flow')">📱 Flujo Principal</button>
+    <button class="tab" onclick="switchTab('ai-knowledge')">🤖 Conocimiento IA</button>
+</div>
 
         <!-- TAB 1: Flujo Principal -->
         <div id="flow" class="tab-content active">
@@ -1177,152 +1176,85 @@ Si tienes problemas: {wifi_troubleshooting}</code>
             </div>
         </div>
 
-        <!-- TAB 2: Early/Late -->
-        <div id="early-late" class="tab-content">
-            <p style="text-align: center; color: #6b7280;">Configuración Early/Late Check-in</p>
-        </div>
+     
 
-     <!-- ============================================ -->
-<!-- 🤖 TAB: RESPUESTAS AUTOMÁTICAS -->
+   <!-- ============================================ -->
+<!-- 🤖 TAB: CONOCIMIENTO IA -->
 <!-- ============================================ -->
-<div id="auto-replies" class="tab-content">
-  <div class="section-header">
-    <h2>🤖 Respuestas Automáticas</h2>
-    <p class="description">
-      Configura respuestas automáticas a palabras clave. 
-      El bot responderá automáticamente cuando los huéspedes escriban estas keywords.
-    </p>
-  </div>
+<div id="ai-knowledge" class="tab-content">
+    <div id="alert-ai" class="alert"></div>
+    
+    <div style="margin-bottom: 24px; padding: 20px; background: #f0fdf4; border: 2px solid #22c55e; border-radius: 12px;">
+        <h3 style="margin: 0 0 12px 0; color: #166534;">🤖 Asistente IA por Apartamento</h3>
+        <p style="color: #166534; margin: 0;">
+            Escribe toda la información del apartamento. La IA usará este conocimiento para responder a los huéspedes de forma natural.
+        </p>
+    </div>
+    
+    <div style="margin-bottom: 20px;">
+        <label style="font-weight: 600; display: block; margin-bottom: 8px;">🏢 Selecciona Apartamento:</label>
+        <select id="ai-apartment-select" onchange="loadApartmentKnowledge()" style="width: 100%; padding: 12px; border: 2px solid #d1d5db; border-radius: 8px; font-size: 16px;">
+            <option value="">-- Selecciona un apartamento --</option>
+        </select>
+    </div>
+    
+    <div id="ai-knowledge-form" style="display: none;">
+        <label style="font-weight: 600; display: block; margin-bottom: 8px;">📝 Todo sobre este apartamento:</label>
+        <textarea id="ai-knowledge-text" 
+            style="width: 100%; min-height: 400px; padding: 16px; border: 2px solid #d1d5db; border-radius: 8px; font-size: 14px; line-height: 1.6;"
+            placeholder="Escribe aquí TODO lo que la IA debe saber sobre este apartamento:
 
-  <!-- Botón para añadir nueva respuesta -->
-  <div style="margin-bottom: 20px;">
-    <button id="add-reply-btn" class="btn-primary">
-      ➕ Añadir Nueva Respuesta
-    </button>
-  </div>
-    <!-- 📋 Variables Disponibles -->
-<div class="variables-info" style="margin: 24px 0; padding: 20px; background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 12px;">
-  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-    <span style="font-size: 24px;">💡</span>
-    <h3 style="margin: 0; color: #0369a1;">Variables Disponibles</h3>
-  </div>
-  
-  <p style="color: #075985; margin-bottom: 16px;">
-    Puedes usar estas variables en tus respuestas. El bot las reemplazará automáticamente con los datos del apartamento del huésped.
-  </p>
-  
-  <div class="variables-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px;">
-    
-    <!-- Información Básica -->
-    <div class="variable-category">
-      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📍 Información Básica</h4>
-      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-        <code>{apartment_name}</code><br>
-        <code>{address}</code><br>
-        <code>{city}</code><br>
-        <code>{floor}</code><br>
-        <code>{door_number}</code>
-      </div>
-    </div>
-    
-    <!-- Acceso -->
-    <div class="variable-category">
-      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🔑 Acceso y Llaves</h4>
-      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-        <code>{lockbox_code}</code><br>
-        <code>{lockbox_location}</code><br>
-        <code>{door_code}</code><br>
-        <code>{gate_code}</code><br>
-        <code>{key_instructions}</code>
-      </div>
-    </div>
-    
-    <!-- WiFi -->
-    <div class="variable-category">
-      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📶 WiFi</h4>
-      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-        <code>{wifi_network}</code><br>
-        <code>{wifi_password}</code><br>
-        <code>{wifi_troubleshooting}</code>
-      </div>
-    </div>
-    
-    <!-- Horarios -->
-    <div class="variable-category">
-      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">⏰ Horarios</h4>
-      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-        <code>{checkin_time}</code><br>
-        <code>{checkout_time}</code>
-      </div>
-    </div>
-    
-    <!-- Precios -->
-    <div class="variable-category">
-      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">💰 Precios</h4>
-      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-        <code>{security_deposit_amount}</code><br>
-        <code>{tourist_tax_amount}</code><br>
-        <code>{early_checkin_price}</code><br>
-        <code>{late_checkout_price}</code>
-      </div>
-    </div>
-    
-    <!-- Parking -->
-    <div class="variable-category">
-      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🚗 Parking</h4>
-      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-        <code>{parking_location}</code><br>
-        <code>{parking_code}</code><br>
-        <code>{parking_instructions}</code>
-      </div>
-    </div>
-    
-    <!-- Piscina -->
-    <div class="variable-category">
-      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">🏊 Piscina</h4>
-      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-        <code>{pool_hours}</code><br>
-        <code>{pool_location}</code><br>
-        <code>{pool_rules}</code>
-      </div>
-    </div>
-    
-    <!-- Contacto -->
-    <div class="variable-category">
-      <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px;">📞 Contacto</h4>
-      <div class="variable-list" style="font-size: 13px; color: #0c4a6e;">
-        <code>{support_phone}</code><br>
-        <code>{support_whatsapp}</code>
-      </div>
-    </div>
-    
-  </div>
-  
-  <div style="margin-top: 16px; padding: 12px; background: white; border-radius: 8px; border-left: 4px solid #0ea5e9;">
-    <strong style="color: #0369a1;">Ejemplo:</strong><br>
-    <code style="color: #0c4a6e; display: block; margin-top: 8px; white-space: pre-wrap;">📶 WiFi:
-Red: {wifi_network}
-Contraseña: {wifi_password}
+🏠 INFORMACIÓN GENERAL
+- Nombre: Apartamento Bilbao 1
+- Dirección: Calle Example 123, 2º B
+- Capacidad: 4 personas máximo
 
-Si tienes problemas: {wifi_troubleshooting}</code>
-  </div>
+🔑 ACCESO
+- Código de la caja de llaves: 1234
+- Ubicación caja: junto a la puerta principal
+- Código puerta portal: 5678
+
+📶 WIFI
+- Red: ApartamentoBilbao_5G
+- Contraseña: wifi12345
+
+🏊 PISCINA
+- Horario: 10:00 a 21:00 (solo verano, junio-septiembre)
+- Ubicación: planta baja del edificio
+
+🚗 PARKING
+- No incluido, parking público a 100m
+
+⚡ ELECTRODOMÉSTICOS
+- Tiene aire acondicionado
+- Calentador de agua eléctrico (tarda 15 min en calentar)
+- Lavadora en el baño
+
+📋 NORMAS
+- No fumar
+- No fiestas
+- Silencio después de las 22:00
+
+📞 CONTACTO EMERGENCIAS
+- Número: +34 600 000 000"></textarea>
+        
+        <div style="margin-top: 16px; display: flex; gap: 12px;">
+            <button onclick="saveApartmentKnowledge()" class="btn-save" style="flex: 1;">💾 Guardar Conocimiento</button>
+        </div>
+        
+        <div style="margin-top: 24px; padding: 16px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+            <strong style="color: #92400e;">💡 Consejos:</strong>
+            <ul style="margin: 8px 0 0 0; padding-left: 20px; color: #92400e; font-size: 14px;">
+                <li>Escribe toda la información que un huésped pueda preguntar</li>
+                <li>Si algo no está aquí, la IA dirá "lo consulto con el anfitrión"</li>
+                <li>Puedes actualizar en cualquier momento cuando aprendas nuevas preguntas</li>
+            </ul>
+        </div>
+    </div>
 </div>
 
+<!-- Notificación de copiado -->
 
-  <!-- Lista de respuestas -->
-  <div id="auto-replies-list">
-    <!-- Se llenará dinámicamente con JavaScript -->
-  </div>
- <div id="alert-auto-replies" class="alert"></div>
-  <!-- Botón guardar -->
-  <div style="margin-top: 24px; text-align: right;">
-    <button id="save-auto-replies-btn" class="btn-primary">
-      💾 Guardar Cambios
-    </button>
-  </div>
-</div>
-
-    <!-- Notificación de copiado -->
     <div id="copy-notification" class="copy-notification">
         ✓ Variable copiada al portapapeles
     </div>
@@ -1531,13 +1463,12 @@ loadApartments().then(() => {
   loadAutoReplies();
 });
 
-
-
 // =============================================
-// 🤖 AUTO-REPLIES MANAGEMENT
+// 🤖 CONOCIMIENTO IA POR APARTAMENTO
 // =============================================
 
 let availableApartments = [];
+let currentApartmentId = null;
 
 async function loadApartments() {
   try {
@@ -1547,464 +1478,95 @@ async function loadApartments() {
     if (data.success) {
       availableApartments = data.apartments;
       console.log('✅ Apartamentos cargados:', availableApartments.length);
+      populateApartmentSelect();
     }
   } catch (error) {
     console.error('Error cargando apartamentos:', error);
   }
 }
 
-let autoReplies = [];
+function populateApartmentSelect() {
+  const select = document.getElementById('ai-apartment-select');
+  if (!select) return;
+  
+  select.innerHTML = '<option value="">-- Selecciona un apartamento --</option>' +
+    availableApartments.map(apt => 
+      '<option value="' + apt.id + '">' + (apt.apartment_name || apt.beds24_room_id) + '</option>'
+    ).join('');
+}
 
-// Cargar autorespuestas al inicio
-async function loadAutoReplies() {
+async function loadApartmentKnowledge() {
+  const select = document.getElementById('ai-apartment-select');
+  const form = document.getElementById('ai-knowledge-form');
+  const textarea = document.getElementById('ai-knowledge-text');
+  
+  currentApartmentId = select.value;
+  
+  if (!currentApartmentId) {
+    form.style.display = 'none';
+    return;
+  }
+  
+  form.style.display = 'block';
+  textarea.value = '⏳ Cargando...';
+  
   try {
-    console.log('📦 Cargando autorespuestas...');
-    
-    const response = await fetch('/api/whatsapp/auto-replies');
+    const response = await fetch('/api/apartments/' + currentApartmentId + '/knowledge');
     const data = await response.json();
     
-    console.log('📊 Respuesta API:', data);
+    if (data.success) {
+      textarea.value = data.knowledge || '';
+    } else {
+      textarea.value = '';
+    }
+  } catch (error) {
+    console.error('Error cargando conocimiento:', error);
+    textarea.value = '';
+  }
+}
+
+async function saveApartmentKnowledge() {
+  if (!currentApartmentId) {
+    showAlert('ai', '⚠️ Selecciona un apartamento primero', 'error');
+    return;
+  }
+  
+  const textarea = document.getElementById('ai-knowledge-text');
+  const knowledge = textarea.value;
+  
+  try {
+    const response = await fetch('/api/apartments/' + currentApartmentId + '/knowledge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ knowledge })
+    });
+    
+    const data = await response.json();
     
     if (data.success) {
-      autoReplies = data.replies || [];
-      console.log(`✅ ${autoReplies.length} autorespuestas cargadas`);
-      renderAutoReplies();
+      showAlert('ai', '✅ Conocimiento guardado correctamente', 'success');
     } else {
-      console.error('❌ Error en respuesta:', data);
-      showAlert('auto-replies', '❌ Error al cargar respuestas', 'error');
+      showAlert('ai', '❌ Error al guardar: ' + data.error, 'error');
     }
   } catch (error) {
-    console.error('❌ Error loading auto-replies:', error);
-    showAlert('auto-replies', '❌ Error al cargar respuestas automáticas', 'error');
+    console.error('Error guardando:', error);
+    showAlert('ai', '❌ Error al guardar', 'error');
   }
 }
 
-// Renderizar lista de autorespuestas
-function renderAutoReplies() {
-  console.log('🎨 Renderizando autorespuestas...', autoReplies.length);
-  
-  const container = document.getElementById('auto-replies-list');
-  
-  if (!container) {
-    console.error('❌ No se encontró el contenedor auto-replies-list');
-    return;
-  }
-  
-  if (autoReplies.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <p>No hay respuestas automáticas configuradas.</p>
-        <p>Haz clic en "➕ Añadir Nueva Respuesta" para crear una.</p>
-      </div>
-    `;
-    return;
-  }
-
-  container.innerHTML = autoReplies.map((reply, index) => {
-    // Convertir keywords a array limpio
-    let keywordsArray = [];
-    
-    if (!reply.keywords) {
-      keywordsArray = [];
-    } else if (Array.isArray(reply.keywords)) {
-      keywordsArray = reply.keywords;
-    } else if (typeof reply.keywords === 'string') {
-      // Limpiar formato PostgreSQL {wifi,password} o JSON ["wifi","password"]
-      let cleaned = reply.keywords
-        .replace(/^\{/, '')
-        .replace(/\}$/, '')
-        .replace(/^\[/, '')
-        .replace(/\]$/, '')
-        .replace(/"/g, '')
-        .trim();
-      keywordsArray = cleaned.split(',').map(k => k.trim()).filter(k => k.length > 0);
+// Inicializar al cargar la pestaña
+const aiTab = document.querySelector('[onclick*="ai-knowledge"]');
+if (aiTab) {
+  aiTab.addEventListener('click', () => {
+    console.log('🤖 Pestaña Conocimiento IA activada');
+    if (availableApartments.length === 0) {
+      loadApartments();
+    } else {
+      populateApartmentSelect();
     }
-    
-    const keywordsText = keywordsArray.join(', ');
-    const isOpen = index === 0; // Solo el primero abierto por defecto
-    
-    return `
-    <div class="auto-reply-card ${isOpen ? 'open' : ''}" data-id="${reply.id || ''}" data-index="${index}">
-      <div class="reply-header" onclick="toggleCard(${index})">
-        <div>
-          <h3>${getCategoryIcon(reply.category)}</h3>
-          <div class="keywords-display">
-          ${keywordsArray.slice(0, 2).map(kw => `<span class="keyword-tag">${kw}</span>`).join('')}
-${keywordsArray.length > 2 ? `<span class="keyword-tag">+${keywordsArray.length - 2} más</span>` : ''}
-          </div>
-        </div>
-        <div class="reply-actions">
-          <label class="toggle" onclick="event.stopPropagation()">
-            <input type="checkbox" ${reply.active ? 'checked' : ''} 
-                   onchange="toggleReply(${index})">
-            <span>Activa</span>
-          </label>
-          <button class="btn-small btn-danger" onclick="event.stopPropagation(); deleteReply(${index})">
-            🗑️ Eliminar
-          </button>
-          <span class="accordion-arrow">▼</span>
-        </div>
-      </div>
-
-      <div class="reply-content">
-        <div class="language-tabs">
-          <button class="lang-tab active" onclick="showLangReply(${index}, 'es')">🇪🇸 ES</button>
-          <button class="lang-tab" onclick="showLangReply(${index}, 'en')">🇬🇧 EN</button>
-          <button class="lang-tab" onclick="showLangReply(${index}, 'fr')">🇫🇷 FR</button>
-          <button class="lang-tab" onclick="showLangReply(${index}, 'ru')">🇷🇺 RU</button>
-        </div>
-
-        <div class="lang-content">
-          <textarea id="reply_${index}_es" class="lang-textarea active" 
-                    placeholder="Respuesta en español...">${reply.response_es || ''}</textarea>
-          <textarea id="reply_${index}_en" class="lang-textarea" 
-                    placeholder="Response in English...">${reply.response_en || ''}</textarea>
-          <textarea id="reply_${index}_fr" class="lang-textarea" 
-                    placeholder="Réponse en français...">${reply.response_fr || ''}</textarea>
-          <textarea id="reply_${index}_ru" class="lang-textarea" 
-                    placeholder="Ответ на русском...">${reply.response_ru || ''}</textarea>
-        </div>
-
-        <button class="btn-translate" onclick="translateAutoReply(${index})">🌍 Traducir desde ES</button>
-
-        <div class="reply-settings">
-          <label>
-          <div style="margin-bottom: 16px;">
-  <label style="font-weight: 600; display: block; margin-bottom: 8px;">
-    🏢 Apartamentos donde aplicar esta respuesta:
-  </label>
-  <div id="apartments_${index}" class="apartments-checkboxes" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px;">
-    <!-- Se llenarán dinámicamente con JavaScript -->
-  </div>
-</div>
-            Keywords (separados por coma):
-            <textarea id="keywords_${index}" 
-                      placeholder="wifi, contraseña, password, internet, red"
-                      style="min-height: 80px;">${keywordsText}</textarea>
-          </label>
-          
-         
-        </div>
-    </div>
-    </div>
-    `;
-  }).join('');
-  
-  // Renderizar checkboxes de apartamentos DESPUÉS de crear el HTML
-  setTimeout(() => {
-    autoReplies.forEach((reply, index) => {
-      const container = document.getElementById('apartments_' + index);
-      if (container && availableApartments.length > 0) {
-        const selectedApts = reply.apartment_ids || [];
-        
-        container.innerHTML = availableApartments.map(apt => 
-          '<label style="display: flex; align-items: center; gap: 6px; padding: 6px; background: #f9fafb; border-radius: 6px; cursor: pointer;">' +
-          '<input type="checkbox" value="' + apt.id + '" ' +
-          (selectedApts.includes(String(apt.id)) ? 'checked' : '') +
-          ' onchange="updateApartmentSelection(' + index + ', this)">' +
-          '<span style="font-size: 13px;">' + (apt.apartment_name || apt.beds24_room_id) + '</span>' +
-          '</label>'
-        ).join('');
-      }
-    });
-  }, 100);
-  
-  console.log('✅ Renderizado completado');
-}
-
-// Toggle acordeón
-function toggleCard(index) {
-  const card = document.querySelector(`[data-index="${index}"]`);
-  if (card) {
-    card.classList.toggle('open');
-  }
-}
-
-// Mostrar idioma en textarea
-function showLangReply(index, lang) {
-  const card = document.querySelectorAll('.auto-reply-card')[index];
-  
-  if (!card) return;
-  
-  // Toggle tabs
-  card.querySelectorAll('.lang-tab').forEach(tab => tab.classList.remove('active'));
-  const targetTab = Array.from(card.querySelectorAll('.lang-tab')).find(tab => 
-    tab.textContent.includes(lang.toUpperCase())
-  );
-  if (targetTab) targetTab.classList.add('active');
-  
-  // Toggle textareas
-  card.querySelectorAll('.lang-textarea').forEach(ta => ta.classList.remove('active'));
-  const targetTextarea = card.querySelector(`#reply_${index}_${lang}`);
-  if (targetTextarea) targetTextarea.classList.add('active');
-}
-
-// Toggle activo/inactivo
-function toggleReply(index) {
-  autoReplies[index].active = !autoReplies[index].active;
-  console.log(`Toggle reply ${index}: active = ${autoReplies[index].active}`);
-}
-
-// Eliminar respuesta
-async function deleteReply(index) {
-  if (!confirm('¿Seguro que quieres eliminar esta respuesta automática?')) {
-    return;
-  }
-  
-  const reply = autoReplies[index];
-  
-  if (reply.id) {
-    // Si tiene ID, eliminar de BD
-    try {
-      const response = await fetch(`/api/whatsapp/auto-replies/${reply.id}`, {
-        method: 'DELETE'
-      });
-      
-      if (response.ok) {
-        console.log(`🗑️ Reply ${reply.id} eliminado de BD`);
-      }
-    } catch (error) {
-      console.error('Error eliminando:', error);
-      showAlert('auto-replies', '❌ Error al eliminar', 'error');
-      return;
-    }
-  }
-
-
-// Actualizar selección de apartamentos
-function updateApartmentSelection(index, checkbox) {
-  if (!autoReplies[index].apartment_ids) {
-    autoReplies[index].apartment_ids = [];
-  }
-  
-  const aptId = checkbox.value;
-  
-  if (checkbox.checked) {
-    // Agregar si no existe
-    if (!autoReplies[index].apartment_ids.includes(aptId)) {
-      autoReplies[index].apartment_ids.push(aptId);
-    }
-  } else {
-    // Quitar
-    autoReplies[index].apartment_ids = autoReplies[index].apartment_ids.filter(id => id !== aptId);
-  }
-  
-  console.log(`Apartamentos para reply ${index}:`, autoReplies[index].apartment_ids);
-}
-    
-  // Eliminar del array local
-  autoReplies.splice(index, 1);
-  renderAutoReplies();
-  
-  showAlert('auto-replies', '✅ Respuesta eliminada', 'success');
-}
-
-// Añadir nueva respuesta
-document.getElementById('add-reply-btn')?.addEventListener('click', () => {
-  console.log('➕ Añadiendo nueva respuesta');
-  
-  autoReplies.unshift({
-    id: null,
-    category: 'custom',
-    keywords: [],
-    response_es: '',
-    response_en: '',
-    response_fr: '',
-    response_ru: '',
-    active: true,
-    priority: 0
   });
-  
-  renderAutoReplies();
-  
-  // Scroll al inicio
-  setTimeout(() => {
-    const container = document.getElementById('auto-replies-list');
-    if (container) {
-      container.firstElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }, 100);
-});
-
-// Traducir autorespuesta con DeepL
-async function translateAutoReply(index) {
-  const sourceText = document.getElementById(`reply_${index}_es`)?.value.trim();
-  
-  if (!sourceText) {
-    showAlert('auto-replies', '⚠️ Escribe primero el texto en español', 'error');
-    return;
-  }
-
-  const button = event.target;
-  button.disabled = true;
-  button.textContent = '⏳ Traduciendo...';
-
-  try {
-    // Translate to EN
-    let response = await fetch('/api/translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: sourceText, targetLang: 'EN' })
-    });
-    let data = await response.json();
-    document.getElementById(`reply_${index}_en`).value = data.translated;
-
-    // Translate to FR
-    response = await fetch('/api/translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: sourceText, targetLang: 'FR' })
-    });
-    data = await response.json();
-    document.getElementById(`reply_${index}_fr`).value = data.translated;
-
-    // Translate to RU
-    response = await fetch('/api/translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: sourceText, targetLang: 'RU' })
-    });
-    data = await response.json();
-    document.getElementById(`reply_${index}_ru`).value = data.translated;
-
-    showAlert('auto-replies', '✅ Traducción completada', 'success');
-  } catch (error) {
-    console.error('Translation error:', error);
-    showAlert('auto-replies', '❌ Error al traducir', 'error');
-  } finally {
-    button.disabled = false;
-    button.textContent = '🌍 Traducir desde ES';
-  }
-}
-
-// Guardar cambios
-document.getElementById('save-auto-replies-btn')?.addEventListener('click', async () => {
-  try {
-    console.log('💾 Guardando autorespuestas...');
-    
-    const button = event.target;
-    button.disabled = true;
-    button.textContent = '⏳ Guardando...';
-    
-    // Recoger datos de todos los campos
-    const updatedReplies = autoReplies.map((reply, index) => {
-      const keywordsValue = document.getElementById(`keywords_${index}`)?.value || '';
-      
-      // ✅ Limpiar keywords: quitar espacios extras, filtrar vacíos
-      const keywordsArray = keywordsValue
-        .split(',')
-        .map(k => k.trim())
-        .filter(k => k.length > 0);
-      
-      return {
-        ...reply,
-        category: document.getElementById(`category_${index}`)?.value || reply.category,
-          apartment_ids: reply.apartment_ids || [],
-        keywords: keywordsArray,
-        response_es: document.getElementById(`reply_${index}_es`)?.value || '',
-        response_en: document.getElementById(`reply_${index}_en`)?.value || '',
-        response_fr: document.getElementById(`reply_${index}_fr`)?.value || '',
-        response_ru: document.getElementById(`reply_${index}_ru`)?.value || '',
-        priority: parseInt(document.getElementById(`priority_${index}`)?.value) || 0
-      };
-    });
-
-    console.log(`📊 Total a guardar: ${updatedReplies.length}`);
-
-    // Guardar cada respuesta
-    let savedCount = 0;
-    for (const reply of updatedReplies) {
-      console.log(`💾 Guardando reply ID: ${reply.id || 'NEW'}`, reply.keywords);
-      
-      if (reply.id) {
-        // Actualizar existente
-        const response = await fetch(`/api/whatsapp/auto-replies/${reply.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(reply)
-        });
-        
-        const data = await response.json();
-        console.log(`✅ Actualizado:`, data);
-        savedCount++;
-        
-      } else {
-        // Crear nueva
-        const response = await fetch('/api/whatsapp/auto-replies', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(reply)
-        });
-        
-        const data = await response.json();
-        console.log(`✅ Creado:`, data);
-        savedCount++;
-      }
-    }
-
-    showAlert('auto-replies', `✅ ${savedCount} respuestas guardadas correctamente`, 'success');
-    
-    // Recargar para mostrar IDs actualizados
-    setTimeout(() => {
-      loadAutoReplies();
-    }, 1500);
-    
-    button.disabled = false;
-    button.textContent = '💾 Guardar Cambios';
-    
-  } catch (error) {
-    console.error('❌ Error saving:', error);
-    showAlert('auto-replies', '❌ Error al guardar: ' + error.message, 'error');
-    
-    event.target.disabled = false;
-    event.target.textContent = '💾 Guardar Cambios';
-  }
-});
-
-function getCategoryIcon(category) {
-  const icons = {
-    custom: '✏️',
-    direccion: '📍',
-    llaves: '🔑',
-    wifi: '📶',
-    cafetera: '☕',
-    maletas: '🧳',
-    entradas: '🎫',
-    parking: '🚗',
-    accesibilidad: '♿',
-    piscina: '🏊',
-    restaurantes: '🍽️',
-    playa: '🏖️',
-    bano: '🚿',
-    dormitorio: '🛏️',
-    tv: '📺',
-    aire: '❄️',
-    calefaccion: '🔥',
-    lavanderia: '🧺',
-    cocina: '🍳',
-    entretenimiento: '🎮',
-    contacto: '📞',
-    horarios: '⏰',
-    checkout: '🚪',
-    informacion: 'ℹ️',
-    importante: '⚠️'
-  };
-  return icons[category] || '📝';
-}
-
-// Cargar al cambiar a la pestaña
-const autoRepliesTab = document.querySelector('[onclick*="auto-replies"]');
-if (autoRepliesTab) {
-  autoRepliesTab.addEventListener('click', () => {
-    console.log('📱 Pestaña auto-replies activada');
-    loadAutoReplies();
-  });
-}
-
-// Cargar al inicio si ya está en la pestaña
-if (document.getElementById('auto-replies')?.classList.contains('active')) {
-  loadAutoReplies();
 }
     </script>
 </body>
 </html>
+
