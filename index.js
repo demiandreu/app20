@@ -91,13 +91,13 @@ if (message) {
     const messageBody = message;
     
     // Enviar mensaje por WhatsApp
-    const message = await client.messages.create({
+    const twilioMsg = await client.messages.create({
       from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
       to: `whatsapp:${toNumber}`,
       body: messageBody
     });
     
-    console.log(`✅ WhatsApp sent to ${toNumber}: ${message.sid}`);
+    console.log(`✅ WhatsApp sent to ${toNumber}: ${twilioMsg.sid}`);
     
     return { 
       success: true, 
@@ -9588,6 +9588,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
