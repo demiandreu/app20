@@ -810,9 +810,9 @@ Si tienes problemas: {wifi_troubleshooting}</code>
 
             <div id="loading-flow" class="loading">⏳ Cargando mensajes...</div>
             <div id="flow-content" style="display: none;">
-                <!-- START -->
-              <!-- ASK_RULES -->
-                <!-- START -->
+             
+          
+              <!-- START -->
 <div class="message-section">
     <h3>START - Mensaje Inicial</h3>
     <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Primer mensaje al iniciar conversación</p>
@@ -839,32 +839,8 @@ Si tienes problemas: {wifi_troubleshooting}</code>
     
     <button class="btn-translate" onclick="translateMessage('START')">🌍 Traducir desde ES</button>
 </div>
-<div class="message-section">
-    <h3>ASK_RULES - Aceptar Normas de Casa</h3>
-    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Normas que el huésped debe aceptar escribiendo ACEPTO</p>
-    
-    <div class="language-tabs">
-        <button class="lang-tab active" onclick="switchLang('ASK_RULES', 'es')">🇪🇸 ES</button>
-        <button class="lang-tab" onclick="switchLang('ASK_RULES', 'en')">🇬🇧 EN</button>
-        <button class="lang-tab" onclick="switchLang('ASK_RULES', 'fr')">🇫🇷 FR</button>
-        <button class="lang-tab" onclick="switchLang('ASK_RULES', 'ru')">🇷🇺 RU</button>
-    </div>
-    
-    <div class="textarea-container active" data-msg="ASK_RULES" data-lang="es">
-        <textarea id="ASK_RULES_es" placeholder="📋 Normas de casa que deben aceptarse..."></textarea>
-    </div>
-    <div class="textarea-container" data-msg="ASK_RULES" data-lang="en">
-        <textarea id="ASK_RULES_en" placeholder="House rules to accept..."></textarea>
-    </div>
-    <div class="textarea-container" data-msg="ASK_RULES" data-lang="fr">
-        <textarea id="ASK_RULES_fr" placeholder="Règles de la maison à accepter..."></textarea>
-    </div>
-    <div class="textarea-container" data-msg="ASK_RULES" data-lang="ru">
-        <textarea id="ASK_RULES_ru" placeholder="Правила дома для принятия..."></textarea>
-    </div>
-    
-    <button class="btn-translate" onclick="translateMessage('ASK_RULES')">🌍 Traducir desde ES</button>
-</div>
+                  <!-- ASK_RULES -->
+
 
                 <!-- REGOK -->
                 <div class="message-section">
@@ -977,6 +953,33 @@ Si tienes problemas: {wifi_troubleshooting}</code>
                     
                     <button class="btn-translate" onclick="translateMessage('ASK_DEPARTURE')">🌍 Traducir desde ES</button>
                 </div>
+
+                <div class="message-section">
+    <h3>ASK_RULES - Aceptar Normas de Casa</h3>
+    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Normas que el huésped debe aceptar escribiendo ACEPTO</p>
+    
+    <div class="language-tabs">
+        <button class="lang-tab active" onclick="switchLang('ASK_RULES', 'es')">🇪🇸 ES</button>
+        <button class="lang-tab" onclick="switchLang('ASK_RULES', 'en')">🇬🇧 EN</button>
+        <button class="lang-tab" onclick="switchLang('ASK_RULES', 'fr')">🇫🇷 FR</button>
+        <button class="lang-tab" onclick="switchLang('ASK_RULES', 'ru')">🇷🇺 RU</button>
+    </div>
+    
+    <div class="textarea-container active" data-msg="ASK_RULES" data-lang="es">
+        <textarea id="ASK_RULES_es" placeholder="📋 Normas de casa que deben aceptarse..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="ASK_RULES" data-lang="en">
+        <textarea id="ASK_RULES_en" placeholder="House rules to accept..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="ASK_RULES" data-lang="fr">
+        <textarea id="ASK_RULES_fr" placeholder="Règles de la maison à accepter..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="ASK_RULES" data-lang="ru">
+        <textarea id="ASK_RULES_ru" placeholder="Правила дома для принятия..."></textarea>
+    </div>
+    
+    <button class="btn-translate" onclick="translateMessage('ASK_RULES')">🌍 Traducir desde ES</button>
+</div>
                  <!-- EARLY_CHECKIN_NOTICE -->
 <div class="message-section">
     <h3>EARLY_CHECKIN_NOTICE - Aviso Early Check-in</h3>
