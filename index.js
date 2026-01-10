@@ -8525,7 +8525,7 @@ VALUES ($1, $2::text, $3, $4, $5, $6, $7, $8, $9)
   JSON.stringify(apartment_ids || [])
     ]);
 
-    console.log('✅ Guardado:', result.rows[0].keywords);
+    console.log(`✅ Guardado: ${msg.message_key}`);
 
     res.json({ success: true, reply: result.rows[0] });
   } catch (error) {
@@ -9589,6 +9589,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
