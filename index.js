@@ -6586,11 +6586,12 @@ app.get("/staff/my-cleanings", requireAuth, requireRole('STAFF_CLEANING'), async
             <input type="date" name="to" value="${toDate || ""}" />
           </div>
           <button type="submit" class="btn-primary">Filtrar</button>
-          <a href="/staff/my-cleanings" class="btn-link">Resetear</a>
+        <a href="/staff/my-cleanings" class="btn-link">Resetear</a>
         </div>
-      
+      </form>
+    `;
 
-function renderMyCleaningsTable(rows, mode) {
+    function renderMyCleaningsTable(rows, mode) {
       const title = mode === "departures" 
         ? `Salidas <span class="muted">(${rows.length})</span>` 
         : `Llegadas <span class="muted">(${rows.length})</span>`;
@@ -9606,6 +9607,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
