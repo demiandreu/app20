@@ -1436,18 +1436,12 @@ function showAlert(tabName, message, type) {
 
         // Save flow messages
         async function saveFlowMessages() {
-            const button = event.target;
-            button.disabled = true;
-            button.textContent = '⏳ Guardando...';
-            
-            const messageKeys = ['START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE', 'ASK_RULES', 'EARLY_CHECKIN_NOTICE', 'LATE_CHECKOUT_NOTICE', 'CONFIRMATION', 'APARTMENT_READY', 'BOOKING_CANCELLED'];
-            
-            const messages = messageKeys.map(key => {
+            const keys = ['START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE', 'ASK_RULES', 'EARLY_CHECKIN_NOTICE', 'LATE_CHECKOUT_NOTICE', 'CONFIRMATION', 'APARTMENT_READY', 'BOOKING_CANCELLED'];
+            const messages = keys.map(key => {
                 const esEl = document.getElementById(`${key}_es`);
                 const enEl = document.getElementById(`${key}_en`);
                 const frEl = document.getElementById(`${key}_fr`);
                 const ruEl = document.getElementById(`${key}_ru`);
-                
                 return {
                     message_key: key,
                     content_es: esEl ? esEl.value : '',
@@ -1455,7 +1449,7 @@ function showAlert(tabName, message, type) {
                     content_fr: frEl ? frEl.value : '',
                     content_ru: ruEl ? ruEl.value : ''
                 };
-            }).filter(msg => msg.content_es || msg.content_en || msg.content_fr || msg.content_ru);
+            }).filter(m => m.content_es || m.content_en || m.content_fr || m.content_ru);
 
             try {
                 const response = await fetch('/api/whatsapp/flow-messages', {
@@ -1474,9 +1468,6 @@ function showAlert(tabName, message, type) {
             } catch (error) {
                 console.error('Error saving flow messages:', error);
                 showAlert('flow', '❌ Error al guardar mensajes', 'error');
-            } finally {
-                button.disabled = false;
-                button.textContent = '💾 Guardar Todos los Mensajes';
             }
         }
 
@@ -1720,13 +1711,7 @@ async function deleteReply(index) {
       return;
     }
   }
-  
-  // Eliminar del array local
-  autoReplies.splice(index, 1);
-  renderAutoReplies();
-  
-  showAlert('auto-replies', '✅ Respuesta eliminada', 'success');
-}
+
 
 // Actualizar selección de apartamentos
 function updateApartmentSelection(index, checkbox) {
@@ -1747,6 +1732,13 @@ function updateApartmentSelection(index, checkbox) {
   }
   
   console.log(`Apartamentos para reply ${index}:`, autoReplies[index].apartment_ids);
+}
+    
+  // Eliminar del array local
+  autoReplies.splice(index, 1);
+  renderAutoReplies();
+  
+  showAlert('auto-replies', '✅ Respuesta eliminada', 'success');
 }
 
 // Añadir nueva respuesta
