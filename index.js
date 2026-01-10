@@ -8314,6 +8314,55 @@ app.get("/api/apartment/:id", async (req, res) => {
   }
 });
 
+// ============================================
+// 🤖 CONOCIMIENTO IA POR APARTAMENTO
+// ============================================
+
+// Obtener conocimiento de un apartamento
+app.get("/api/apartments/:id/knowledge", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const result = await pool.query(
+      `SELECT ai_knowledge FROM beds24_rooms WHERE id = $1`,
+      [id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.json({ success: false, error: 'Apartamento no encontrado' });
+    }
+    
+    res.json({ 
+      success: true, 
+      knowledge: result.rows[0].ai_knowledge || '' 
+    });
+  } catch (error) {
+    console.error('Error obteniendo conocimiento:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Guardar conocimiento de un apartamento
+app.post("/api/apartments/:id/knowledge", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { knowledge } = req.body;
+    
+    await pool.query(
+      `UPDATE beds24_rooms SET ai_knowledge = $1, updated_at = NOW() WHERE id = $2`,
+      [knowledge, id]
+    );
+    
+    console.log(`✅ Conocimiento IA guardado para apartamento ${id}`);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error guardando conocimiento:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+
 // POST: Guardar apartment (upsert)
 app.post("/api/apartment/save", async (req, res) => {
   try {
@@ -9607,6 +9656,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
