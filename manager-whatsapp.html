@@ -1118,6 +1118,33 @@ Si tienes problemas: {wifi_troubleshooting}</code>
     
     <button class="btn-translate" onclick="translateMessage('BOOKING_CANCELLED')">🌍 Traducir desde ES</button>
 </div>
+                <!-- NO_ENTIENDO -->
+<div class="message-section">
+    <h3>NO_ENTIENDO - Mensaje No Reconocido</h3>
+    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Mensaje cuando el bot no entiende lo que escribe el huésped</p>
+    
+    <div class="language-tabs">
+        <button class="lang-tab active" onclick="switchLang('NO_ENTIENDO', 'es')">🇪🇸 ES</button>
+        <button class="lang-tab" onclick="switchLang('NO_ENTIENDO', 'en')">🇬🇧 EN</button>
+        <button class="lang-tab" onclick="switchLang('NO_ENTIENDO', 'fr')">🇫🇷 FR</button>
+        <button class="lang-tab" onclick="switchLang('NO_ENTIENDO', 'ru')">🇷🇺 RU</button>
+    </div>
+    
+    <div class="textarea-container active" data-msg="NO_ENTIENDO" data-lang="es">
+        <textarea id="NO_ENTIENDO_es" placeholder="🤔 Lo siento, no he entendido tu mensaje..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="NO_ENTIENDO" data-lang="en">
+        <textarea id="NO_ENTIENDO_en" placeholder="🤔 Sorry, I didn't understand..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="NO_ENTIENDO" data-lang="fr">
+        <textarea id="NO_ENTIENDO_fr" placeholder="🤔 Désolé, je n'ai pas compris..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="NO_ENTIENDO" data-lang="ru">
+        <textarea id="NO_ENTIENDO_ru" placeholder="🤔 Извините, я не понял..."></textarea>
+    </div>
+    
+    <button class="btn-translate" onclick="translateMessage('NO_ENTIENDO')">🌍 Traducir desde ES</button>
+</div>
 
                 <button class="btn-save" onclick="saveFlowMessages()">💾 Guardar Todos los Mensajes</button>
             </div>
@@ -1361,7 +1388,7 @@ function showAlert(tabName, message, type) {
                 
                 if (data.success) {
                     data.messages.forEach(msg => {
-                        const keys = ['START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE', 'ASK_RULES', 'EARLY_CHECKIN_NOTICE', 'LATE_CHECKOUT_NOTICE', 'CONFIRMATION', 'APARTMENT_READY', 'BOOKING_CANCELLED'];
+                        const keys = ['START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE', 'ASK_RULES', 'EARLY_CHECKIN_NOTICE', 'LATE_CHECKOUT_NOTICE', 'CONFIRMATION', 'APARTMENT_READY', 'BOOKING_CANCELLED', 'NO_ENTIENDO'];
                         if (keys.includes(msg.message_key)) {
                             const esEl = document.getElementById(`${msg.message_key}_es`);
                             const enEl = document.getElementById(`${msg.message_key}_en`);
@@ -1436,7 +1463,7 @@ function showAlert(tabName, message, type) {
 
         // Save flow messages
         async function saveFlowMessages() {
-            const keys = ['START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE', 'ASK_RULES', 'EARLY_CHECKIN_NOTICE', 'LATE_CHECKOUT_NOTICE', 'CONFIRMATION', 'APARTMENT_READY', 'BOOKING_CANCELLED'];
+           const keys = ['START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE', 'ASK_RULES', 'EARLY_CHECKIN_NOTICE', 'LATE_CHECKOUT_NOTICE', 'CONFIRMATION', 'APARTMENT_READY', 'BOOKING_CANCELLED', 'NO_ENTIENDO'];
             const messages = keys.map(key => {
                 const esEl = document.getElementById(`${key}_es`);
                 const enEl = document.getElementById(`${key}_en`);
