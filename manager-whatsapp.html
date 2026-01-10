@@ -1685,27 +1685,29 @@ ${keywordsArray.length > 2 ? `<span class="keyword-tag">+${keywordsArray.length 
           
          
         </div>
-      </div>
+    </div>
     </div>
     `;
-      // Renderizar checkboxes de apartamentos
-setTimeout(() => {
-  const container = document.getElementById(`apartments_${index}`);
-  if (container && availableApartments.length > 0) {
-    const selectedApts = reply.apartment_ids || [];
-    
-    container.innerHTML = availableApartments.map(apt => `
-      <label style="display: flex; align-items: center; gap: 6px; padding: 6px; background: #f9fafb; border-radius: 6px; cursor: pointer;">
-        <input type="checkbox" 
-               value="${apt.id}" 
-               ${selectedApts.includes(String(apt.id)) ? 'checked' : ''}
-               onchange="updateApartmentSelection(${index}, this)">
-        <span style="font-size: 13px;">${apt.apartment_name || apt.beds24_room_id}</span>
-      </label>
-    `).join('');
-  }
-}, 100);
   }).join('');
+  
+  // Renderizar checkboxes de apartamentos DESPUÉS de crear el HTML
+  setTimeout(() => {
+    autoReplies.forEach((reply, index) => {
+      const container = document.getElementById('apartments_' + index);
+      if (container && availableApartments.length > 0) {
+        const selectedApts = reply.apartment_ids || [];
+        
+        container.innerHTML = availableApartments.map(apt => 
+          '<label style="display: flex; align-items: center; gap: 6px; padding: 6px; background: #f9fafb; border-radius: 6px; cursor: pointer;">' +
+          '<input type="checkbox" value="' + apt.id + '" ' +
+          (selectedApts.includes(String(apt.id)) ? 'checked' : '') +
+          ' onchange="updateApartmentSelection(' + index + ', this)">' +
+          '<span style="font-size: 13px;">' + (apt.apartment_name || apt.beds24_room_id) + '</span>' +
+          '</label>'
+        ).join('');
+      }
+    });
+  }, 100);
   
   console.log('✅ Renderizado completado');
 }
