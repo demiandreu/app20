@@ -434,19 +434,59 @@ async function checkAutoReply(message, language, checkinId) {
   try {
     const bodyLower = message.toLowerCase().trim();
     console.log(`🔍 checkAutoReply: Buscando match para "${bodyLower}" (lang: ${language})`);
+    // 🏢 Obtener apartamento del checkin
+const checkinResult = await pool.query(`
+  SELECT apartment_id FROM checkins WHERE id = $1
+`, [checkinId]);
+
+if (!checkinResult.rows.length) {
+  console.log('❌ Checkin no encontrado');
+  return null;
+}
+
+const apartmentId = checkinResult.rows[0].apartment_id;
+console.log(`🏢 Apartamento del huésped: ${apartmentId}`);
+
+    // 🏢 Obtener apartamento del checkin
+const checkinResult = await pool.query(`
+  SELECT apartment_id FROM checkins WHERE id = $1
+`, [checkinId]);
+
+if (!checkinResult.rows.length) {
+  console.log('❌ Checkin no encontrado');
+  return null;
+}
+
+const apartmentId = checkinResult.rows[0].apartment_id;
+console.log(`🏢 Apartamento del huésped: ${apartmentId}`);
 
     // Obtener autorespuestas activas
     const result = await pool.query(`
-      SELECT id, category, keywords, response_es, response_en, response_fr, response_ru, priority
-      FROM whatsapp_auto_replies
-      WHERE active = true
-      ORDER BY priority DESC
-    `);
+ SELECT id, category, keywords, response_es, response_en, response_fr, response_ru, priority, apartment_ids
+FROM whatsapp_auto_replies
+  WHERE active = true
+  ORDER BY priority DESC
+`);
 
     console.log(`📊 Encontradas ${result.rows.length} autorespuestas activas`);
 
     // Buscar match
     for (const reply of result.rows) {
+      // 🏢 Verificar si esta respuesta aplica a este apartamento
+let apartmentIdsArray = [];
+try {
+  apartmentIdsArray = reply.apartment_ids ? JSON.parse(reply.apartment_ids) : [];
+} catch (e) {
+  apartmentIdsArray = [];
+}
+
+// Si tiene apartamentos específicos y este no está en la lista, saltar
+if (apartmentIdsArray.length > 0 && !apartmentIdsArray.includes(apartmentId)) {
+  console.log(`⏭️ Reply ID ${reply.id} no aplica al apartamento ${apartmentId}`);
+  continue;
+}
+
+console.log(`✅ Reply ID ${reply.id} aplica al apartamento ${apartmentId}`);
       let keywordsArray = [];
       
       if (typeof reply.keywords === 'string') {
@@ -8217,26 +8257,33 @@ app.post("/api/apartment/save", async (req, res) => {
 app.get("/api/whatsapp/auto-replies", async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT 
-        id,
-        category,
-        keywords,
-        response_es,
-        response_en,
-        response_fr,
-        response_ru,
-        active,
-        priority,
-        created_at,
-        updated_at
-      FROM whatsapp_auto_replies
-      ORDER BY priority DESC, category ASC
+     SELECT 
+  id,
+  category,
+  keywords,
+  response_es,
+  response_en,
+  response_fr,
+  response_ru,
+  active,
+  priority,
+  apartment_ids,
+  created_at,
+  updated_at
+FROM whatsapp_auto_replies
+ORDER BY priority DESC, category ASC
     `);
 
-    res.json({
-      success: true,
-      replies: result.rows
-    });
+   // Parsear apartment_ids de JSON string a array
+const repliesWithParsedIds = result.rows.map(reply => ({
+  ...reply,
+  apartment_ids: reply.apartment_ids ? JSON.parse(reply.apartment_ids) : []
+}));
+
+res.json({
+  success: true,
+  replies: repliesWithParsedIds
+});
   } catch (error) {
     console.error('Error fetching auto-replies:', error);
     res.status(500).json({
@@ -8291,19 +8338,21 @@ app.post("/api/whatsapp/auto-replies", async (req, res) => {
     console.log('💾 Keywords a guardar (string):', keywordsText);
 
     const result = await pool.query(`
-      INSERT INTO whatsapp_auto_replies
-        (category, keywords, response_es, response_en, response_fr, response_ru, active, priority)
-      VALUES ($1, $2::text, $3, $4, $5, $6, $7, $8)
+     INSERT INTO whatsapp_auto_replies
+  (category, keywords, response_es, response_en, response_fr, response_ru, active, priority, apartment_ids)
+VALUES ($1, $2::text, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `, [
       category || 'custom',
-      keywordsText,  // ✅ String limpio
-      response_es,
-      response_en || response_es,
-      response_fr || response_es,
-      response_ru || response_es,
-      active !== false,
-      priority || 0
+    category || 'custom',
+  keywordsText,
+  response_es,
+  response_en || response_es,
+  response_fr || response_es,
+  response_ru || response_es,
+  active !== false,
+  priority || 0,
+  JSON.stringify(apartment_ids || [])
     ]);
 
     console.log('✅ Guardado:', result.rows[0].keywords);
@@ -8318,8 +8367,7 @@ app.post("/api/whatsapp/auto-replies", async (req, res) => {
 app.put("/api/whatsapp/auto-replies/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    let { category, keywords, response_es, response_en, response_fr, response_ru, active, priority } = req.body;
-
+   let { category, keywords, response_es, response_en, response_fr, response_ru, active, priority, apartment_ids } = req.body;
     console.log('📝 Keywords recibidos:', keywords, typeof keywords);
 
     // ✅ Convertir keywords a string limpio
@@ -8337,26 +8385,28 @@ app.put("/api/whatsapp/auto-replies/:id", async (req, res) => {
       UPDATE whatsapp_auto_replies
       SET
         category = $1,
-        keywords = $2::text,
-        response_es = $3,
-        response_en = $4,
-        response_fr = $5,
-        response_ru = $6,
-        active = $7,
-        priority = $8,
-        updated_at = NOW()
-      WHERE id = $9
+  keywords = $2::text,
+  response_es = $3,
+  response_en = $4,
+  response_fr = $5,
+  response_ru = $6,
+  active = $7,
+  priority = $8,
+  apartment_ids = $9,
+  updated_at = NOW()
+WHERE id = $10
       RETURNING *
     `, [
-      category,
-      keywordsText,  // ✅ String limpio
-      response_es,
-      response_en,
-      response_fr,
-      response_ru,
-      active,
-      priority || 0,
-      id
+     category,
+  keywordsText,
+  response_es,
+  response_en,
+  response_fr,
+  response_ru,
+  active,
+  priority || 0,
+  JSON.stringify(apartment_ids || []),
+  id
     ]);
 
     if (result.rows.length === 0) {
@@ -9364,6 +9414,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
