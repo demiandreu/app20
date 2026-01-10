@@ -7842,7 +7842,7 @@ app.get("/api/whatsapp/flow-messages", async (req, res) => {
     const result = await pool.query(`
       SELECT message_key, content_es, content_en, content_fr, content_ru, active
       FROM whatsapp_flow_messages
-      WHERE message_key IN ('START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE', 'ASK_RULES', 'CONFIRMATION', 'EARLY_CHECKIN_NOTICE', 'LATE_CHECKOUT_NOTICE', 'APARTMENT_READY', 'BOOKING_CANCELLED')
+     WHERE message_key IN ('START', 'REGOK', 'PAYOK', 'ASK_ARRIVAL', 'ASK_DEPARTURE', 'ASK_RULES', 'CONFIRMATION', 'EARLY_CHECKIN_NOTICE', 'LATE_CHECKOUT_NOTICE', 'APARTMENT_READY', 'BOOKING_CANCELLED', 'NO_ENTIENDO')
       ORDER BY 
         CASE message_key
           WHEN 'START' THEN 1
@@ -9600,6 +9600,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
