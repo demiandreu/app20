@@ -295,7 +295,7 @@ app.post("/staff/checkins/:id/visibility", requireAuth, requireRole('CLEANING_MA
     // Obtener datos completos del checkin
     const current = await pool.query(
       `SELECT 
-          id, 
+  id, 
   lock_visible, 
   lock_code,
   phone,
@@ -303,8 +303,7 @@ app.post("/staff/checkins/:id/visibility", requireAuth, requireRole('CLEANING_MA
   full_name,
   apartment_name,
   room_name,
-  beds24_booking_id,
-  address
+  beds24_booking_id
 FROM checkins 
 WHERE id = $1`,
       [id]
@@ -9597,6 +9596,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
