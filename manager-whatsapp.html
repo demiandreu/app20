@@ -1466,16 +1466,32 @@ content_ru: document.getElementById(`${key}_ru`).value
 
 
 
-// ============================================
+// =============================================
 // 🤖 AUTO-REPLIES MANAGEMENT
-// ============================================
+// =============================================
+
+let availableApartments = [];
+
+async function loadApartments() {
+  try {
+    const response = await fetch('/api/apartments/list');
+    const data = await response.json();
+    
+    if (data.success) {
+      availableApartments = data.apartments;
+      console.log('✅ Apartamentos cargados:', availableApartments.length);
+    }
+  } catch (error) {
+    console.error('Error cargando apartamentos:', error);
+  }
+}
 
 let autoReplies = [];
 
 // Cargar autorespuestas al inicio
 async function loadAutoReplies() {
   try {
-    console.log('📥 Cargando autorespuestas...');
+    console.log('📦 Cargando autorespuestas...');
     
     const response = await fetch('/api/whatsapp/auto-replies');
     const data = await response.json();
