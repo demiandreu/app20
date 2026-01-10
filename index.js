@@ -8810,17 +8810,20 @@ async function handleStartCommand(from, phoneNumber, startMatch, originalBody) {
    if (checkin.cancelled) {
   console.log(`❌ Reserva cancelada: ${bookingId}`);
   
-  // Obtener mensaje de la base de datos
-  let cancelledMessage = await getFlowMessage('BOOKING_CANCELLED', language);
-  
-  if (!cancelledMessage) {
-    // Fallback si no existe en BD
-    cancelledMessage = '❌ Esta reserva ha sido cancelada.\n\nSi tienes una nueva reserva, por favor usa el nuevo enlace de WhatsApp que recibiste.';
-  }
-  
-  await sendWhatsAppMessage(from, cancelledMessage);
-  return;
+ // Obtener mensaje de la base de datos
+let cancelledMessage = await getFlowMessage('BOOKING_CANCELLED', language);
+
+if (!cancelledMessage) {
+  // Fallback si no existe en BD
+  cancelledMessage = '❌ Esta reserva ha sido cancelada.\n\nSi tienes una nueva reserva, por favor usa el nuevo enlace de WhatsApp que recibiste.';
+} else {
+  // Reemplazar variables
+  cancelledMessage = cancelledMessage
+    .replace(/{support_whatsapp}/g, process.env.SUPPORT_WHATSAPP || '+34600000000')
+    .replace(/{support_phone}/g, process.env.SUPPORT_PHONE || '+34600000000');
 }
+
+await sendWhatsAppMessage(from, cancelledMessage);
     
     // Actualizar idioma si se especificó
     if (startMatch[2]) {
@@ -9596,6 +9599,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
