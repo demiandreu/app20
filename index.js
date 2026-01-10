@@ -5924,6 +5924,32 @@ function getPaymentStatus(beds24Raw) {
   }
 }
 
+function generateDayButtons(fromDate, toDate, tz) {
+  const days = [];
+  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  
+  for (let i = -3; i <= 3; i++) {
+    const date = new Date(Date.now() + i * 86400000);
+    const dateStr = ymdInTz(date, tz);
+    const dayName = dayNames[date.getDay()];
+    const dayNum = date.getDate();
+    const isToday = i === 0;
+    const isSelected = fromDate === dateStr && toDate === dateStr;
+    
+    const btnClass = isSelected ? 'btn-base btn-success' : 'btn-base';
+    const todayStyle = isToday ? 'font-weight:bold; border:2px solid #3b82f6;' : '';
+    
+    days.push(
+      '<a href="?from=' + dateStr + '&to=' + dateStr + '" ' +
+      'class="' + btnClass + '" ' +
+      'style="min-width:60px; text-align:center; ' + todayStyle + '">' +
+      '<div style="font-size:11px; opacity:0.7;">' + dayName + '</div>' +
+      '<div style="font-size:14px;">' + dayNum + '</div>' +
+      '</a>'
+    );
+  }
+  return days.join('');
+}
 
 app.get("/staff/checkins", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
   try {
@@ -6132,14 +6158,12 @@ const toolbar = `
       <button type="submit" class="btn-primary">Filtrar</button>
       <a href="/staff/checkins" class="btn-link">Resetear</a>
     </div>
-    <div style="margin-top:12px;">
-      <p class="muted" style="margin:0 0 8px;">Filtros rápidos</p>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <a href="?quick=yesterday" class="btn-base ${quick === "yesterday" ? "btn-success" : ""}">Ayer</a>
-        <a href="?quick=today" class="btn-base ${quick === "today" ? "btn-success" : ""}">Hoy</a>
-        <a href="?quick=tomorrow" class="btn-base ${quick === "tomorrow" ? "btn-success" : ""}">Mañana</a>
-      </div>
-    </div>
+   <div style="margin-top:12px;">
+  <p class="muted" style="margin:0 0 8px;">Filtros rápidos</p>
+  <div style="display:flex; gap:4px; flex-wrap:wrap;">
+    ${generateDayButtons(fromDate, toDate, tz)}
+  </div>
+</div>
   </form>
 `;
   // REORDERED TABLE - Replace in your renderTable() function
@@ -6564,33 +6588,7 @@ app.get("/staff/my-cleanings", requireAuth, requireRole('STAFF_CLEANING'), async
           <button type="submit" class="btn-primary">Filtrar</button>
           <a href="/staff/my-cleanings" class="btn-link">Resetear</a>
         </div>
-        
-function generateDayButtons(fromDate, toDate, tz) {
-  const days = [];
-  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-  
-  for (let i = -3; i <= 3; i++) {
-    const date = new Date(Date.now() + i * 86400000);
-    const dateStr = ymdInTz(date, tz);
-    const dayName = dayNames[date.getDay()];
-    const dayNum = date.getDate();
-    const isToday = i === 0;
-    const isSelected = fromDate === dateStr && toDate === dateStr;
-    
-    const btnClass = isSelected ? 'btn-base btn-success' : 'btn-base';
-    const todayStyle = isToday ? 'font-weight:bold; border:2px solid #3b82f6;' : '';
-    
-    days.push(
-      '<a href="?from=' + dateStr + '&to=' + dateStr + '" ' +
-      'class="' + btnClass + '" ' +
-      'style="min-width:60px; text-align:center; ' + todayStyle + '">' +
-      '<div style="font-size:11px; opacity:0.7;">' + dayName + '</div>' +
-      '<div style="font-size:14px;">' + dayNum + '</div>' +
-      '</a>'
-    );
-  }
-  return days.join('');
-}
+      
 
 function renderMyCleaningsTable(rows, mode) {
       const title = mode === "departures" 
@@ -9608,6 +9606,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
