@@ -1118,6 +1118,33 @@ Si tienes problemas: {wifi_troubleshooting}</code>
     
     <button class="btn-translate" onclick="translateMessage('BOOKING_CANCELLED')">🌍 Traducir desde ES</button>
 </div>
+                <!-- INVALID_TIME -->
+<div class="message-section">
+    <h3>INVALID_TIME - Hora Inválida</h3>
+    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Mensaje cuando el huésped escribe la hora en formato incorrecto</p>
+    
+    <div class="language-tabs">
+        <button class="lang-tab active" onclick="switchLang('INVALID_TIME', 'es')">🇪🇸 ES</button>
+        <button class="lang-tab" onclick="switchLang('INVALID_TIME', 'en')">🇬🇧 EN</button>
+        <button class="lang-tab" onclick="switchLang('INVALID_TIME', 'fr')">🇫🇷 FR</button>
+        <button class="lang-tab" onclick="switchLang('INVALID_TIME', 'ru')">🇷🇺 RU</button>
+    </div>
+    
+    <div class="textarea-container active" data-msg="INVALID_TIME" data-lang="es">
+        <textarea id="INVALID_TIME_es" placeholder="⚠️ Por favor, escribe solo la hora..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="INVALID_TIME" data-lang="en">
+        <textarea id="INVALID_TIME_en" placeholder="⚠️ Please write only the hour..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="INVALID_TIME" data-lang="fr">
+        <textarea id="INVALID_TIME_fr" placeholder="⚠️ Veuillez écrire uniquement l'heure..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="INVALID_TIME" data-lang="ru">
+        <textarea id="INVALID_TIME_ru" placeholder="⚠️ Пожалуйста, напишите только час..."></textarea>
+    </div>
+    
+    <button class="btn-translate" onclick="translateMessage('INVALID_TIME')">🌍 Traducir desde ES</button>
+</div>
                 <!-- NO_ENTIENDO -->
 <div class="message-section">
     <h3>NO_ENTIENDO - Mensaje No Reconocido</h3>
