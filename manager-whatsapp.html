@@ -1063,6 +1063,62 @@ Si tienes problemas: {wifi_troubleshooting}</code>
                     <button class="btn-translate" onclick="translateMessage('CONFIRMATION')">🌍 Traducir desde ES</button>
                 </div>
 
+                <!-- APARTMENT_READY -->
+<div class="message-section">
+    <h3>APARTMENT_READY - Apartamento Listo</h3>
+    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Mensaje cuando se muestra el código de acceso al huésped</p>
+    
+    <div class="language-tabs">
+        <button class="lang-tab active" onclick="switchLang('APARTMENT_READY', 'es')">🇪🇸 ES</button>
+        <button class="lang-tab" onclick="switchLang('APARTMENT_READY', 'en')">🇬🇧 EN</button>
+        <button class="lang-tab" onclick="switchLang('APARTMENT_READY', 'fr')">🇫🇷 FR</button>
+        <button class="lang-tab" onclick="switchLang('APARTMENT_READY', 'ru')">🇷🇺 RU</button>
+    </div>
+    
+    <div class="textarea-container active" data-msg="APARTMENT_READY" data-lang="es">
+        <textarea id="APARTMENT_READY_es" placeholder="✅ ¡Tu apartamento está limpio!..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="APARTMENT_READY" data-lang="en">
+        <textarea id="APARTMENT_READY_en" placeholder="✅ Your apartment is ready!..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="APARTMENT_READY" data-lang="fr">
+        <textarea id="APARTMENT_READY_fr" placeholder="✅ Votre appartement est prêt!..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="APARTMENT_READY" data-lang="ru">
+        <textarea id="APARTMENT_READY_ru" placeholder="✅ Ваша квартира готова!..."></textarea>
+    </div>
+    
+    <button class="btn-translate" onclick="translateMessage('APARTMENT_READY')">🌍 Traducir desde ES</button>
+</div>
+
+<!-- BOOKING_CANCELLED -->
+<div class="message-section">
+    <h3>BOOKING_CANCELLED - Reserva Cancelada</h3>
+    <p style="color: #6b7280; font-size: 13px; margin-bottom: 12px;">Mensaje cuando el huésped intenta usar una reserva cancelada</p>
+    
+    <div class="language-tabs">
+        <button class="lang-tab active" onclick="switchLang('BOOKING_CANCELLED', 'es')">🇪🇸 ES</button>
+        <button class="lang-tab" onclick="switchLang('BOOKING_CANCELLED', 'en')">🇬🇧 EN</button>
+        <button class="lang-tab" onclick="switchLang('BOOKING_CANCELLED', 'fr')">🇫🇷 FR</button>
+        <button class="lang-tab" onclick="switchLang('BOOKING_CANCELLED', 'ru')">🇷🇺 RU</button>
+    </div>
+    
+    <div class="textarea-container active" data-msg="BOOKING_CANCELLED" data-lang="es">
+        <textarea id="BOOKING_CANCELLED_es" placeholder="❌ Esta reserva ha sido cancelada..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="BOOKING_CANCELLED" data-lang="en">
+        <textarea id="BOOKING_CANCELLED_en" placeholder="❌ This booking has been cancelled..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="BOOKING_CANCELLED" data-lang="fr">
+        <textarea id="BOOKING_CANCELLED_fr" placeholder="❌ Cette réservation a été annulée..."></textarea>
+    </div>
+    <div class="textarea-container" data-msg="BOOKING_CANCELLED" data-lang="ru">
+        <textarea id="BOOKING_CANCELLED_ru" placeholder="❌ Эта бронь отменена..."></textarea>
+    </div>
+    
+    <button class="btn-translate" onclick="translateMessage('BOOKING_CANCELLED')">🌍 Traducir desde ES</button>
+</div>
+
                 <button class="btn-save" onclick="saveFlowMessages()">💾 Guardar Todos los Mensajes</button>
             </div>
         </div>
