@@ -8824,7 +8824,8 @@ if (!cancelledMessage) {
 }
 
 await sendWhatsAppMessage(from, cancelledMessage);
-    
+  return;
+}    
     // Actualizar idioma si se especificó
     if (startMatch[2]) {
       await pool.query(
@@ -9599,6 +9600,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
