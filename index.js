@@ -6591,7 +6591,6 @@ function generateDayButtons(fromDate, toDate, tz) {
   }
   return days.join('');
 }
-}
 
     function renderMyCleaningsTable(rows, mode) {
       const title = mode === "departures" 
@@ -9609,6 +9608,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
