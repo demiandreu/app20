@@ -5928,7 +5928,7 @@ function generateDayButtons(fromDate, toDate, tz) {
   const days = [];
   const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
   
-  for (let i = -3; i <= 3; i++) {
+  for (let i = -3; i <= 8; i++) {
     const date = new Date(Date.now() + i * 86400000);
     const dateStr = ymdInTz(date, tz);
     const dayName = dayNames[date.getDay()];
@@ -9607,6 +9607,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
