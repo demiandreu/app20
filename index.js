@@ -6344,6 +6344,93 @@ function renderTable(rows, mode) {
   `;
 }
 
+const whatsappModal = `
+  <!-- Modal WhatsApp -->
+  <div id="whatsapp-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+    <div style="background:white; padding:24px; border-radius:12px; max-width:500px; width:90%; max-height:80vh; overflow-y:auto;">
+      <h3 style="margin:0 0 16px;">📱 Enviar WhatsApp</h3>
+      <p style="margin:0 0 8px; color:#6b7280;">Para: <strong id="modal-guest-name"></strong></p>
+      <p style="margin:0 0 16px; color:#6b7280;">Tel: <span id="modal-phone"></span></p>
+      
+      <label style="display:block; margin-bottom:8px; font-weight:500;">Mensaje:</label>
+      <textarea id="whatsapp-message" rows="5" style="width:100%; padding:12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; resize:vertical;" placeholder="Escribe tu mensaje..."></textarea>
+      
+      <div style="margin-top:12px; padding:12px; background:#f0f9ff; border-radius:8px;">
+        <p style="margin:0 0 8px; font-size:13px; color:#0369a1; font-weight:500;">Mensajes rápidos:</p>
+        <button type="button" onclick="setQuickMessage('checkout')" class="btn-small" style="margin:4px;">🚪 Recordar checkout</button>
+        <button type="button" onclick="setQuickMessage('late')" class="btn-small" style="margin:4px;">⏰ Salida tardía</button>
+        <button type="button" onclick="setQuickMessage('keys')" class="btn-small" style="margin:4px;">🔑 Dejar llaves</button>
+      </div>
+      
+      <input type="hidden" id="modal-checkin-id" />
+      
+      <div style="display:flex; gap:12px; margin-top:20px; justify-content:flex-end;">
+        <button type="button" onclick="closeWhatsAppModal()" class="btn-small">Cancelar</button>
+        <button type="button" onclick="sendWhatsAppFromModal()" class="btn-small btn-success" style="background:#22c55e; color:white;">📤 Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const quickMessages = {
+      checkout: 'Hola! Te recordamos que el checkout es a las 11:00h. Por favor, deja las llaves dentro del apartamento y cierra bien la puerta. ¡Gracias por tu estancia!',
+      late: 'Hola! Vemos que ya ha pasado la hora de salida (11:00h). Por favor, contacta con nosotros si necesitas más tiempo. Gracias.',
+      keys: 'Hola! Recuerda dejar las llaves dentro del apartamento antes de salir. ¡Gracias!'
+    };
+
+    function openWhatsAppModal(checkinId, phone, guestName) {
+      document.getElementById('modal-checkin-id').value = checkinId;
+      document.getElementById('modal-phone').textContent = phone;
+      document.getElementById('modal-guest-name').textContent = guestName;
+      document.getElementById('whatsapp-message').value = '';
+      document.getElementById('whatsapp-modal').style.display = 'flex';
+    }
+
+    function closeWhatsAppModal() {
+      document.getElementById('whatsapp-modal').style.display = 'none';
+    }
+
+    function setQuickMessage(type) {
+      document.getElementById('whatsapp-message').value = quickMessages[type] || '';
+    }
+
+    async function sendWhatsAppFromModal() {
+      const checkinId = document.getElementById('modal-checkin-id').value;
+      const message = document.getElementById('whatsapp-message').value.trim();
+      
+      if (!message) {
+        alert('Por favor, escribe un mensaje');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/whatsapp/send-manual', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ checkinId, message })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          alert('✅ Mensaje enviado correctamente');
+          closeWhatsAppModal();
+        } else {
+          alert('❌ Error: ' + (data.error || 'No se pudo enviar'));
+        }
+      } catch (error) {
+        alert('❌ Error de conexión');
+        console.error(error);
+      }
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeWhatsAppModal();
+    });
+  </script>
+`;
+
+    
    const pageHtml = renderNavMenu('staff', req) + toolbar + 
          renderTable(arrivals, "arrivals") + 
          `<div style="height:24px;"></div>` + 
@@ -6567,110 +6654,7 @@ app.get("/staff/my-cleanings", requireAuth, requireRole('STAFF_CLEANING'), async
       `;
     }
     
-    const whatsappModal = `
-  <!-- Modal WhatsApp -->
-  <div id="whatsapp-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
-    <div style="background:white; padding:24px; border-radius:12px; max-width:500px; width:90%; max-height:80vh; overflow-y:auto;">
-      <h3 style="margin:0 0 16px;">📱 Enviar WhatsApp</h3>
-      <p style="margin:0 0 8px; color:#6b7280;">Para: <strong id="modal-guest-name"></strong></p>
-      <p style="margin:0 0 16px; color:#6b7280;">Tel: <span id="modal-phone"></span></p>
-      
-      <label style="display:block; margin-bottom:8px; font-weight:500;">Mensaje:</label>
-      <textarea id="whatsapp-message" rows="5" style="width:100%; padding:12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; resize:vertical;" placeholder="Escribe tu mensaje..."></textarea>
-      
-      <div style="margin-top:12px; padding:12px; background:#f0f9ff; border-radius:8px;">
-        <p style="margin:0 0 8px; font-size:13px; color:#0369a1; font-weight:500;">Mensajes rápidos:</p>
-        <button type="button" onclick="setQuickMessage('checkout')" class="btn-small" style="margin:4px;">🚪 Recordar checkout</button>
-        <button type="button" onclick="setQuickMessage('late')" class="btn-small" style="margin:4px;">⏰ Salida tardía</button>
-        <button type="button" onclick="setQuickMessage('keys')" class="btn-small" style="margin:4px;">🔑 Dejar llaves</button>
-      </div>
-      
-      <input type="hidden" id="modal-checkin-id" />
-      
-      <div style="display:flex; gap:12px; margin-top:20px; justify-content:flex-end;">
-        <button type="button" onclick="closeWhatsAppModal()" class="btn-small">Cancelar</button>
-        <button type="button" onclick="sendWhatsAppFromModal()" class="btn-small btn-success" style="background:#22c55e; color:white;">📤 Enviar</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    const quickMessages = {
-      checkout: 'Hola! Te recordamos que el checkout es a las 11:00h. Por favor, deja las llaves dentro del apartamento y cierra bien la puerta. ¡Gracias por tu estancia!',
-      late: 'Hola! Vemos que ya ha pasado la hora de salida (11:00h). Por favor, contacta con nosotros si necesitas más tiempo. Gracias.',
-      keys: 'Hola! Recuerda dejar las llaves dentro del apartamento antes de salir. ¡Gracias!'
-    };
-
-    function openWhatsAppModal(checkinId, phone, guestName) {
-      document.getElementById('modal-checkin-id').value = checkinId;
-      document.getElementById('modal-phone').textContent = phone;
-      document.getElementById('modal-guest-name').textContent = guestName;
-      document.getElementById('whatsapp-message').value = '';
-      document.getElementById('whatsapp-modal').style.display = 'flex';
-    }
-
-    function closeWhatsAppModal() {
-      document.getElementById('whatsapp-modal').style.display = 'none';
-    }
-
-    function setQuickMessage(type) {
-      document.getElementById('whatsapp-message').value = quickMessages[type] || '';
-    }
-
-    async function sendWhatsAppFromModal() {
-      const checkinId = document.getElementById('modal-checkin-id').value;
-      const message = document.getElementById('whatsapp-message').value.trim();
-      
-      if (!message) {
-        alert('Por favor, escribe un mensaje');
-        return;
-      }
-      
-      try {
-        const response = await fetch('/api/whatsapp/send-manual', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ checkinId, message })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          alert('✅ Mensaje enviado correctamente');
-          closeWhatsAppModal();
-        } else {
-          alert('❌ Error: ' + (data.error || 'No se pudo enviar'));
-        }
-      } catch (error) {
-        alert('❌ Error de conexión');
-        console.error(error);
-      }
-    }
-
-    // Cerrar modal con Escape
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') closeWhatsAppModal();
-    });
-  </script>
-`;
-    const pageHtml = renderNavMenu('my-cleanings', req) + toolbar + 
-                     renderMyCleaningsTable(arrivals, "arrivals") + 
-                     `<div style="height:24px;"></div>` + 
-                     renderMyCleaningsTable(departures, "departures");
-    
-    res.send(renderPage("Mis Limpiezas", pageHtml, 'my-cleanings'));
-  } catch (e) {
-    console.error("Error en /staff/my-cleanings:", e);
-    res.status(500).send(renderPage("Error", `
-      <div class="card">
-        <h1 style="color:#991b1b;">❌ Error al cargar tus limpiezas</h1>
-        <p>${escapeHtml(e.message || String(e))}</p>
-        <p><a href="/staff/my-cleanings" class="btn-link">Recargar</a></p>
-      </div>
-    `));
-  }
-});
-
+  
 
 // ============================================
 // 🔄 SYNC: Página con formulario
@@ -9607,6 +9591,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
