@@ -6564,7 +6564,8 @@ app.get("/staff/my-cleanings", requireAuth, requireRole('STAFF_CLEANING'), async
           <button type="submit" class="btn-primary">Filtrar</button>
           <a href="/staff/my-cleanings" class="btn-link">Resetear</a>
         </div>
-      function generateDayButtons(fromDate, toDate, tz) {
+        
+function generateDayButtons(fromDate, toDate, tz) {
   const days = [];
   const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
   
@@ -6577,20 +6578,20 @@ app.get("/staff/my-cleanings", requireAuth, requireRole('STAFF_CLEANING'), async
     const isSelected = fromDate === dateStr && toDate === dateStr;
     
     const btnClass = isSelected ? 'btn-base btn-success' : 'btn-base';
-    const style = isToday 
-      ? 'min-width:60px; text-align:center; font-weight:bold; border:2px solid #3b82f6;' 
-      : 'min-width:60px; text-align:center;';
+    const todayStyle = isToday ? 'font-weight:bold; border:2px solid #3b82f6;' : '';
     
-    days.push(`
-      <a href="?from=${dateStr}&to=${dateStr}" class="${btnClass}" style="${style}">
-        <div style="font-size:11px; opacity:0.7;">${dayName}</div>
-        <div style="font-size:14px;">${dayNum}</div>
-      </a>
-    `);
+    days.push(
+      '<a href="?from=' + dateStr + '&to=' + dateStr + '" ' +
+      'class="' + btnClass + '" ' +
+      'style="min-width:60px; text-align:center; ' + todayStyle + '">' +
+      '<div style="font-size:11px; opacity:0.7;">' + dayName + '</div>' +
+      '<div style="font-size:14px;">' + dayNum + '</div>' +
+      '</a>'
+    );
   }
   return days.join('');
 }
-    `;
+}
 
     function renderMyCleaningsTable(rows, mode) {
       const title = mode === "departures" 
@@ -9608,6 +9609,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
