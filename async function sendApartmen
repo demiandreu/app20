@@ -78,7 +78,7 @@ async function sendWhatsAppCodeNotification(checkin) {
 let message = await getFlowMessage('APARTMENT_READY', lang);
 if (message) {
   // Generar link del portal
-  const guestPortalLink = `https://rcscheckin.com/guest/${checkin.booking_id}`;
+  const guestPortalLink = `https://rcscheckin.com/guest/${checkin.beds24_booking_id}`;
   
   // Reemplazar variables
   message = message
@@ -295,16 +295,18 @@ app.post("/staff/checkins/:id/visibility", requireAuth, requireRole('CLEANING_MA
     // Obtener datos completos del checkin
     const current = await pool.query(
       `SELECT 
-        id, 
-        lock_visible, 
-        lock_code,
-        phone,
-        guest_language,
-        full_name,
-        apartment_name,
-        room_name
-      FROM checkins 
-      WHERE id = $1`,
+          id, 
+  lock_visible, 
+  lock_code,
+  phone,
+  guest_language,
+  full_name,
+  apartment_name,
+  room_name,
+  beds24_booking_id,
+  address
+FROM checkins 
+WHERE id = $1`,
       [id]
     );
     
@@ -9595,6 +9597,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
