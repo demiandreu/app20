@@ -74,50 +74,21 @@ async function sendWhatsAppCodeNotification(checkin) {
     // Detectar idioma del huésped (con fallback a español)
     const lang = (checkin.guest_language || 'es').toLowerCase().substring(0, 2);
     
-    // Mensajes por idioma
-    const messages = {
-      es: `✅ ¡Tu apartamento está limpio! Ya puedes entrar.
+// Obtener mensaje de la base de datos
+let message = await getFlowMessage('APARTMENT_READY', lang);
 
-🔑 Código de acceso: ${checkin.lock_code}
-
-📍 ${checkin.apartment_name || checkin.room_name || 'Tu apartamento'}
-
-¡Bienvenido! 😊`,
-      
-      en: `✅ Your apartment is clean! You can enter now.
-
-🔑 Access code: ${checkin.lock_code}
-
-📍 ${checkin.apartment_name || checkin.room_name || 'Your apartment'}
-
-Welcome! 😊`,
-      
-      fr: `✅ Votre appartement est propre ! Vous pouvez entrer maintenant.
-
-🔑 Code d'accès : ${checkin.lock_code}
-
-📍 ${checkin.apartment_name || checkin.room_name || 'Votre appartement'}
-
-Bienvenue ! 😊`,
-      
-      ru: `✅ Ваша квартира убрана! Можете войти.
-
-🔑 Код доступа: ${checkin.lock_code}
-
-📍 ${checkin.apartment_name || checkin.room_name || 'Ваша квартира'}
-
-Добро пожаловать! 😊`,
-      
-      de: `✅ Ihre Wohnung ist sauber! Sie können jetzt eintreten.
-
-🔑 Zugangscode: ${checkin.lock_code}
-
-📍 ${checkin.apartment_name || checkin.room_name || 'Ihre Wohnung'}
-
-Willkommen! 😊`
-    };
+if (message) {
+  // Reemplazar variables
+  message = message
+    .replace(/{lock_code}/g, checkin.lock_code || '')
+    .replace(/{apartment_name}/g, checkin.apartment_name || checkin.room_name || 'Tu apartamento')
+    .replace(/{guest_name}/g, checkin.full_name || '');
+} else {
+  // Fallback si no existe en BD
+  message = `✅ ¡Tu apartamento está limpio! Ya puedes entrar.\n\n🔑 Código de acceso: ${checkin.lock_code}\n📍 ${checkin.apartment_name || checkin.room_name || 'Tu apartamento'}\n\n¡Bienvenido! 😊`;
+}
     
-    const messageBody = messages[lang] || messages.es;
+    const messageBody = message;
     
     // Enviar mensaje por WhatsApp
     const message = await client.messages.create({
@@ -8828,15 +8799,18 @@ async function handleStartCommand(from, phoneNumber, startMatch, originalBody) {
     
     const checkin = result.rows[0];
     console.log(`✅ Booking encontrado: ${checkin.full_name} (ID: ${checkin.id})`);
-    if (checkin.cancelled) {
+   if (checkin.cancelled) {
   console.log(`❌ Reserva cancelada: ${bookingId}`);
-  const cancelledMessages = {
-    es: '❌ Esta reserva ha sido cancelada.\n\nSi tienes una nueva reserva, por favor usa el nuevo enlace de WhatsApp que recibiste.',
-    en: '❌ This booking has been cancelled.\n\nIf you have a new booking, please use the new WhatsApp link you received.',
-    fr: '❌ Cette réservation a été annulée.\n\nSi vous avez une nouvelle réservation, veuillez utiliser le nouveau lien WhatsApp que vous avez reçu.',
-    ru: '❌ Эта бронь отменена.\n\nЕсли у вас есть новое бронирование, пожалуйста, используйте новую ссылку WhatsApp, которую вы получили.'
-  };
-  await sendWhatsAppMessage(from, cancelledMessages[language] || cancelledMessages.es);
+  
+  // Obtener mensaje de la base de datos
+  let cancelledMessage = await getFlowMessage('BOOKING_CANCELLED', language);
+  
+  if (!cancelledMessage) {
+    // Fallback si no existe en BD
+    cancelledMessage = '❌ Esta reserva ha sido cancelada.\n\nSi tienes una nueva reserva, por favor usa el nuevo enlace de WhatsApp que recibiste.';
+  }
+  
+  await sendWhatsAppMessage(from, cancelledMessage);
   return;
 }
     
@@ -9614,6 +9588,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
