@@ -5912,6 +5912,41 @@ app.get('/staff', async (req, res) => {
   res.send(renderPage('Panel de Control', html, 'staff'));
 });
 
+
+// Calcular estado de pago desde beds24_raw
+function getPaymentStatus(beds24Raw) {
+  try {
+    if (!beds24Raw) return { paid: false, pending: 0 };
+    
+    const data = typeof beds24Raw === 'string' ? JSON.parse(beds24Raw) : beds24Raw;
+    const invoiceItems = data.invoiceItems || [];
+    
+    let totalCharges = 0;
+    let totalPayments = 0;
+    
+    for (const item of invoiceItems) {
+      if (item.type === 'charge') {
+        totalCharges += parseFloat(item.lineTotal || item.amount || 0);
+      } else if (item.type === 'payment') {
+        totalPayments += parseFloat(item.amount || 0);
+      }
+    }
+    
+    const pending = Math.round((totalCharges - totalPayments) * 100) / 100;
+    
+    return {
+      paid: pending <= 0,
+      pending: pending > 0 ? pending : 0,
+      totalCharges,
+      totalPayments
+    };
+  } catch (e) {
+    console.error('Error parsing payment status:', e);
+    return { paid: false, pending: 0 };
+  }
+}
+
+
 app.get("/staff/checkins", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
   try {
     const { from, to, quick: quickRaw } = req.query;
@@ -5978,7 +6013,8 @@ const arrivalsRes = await pool.query(
     c.room_id,
   c.early_checkin_requested,
 c.late_checkout_requested,
-c.registration_completed_at  
+c.registration_completed_at,
+c.beds24_raw
 FROM checkins c
   LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.apartment_id::text  -- ✅ AÑADIR ESTA LÍNEA
   WHERE (c.cancelled = false OR c.cancelled IS NULL)
@@ -6173,6 +6209,10 @@ function renderTable(rows, mode) {
        <!-- 2. Huésped -->
 <td>${guestBtn}</td>
 <td>${r.registration_completed_at ? '✅' : '⏳'}</td>
+<td>${(() => {
+  const payment = getPaymentStatus(r.beds24_raw);
+  return payment.paid ? '✅' : `⏳ ${payment.pending}€`;
+})()}</td>
 <td>${formatGuestName(r.full_name)}</td>
         
         <!-- 3. Llegada -->
@@ -6246,7 +6286,7 @@ function renderTable(rows, mode) {
         </td>
       </tr>
     `;
-  }).join("") : `<tr><td colspan="12" class="muted">No hay registros</td></tr>`;
+  }).join("") : `<tr><td colspan="13" class="muted">No hay registros</td></tr>`;
 
   // 🆕 BOTÓN GUARDAR TODOS - SOLO PARA LLEGADAS (mode === "arrivals")
   const saveAllButton = (rows.length && mode === "arrivals") ? `
@@ -6275,7 +6315,8 @@ function renderTable(rows, mode) {
     <th>ID</th>
     <th>Portal</th>
     <th>Reg</th>
-    <th>Huésped</th>
+<th>Pago</th>
+<th>Huésped</th>
     <th>${dateColTitle}</th>
     <th>Noches</th>
     <th>A|C</th>
@@ -9408,6 +9449,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
