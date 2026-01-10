@@ -8872,29 +8872,39 @@ async function processWhatsAppMessage(from, body, messageId) {
         break;
     }
 
+   // ============================================
+    // 🤖 RESPUESTA IA - Claude
     // ============================================
-    // 🤖 AUTO-REPLIES: Detectar keywords
-    // ============================================
 
-    const canCheckAutoReply = true; // ✅ SIEMPRE activo
-
-    if (canCheckAutoReply && body && body.trim().length > 0) {
-    const autoReplyResponse = await checkAutoReply(
-  body, 
-  language || 'es',
-  checkin.id  // ✅ Pasar checkin ID
-);
-
-      if (autoReplyResponse) {
-        await sendWhatsAppMessage(from, autoReplyResponse);
-        console.log(`🤖 Auto-reply sent to ${from}: keyword matched`);
+    // Solo responder con IA si el mensaje no fue manejado por el flujo
+    const flowStates = ['WAITING_REGOK', 'WAITING_PAYOK', 'WAITING_ARRIVAL', 'WAITING_DEPARTURE', 'WAITING_RULES'];
+    const isInFlow = flowStates.includes(currentState);
+    
+    if (!isInFlow && body && body.trim().length > 0) {
+      console.log(`🤖 Intentando respuesta IA para: "${body}"`);
+      
+      // Obtener el room_id para buscar el conocimiento
+      const roomResult = await pool.query(
+        `SELECT br.id as room_id FROM beds24_rooms br 
+         WHERE br.beds24_room_id = $1 LIMIT 1`,
+        [checkin.beds24_room_id || checkin.apartment_id]
+      );
+      
+      const roomId = roomResult.rows[0]?.room_id;
+      
+      if (roomId) {
+        const aiResponse = await getAIResponse(body, roomId, language);
+        
+        if (aiResponse) {
+          await sendWhatsAppMessage(from, aiResponse);
+          console.log(`🤖 IA respondió a ${from}`);
+        } else {
+          console.log(`⚠️ Sin respuesta IA (sin conocimiento configurado)`);
+        }
+      } else {
+        console.log(`⚠️ No se encontró room_id para checkin ${checkin.id}`);
       }
     }
-
-  } catch (error) {
-    console.error('❌ Error procesando mensaje WhatsApp:', error);
-  }
-}  // ✅ AÑADIDO: Cierre de la función processWhatsAppMessage
 
 // ============ MANEJAR COMANDO START ============
 
@@ -9712,6 +9722,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
