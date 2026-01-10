@@ -5911,6 +5911,7 @@ app.get('/staff', async (req, res) => {
 
   res.send(renderPage('Panel de Control', html, 'staff'));
 });
+
 app.get("/staff/checkins", requireAuth, requireRole('CLEANING_MANAGER'), async (req, res) => {
   try {
     const { from, to, quick: quickRaw } = req.query;
@@ -5975,9 +5976,10 @@ const arrivalsRes = await pool.query(
     c.lock_visible AS lock_code_visible,
     c.clean_ok,
     c.room_id,
-    c.early_checkin_requested,
-    c.late_checkout_requested  
-  FROM checkins c
+  c.early_checkin_requested,
+c.late_checkout_requested,
+c.registration_completed_at  
+FROM checkins c
   LEFT JOIN beds24_rooms br ON br.beds24_room_id::text = c.apartment_id::text  -- ✅ AÑADIR ESTA LÍNEA
   WHERE (c.cancelled = false OR c.cancelled IS NULL)
     AND c.arrival_date IS NOT NULL
@@ -6168,9 +6170,10 @@ function renderTable(rows, mode) {
           ${escapeHtml(String(r.beds24_booking_id || r.booking_token || r.id))}
         </td>
         
-        <!-- 2. Huésped -->
-        <td>${guestBtn}</td>
-        <td>${formatGuestName(r.full_name)}</td>
+       <!-- 2. Huésped -->
+<td>${guestBtn}</td>
+<td>${r.registration_completed_at ? '✅' : '⏳'}</td>
+<td>${formatGuestName(r.full_name)}</td>
         
         <!-- 3. Llegada -->
         <td>${mainDate}</td>
@@ -6243,7 +6246,7 @@ function renderTable(rows, mode) {
         </td>
       </tr>
     `;
-  }).join("") : `<tr><td colspan="10" class="muted">No hay registros</td></tr>`;
+  }).join("") : `<tr><td colspan="12" class="muted">No hay registros</td></tr>`;
 
   // 🆕 BOTÓN GUARDAR TODOS - SOLO PARA LLEGADAS (mode === "arrivals")
   const saveAllButton = (rows.length && mode === "arrivals") ? `
@@ -6269,16 +6272,17 @@ function renderTable(rows, mode) {
         <thead>
           <tr>
             <th class="sticky-col">Limpieza</th>
-            <th>ID</th>
-            <th>Portal</th>
-            <th>Huésped</th>
-            <th>${dateColTitle}</th>
-            <th>Noches</th>
-            <th>A|C</th>
-            <th>Apartamento</th>
-            <th>Código</th>
-            <th>Visible</th>
-            <th>Acciones</th>
+    <th>ID</th>
+    <th>Portal</th>
+    <th>Reg</th>
+    <th>Huésped</th>
+    <th>${dateColTitle}</th>
+    <th>Noches</th>
+    <th>A|C</th>
+    <th>Apartamento</th>
+    <th>Código</th>
+    <th>Visible</th>
+    <th>Acciones</th>
           </tr>
         </thead>
         <tbody>${tbody}</tbody>
@@ -8946,10 +8950,12 @@ async function handleRegOk(from, checkin, language) {
     
     // Actualizar estado
     await pool.query(`
-      UPDATE checkins 
-      SET bot_state = 'WAITING_PAYOK' 
-      WHERE id = $1
-    `, [checkin.id]);
+  UPDATE checkins 
+  SET bot_state = 'WAITING_PAYOK',
+      registration_completed_at = NOW()
+  WHERE id = $1
+`, [checkin.id]);
+console.log(`✅ Registro completado marcado para checkin ${checkin.id}`);
   }
 }
 
@@ -9402,6 +9408,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
