@@ -16,6 +16,8 @@
     "express-session": "^1.17.3",
     "bcrypt": "^5.1.1",
     "connect-pg-simple": "^9.0.1",
-     "exceljs": "^4.4.0"
+     "exceljs": "^4.4.0",
+    "@anthropic-ai/sdk": "^0.52.0"
+
   }
 }
