@@ -6564,35 +6564,32 @@ app.get("/staff/my-cleanings", requireAuth, requireRole('STAFF_CLEANING'), async
           <button type="submit" class="btn-primary">Filtrar</button>
           <a href="/staff/my-cleanings" class="btn-link">Resetear</a>
         </div>
-       <div style="margin-top:12px;">
-      <p class="muted" style="margin:0 0 8px;">Filtros rápidos</p>
-      <div style="display:flex; gap:4px; flex-wrap:wrap;">
-        ${(() => {
-          const days = [];
-          const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-          
-          // Generar 7 días (3 antes de hoy, hoy, 3 después)
-          for (let i = -3; i <= 3; i++) {
-            const date = new Date(Date.now() + i * 86400000);
-            const dateStr = ymdInTz(date, tz);
-            const dayName = dayNames[date.getDay()];
-            const dayNum = date.getDate();
-            const isToday = i === 0;
-            const isSelected = fromDate === dateStr && toDate === dateStr;
-            
-            days.push(\`
-              <a href="?from=\${dateStr}&to=\${dateStr}" 
-                 class="btn-base \${isSelected ? 'btn-success' : ''}"
-                 style="min-width:60px; text-align:center; \${isToday ? 'font-weight:bold; border:2px solid #3b82f6;' : ''}">
-                <div style="font-size:11px; opacity:0.7;">\${dayName}</div>
-                <div style="font-size:14px;">\${dayNum}</div>
-              </a>
-            \`);
-          }
-          return days.join('');
-        })()}
-      </div>
-    </div>
+      function generateDayButtons(fromDate, toDate, tz) {
+  const days = [];
+  const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+  
+  for (let i = -3; i <= 3; i++) {
+    const date = new Date(Date.now() + i * 86400000);
+    const dateStr = ymdInTz(date, tz);
+    const dayName = dayNames[date.getDay()];
+    const dayNum = date.getDate();
+    const isToday = i === 0;
+    const isSelected = fromDate === dateStr && toDate === dateStr;
+    
+    const btnClass = isSelected ? 'btn-base btn-success' : 'btn-base';
+    const style = isToday 
+      ? 'min-width:60px; text-align:center; font-weight:bold; border:2px solid #3b82f6;' 
+      : 'min-width:60px; text-align:center;';
+    
+    days.push(`
+      <a href="?from=${dateStr}&to=${dateStr}" class="${btnClass}" style="${style}">
+        <div style="font-size:11px; opacity:0.7;">${dayName}</div>
+        <div style="font-size:14px;">${dayNum}</div>
+      </a>
+    `);
+  }
+  return days.join('');
+}
     `;
 
     function renderMyCleaningsTable(rows, mode) {
@@ -9611,6 +9608,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
