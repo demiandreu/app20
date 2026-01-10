@@ -6275,7 +6275,17 @@ function renderTable(rows, mode) {
             </button>
           </form>
         </td>
-        
+        <!-- WhatsApp -->
+<td>
+  ${r.phone ? `
+    <button type="button" 
+            class="btn-small btn-primary" 
+            onclick="openWhatsAppModal(${r.id}, '${escapeHtml(r.phone)}', '${escapeHtml(r.full_name)}')"
+            title="Enviar WhatsApp">
+      📱
+    </button>
+  ` : '<span class="muted">Sin tel</span>'}
+</td>
         <!-- 9. Acciones -->
         <td>
           <form method="POST" action="/staff/checkins/${r.id}/delete"
@@ -6286,7 +6296,7 @@ function renderTable(rows, mode) {
         </td>
       </tr>
     `;
-  }).join("") : `<tr><td colspan="13" class="muted">No hay registros</td></tr>`;
+  }).join("") : `<tr><td colspan="14" class="muted">No hay registros</td></tr>`;
 
   // 🆕 BOTÓN GUARDAR TODOS - SOLO PARA LLEGADAS (mode === "arrivals")
   const saveAllButton = (rows.length && mode === "arrivals") ? `
@@ -6322,8 +6332,9 @@ function renderTable(rows, mode) {
     <th>A|C</th>
     <th>Apartamento</th>
     <th>Código</th>
-    <th>Visible</th>
-    <th>Acciones</th>
+   <th>Visible</th>
+<th>WhatsApp</th>
+<th>Acciones</th>
           </tr>
         </thead>
         <tbody>${tbody}</tbody>
@@ -6334,9 +6345,10 @@ function renderTable(rows, mode) {
 }
 
    const pageHtml = renderNavMenu('staff', req) + toolbar + 
-             renderTable(arrivals, "arrivals") + 
-             `<div style="height:24px;"></div>` + 
-             renderTable(departures, "departures");
+         renderTable(arrivals, "arrivals") + 
+         `<div style="height:24px;"></div>` + 
+         renderTable(departures, "departures") +
+         whatsappModal;
                  `                 
                  `;
     
@@ -6554,7 +6566,93 @@ app.get("/staff/my-cleanings", requireAuth, requireRole('STAFF_CLEANING'), async
         </div>
       `;
     }
+    
+    const whatsappModal = `
+  <!-- Modal WhatsApp -->
+  <div id="whatsapp-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+    <div style="background:white; padding:24px; border-radius:12px; max-width:500px; width:90%; max-height:80vh; overflow-y:auto;">
+      <h3 style="margin:0 0 16px;">📱 Enviar WhatsApp</h3>
+      <p style="margin:0 0 8px; color:#6b7280;">Para: <strong id="modal-guest-name"></strong></p>
+      <p style="margin:0 0 16px; color:#6b7280;">Tel: <span id="modal-phone"></span></p>
+      
+      <label style="display:block; margin-bottom:8px; font-weight:500;">Mensaje:</label>
+      <textarea id="whatsapp-message" rows="5" style="width:100%; padding:12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px; resize:vertical;" placeholder="Escribe tu mensaje..."></textarea>
+      
+      <div style="margin-top:12px; padding:12px; background:#f0f9ff; border-radius:8px;">
+        <p style="margin:0 0 8px; font-size:13px; color:#0369a1; font-weight:500;">Mensajes rápidos:</p>
+        <button type="button" onclick="setQuickMessage('checkout')" class="btn-small" style="margin:4px;">🚪 Recordar checkout</button>
+        <button type="button" onclick="setQuickMessage('late')" class="btn-small" style="margin:4px;">⏰ Salida tardía</button>
+        <button type="button" onclick="setQuickMessage('keys')" class="btn-small" style="margin:4px;">🔑 Dejar llaves</button>
+      </div>
+      
+      <input type="hidden" id="modal-checkin-id" />
+      
+      <div style="display:flex; gap:12px; margin-top:20px; justify-content:flex-end;">
+        <button type="button" onclick="closeWhatsAppModal()" class="btn-small">Cancelar</button>
+        <button type="button" onclick="sendWhatsAppFromModal()" class="btn-small btn-success" style="background:#22c55e; color:white;">📤 Enviar</button>
+      </div>
+    </div>
+  </div>
 
+  <script>
+    const quickMessages = {
+      checkout: 'Hola! Te recordamos que el checkout es a las 11:00h. Por favor, deja las llaves dentro del apartamento y cierra bien la puerta. ¡Gracias por tu estancia!',
+      late: 'Hola! Vemos que ya ha pasado la hora de salida (11:00h). Por favor, contacta con nosotros si necesitas más tiempo. Gracias.',
+      keys: 'Hola! Recuerda dejar las llaves dentro del apartamento antes de salir. ¡Gracias!'
+    };
+
+    function openWhatsAppModal(checkinId, phone, guestName) {
+      document.getElementById('modal-checkin-id').value = checkinId;
+      document.getElementById('modal-phone').textContent = phone;
+      document.getElementById('modal-guest-name').textContent = guestName;
+      document.getElementById('whatsapp-message').value = '';
+      document.getElementById('whatsapp-modal').style.display = 'flex';
+    }
+
+    function closeWhatsAppModal() {
+      document.getElementById('whatsapp-modal').style.display = 'none';
+    }
+
+    function setQuickMessage(type) {
+      document.getElementById('whatsapp-message').value = quickMessages[type] || '';
+    }
+
+    async function sendWhatsAppFromModal() {
+      const checkinId = document.getElementById('modal-checkin-id').value;
+      const message = document.getElementById('whatsapp-message').value.trim();
+      
+      if (!message) {
+        alert('Por favor, escribe un mensaje');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/whatsapp/send-manual', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ checkinId, message })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          alert('✅ Mensaje enviado correctamente');
+          closeWhatsAppModal();
+        } else {
+          alert('❌ Error: ' + (data.error || 'No se pudo enviar'));
+        }
+      } catch (error) {
+        alert('❌ Error de conexión');
+        console.error(error);
+      }
+    }
+
+    // Cerrar modal con Escape
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeWhatsAppModal();
+    });
+  </script>
+`;
     const pageHtml = renderNavMenu('my-cleanings', req) + toolbar + 
                      renderMyCleaningsTable(arrivals, "arrivals") + 
                      `<div style="height:24px;"></div>` + 
@@ -7691,6 +7789,66 @@ app.get("/manager/whatsapp", requireAuth, requireRole('MANAGER'), (req, res) => 
     res.send(renderPage("WhatsApp Manager", html));
   }
 });
+
+
+// Enviar WhatsApp manual desde Staff Panel
+app.post("/api/whatsapp/send-manual", requireAuth, async (req, res) => {
+  try {
+    const { checkinId, message } = req.body;
+    
+    if (!checkinId || !message) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'checkinId y message son requeridos' 
+      });
+    }
+    
+    // Obtener datos del checkin
+    const result = await pool.query(`
+      SELECT phone, full_name FROM checkins WHERE id = $1
+    `, [checkinId]);
+    
+    if (!result.rows.length) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Checkin no encontrado' 
+      });
+    }
+    
+    const { phone, full_name } = result.rows[0];
+    
+    if (!phone) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'El huésped no tiene teléfono registrado' 
+      });
+    }
+    
+    // Formatear número
+    let formattedPhone = phone.replace(/\D/g, '');
+    if (!formattedPhone.startsWith('34') && formattedPhone.length === 9) {
+      formattedPhone = '34' + formattedPhone;
+    }
+    
+    // Enviar por Twilio
+    await sendWhatsAppMessage(`whatsapp:+${formattedPhone}`, message);
+    
+    console.log(`📱 WhatsApp manual enviado a ${full_name} (${phone})`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Mensaje enviado correctamente' 
+    });
+    
+  } catch (error) {
+    console.error('❌ Error enviando WhatsApp manual:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
 
 // API: Obtener mensajes del flujo principal (START, REGOK, PAYOK)
 app.get("/api/whatsapp/flow-messages", async (req, res) => {
@@ -9449,6 +9607,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
