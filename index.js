@@ -7734,6 +7734,8 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
     res.status(500).send("Error");
   }
 });
+
+
 app.get("/manager/whatsapp", requireAuth, requireRole('MANAGER'), (req, res) => {
   try {
     const htmlFilePath = path.join(__dirname, 'manager-whatsapp.html');
@@ -7742,16 +7744,15 @@ app.get("/manager/whatsapp", requireAuth, requireRole('MANAGER'), (req, res) => 
     const styleMatch = fileContent.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
     const styles = styleMatch ? `<style>${styleMatch[1]}</style>` : '';
     
-    const scriptMatches = fileContent.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi);
-    let scripts = '';
-    for (const match of scriptMatches) {
-      scripts += `<script>${match[1]}</script>`;
-    }
+    // Solo tomar el PRIMER script, no todos
+    const scriptMatch = fileContent.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+    const scripts = scriptMatch ? `<script>${scriptMatch[1]}</script>` : '';
     
     const bodyMatch = fileContent.match(/<body[^>]*>([\s\S]*)<\/body>/i);
     let bodyContent = bodyMatch ? bodyMatch[1] : fileContent;
     
     bodyContent = bodyContent.replace(/<nav class="nav-menu">[\s\S]*?<\/nav>/i, '');
+    bodyContent = bodyContent.replace(/<script[\s\S]*?<\/script>/gi, ''); // Quitar scripts del body
     
     const html = styles + renderNavMenu('whatsapp', req) + bodyContent + scripts;
     
@@ -9588,6 +9589,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
