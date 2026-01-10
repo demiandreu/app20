@@ -9519,7 +9519,11 @@ function parseTimeInput(input) {
 }
 
 
-
+// ============ OBTENER MENSAJES DE ERROR ============
+async function getErrorMessage(errorType, language = 'es') {
+  const msg = await getFlowMessage(errorType, language);
+  return msg || '⚠️ Error';
+}
 
 // ============ OBTENER MENSAJE DEL FLUJO ============
 
@@ -9587,6 +9591,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
