@@ -13,6 +13,10 @@ const session = require('express-session');
 const bcrypt = require('bcrypt');
 const pgSession = require('connect-pg-simple')(session);
 const fs = require('fs'); 
+const Anthropic = require('@anthropic-ai/sdk').default;
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY
+});
 
 // ============================================
 // 📱 FUNCIÓN: Normalizar número de teléfono
@@ -53,9 +57,9 @@ function normalizePhoneNumber(phone) {
 }
 
 // ============================================
-// 📱 FUNCIÓN: Enviar mensaje de WhatsApp
+// 📱 FUNCIÓN: Enviar mensaje de 
 // ============================================
-async function sendWhatsAppCodeNotification(checkin) {
+async function sendCodeNotification(checkin) {
   try {
     const twilio = require('twilio');
     const client = twilio(
@@ -96,14 +100,14 @@ if (message) {
     
     const messageBody = message;
     
-    // Enviar mensaje por WhatsApp
+    // Enviar mensaje por 
     const twilioMsg = await client.messages.create({
-      from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-      to: `whatsapp:${toNumber}`,
+      from: `:${process.env.TWILIO__NUMBER}`,
+      to: `:${toNumber}`,
       body: messageBody
     });
     
-    console.log(`✅ WhatsApp sent to ${toNumber}: ${twilioMsg.sid}`);
+    console.log(`✅  sent to ${toNumber}: ${twilioMsg.sid}`);
     
     return { 
       success: true, 
@@ -112,7 +116,7 @@ if (message) {
     };
     
   } catch (error) {
-    console.error('❌ Error sending WhatsApp:', error);
+    console.error('❌ Error sending :', error);
     return { 
       success: false, 
       error: error.message 
@@ -322,19 +326,19 @@ WHERE id = $1`,
       [newVisible, id]
     );
     
-    // 📱 SI SE ESTÁ MOSTRANDO EL CÓDIGO (newVisible = true), enviar WhatsApp
+    // 📱 SI SE ESTÁ MOSTRANDO EL CÓDIGO (newVisible = true), enviar 
     if (newVisible && checkin.lock_code && checkin.phone) {
-      console.log(`📱 Sending WhatsApp to ${checkin.full_name} (${checkin.phone})`);
+      console.log(`📱 Sending  to ${checkin.full_name} (${checkin.phone})`);
       
-      const result = await sendWhatsAppCodeNotification({
+      const result = await sendCodeNotification({
         ...checkin,
         lock_code: checkin.lock_code
       });
       
       if (result.success) {
-        console.log(`✅ WhatsApp sent successfully to ${result.to}`);
+        console.log(`✅  sent successfully to ${result.to}`);
       } else {
-        console.log(`⚠️ WhatsApp not sent: ${result.reason || result.error}`);
+        console.log(`⚠️  not sent: ${result.reason || result.error}`);
       }
     }
     
@@ -429,7 +433,7 @@ console.log(`🏢 Apartamento del huésped: ${apartmentId}`);
     // Obtener autorespuestas activas
     const result = await pool.query(`
  SELECT id, category, keywords, response_es, response_en, response_fr, response_ru, priority, apartment_ids
-FROM whatsapp_auto_replies
+FROM _auto_replies
   WHERE active = true
   ORDER BY priority DESC
 `);
@@ -621,7 +625,7 @@ async function initDb() {
   `);
   console.log('✅ Columna icon verificada');
   
-  // 🆕 AÑADIR COLUMNA BOT_STATE PARA EL BOT DE WHATSAPP
+  // 🆕 AÑADIR COLUMNA BOT_STATE PARA EL BOT DE 
   await pool.query(`
     ALTER TABLE checkins 
     ADD COLUMN IF NOT EXISTS bot_state VARCHAR(50) DEFAULT 'IDLE';
@@ -7758,6 +7762,58 @@ app.post("/staff/pending-requests/:id/process", async (req, res) => {
   }
 });
 
+// ============================================
+// 🤖 RESPUESTA IA CON CLAUDE
+// ============================================
+
+async function getAIResponse(guestMessage, apartmentId, guestLanguage) {
+  try {
+    // Obtener conocimiento del apartamento
+    const roomResult = await pool.query(
+      `SELECT apartment_name, ai_knowledge, support_phone FROM beds24_rooms WHERE id = $1`,
+      [apartmentId]
+    );
+    
+    const room = roomResult.rows[0];
+    if (!room || !room.ai_knowledge) {
+      console.log('⚠️ No hay conocimiento IA para este apartamento');
+      return null;
+    }
+    
+    const systemPrompt = `Eres un asistente virtual amable para el apartamento "${room.apartment_name}". 
+Tu trabajo es responder preguntas de los huéspedes sobre el apartamento.
+
+CONOCIMIENTO DEL APARTAMENTO:
+${room.ai_knowledge}
+
+INSTRUCCIONES:
+- Responde SIEMPRE en el idioma del huésped (detecta su idioma por su mensaje)
+- Sé breve y directo (máximo 2-3 frases)
+- Usa emojis ocasionalmente para ser amigable
+- Si NO sabes la respuesta, di: "Lo siento, no tengo esa información. Contacta con el anfitrión al ${room.support_phone || '+34600000000'}"
+- Si el huésped quiere hablar con una persona real o dice "anfitrión", "persona", "humano", responde: "Claro, paso tu mensaje al anfitrión. Te contactará lo antes posible. 📞"
+- NO inventes información que no esté en el conocimiento
+- Responde solo a la pregunta, no des información extra`;
+
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 300,
+      messages: [
+        { role: 'user', content: guestMessage }
+      ],
+      system: systemPrompt
+    });
+
+    const aiResponse = response.content[0].text;
+    console.log(`🤖 Respuesta IA: ${aiResponse}`);
+    
+    return aiResponse;
+    
+  } catch (error) {
+    console.error('❌ Error en IA:', error);
+    return null;
+  }
+}
 
 app.get("/manager/whatsapp", requireAuth, requireRole('MANAGER'), (req, res) => {
   try {
@@ -9656,6 +9712,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
