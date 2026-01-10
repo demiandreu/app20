@@ -8905,7 +8905,10 @@ async function processWhatsAppMessage(from, body, messageId) {
         console.log(`⚠️ No se encontró room_id para checkin ${checkin.id}`);
       }
     }
-
+ } catch (error) {
+    console.error('❌ Error procesando mensaje WhatsApp:', error);
+  }
+}
 // ============ MANEJAR COMANDO START ============
 
 async function handleStartCommand(from, phoneNumber, startMatch, originalBody) {
@@ -9722,6 +9725,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
