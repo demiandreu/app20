@@ -9518,20 +9518,7 @@ function parseTimeInput(input) {
   return null;
 }
 
-// ============ OBTENER MENSAJES DE ERROR ============
 
-function getErrorMessage(errorType, language) {
-  const messages = {
-    INVALID_TIME: {
-      es: '⚠️ Por favor, indica la hora en formato válido. Ejemplos: 17, 18:30, 5pm',
-      en: '⚠️ Please provide the time in a valid format. Examples: 17, 18:30, 5pm',
-      fr: '⚠️ Veuillez indiquer l\'heure dans un format valide. Exemples: 17, 18:30, 17h',
-      ru: '⚠️ Пожалуйста, укажите время в правильном формате. Примеры: 17, 18:30'
-    }
-  };
-  
-  return messages[errorType]?.[language] || messages[errorType]?.es || 'Error';
-}
 
 
 // ============ OBTENER MENSAJE DEL FLUJO ============
@@ -9600,6 +9587,7 @@ async function sendWhatsAppMessage(to, message) {
     process.exit(1);
   }
 })();
+
 
 
 
